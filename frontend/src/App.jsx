@@ -5,6 +5,11 @@ import DashboardPage from './pages/DashboardPage';
 import PetrolEntryPage from './pages/PetrolEntryPage';
 import EVEntryPage from './pages/EVEntryPage';
 import FurnitureEntryPage from './pages/FurnitureEntryPage';
+import FurnitureDashboardPage from './pages/FurnitureDashboardPage';
+import FurnitureInventoryPage from './pages/FurnitureInventoryPage';
+import FurnitureCustomerPage from './pages/FurnitureCustomerPage';
+import FurnitureOrderPage from './pages/FurnitureOrderPage';
+import FurnitureOrderHistoryPage from './pages/FurnitureOrderHistoryPage';
 import RentalEntryPage from './pages/RentalEntryPage';
 import LoanEntryPage from './pages/LoanEntryPage';
 import RecordsPage from './pages/RecordsPage';
@@ -54,7 +59,39 @@ export default function App() {
           path="/entry/furniture"
           element={
             <PrivateRoute>
-              <FurnitureEntryPage />
+              <FurnitureDashboardPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/furniture/inventory"
+          element={
+            <PrivateRoute>
+              <FurnitureInventoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/furniture/customers"
+          element={
+            <PrivateRoute>
+              <FurnitureCustomerPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/furniture/orders/new"
+          element={
+            <PrivateRoute>
+              <FurnitureOrderPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/furniture/orders"
+          element={
+            <PrivateRoute>
+              <FurnitureOrderHistoryPage />
             </PrivateRoute>
           }
         />
