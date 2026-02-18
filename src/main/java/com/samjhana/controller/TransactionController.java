@@ -7,7 +7,9 @@ import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
+import com.samjhana.entity.FurnitureItem;
 import com.samjhana.repository.BusinessUnitRepository;
+import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -24,6 +27,7 @@ public class TransactionController {
 
     private final TransactionRepository transactionRepository;
     private final BusinessUnitRepository businessUnitRepository;
+    private final FurnitureItemRepository furnitureItemRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping
@@ -63,6 +67,11 @@ public class TransactionController {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+
+        // Auto-adjust furniture stock on sale/purchase
+        if ("furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
+            adjustFurnitureStock(request.getCustomFields(), request.getTransactionType());
+        }
 
         return ResponseEntity.ok(TransactionResponse.from(saved));
     }
@@ -123,5 +132,35 @@ public class TransactionController {
                     return ResponseEntity.ok(TransactionResponse.from(saved));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void adjustFurnitureStock(Map<String, Object> customFields, String transactionType) {
+        Object itemsObj = customFields.get("items");
+        if (!(itemsObj instanceof List)) return;
+
+        List<Map<String, Object>> items = (List<Map<String, Object>>) itemsObj;
+        boolean isSale = "SALE".equalsIgnoreCase(transactionType);
+
+        for (Map<String, Object> lineItem : items) {
+            String itemId = lineItem.get("itemId") != null ? lineItem.get("itemId").toString() : null;
+            if (itemId == null) continue;
+
+            int qty = 1;
+            if (lineItem.get("quantity") instanceof Number) {
+                qty = ((Number) lineItem.get("quantity")).intValue();
+            }
+
+            try {
+                FurnitureItem furnitureItem = furnitureItemRepository.findById(UUID.fromString(itemId)).orElse(null);
+                if (furnitureItem != null) {
+                    int newStock = isSale
+                            ? Math.max(0, furnitureItem.getStockQty() - qty)
+                            : furnitureItem.getStockQty() + qty;
+                    furnitureItem.setStockQty(newStock);
+                    furnitureItemRepository.save(furnitureItem);
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
     }
 }
