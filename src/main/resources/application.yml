@@ -1,0 +1,174 @@
+# =============================================================================
+# SAMJHANA VENTURES OS - Application Configuration
+# =============================================================================
+# This is the main configuration file for the family business ERP system.
+# The system is designed to run as a single JAR with embedded H2 database.
+# =============================================================================
+
+spring:
+  application:
+    name: Samjhana Ventures OS
+
+  # =============================================================================
+  # Database Configuration (H2 File-based for persistence)
+  # =============================================================================
+  datasource:
+    url: jdbc:h2:file:./data/samjhana-db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: samjhana2024
+    
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false  # Security: Only allow local access
+
+  # =============================================================================
+  # JPA/Hibernate Configuration
+  # =============================================================================
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update  # Auto-update schema (safe for production with care)
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        # Enable JSON column support for custom fields
+        types:
+          print:
+            banner: false
+
+  # =============================================================================
+  # File Upload Configuration
+  # =============================================================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # =============================================================================
+  # Jackson JSON Configuration
+  # =============================================================================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSSZ
+    time-zone: Asia/Kathmandu
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# =============================================================================
+# Application-Specific Configuration
+# =============================================================================
+samjhana:
+  # Security settings
+  security:
+    jwt:
+      secret: ${JWT_SECRET:samjhana-ventures-os-secret-key-change-in-production-2024}
+      expiration-hours: 168  # 7 days for Dad's convenience
+      
+  # Image storage settings
+  storage:
+    images:
+      path: ./data/images
+      max-size-mb: 10
+      allowed-extensions: jpg,jpeg,png,gif,webp
+      
+  # Business settings
+  business:
+    default-timezone: Asia/Kathmandu
+    currency: NPR
+    
+  # Localization
+  i18n:
+    default-locale: ne  # Nepali as default for Dad
+    supported-locales: ne,en
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    com.samjhana: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  file:
+    name: ./logs/samjhana-os.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# =============================================================================
+# Springdoc OpenAPI Configuration
+# =============================================================================
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui
+    operations-sorter: method
+    tags-sorter: alpha
+
+---
+# =============================================================================
+# Development Profile
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+      
+  h2:
+    console:
+      settings:
+        web-allow-others: true  # Allow remote access in dev
+        
+  jpa:
+    show-sql: true
+    
+logging:
+  level:
+    com.samjhana: TRACE
+
+---
+# =============================================================================
+# Production Profile
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+      
+  h2:
+    console:
+      enabled: false
+      
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+      
+logging:
+  level:
+    root: WARN
+    com.samjhana: INFO
