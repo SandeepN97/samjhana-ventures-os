@@ -47,6 +47,34 @@ public class AuthController {
         return ResponseEntity.ok(UserDto.from(user));
     }
 
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal User user) {
+
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        String fullName = body.get("fullName");
+        if (fullName == null || fullName.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Full name is required"));
+        }
+
+        user.setFullName(fullName.trim());
+        String fullNameNepali = body.get("fullNameNepali");
+        if (fullNameNepali != null && !fullNameNepali.trim().isEmpty()) {
+            user.setFullNameNepali(fullNameNepali.trim());
+        }
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Profile updated successfully",
+                "user", UserDto.from(user)
+        ));
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
         // Find user by username
