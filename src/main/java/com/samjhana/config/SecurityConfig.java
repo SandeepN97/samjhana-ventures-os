@@ -46,7 +46,18 @@ public class SecurityConfig {
                     "/*.ico",
                     "/h2-console/**",
                     "/swagger-ui/**",
-                    "/api-docs/**"
+                    "/api-docs/**",
+                    // SPA frontend routes - served by index.html
+                    "/login",
+                    "/entry/**",
+                    "/furniture/**",
+                    "/records",
+                    "/reports/**",
+                    "/settings",
+                    "/pending",
+                    "/fuel-prices",
+                    "/fuel-orders",
+                    "/staff"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
