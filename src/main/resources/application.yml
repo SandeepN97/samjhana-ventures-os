@@ -16,14 +16,14 @@ spring:
     url: jdbc:h2:file:./data/samjhana-db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
     driver-class-name: org.h2.Driver
     username: sa
-    password: samjhana2024
-    
+    password: ${DB_PASSWORD:samjhana2024}
+
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
       settings:
-        web-allow-others: false  # Security: Only allow local access
+        web-allow-others: false
 
   # =============================================================================
   # JPA/Hibernate Configuration
@@ -31,13 +31,12 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: update  # Auto-update schema (safe for production with care)
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         format_sql: true
         use_sql_comments: true
-        # Enable JSON column support for custom fields
         types:
           print:
             banner: false
@@ -68,9 +67,6 @@ spring:
 # =============================================================================
 server:
   port: 8080
-  error:
-    include-message: always
-    include-binding-errors: always
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
@@ -79,27 +75,23 @@ server:
 # Application-Specific Configuration
 # =============================================================================
 samjhana:
-  # Security settings
   security:
     jwt:
-      secret: ${JWT_SECRET:samjhana-ventures-os-secret-key-change-in-production-2024}
+      secret: ${JWT_SECRET}
       expiration-hours: 168  # 7 days for Dad's convenience
-      
-  # Image storage settings
+
   storage:
     images:
       path: ./data/images
       max-size-mb: 10
       allowed-extensions: jpg,jpeg,png,gif,webp
-      
-  # Business settings
+
   business:
     default-timezone: Asia/Kathmandu
     currency: NPR
-    
-  # Localization
+
   i18n:
-    default-locale: ne  # Nepali as default for Dad
+    default-locale: ne
     supported-locales: ne,en
 
 # =============================================================================
@@ -108,10 +100,9 @@ samjhana:
 logging:
   level:
     root: INFO
-    com.samjhana: DEBUG
+    com.samjhana: INFO
     org.springframework.security: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.SQL: WARN
   file:
     name: ./logs/samjhana-os.log
   pattern:
@@ -137,18 +128,26 @@ spring:
   config:
     activate:
       on-profile: dev
-      
+
   h2:
     console:
+      enabled: true
       settings:
-        web-allow-others: true  # Allow remote access in dev
-        
+        web-allow-others: true
+
   jpa:
     show-sql: true
-    
+
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+
 logging:
   level:
     com.samjhana: TRACE
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 ---
 # =============================================================================
@@ -158,16 +157,16 @@ spring:
   config:
     activate:
       on-profile: prod
-      
+
   h2:
     console:
       enabled: false
-      
+
   jpa:
     show-sql: false
     hibernate:
       ddl-auto: validate
-      
+
 logging:
   level:
     root: WARN
