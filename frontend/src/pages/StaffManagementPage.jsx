@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
+import SearchableSelect from '../components/SearchableSelect';
 
 const BUSINESS_UNITS = [
   { value: 'PETROL', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -284,18 +286,17 @@ export default function StaffManagementPage() {
           {isNepali ? 'नयाँ कर्मचारी' : 'Add Staff'}
         </button>
 
-        <select
+        <SearchableSelect
           value={filterUnit}
-          onChange={(e) => setFilterUnit(e.target.value)}
-          className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-        >
-          <option value="">{isNepali ? 'सबै इकाई' : 'All Units'}</option>
-          {BUSINESS_UNITS.map(unit => (
-            <option key={unit.value} value={unit.value}>
-              {isNepali ? unit.labelNe : unit.labelEn}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => setFilterUnit(val)}
+          options={BUSINESS_UNITS.map(unit => ({
+            value: unit.value,
+            label: isNepali ? unit.labelNe : unit.labelEn,
+          }))}
+          placeholder={isNepali ? 'सबै इकाई' : 'All Units'}
+          accentColor="indigo"
+          className="py-2 text-base"
+        />
       </div>
 
       {/* Search */}
@@ -391,33 +392,31 @@ export default function StaffManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {isNepali ? 'कार्य इकाई' : 'Business Unit'} *
                   </label>
-                  <select
+                  <SearchableSelect
                     value={formData.businessUnit}
-                    onChange={(e) => setFormData({ ...formData, businessUnit: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  >
-                    {BUSINESS_UNITS.map(unit => (
-                      <option key={unit.value} value={unit.value}>
-                        {isNepali ? unit.labelNe : unit.labelEn}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, businessUnit: val })}
+                    options={BUSINESS_UNITS.map(unit => ({
+                      value: unit.value,
+                      label: isNepali ? unit.labelNe : unit.labelEn,
+                    }))}
+                    accentColor="indigo"
+                    className="py-2 text-base"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {isNepali ? 'पद' : 'Role'} *
                   </label>
-                  <select
+                  <SearchableSelect
                     value={formData.staffRole}
-                    onChange={(e) => setFormData({ ...formData, staffRole: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  >
-                    {STAFF_ROLES.map(role => (
-                      <option key={role.value} value={role.value}>
-                        {isNepali ? role.labelNe : role.labelEn}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, staffRole: val })}
+                    options={STAFF_ROLES.map(role => ({
+                      value: role.value,
+                      label: isNepali ? role.labelNe : role.labelEn,
+                    }))}
+                    accentColor="indigo"
+                    className="py-2 text-base"
+                  />
                 </div>
               </div>
 
@@ -442,11 +441,10 @@ export default function StaffManagementPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {isNepali ? 'काममा आएको मिति' : 'Join Date'}
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.joinDate}
-                    onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                    onChange={(val) => setFormData({ ...formData, joinDate: val })}
+                    accentColor="indigo"
                   />
                 </div>
               </div>

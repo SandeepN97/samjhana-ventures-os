@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Fuel, Check, History, Plus, Eye } from 'lucide-react';
+import { ArrowLeft, Fuel, Check, History, Plus, Eye, RefreshCw } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 
@@ -19,6 +19,7 @@ export default function FuelPricePage() {
   const [showHistory, setShowHistory] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
+  const [fetchingNoc, setFetchingNoc] = useState(false);
 
   const [formValues, setFormValues] = useState({
     effectiveDate: new Date().toISOString().split('T')[0],
@@ -98,6 +99,22 @@ export default function FuelPricePage() {
     }
   };
 
+  const handleFetchNoc = async () => {
+    setFetchingNoc(true);
+    setError('');
+    try {
+      await api.post('/api/fuel-prices/fetch-noc');
+      setSuccessMessage(isNepali ? 'NOC बाट मूल्य अपडेट भयो!' : 'Prices fetched from NOC!');
+      fetchCurrentPrices();
+      fetchPriceHistory();
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || (isNepali ? 'NOC बाट मूल्य ल्याउन असफल' : 'Failed to fetch NOC prices'));
+    } finally {
+      setFetchingNoc(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(isNepali ? 'ne-NP' : 'en-US', {
@@ -131,26 +148,46 @@ export default function FuelPricePage() {
       {/* Current Prices Display */}
       <div className="px-4 py-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
-            <p className="text-sm text-gray-500">{isNepali ? 'पेट्रोल' : 'Petrol'}</p>
-            <p className="text-2xl font-bold text-gray-800">
+          <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-red-500">
+            <p className="text-lg text-red-600 font-bold">⛽ {isNepali ? 'पेट्रोल' : 'Petrol'}</p>
+            <p className="text-5xl font-black text-gray-900 mt-2">
               {currentPrices.petrol
                 ? `रु ${parseFloat(currentPrices.petrol).toFixed(2)}`
                 : (isNepali ? 'सेट नभएको' : 'Not set')}
             </p>
-            <p className="text-xs text-gray-400">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
+            <p className="text-sm text-gray-500 mt-2 font-medium">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-yellow-500">
-            <p className="text-sm text-gray-500">{isNepali ? 'डिजेल' : 'Diesel'}</p>
-            <p className="text-2xl font-bold text-gray-800">
+          <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-yellow-500">
+            <p className="text-lg text-yellow-600 font-bold">🛢️ {isNepali ? 'डिजेल' : 'Diesel'}</p>
+            <p className="text-5xl font-black text-gray-900 mt-2">
               {currentPrices.diesel
                 ? `रु ${parseFloat(currentPrices.diesel).toFixed(2)}`
                 : (isNepali ? 'सेट नभएको' : 'Not set')}
             </p>
-            <p className="text-xs text-gray-400">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
+            <p className="text-sm text-gray-500 mt-2 font-medium">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
           </div>
         </div>
       </div>
+
+      {/* Fetch NOC Prices Button - Admin Only */}
+      {isAdmin && (
+        <div className="px-4 mt-2">
+          <button
+            onClick={handleFetchNoc}
+            disabled={fetchingNoc}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+              fetchingNoc
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 active:scale-95 text-white'
+            }`}
+          >
+            <RefreshCw className={`w-5 h-5 ${fetchingNoc ? 'animate-spin' : ''}`} />
+            {fetchingNoc
+              ? (isNepali ? 'NOC बाट ल्याउँदै...' : 'Fetching from NOC...')
+              : (isNepali ? 'NOC बाट मूल्य ल्याउनुहोस्' : 'Fetch NOC Prices')}
+          </button>
+        </div>
+      )}
 
       {/* Staff View-Only Notice */}
       {!isAdmin && (
@@ -211,6 +248,7 @@ export default function FuelPricePage() {
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   inputMode="decimal"
                   value={formValues.petrolPrice}
                   onChange={(e) => setFormValues(prev => ({ ...prev, petrolPrice: e.target.value }))}
@@ -230,6 +268,7 @@ export default function FuelPricePage() {
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   inputMode="decimal"
                   value={formValues.dieselPrice}
                   onChange={(e) => setFormValues(prev => ({ ...prev, dieselPrice: e.target.value }))}
@@ -301,6 +340,11 @@ export default function FuelPricePage() {
                           ? (isNepali ? 'पेट्रोल' : 'Petrol')
                           : (isNepali ? 'डिजेल' : 'Diesel')}
                       </span>
+                      {price.updatedByName === 'NOC Auto-Update' && (
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium mr-2 bg-green-100 text-green-700">
+                          NOC
+                        </span>
+                      )}
                       <span className="text-sm text-gray-500">
                         {formatDate(price.effectiveDate)}
                       </span>

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
+import SearchableSelect from '../components/SearchableSelect';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
@@ -439,6 +441,7 @@ export default function LoanEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={newLoan.loanAmount}
                 onChange={(e) => handleNewLoanChange('loanAmount', e.target.value)}
@@ -458,6 +461,7 @@ export default function LoanEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={newLoan.interestRate}
                 onChange={(e) => handleNewLoanChange('interestRate', e.target.value)}
@@ -473,11 +477,11 @@ export default function LoanEntryPage() {
             <label className="block text-lg font-medium text-gray-700 mb-2">
               {isNepali ? 'ऋण मिति' : 'Loan Date'} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={newLoan.startDate}
-              onChange={(e) => handleNewLoanChange('startDate', e.target.value)}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 ${errors.startDate ? 'border-red-500' : 'border-gray-300'}`}
+              onChange={(val) => handleNewLoanChange('startDate', val)}
+              error={errors.startDate}
+              accentColor="red"
             />
           </div>
 
@@ -535,18 +539,18 @@ export default function LoanEntryPage() {
             <label className="block text-lg font-medium text-gray-700 mb-2">
               {isNepali ? 'ऋण छान्नुहोस्' : 'Select Loan'} <span className="text-red-500">*</span>
             </label>
-            <select
+            <SearchableSelect
               value={payment.loanId}
-              onChange={(e) => handlePaymentChange('loanId', e.target.value)}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.loanId ? 'border-red-500' : 'border-gray-300'}`}
-            >
-              <option value="">{isNepali ? '-- ऋण छान्नुहोस् --' : '-- Select a loan --'}</option>
-              {loans.map(loan => (
-                <option key={loan.id} value={loan.id}>
-                  {loan.bankName} - {isNepali ? 'बाँकी:' : 'Rem:'} {formatAmount(loan.remaining)}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => handlePaymentChange('loanId', val)}
+              options={loans.map(loan => ({
+                value: loan.id,
+                label: loan.bankName,
+                subtitle: `${isNepali ? 'बाँकी:' : 'Remaining:'} ${formatAmount(loan.remaining)}`,
+              }))}
+              placeholder={isNepali ? '-- ऋण छान्नुहोस् --' : '-- Select a loan --'}
+              error={errors.loanId}
+              accentColor="green"
+            />
             {errors.loanId && <p className="text-red-500 text-sm mt-1">{errors.loanId}</p>}
           </div>
 
@@ -571,11 +575,11 @@ export default function LoanEntryPage() {
             <label className="block text-lg font-medium text-gray-700 mb-2">
               {isNepali ? 'भुक्तानी मिति' : 'Payment Date'} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={payment.paymentDate}
-              onChange={(e) => handlePaymentChange('paymentDate', e.target.value)}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.paymentDate ? 'border-red-500' : 'border-gray-300'}`}
+              onChange={(val) => handlePaymentChange('paymentDate', val)}
+              error={errors.paymentDate}
+              accentColor="green"
             />
           </div>
 
@@ -589,6 +593,7 @@ export default function LoanEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={payment.principalAmount}
                 onChange={(e) => handlePaymentChange('principalAmount', e.target.value)}
@@ -609,6 +614,7 @@ export default function LoanEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={payment.interestAmount}
                 onChange={(e) => handlePaymentChange('interestAmount', e.target.value)}

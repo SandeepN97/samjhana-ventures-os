@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Home, Check, CreditCard, Settings } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
 
 export default function RentalEntryPage() {
   const navigate = useNavigate();
@@ -262,11 +263,11 @@ export default function RentalEntryPage() {
             <label className="block text-lg font-medium text-gray-700 mb-2">
               {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={paymentValues.transactionDate}
-              onChange={(e) => handlePaymentChange('transactionDate', e.target.value)}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.transactionDate ? 'border-red-500' : 'border-gray-300'}`}
+              onChange={(val) => handlePaymentChange('transactionDate', val)}
+              error={errors.transactionDate}
+              accentColor="blue"
             />
           </div>
 
@@ -323,6 +324,7 @@ export default function RentalEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={paymentValues.rentAmount}
                 onChange={(e) => handlePaymentChange('rentAmount', e.target.value)}
@@ -389,11 +391,11 @@ export default function RentalEntryPage() {
             <label className="block text-lg font-medium text-gray-700 mb-2">
               {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={values.transactionDate}
-              onChange={(e) => handleChange('transactionDate', e.target.value)}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.transactionDate ? 'border-red-500' : 'border-gray-300'}`}
+              onChange={(val) => handleChange('transactionDate', val)}
+              error={errors.transactionDate}
+              accentColor="blue"
             />
           </div>
 
@@ -477,6 +479,7 @@ export default function RentalEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={values.rentAmount}
                 onChange={(e) => handleChange('rentAmount', e.target.value)}
@@ -497,6 +500,7 @@ export default function RentalEntryPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={values.depositAmount}
                 onChange={(e) => handleChange('depositAmount', e.target.value)}

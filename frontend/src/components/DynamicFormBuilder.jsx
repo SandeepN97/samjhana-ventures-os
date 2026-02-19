@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Camera, Calendar, ChevronDown, X, Check, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNepaliNumber, formatCurrency } from '../utils/formatters';
+import DatePicker from './DatePicker';
+import SearchableSelect from './SearchableSelect';
 
 /**
  * DynamicFormBuilder - Renders forms based on field templates from the backend.
@@ -284,21 +286,12 @@ function CurrencyInput({ field, value, onChange, error, isNepali }) {
 
 function DateInput({ field, value, onChange, error }) {
   return (
-    <div className="relative">
-      <input
-        type="date"
-        id={field.fieldKey}
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className={`
-          w-full px-4 py-4 text-xl border-2 rounded-xl
-          focus:outline-none focus:ring-2 focus:ring-blue-500
-          ${error ? 'border-red-500' : 'border-gray-300'}
-        `}
-        required={field.isRequired}
-      />
-      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-    </div>
+    <DatePicker
+      value={value || ''}
+      onChange={onChange}
+      error={error}
+      accentColor="blue"
+    />
   );
 }
 
@@ -306,27 +299,17 @@ function SelectInput({ field, value, onChange, error, isNepali }) {
   const options = field.options ? JSON.parse(field.options) : [];
 
   return (
-    <div className="relative">
-      <select
-        id={field.fieldKey}
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className={`
-          w-full px-4 py-4 text-xl border-2 rounded-xl appearance-none
-          focus:outline-none focus:ring-2 focus:ring-blue-500
-          ${error ? 'border-red-500' : 'border-gray-300'}
-        `}
-        required={field.isRequired}
-      >
-        <option value="">-- {isNepali ? 'छान्नुहोस्' : 'Select'} --</option>
-        {options.map((opt) => (
-          <option key={opt.value || opt} value={opt.value || opt}>
-            {opt.label || opt}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-    </div>
+    <SearchableSelect
+      value={value || ''}
+      onChange={onChange}
+      options={options.map(opt => ({
+        value: opt.value || opt,
+        label: opt.label || opt,
+      }))}
+      placeholder={`-- ${isNepali ? 'छान्नुहोस्' : 'Select'} --`}
+      error={error}
+      accentColor="blue"
+    />
   );
 }
 

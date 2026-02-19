@@ -213,6 +213,7 @@ export default function FurnitureEntryPage() {
             <input
               type="number"
               step="0.01"
+              min="0"
               inputMode="decimal"
               value={values.unitPrice}
               onChange={(e) => handleChange('unitPrice', e.target.value)}

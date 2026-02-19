@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ShoppingCart, Plus, Trash2, Check, Search, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
+import SearchableSelect from '../components/SearchableSelect';
 
 export default function FurnitureOrderPage() {
   const navigate = useNavigate();
@@ -181,8 +183,11 @@ export default function FurnitureOrderPage() {
           <label className="block text-lg font-medium text-gray-700 mb-2">
             {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
           </label>
-          <input type="date" value={transactionDate} onChange={(e) => setTransactionDate(e.target.value)}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          <DatePicker
+            value={transactionDate}
+            onChange={(val) => setTransactionDate(val)}
+            accentColor="purple"
+          />
         </div>
 
         {/* Customer Selection */}
@@ -281,15 +286,18 @@ export default function FurnitureOrderPage() {
 
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सामान' : 'Item'}</label>
-                  <select value={li.itemId} onChange={(e) => updateLineItem(index, 'itemId', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500">
-                    <option value="">{isNepali ? 'सामान छान्नुहोस्' : 'Select item'}</option>
-                    {inventoryItems.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} ({item.category}) — {isNepali ? 'स्टक' : 'Stock'}: {item.stockQty}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={li.itemId}
+                    onChange={(val) => updateLineItem(index, 'itemId', val)}
+                    options={inventoryItems.map(item => ({
+                      value: item.id,
+                      label: `${item.name} (${item.category})`,
+                      subtitle: `${isNepali ? 'स्टक' : 'Stock'}: ${item.stockQty}`,
+                    }))}
+                    placeholder={isNepali ? 'सामान छान्नुहोस्' : 'Select item'}
+                    accentColor="purple"
+                    className="py-2 text-base"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -301,7 +309,7 @@ export default function FurnitureOrderPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'एकाइ मूल्य' : 'Unit Price'}</label>
-                    <input type="number" step="0.01" value={li.unitPrice}
+                    <input type="number" step="0.01" min="0" value={li.unitPrice}
                       onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-center font-bold" />
                   </div>
@@ -347,8 +355,11 @@ export default function FurnitureOrderPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'डेलिभरी मिति' : 'Delivery Date'}</label>
-            <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
+            <DatePicker
+              value={deliveryDate}
+              onChange={(val) => setDeliveryDate(val)}
+              accentColor="purple"
+            />
           </div>
 
           <div>

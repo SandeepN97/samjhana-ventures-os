@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Fuel, Check, Settings, Truck, Banknote, Building2 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
@@ -160,18 +161,18 @@ export default function PetrolEntryPage() {
       </header>
 
       {/* Today's Prices Banner */}
-      <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-3">
+      <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
         <div className="flex items-center justify-between">
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div className="text-center">
-              <p className="text-xs text-gray-500">{isNepali ? 'पेट्रोल' : 'Petrol'}</p>
-              <p className="font-bold text-red-600">
+              <p className="text-sm text-red-500 font-semibold">⛽ {isNepali ? 'पेट्रोल' : 'Petrol'}</p>
+              <p className="text-2xl font-black text-gray-900">
                 {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-gray-500">{isNepali ? 'डिजेल' : 'Diesel'}</p>
-              <p className="font-bold text-yellow-600">
+              <p className="text-sm text-yellow-500 font-semibold">🛢️ {isNepali ? 'डिजेल' : 'Diesel'}</p>
+              <p className="text-2xl font-black text-gray-900">
                 {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
               </p>
             </div>
@@ -219,11 +220,11 @@ export default function PetrolEntryPage() {
           <label className="block text-lg font-medium text-gray-700 mb-2">
             {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={values.transactionDate}
-            onChange={(e) => handleChange('transactionDate', e.target.value)}
-            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.transactionDate ? 'border-red-500' : 'border-gray-300'}`}
+            onChange={(val) => handleChange('transactionDate', val)}
+            error={errors.transactionDate}
+            accentColor="orange"
           />
           {errors.transactionDate && <p className="text-red-500 text-sm mt-1">{errors.transactionDate}</p>}
         </div>
@@ -267,6 +268,7 @@ export default function PetrolEntryPage() {
           <input
             type="number"
             step="0.01"
+            min="0"
             inputMode="decimal"
             value={values.liters}
             onChange={(e) => handleChange('liters', e.target.value)}
@@ -291,6 +293,7 @@ export default function PetrolEntryPage() {
             <input
               type="number"
               step="0.01"
+              min="0"
               inputMode="decimal"
               value={values.ratePerLiter}
               onChange={(e) => handleChange('ratePerLiter', e.target.value)}

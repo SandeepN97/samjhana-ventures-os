@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Truck, Check, Fuel, Droplet, ShieldOff } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
 
 export default function FuelOrderPage() {
   const navigate = useNavigate();
@@ -206,11 +207,11 @@ export default function FuelOrderPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {isNepali ? 'अर्डर मिति' : 'Order Date'} <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={values.orderDate}
-              onChange={(e) => handleChange('orderDate', e.target.value)}
-              className={`w-full px-4 py-3 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.orderDate ? 'border-red-500' : 'border-gray-300'}`}
+              onChange={(val) => handleChange('orderDate', val)}
+              error={errors.orderDate}
+              accentColor="orange"
             />
           </div>
 
@@ -255,6 +256,7 @@ export default function FuelOrderPage() {
             <input
               type="number"
               step="0.01"
+              min="0"
               inputMode="decimal"
               value={values.liters}
               onChange={(e) => handleChange('liters', e.target.value)}
@@ -274,6 +276,7 @@ export default function FuelOrderPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 inputMode="decimal"
                 value={values.ratePerLiter}
                 onChange={(e) => handleChange('ratePerLiter', e.target.value)}
