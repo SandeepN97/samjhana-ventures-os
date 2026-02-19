@@ -26,7 +26,7 @@ public class FuelPriceResponse {
                 .fuelType(fp.getFuelType().name())
                 .pricePerLiter(fp.getPricePerLiter())
                 .effectiveDate(fp.getEffectiveDate())
-                .updatedByName(fp.getUpdatedBy() != null ? fp.getUpdatedBy().getFullName() : null)
+                .updatedByName(fp.getUpdatedBy() != null ? fp.getUpdatedBy().getFullName() : "NOC Auto-Update")
                 .createdAt(fp.getCreatedAt())
                 .build();
     }
