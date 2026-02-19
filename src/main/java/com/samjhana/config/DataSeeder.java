@@ -1,7 +1,9 @@
 package com.samjhana.config;
 
 import com.samjhana.entity.BusinessUnit;
+import com.samjhana.entity.EvVehicle;
 import com.samjhana.entity.User;
+import com.samjhana.repository.EvVehicleRepository;
 import com.samjhana.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Component
@@ -21,12 +24,14 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
+    private final EvVehicleRepository evVehicleRepository;
 
     @Override
     @Transactional
     public void run(String... args) {
         seedUsers();
         seedBusinessUnits();
+        seedEvVehicles();
     }
 
     private void seedUsers() {
@@ -95,5 +100,47 @@ public class DataSeeder implements CommandLineRunner {
             entityManager.persist(unit);
         }
         log.info("Seeded {} default business units.", units.size());
+    }
+
+    private void seedEvVehicles() {
+        if (evVehicleRepository.count() > 0) {
+            log.info("EV vehicles already exist, skipping seed.");
+            return;
+        }
+
+        List<EvVehicle> vehicles = List.of(
+            ev("Higer (100KW)", "100", 16, "16"),
+            ev("Higer (53KW)", "53.58", 16, "16"),
+            ev("Higer (70KW)", "70.47", 16, "10"),
+            ev("Keytone", "53.58", 14, "9"),
+            ev("Foton", "50.23", 16, "9"),
+            ev("Kinglong", "50.23", 16, "9"),
+            ev("Hylong", "50.23", 16, "9"),
+            ev("KYC V5", "41.86", 11, "11"),
+            ev("Shineray", "41.86", 11, "11"),
+            ev("DSFK 11", "41.86", 11, "11"),
+            ev("Hylong HD4", "41.86", 11, "11"),
+            ev("SKY WELL D10", "50.23", 16, "16"),
+            ev("Dongfeng (50KW)", "50.23", 14, "14"),
+            ev("SRM", "41.86", 11, "11"),
+            ev("Dongfeng (53KW)", "53.58", 14, "14"),
+            ev("Kama", "42", 14, "14"),
+            ev("DFAC EV 32", "53.58", 14, "14"),
+            ev("Kinglong (50KW-2)", "50.23", 16, "16"),
+            ev("Sokon", "42", 11, "7")
+        );
+
+        evVehicleRepository.saveAll(vehicles);
+        log.info("Seeded {} default EV vehicles.", vehicles.size());
+    }
+
+    private EvVehicle ev(String name, String batteryKw, int seats, String ratePerPercent) {
+        return EvVehicle.builder()
+                .vehicleName(name)
+                .batteryCapacityKw(new BigDecimal(batteryKw))
+                .seatingCapacity(seats)
+                .ratePerPercent(new BigDecimal(ratePerPercent))
+                .isActive(true)
+                .build();
     }
 }

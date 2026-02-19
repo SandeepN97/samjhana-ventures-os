@@ -5,6 +5,7 @@ import com.samjhana.dto.FuelPriceResponse;
 import com.samjhana.entity.FuelPrice;
 import com.samjhana.entity.User;
 import com.samjhana.repository.FuelPriceRepository;
+import com.samjhana.service.NocPriceScraperService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class FuelPriceController {
 
     private final FuelPriceRepository fuelPriceRepository;
+    private final NocPriceScraperService nocPriceScraperService;
 
     /**
      * Get current prices for both fuel types
@@ -150,6 +152,19 @@ public class FuelPriceController {
         }
 
         return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Manually trigger NOC price scrape (ADMIN only)
+     */
+    @PostMapping("/fetch-noc")
+    public ResponseEntity<?> fetchNocPrices(@AuthenticationPrincipal User user) {
+        if (user == null || !user.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin access required"));
+        }
+        nocPriceScraperService.fetchAndSavePrices();
+        return getCurrentPrices();
     }
 
     private FuelPrice saveOrUpdatePrice(FuelPrice.FuelType fuelType, java.math.BigDecimal price,

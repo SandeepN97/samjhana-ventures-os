@@ -94,6 +94,11 @@ samjhana:
     default-locale: ne
     supported-locales: ne,en
 
+  fuel-price-scraper:
+    enabled: true
+    depot: Bhalbari
+    url: https://noc.org.np
+
 # =============================================================================
 # Logging Configuration
 # =============================================================================

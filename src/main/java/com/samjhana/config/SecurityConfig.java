@@ -38,6 +38,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/fuel-prices/current",
+                    "/api/fuel-prices/current/**",
                     "/",
                     "/index.html",
                     "/assets/**",
@@ -57,7 +59,8 @@ public class SecurityConfig {
                     "/pending",
                     "/fuel-prices",
                     "/fuel-orders",
-                    "/staff"
+                    "/staff",
+                    "/ev-vehicles"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
