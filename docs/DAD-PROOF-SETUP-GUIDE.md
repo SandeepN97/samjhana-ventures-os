@@ -169,7 +169,14 @@ You should see the Samjhana Ventures OS login screen!
 
 ## Step 8: Connect with Son (छोरासँग जोड्नुहोस्) - Tailscale
 
-To let Son access your computer securely from USA:
+### What is Tailscale? (Tailscale के हो?)
+
+Tailscale is a free app that creates a **secure private connection** between devices — like a secret tunnel between Dad's computer in Nepal and Son's laptop in USA.
+
+**Why do we need it?**
+- Without Tailscale, Son **cannot** access Dad's computer from USA (it's hidden behind your home internet router)
+- With Tailscale, both devices join the same private network — as if they were on the same WiFi, even from opposite sides of the world
+- It's free, safe, and requires no complicated router setup
 
 ### Install Tailscale:
 
@@ -204,7 +211,21 @@ Now Son can access your Samjhana OS from USA!
 
 You can use Samjhana OS on your phone. The app has big buttons designed for touch screens.
 
-### When Connected to Home WiFi:
+### Understanding When It Works (कहिले काम गर्छ):
+
+The app runs on your **computer** — your phone is just a window to view it. So the computer must be **turned on and running the app** for the phone to work.
+
+| Situation | Works? | What to use |
+|-----------|--------|-------------|
+| Phone on **home WiFi** (same as computer) | Yes | Local IP address (see below) |
+| Phone on **different WiFi** (friend's house, office) | Only with Tailscale | Tailscale address |
+| Phone on **mobile data** (outside) | Only with Tailscale | Tailscale address |
+
+> The app is lightweight (text and small tables only), so it uses very little data — even on mobile data, it won't cost much.
+
+### Option A: Home WiFi (घरको WiFi मा)
+
+This is the simplest — no extra app needed on your phone.
 
 1. Connect your phone to the **same WiFi** as your computer
 
@@ -219,6 +240,21 @@ You can use Samjhana OS on your phone. The app has big buttons designed for touc
    http://192.168.1.100:8080
    ```
    (Replace `192.168.1.100` with your actual IP from step 2)
+
+### Option B: From Anywhere with Tailscale (जहाँबाट पनि)
+
+If you want to use the app from **outside the house** — on mobile data, at a friend's house, or any other WiFi — you need Tailscale on your phone:
+
+1. Install **Tailscale** from Google Play Store (Android) or Apple App Store (iPhone)
+2. Sign in with the **same family Google account** used on the computer
+3. Turn on Tailscale (it connects in a few seconds)
+4. Open your phone browser and type:
+   ```
+   http://your-pc-name.tailnet-xxxx.ts.net:8080
+   ```
+   (Son will tell you the exact address)
+
+> **Tip:** Once Tailscale is set up, it works on **all networks** — home WiFi, other WiFi, and mobile data. You can use the Tailscale address everywhere and forget about the local IP address.
 
 ### Add to Home Screen (होम स्क्रिनमा थप्नुहोस्):
 
@@ -236,18 +272,6 @@ To open the app like a regular app on your phone:
 2. Tap the **Share button** (square with arrow) at the bottom
 3. Scroll down and tap **"Add to Home Screen"**
 4. Name it **"Samjhana OS"** and tap **Add**
-
-### When Away from Home (घरबाहिर हुँदा):
-
-The app only works on your home WiFi network. If you need to access it from outside (using mobile data), Son can set up Tailscale on your phone too:
-
-1. Install **Tailscale** from Google Play Store or Apple App Store
-2. Sign in with the same family Google account
-3. Once connected, use this address in your phone browser:
-   ```
-   http://your-pc-name.tailnet-xxxx.ts.net:8080
-   ```
-   (Son will tell you the exact address)
 
 ---
 
