@@ -89,7 +89,7 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private TransactionStatus status = TransactionStatus.PENDING_REVIEW;
+    private TransactionStatus status = TransactionStatus.APPROVED;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewed_by")

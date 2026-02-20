@@ -6,6 +6,7 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
+import useBusinessDate from '../hooks/useBusinessDate';
 
 export default function EVEntryPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function EVEntryPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
+  const { businessDate } = useBusinessDate();
 
   const [chargingMode, setChargingMode] = useState('METER');
   const [vehicles, setVehicles] = useState([]);
@@ -35,6 +37,12 @@ export default function EVEntryPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (businessDate) {
+      setValues(prev => ({ ...prev, transactionDate: businessDate }));
+    }
+  }, [businessDate]);
 
   useEffect(() => {
     api.get('/api/ev-vehicles').then(res => {
@@ -161,7 +169,7 @@ export default function EVEntryPage() {
 
       setTimeout(() => {
         setValues({
-          transactionDate: new Date().toISOString().split('T')[0],
+          transactionDate: businessDate,
           chargerType: 'DC_FAST',
           openingMeter: '',
           closingMeter: '',

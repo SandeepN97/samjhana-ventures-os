@@ -2,8 +2,10 @@ package com.samjhana.config;
 
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.EvVehicle;
+import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
 import com.samjhana.repository.EvVehicleRepository;
+import com.samjhana.repository.TransactionRepository;
 import com.samjhana.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
     private final EvVehicleRepository evVehicleRepository;
+    private final TransactionRepository transactionRepository;
 
     @Override
     @Transactional
@@ -32,6 +35,7 @@ public class DataSeeder implements CommandLineRunner {
         seedUsers();
         seedBusinessUnits();
         seedEvVehicles();
+        migratePendingTransactions();
     }
 
     private void seedUsers() {
@@ -132,6 +136,16 @@ public class DataSeeder implements CommandLineRunner {
 
         evVehicleRepository.saveAll(vehicles);
         log.info("Seeded {} default EV vehicles.", vehicles.size());
+    }
+
+    private void migratePendingTransactions() {
+        List<Transaction> pending = transactionRepository
+                .findByStatusOrderByCreatedAtDesc(Transaction.TransactionStatus.PENDING_REVIEW);
+        if (!pending.isEmpty()) {
+            pending.forEach(t -> t.setStatus(Transaction.TransactionStatus.APPROVED));
+            transactionRepository.saveAll(pending);
+            log.info("Migrated {} PENDING_REVIEW transactions to APPROVED.", pending.size());
+        }
     }
 
     private EvVehicle ev(String name, String batteryKw, int seats, String ratePerPercent) {

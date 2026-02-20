@@ -7,46 +7,98 @@ import {
   Zap,
   Package,
   CheckCircle2,
-  AlertTriangle,
   Lock,
   Banknote,
   Building2,
   TrendingUp,
   TrendingDown,
+  Pencil,
+  X,
+  ShieldCheck,
+  Clock,
+  Sofa,
+  Home,
+  Calendar,
+  ChevronRight,
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+
+const BUSINESS_ICONS = {
+  petrol: { icon: Fuel, color: 'bg-orange-500' },
+  ev: { icon: Zap, color: 'bg-green-500' },
+  furniture: { icon: Sofa, color: 'bg-purple-500' },
+  rental: { icon: Home, color: 'bg-blue-500' },
+  loan: { icon: Banknote, color: 'bg-red-500' },
+};
 
 export default function DailyClosePage() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'ADMIN';
 
+  const [businessDate, setBusinessDate] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cashCounted, setCashCounted] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  // Transaction list & edit state
+  const [transactions, setTransactions] = useState([]);
+  const [editModal, setEditModal] = useState({ open: false, transaction: null });
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Verification state
+  const [verifyNotes, setVerifyNotes] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  // Recent reports
+  const [recentReports, setRecentReports] = useState([]);
+
   useEffect(() => {
-    fetchSummary();
+    loadPage();
   }, []);
 
-  const fetchSummary = async () => {
+  const loadPage = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/daily-reports/today-summary');
-      setSummary(res.data);
-      if (res.data.isClosed) {
-        setSubmitted(true);
+      // Get business date first
+      const bdRes = await api.get('/api/daily-reports/business-date');
+      const bDate = bdRes.data.date;
+      setBusinessDate(bDate);
+
+      // Fetch summary for business date and recent reports in parallel
+      const [summaryRes, recentRes] = await Promise.all([
+        api.get(`/api/daily-reports/today-summary?date=${bDate}`),
+        api.get('/api/daily-reports/recent'),
+      ]);
+
+      setSummary(summaryRes.data);
+      setRecentReports(Array.isArray(recentRes.data) ? recentRes.data : []);
+
+      // If this date is closed, also fetch transactions
+      if (summaryRes.data.isClosed) {
+        fetchTransactions(bDate);
       }
     } catch (err) {
-      console.error('Failed to fetch summary', err);
+      console.error('Failed to load page', err);
       setError(isNepali ? 'डाटा लोड गर्न सकिएन' : 'Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTransactions = async (date) => {
+    try {
+      const res = await api.get(`/api/daily-reports/${date}/transactions`);
+      setTransactions(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Failed to fetch transactions', err);
     }
   };
 
@@ -60,20 +112,70 @@ export default function DailyClosePage() {
     setError('');
     try {
       await api.post('/api/daily-reports/close', {
+        date: businessDate,
         cashCounted: parseFloat(cashCounted),
         notes: notes || null,
       });
-      setSubmitted(true);
-      fetchSummary();
+      loadPage();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError(isNepali ? 'आजको रिपोर्ट पहिले नै बन्द गरिएको छ' : "Today's report has already been closed");
-        fetchSummary();
+        setError(isNepali ? 'यो दिनको रिपोर्ट पहिले नै बन्द गरिएको छ' : "This day's report has already been closed");
+        loadPage();
       } else {
         setError(isNepali ? 'बन्द गर्न सकिएन' : 'Failed to close report');
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Edit transaction
+  const openEditModal = (t) => {
+    const customFields = parseCustomFields(t.customFields);
+    setEditForm({
+      amount: t.amount,
+      transactionType: t.transactionType,
+      notes: t.notes || '',
+      referenceNumber: t.referenceNumber || '',
+      ...customFields,
+    });
+    setEditModal({ open: true, transaction: t });
+  };
+
+  const handleEditSave = async () => {
+    const t = editModal.transaction;
+    setEditSaving(true);
+    try {
+      const { amount, transactionType, notes: editNotes, referenceNumber, ...customFields } = editForm;
+      await api.put(`/api/transactions/${t.id}`, {
+        amount: parseFloat(amount),
+        transactionType,
+        notes: editNotes,
+        referenceNumber,
+        transactionDate: t.transactionDate,
+        customFields,
+      });
+      setEditModal({ open: false, transaction: null });
+      loadPage();
+    } catch (err) {
+      console.error('Failed to update transaction', err);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  // Verify report
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      await api.patch(`/api/daily-reports/${businessDate}/verify`, {
+        notes: verifyNotes || null,
+      });
+      loadPage();
+    } catch (err) {
+      console.error('Failed to verify report', err);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -92,11 +194,36 @@ export default function DailyClosePage() {
     return `${num.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh`;
   };
 
+  const parseCustomFields = (json) => {
+    if (!json) return {};
+    try {
+      return JSON.parse(json);
+    } catch {
+      return {};
+    }
+  };
+
+  const formatDateLabel = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    if (dateStr === todayStr) return isNepali ? 'आज' : 'Today';
+    if (dateStr === tomorrowStr) return isNepali ? 'भोलि' : 'Tomorrow';
+    if (dateStr === yesterdayStr) return isNepali ? 'हिजो' : 'Yesterday';
+    return d.toLocaleDateString(isNepali ? 'ne-NP' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+  };
+
   const cashNum = parseFloat(cashCounted) || 0;
-  const systemTotal = summary ? parseFloat(summary.totalSystemSales) || 0 : 0;
   const cashSalesTotal = summary ? parseFloat(summary.totalCashSales) || 0 : 0;
   const bankSalesTotal = summary ? parseFloat(summary.totalBankSales) || 0 : 0;
-  // Compare cash counted against cash sales only (not bank)
+  const systemTotal = summary ? parseFloat(summary.totalSystemSales) || 0 : 0;
   const discrepancy = cashNum - cashSalesTotal;
   const hasDiscrepancy = cashCounted !== '' && Math.abs(discrepancy) > 0.5;
   const isMatch = cashCounted !== '' && Math.abs(discrepancy) <= 0.5;
@@ -109,20 +236,27 @@ export default function DailyClosePage() {
     );
   }
 
-  // Already closed — show read-only report
-  if (submitted && summary?.isClosed && summary?.closedReport) {
-    const report = summary.closedReport;
+  const isClosed = summary?.isClosed;
+  const report = summary?.closedReport;
+
+  // =========================================================================
+  // CLOSED VIEW — report is done for this business date
+  // =========================================================================
+  if (isClosed && report) {
     return (
       <div className="min-h-screen bg-gray-100 pb-20">
         <header className="bg-green-600 text-white px-4 py-4 shadow-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <button onClick={() => navigate('/reports')} className="p-2 -ml-2 rounded-full hover:bg-green-700 transition-colors">
+              <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-green-700 transition-colors">
                 <ArrowLeft className="w-6 h-6" />
               </button>
-              <h1 className="text-xl font-bold ml-3">
-                {isNepali ? 'आजको रिपोर्ट बन्द भयो' : "Today's Report Closed"}
-              </h1>
+              <div className="ml-3">
+                <h1 className="text-xl font-bold">
+                  {isNepali ? 'दिन बन्द भयो' : 'Day Closed'}
+                </h1>
+                <p className="text-green-100 text-sm">{formatDateLabel(businessDate)}, {businessDate}</p>
+              </div>
             </div>
             <LanguageToggle />
           </div>
@@ -130,68 +264,23 @@ export default function DailyClosePage() {
 
         <div className="p-4 space-y-4">
           {/* Closed confirmation */}
-          <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-            <Lock className="w-12 h-12 mx-auto text-green-600 mb-3" />
-            <p className="text-lg font-bold text-green-800">
-              {isNepali ? 'आजको दिन बन्द गरिएको छ' : "Today's day has been closed"}
-            </p>
-            <p className="text-sm text-green-600 mt-1">
-              {isNepali ? 'बन्द गर्ने:' : 'Closed by:'} {report.closedBy}
-            </p>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+            <Lock className="w-8 h-8 text-green-600 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-green-800">
+                {isNepali ? 'दिन बन्द गरिएको छ' : 'Day has been closed'}
+              </p>
+              <p className="text-sm text-green-600">
+                {isNepali ? 'बन्द गर्ने:' : 'By:'} {report.closedBy}
+              </p>
+            </div>
           </div>
 
           {/* Sales breakdown */}
           <SalesBreakdown report={report} isNepali={isNepali} formatAmount={formatAmount} formatLiters={formatLiters} formatUnits={formatUnits} />
 
           {/* Cash verification result */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-gray-600 font-medium">{isNepali ? 'कुल बिक्री' : 'Total Sales'}</span>
-              <span className="font-bold text-lg">{formatAmount(report.totalSystemSales)}</span>
-            </div>
-            <div className="flex justify-between items-center mb-3 pl-4 text-sm">
-              <span className="text-gray-500 flex items-center gap-1"><Banknote className="w-4 h-4" /> {isNepali ? 'नगद बिक्री' : 'Cash Sales'}</span>
-              <span className="font-bold text-green-700">{formatAmount(report.totalCashSales)}</span>
-            </div>
-            <div className="flex justify-between items-center mb-3 pl-4 text-sm">
-              <span className="text-gray-500 flex items-center gap-1"><Building2 className="w-4 h-4" /> {isNepali ? 'बैंक बिक्री' : 'Bank Sales'}</span>
-              <span className="font-bold text-blue-700">{formatAmount(report.totalBankSales)}</span>
-            </div>
-            <div className="border-t pt-3">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-gray-600 font-medium">{isNepali ? 'गनिएको नगद' : 'Cash Counted'}</span>
-                <span className="font-bold text-lg">{formatAmount(report.cashCounted)}</span>
-              </div>
-              {(() => {
-                const disc = parseFloat(report.discrepancy) || 0;
-                const isExact = Math.abs(disc) <= 0.5;
-                if (isExact) {
-                  return (
-                    <div className="flex justify-between items-center bg-green-50 rounded-lg px-3 py-2">
-                      <span className="text-green-700 font-medium flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        {isNepali ? 'मिल्यो' : 'Exact Match'}
-                      </span>
-                      <span className="font-bold text-green-600">रु 0</span>
-                    </div>
-                  );
-                }
-                const isOver = disc > 0;
-                return (
-                  <div className={`flex justify-between items-center rounded-lg px-3 py-2 ${isOver ? 'bg-blue-50' : 'bg-red-50'}`}>
-                    <span className={`font-bold flex items-center gap-1 ${isOver ? 'text-blue-700' : 'text-red-700'}`}>
-                      {isOver
-                        ? <><TrendingUp className="w-4 h-4" /> {isNepali ? 'बढी (Over)' : 'OVER'}</>
-                        : <><TrendingDown className="w-4 h-4" /> {isNepali ? 'घटी (Short)' : 'SHORT'}</>}
-                    </span>
-                    <span className={`font-bold text-lg ${isOver ? 'text-blue-700' : 'text-red-700'}`}>
-                      {isOver ? '+' : '-'}{formatAmount(Math.abs(disc))}
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
+          <CashSummaryCard report={report} isNepali={isNepali} formatAmount={formatAmount} />
 
           {report.notes && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
@@ -199,23 +288,71 @@ export default function DailyClosePage() {
               <p className="text-yellow-700 mt-1">{report.notes}</p>
             </div>
           )}
+
+          {/* Transaction List */}
+          <TransactionList
+            transactions={transactions}
+            isNepali={isNepali}
+            isAdmin={isAdmin}
+            formatAmount={formatAmount}
+            parseCustomFields={parseCustomFields}
+            onEdit={openEditModal}
+          />
+
+          {/* Verification Section */}
+          <VerificationSection
+            report={report}
+            isNepali={isNepali}
+            isAdmin={isAdmin}
+            verifyNotes={verifyNotes}
+            setVerifyNotes={setVerifyNotes}
+            verifying={verifying}
+            onVerify={handleVerify}
+          />
+
+          {/* Recent Reports */}
+          <RecentReports
+            reports={recentReports}
+            currentDate={businessDate}
+            isNepali={isNepali}
+            formatAmount={formatAmount}
+            formatDateLabel={formatDateLabel}
+          />
         </div>
+
+        {/* Edit Transaction Modal */}
+        {editModal.open && (
+          <EditTransactionModal
+            transaction={editModal.transaction}
+            editForm={editForm}
+            setEditForm={setEditForm}
+            isNepali={isNepali}
+            saving={editSaving}
+            onSave={handleEditSave}
+            onClose={() => setEditModal({ open: false, transaction: null })}
+          />
+        )}
       </div>
     );
   }
 
-  // Active close-out form
+  // =========================================================================
+  // OPEN VIEW — active close-out form for business date
+  // =========================================================================
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       <header className="bg-indigo-600 text-white px-4 py-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <button onClick={() => navigate('/reports')} className="p-2 -ml-2 rounded-full hover:bg-indigo-700 transition-colors">
+            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-indigo-700 transition-colors">
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'आजको रिपोर्ट बन्द गर्नुहोस्' : "Close Today's Report"}
-            </h1>
+            <div className="ml-3">
+              <h1 className="text-xl font-bold">
+                {isNepali ? 'दिन बन्द गर्नुहोस्' : 'Close Day'}
+              </h1>
+              <p className="text-indigo-200 text-sm">{formatDateLabel(businessDate)}, {businessDate}</p>
+            </div>
           </div>
           <LanguageToggle />
         </div>
@@ -296,12 +433,7 @@ export default function DailyClosePage() {
                   <TrendingUp className="w-8 h-8 text-blue-600 flex-shrink-0" />
                   <div>
                     <p className="font-bold text-blue-800">{isNepali ? 'बढी (Over)' : 'OVER'}</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      +{formatAmount(discrepancy)}
-                    </p>
-                    <p className="text-sm text-blue-500">
-                      {isNepali ? 'नगद बिक्रीभन्दा बढी नगद छ' : 'More cash than expected from cash sales'}
-                    </p>
+                    <p className="text-2xl font-bold text-blue-600">+{formatAmount(discrepancy)}</p>
                   </div>
                 </div>
               ) : (
@@ -309,12 +441,7 @@ export default function DailyClosePage() {
                   <TrendingDown className="w-8 h-8 text-red-600 flex-shrink-0" />
                   <div>
                     <p className="font-bold text-red-800">{isNepali ? 'घटी (Short)' : 'SHORT'}</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      -{formatAmount(Math.abs(discrepancy))}
-                    </p>
-                    <p className="text-sm text-red-500">
-                      {isNepali ? 'नगद बिक्रीभन्दा कम नगद छ' : 'Less cash than expected from cash sales'}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600">-{formatAmount(Math.abs(discrepancy))}</p>
                   </div>
                 </div>
               )}
@@ -359,8 +486,17 @@ export default function DailyClosePage() {
         >
           {isSubmitting
             ? (isNepali ? 'बन्द गर्दै...' : 'Closing...')
-            : (isNepali ? 'आजको दिन बन्द गर्नुहोस्' : 'Close Today')}
+            : (isNepali ? 'दिन बन्द गर्नुहोस्' : 'Close Day')}
         </button>
+
+        {/* Recent Reports */}
+        <RecentReports
+          reports={recentReports}
+          currentDate={businessDate}
+          isNepali={isNepali}
+          formatAmount={formatAmount}
+          formatDateLabel={formatDateLabel}
+        />
       </div>
     </div>
   );
@@ -372,62 +508,412 @@ export default function DailyClosePage() {
 
 function SalesBreakdown({ report, isNepali, formatAmount, formatLiters, formatUnits }) {
   const items = [
-    {
-      icon: Fuel,
-      color: 'bg-orange-500',
-      label: isNepali ? 'पेट्रोल बिक्री' : 'Petrol Sales',
-      amount: report.petrolSales,
-      detail: formatLiters(report.petrolLiters),
-    },
-    {
-      icon: Fuel,
-      color: 'bg-gray-700',
-      label: isNepali ? 'डिजेल बिक्री' : 'Diesel Sales',
-      amount: report.dieselSales,
-      detail: formatLiters(report.dieselLiters),
-    },
-    {
-      icon: Zap,
-      color: 'bg-green-500',
-      label: isNepali ? 'EV चार्जिंग' : 'EV Charging',
-      amount: report.evSales,
-      detail: formatUnits(report.evUnits),
-    },
-    {
-      icon: Package,
-      color: 'bg-purple-500',
-      label: isNepali ? 'अन्य बिक्री' : 'Other Sales',
-      amount: report.otherSales,
-      detail: null,
-    },
+    { icon: Fuel, color: 'bg-orange-500', label: isNepali ? 'पेट्रोल' : 'Petrol', amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
+    { icon: Fuel, color: 'bg-gray-700', label: isNepali ? 'डिजेल' : 'Diesel', amount: report.dieselSales, detail: formatLiters(report.dieselLiters) },
+    { icon: Zap, color: 'bg-green-500', label: isNepali ? 'EV' : 'EV', amount: report.evSales, detail: formatUnits(report.evUnits) },
+    { icon: Package, color: 'bg-purple-500', label: isNepali ? 'अन्य' : 'Other', amount: report.otherSales, detail: null },
   ];
+
+  const hasData = items.some(i => parseFloat(i.amount) > 0);
+  if (!hasData) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {items.map((item, idx) => {
+        const Icon = item.icon;
+        const amount = parseFloat(item.amount) || 0;
+        if (amount === 0) return null;
+        return (
+          <div key={idx} className="bg-white rounded-xl shadow-sm p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`${item.color} p-1.5 rounded-lg`}>
+                <Icon className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-medium text-gray-600">{item.label}</span>
+            </div>
+            <p className="text-lg font-bold text-gray-800">{formatAmount(amount)}</p>
+            {item.detail && <p className="text-xs text-gray-400">{item.detail}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Cash Summary Card (closed report)
+// =============================================================================
+
+function CashSummaryCard({ report, isNepali, formatAmount }) {
+  const disc = parseFloat(report.discrepancy) || 0;
+  const isExact = Math.abs(disc) <= 0.5;
+  const isOver = disc > 0;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-gray-600 text-sm">{isNepali ? 'कुल बिक्री' : 'Total Sales'}</span>
+        <span className="font-bold">{formatAmount(report.totalSystemSales)}</span>
+      </div>
+      <div className="flex justify-between items-center mb-2 pl-3 text-sm">
+        <span className="text-gray-400 flex items-center gap-1"><Banknote className="w-3 h-3" /> {isNepali ? 'नगद' : 'Cash'}</span>
+        <span className="font-bold text-green-700">{formatAmount(report.totalCashSales)}</span>
+      </div>
+      <div className="flex justify-between items-center mb-3 pl-3 text-sm">
+        <span className="text-gray-400 flex items-center gap-1"><Building2 className="w-3 h-3" /> {isNepali ? 'बैंक' : 'Bank'}</span>
+        <span className="font-bold text-blue-700">{formatAmount(report.totalBankSales)}</span>
+      </div>
+      <div className="border-t pt-2">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-600 text-sm">{isNepali ? 'गनिएको नगद' : 'Cash Counted'}</span>
+          <span className="font-bold">{formatAmount(report.cashCounted)}</span>
+        </div>
+        <div className={`flex justify-between items-center rounded-lg px-3 py-2 ${isExact ? 'bg-green-50' : isOver ? 'bg-blue-50' : 'bg-red-50'}`}>
+          <span className={`font-bold flex items-center gap-1 text-sm ${isExact ? 'text-green-700' : isOver ? 'text-blue-700' : 'text-red-700'}`}>
+            {isExact
+              ? <><CheckCircle2 className="w-4 h-4" /> {isNepali ? 'मिल्यो' : 'Match'}</>
+              : isOver
+                ? <><TrendingUp className="w-4 h-4" /> {isNepali ? 'बढी' : 'OVER'}</>
+                : <><TrendingDown className="w-4 h-4" /> {isNepali ? 'घटी' : 'SHORT'}</>}
+          </span>
+          <span className={`font-bold ${isExact ? 'text-green-600' : isOver ? 'text-blue-700' : 'text-red-700'}`}>
+            {isExact ? 'रु 0' : `${isOver ? '+' : '-'}${formatAmount(Math.abs(disc))}`}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Transaction List
+// =============================================================================
+
+function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseCustomFields, onEdit }) {
+  if (transactions.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <h2 className="font-bold text-gray-800 text-lg">
-        {isNepali ? 'आजको बिक्री विवरण' : "Today's Sales Breakdown"}
+        {isNepali ? 'कारोबार' : 'Transactions'}
+        <span className="text-sm font-normal text-gray-500 ml-2">({transactions.length})</span>
       </h2>
-      {items.map((item, idx) => {
-        const Icon = item.icon;
-        const amount = parseFloat(item.amount) || 0;
-        if (amount === 0 && !item.detail) return null;
+      {transactions.map((t) => {
+        const business = BUSINESS_ICONS[t.businessCode] || {};
+        const Icon = business.icon || Package;
+        const customFields = parseCustomFields(t.customFields);
+
         return (
-          <div key={idx} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`${item.color} p-2.5 rounded-lg`}>
-                <Icon className="w-5 h-5 text-white" />
+          <div key={t.id} className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3 flex-1">
+                <div className={`${business.color || 'bg-gray-500'} p-2 rounded-lg flex-shrink-0`}>
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-800">{t.businessName}</p>
+                  <p className="text-sm text-gray-500">
+                    {t.transactionType === 'SALE' ? (isNepali ? 'बिक्री' : 'Sale') : t.transactionType}
+                  </p>
+                  {t.businessCode === 'petrol' && customFields.fuelType && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {customFields.fuelType} - {customFields.liters}L @ रु{customFields.ratePerLiter}/L
+                      {customFields.paymentMethod && ` (${customFields.paymentMethod})`}
+                    </p>
+                  )}
+                  {t.businessCode === 'ev' && (customFields.openingMeter != null) && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {customFields.openingMeter} → {customFields.closingMeter} kWh @ रु{customFields.unitRate}
+                    </p>
+                  )}
+                  {t.notes && <p className="text-xs text-gray-400 mt-1 italic">"{t.notes}"</p>}
+                  <p className="text-xs text-gray-400 mt-1">{isNepali ? 'द्वारा:' : 'By:'} {t.enteredByName}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-gray-800">{item.label}</p>
-                {item.detail && (
-                  <p className="text-sm text-gray-500">{item.detail}</p>
+              <div className="flex items-center gap-2">
+                <p className={`text-lg font-bold ${t.transactionType === 'SALE' ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatAmount(t.amount)}
+                </p>
+                {isAdmin && (
+                  <button
+                    onClick={() => onEdit(t)}
+                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             </div>
-            <p className="text-xl font-bold text-gray-800">{formatAmount(amount)}</p>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Edit Transaction Modal
+// =============================================================================
+
+function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, saving, onSave, onClose }) {
+  const businessCode = transaction.businessCode;
+  const updateField = (key, value) => setEditForm(prev => ({ ...prev, [key]: value }));
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+          <h2 className="text-lg font-bold text-gray-800">{isNepali ? 'सम्पादन' : 'Edit Transaction'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'रकम' : 'Amount'}</label>
+            <input type="number" inputMode="decimal" value={editForm.amount} onChange={(e) => updateField('amount', e.target.value)}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'प्रकार' : 'Type'}</label>
+            <select value={editForm.transactionType} onChange={(e) => updateField('transactionType', e.target.value)}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+              <option value="SALE">Sale</option>
+              <option value="PURCHASE">Purchase</option>
+              <option value="EXPENSE">Expense</option>
+              <option value="INCOME">Income</option>
+              <option value="PAYMENT">Payment</option>
+              <option value="ADJUSTMENT">Adjustment</option>
+            </select>
+          </div>
+
+          {businessCode === 'petrol' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'इन्धन' : 'Fuel Type'}</label>
+                <select value={editForm.fuelType || 'petrol'} onChange={(e) => updateField('fuelType', e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  <option value="petrol">Petrol</option>
+                  <option value="diesel">Diesel</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'लिटर' : 'Liters'}</label>
+                  <input type="number" inputMode="decimal" value={editForm.liters || ''} onChange={(e) => updateField('liters', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर/L' : 'Rate/L'}</label>
+                  <input type="number" inputMode="decimal" value={editForm.ratePerLiter || ''} onChange={(e) => updateField('ratePerLiter', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'भुक्तानी' : 'Payment'}</label>
+                <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  <option value="CASH">{isNepali ? 'नगद' : 'Cash'}</option>
+                  <option value="BANK">{isNepali ? 'बैंक' : 'Bank'}</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {businessCode === 'ev' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सुरु' : 'Opening'}</label>
+                  <input type="number" value={editForm.openingMeter || ''} onChange={(e) => updateField('openingMeter', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'अन्तिम' : 'Closing'}</label>
+                  <input type="number" value={editForm.closingMeter || ''} onChange={(e) => updateField('closingMeter', e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर' : 'Unit Rate'}</label>
+                <input type="number" value={editForm.unitRate || ''} onChange={(e) => updateField('unitRate', e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'भुक्तानी' : 'Payment'}</label>
+                <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  <option value="CASH">{isNepali ? 'नगद' : 'Cash'}</option>
+                  <option value="BANK">{isNepali ? 'बैंक' : 'Bank'}</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'टिप्पणी' : 'Notes'}</label>
+            <textarea value={editForm.notes || ''} onChange={(e) => updateField('notes', e.target.value)} rows={2}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none resize-none" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सन्दर्भ नं.' : 'Ref No.'}</label>
+            <input type="text" value={editForm.referenceNumber || ''} onChange={(e) => updateField('referenceNumber', e.target.value)}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <div className="flex border-t sticky bottom-0 bg-white rounded-b-2xl">
+          <button onClick={onClose} className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 transition-colors border-r">
+            {isNepali ? 'रद्द' : 'Cancel'}
+          </button>
+          <button onClick={onSave} disabled={saving}
+            className="flex-1 py-4 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+            {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div> : (isNepali ? 'सेभ' : 'Save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Verification Section
+// =============================================================================
+
+function VerificationSection({ report, isNepali, isAdmin, verifyNotes, setVerifyNotes, verifying, onVerify }) {
+  const isVerified = report.verificationStatus === 'VERIFIED';
+
+  if (isVerified) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+        <div className="flex items-center gap-3 mb-2">
+          <ShieldCheck className="w-6 h-6 text-green-600" />
+          <p className="font-bold text-green-800">{isNepali ? 'प्रमाणित' : 'Verified'}</p>
+        </div>
+        <p className="text-sm text-green-700">{isNepali ? 'द्वारा:' : 'By:'} {report.verifiedBy}</p>
+        {report.verifiedAt && <p className="text-xs text-green-600 mt-1">{new Date(report.verifiedAt).toLocaleString()}</p>}
+        {report.verificationNotes && <p className="text-sm text-green-700 mt-2 italic">"{report.verificationNotes}"</p>}
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3">
+        <Clock className="w-6 h-6 text-yellow-600 flex-shrink-0" />
+        <p className="text-yellow-800 font-medium">{isNepali ? 'प्रशासक प्रमाणीकरणको प्रतीक्षामा' : 'Awaiting admin verification'}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5 text-indigo-600" />
+        {isNepali ? 'रिपोर्ट प्रमाणित गर्नुहोस्' : 'Verify Report'}
+      </h3>
+      <textarea value={verifyNotes} onChange={(e) => setVerifyNotes(e.target.value)}
+        placeholder={isNepali ? 'टिप्पणी (ऐच्छिक)...' : 'Notes (optional)...'} rows={2}
+        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none resize-none" />
+      <button onClick={onVerify} disabled={verifying}
+        className={`w-full py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+        {verifying ? (isNepali ? 'प्रमाणित गर्दै...' : 'Verifying...') : (isNepali ? 'प्रमाणित गर्नुहोस्' : 'Verify Report')}
+      </button>
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Recent Reports (This Week / This Month)
+// =============================================================================
+
+function RecentReports({ reports, currentDate, isNepali, formatAmount, formatDateLabel }) {
+  if (reports.length === 0) return null;
+
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Monday
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+
+  const thisWeek = reports.filter(r => r.reportDate >= weekStartStr);
+  const earlier = reports.filter(r => r.reportDate < weekStartStr);
+
+  const weekTotal = thisWeek.reduce((sum, r) => sum + (parseFloat(r.totalSystemSales) || 0), 0);
+  const monthTotal = reports.reduce((sum, r) => sum + (parseFloat(r.totalSystemSales) || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      {/* This Week */}
+      {thisWeek.length > 0 && (
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+              {isNepali ? 'यो हप्ता' : 'This Week'}
+            </h2>
+            <span className="text-sm font-bold text-indigo-600">{formatAmount(weekTotal)}</span>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm divide-y">
+            {thisWeek.map(r => (
+              <ReportRow key={r.id} report={r} currentDate={currentDate} isNepali={isNepali} formatAmount={formatAmount} formatDateLabel={formatDateLabel} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Earlier This Month */}
+      {earlier.length > 0 && (
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-500" />
+              {isNepali ? 'यो महिना (पहिलेको)' : 'Earlier This Month'}
+            </h2>
+            <span className="text-sm font-bold text-gray-600">{formatAmount(monthTotal)}</span>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm divide-y">
+            {earlier.map(r => (
+              <ReportRow key={r.id} report={r} currentDate={currentDate} isNepali={isNepali} formatAmount={formatAmount} formatDateLabel={formatDateLabel} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReportRow({ report, currentDate, isNepali, formatAmount, formatDateLabel }) {
+  const isCurrentDay = report.reportDate === currentDate;
+  const isVerified = report.verificationStatus === 'VERIFIED';
+
+  return (
+    <div className={`px-4 py-3 flex items-center justify-between ${isCurrentDay ? 'bg-indigo-50' : ''}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${isCurrentDay ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          {new Date(report.reportDate + 'T00:00:00').getDate()}
+        </div>
+        <div>
+          <p className="font-medium text-gray-800 text-sm">{formatDateLabel(report.reportDate)}</p>
+          <p className="text-xs text-gray-400">{report.closedBy}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="text-right">
+          <p className="font-bold text-gray-800">{formatAmount(report.totalSystemSales)}</p>
+          {parseFloat(report.discrepancy) !== 0 && Math.abs(parseFloat(report.discrepancy)) > 0.5 && (
+            <p className={`text-xs font-medium ${parseFloat(report.discrepancy) > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              {parseFloat(report.discrepancy) > 0 ? '+' : ''}{formatAmount(report.discrepancy)}
+            </p>
+          )}
+        </div>
+        {isVerified ? (
+          <ShieldCheck className="w-5 h-5 text-green-500" />
+        ) : (
+          <Clock className="w-5 h-5 text-yellow-400" />
+        )}
+      </div>
     </div>
   );
 }

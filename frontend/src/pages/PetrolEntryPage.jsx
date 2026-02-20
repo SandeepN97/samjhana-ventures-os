@@ -5,6 +5,7 @@ import { ArrowLeft, Fuel, Check, Settings, Truck, Banknote, Building2 } from 'lu
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
+import useBusinessDate from '../hooks/useBusinessDate';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function PetrolEntryPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
+  const { businessDate } = useBusinessDate();
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -29,6 +31,13 @@ export default function PetrolEntryPage() {
   // Current fuel prices from database
   const [fuelPrices, setFuelPrices] = useState({ petrol: null, diesel: null });
   const [pricesLoaded, setPricesLoaded] = useState(false);
+
+  // Set business date when loaded
+  useEffect(() => {
+    if (businessDate) {
+      setValues(prev => ({ ...prev, transactionDate: businessDate }));
+    }
+  }, [businessDate]);
 
   // Fetch current fuel prices on mount and when navigating back to this page
   useEffect(() => {
@@ -122,7 +131,7 @@ export default function PetrolEntryPage() {
       // Reset form after short delay
       setTimeout(() => {
         setValues(prev => ({
-          transactionDate: new Date().toISOString().split('T')[0],
+          transactionDate: businessDate,
           fuelType: prev.fuelType,
           transactionType: 'SALE',
           liters: '',

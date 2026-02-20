@@ -24,4 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     List<Transaction> findByEnteredByIdOrderByCreatedAtDesc(UUID userId);
 
     List<Transaction> findByStatusOrderByCreatedAtDesc(Transaction.TransactionStatus status);
+
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.business JOIN FETCH t.enteredBy WHERE t.transactionDate = :date ORDER BY t.createdAt DESC")
+    List<Transaction> findByDateWithDetails(@Param("date") LocalDate date);
 }

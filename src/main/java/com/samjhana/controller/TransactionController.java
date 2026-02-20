@@ -63,7 +63,7 @@ public class TransactionController {
                 .notes(request.getNotes())
                 .referenceNumber(request.getReferenceNumber())
                 .customFields(customFieldsJson)
-                .status(Transaction.TransactionStatus.PENDING_REVIEW)
+                .status(Transaction.TransactionStatus.APPROVED)
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
@@ -98,6 +98,41 @@ public class TransactionController {
     public ResponseEntity<?> get(@PathVariable String id) {
         return transactionRepository.findById(java.util.UUID.fromString(id))
                 .map(t -> ResponseEntity.ok(TransactionResponse.from(t)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(
+            @PathVariable String id,
+            @RequestBody TransactionRequest request,
+            @AuthenticationPrincipal User user) {
+
+        if (user.getRole() != User.UserRole.ADMIN) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Only admin can edit transactions"));
+        }
+
+        return transactionRepository.findById(UUID.fromString(id))
+                .map(t -> {
+                    if (request.getAmount() != null) t.setAmount(request.getAmount());
+                    if (request.getTransactionType() != null) {
+                        t.setTransactionType(Transaction.TransactionType.valueOf(request.getTransactionType()));
+                    }
+                    if (request.getNotes() != null) t.setNotes(request.getNotes());
+                    if (request.getReferenceNumber() != null) t.setReferenceNumber(request.getReferenceNumber());
+                    if (request.getTransactionDate() != null) t.setTransactionDate(request.getTransactionDate());
+                    if (request.getCustomFields() != null) {
+                        try {
+                            t.setCustomFields(objectMapper.writeValueAsString(request.getCustomFields()));
+                        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                            // ignore
+                        }
+                    }
+                    t.setReviewedBy(user);
+                    t.setReviewedAt(java.time.LocalDateTime.now());
+                    Transaction saved = transactionRepository.save(t);
+                    return ResponseEntity.ok(TransactionResponse.from(saved));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
