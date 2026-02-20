@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Sofa, Check } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import useBusinessDate from '../hooks/useBusinessDate';
 
 export default function FurnitureEntryPage() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+  const { businessDate } = useBusinessDate();
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -22,6 +24,12 @@ export default function FurnitureEntryPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (businessDate) {
+      setValues(prev => ({ ...prev, transactionDate: businessDate }));
+    }
+  }, [businessDate]);
 
   // Calculate total amount
   const calculatedAmount = values.quantity && values.unitPrice
@@ -77,7 +85,7 @@ export default function FurnitureEntryPage() {
 
       setTimeout(() => {
         setValues({
-          transactionDate: new Date().toISOString().split('T')[0],
+          transactionDate: businessDate,
           transactionType: 'SALE',
           itemName: '',
           quantity: '1',

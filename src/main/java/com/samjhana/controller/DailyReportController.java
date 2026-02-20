@@ -30,9 +30,32 @@ public class DailyReportController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/today-summary")
-    public ResponseEntity<?> todaySummary() {
+    public ResponseEntity<?> todaySummary(@RequestParam(required = false) String date) {
+        LocalDate targetDate = date != null ? LocalDate.parse(date) : LocalDate.now();
+        return ResponseEntity.ok(buildSummary(targetDate));
+    }
+
+    @GetMapping("/business-date")
+    public ResponseEntity<?> businessDate() {
         LocalDate today = LocalDate.now();
-        return ResponseEntity.ok(buildSummary(today));
+        boolean todayClosed = dailyReportRepository.findByReportDate(today).isPresent();
+        LocalDate effectiveDate = todayClosed ? today.plusDays(1) : today;
+        return ResponseEntity.ok(Map.of(
+                "date", effectiveDate.toString(),
+                "todayClosed", todayClosed
+        ));
+    }
+
+    @GetMapping("/recent")
+    public ResponseEntity<?> recentReports() {
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysAgo = today.minusDays(30);
+        List<Map<String, Object>> reports = dailyReportRepository
+                .findByReportDateBetweenOrderByReportDateDesc(thirtyDaysAgo, today)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        return ResponseEntity.ok(reports);
     }
 
     @PostMapping("/close")
@@ -40,12 +63,18 @@ public class DailyReportController {
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal User user) {
 
-        LocalDate today = LocalDate.now();
+        // Accept optional date field; default to today
+        LocalDate closeDate;
+        if (body.containsKey("date") && body.get("date") != null) {
+            closeDate = LocalDate.parse(body.get("date").toString());
+        } else {
+            closeDate = LocalDate.now();
+        }
 
         // Check if already closed
-        if (dailyReportRepository.findByReportDate(today).isPresent()) {
+        if (dailyReportRepository.findByReportDate(closeDate).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "Today's report has already been closed"));
+                    .body(Map.of("message", "This day's report has already been closed"));
         }
 
         BigDecimal cashCounted;
@@ -59,7 +88,7 @@ public class DailyReportController {
         String notes = body.get("notes") != null ? body.get("notes").toString() : null;
 
         // Calculate system totals
-        Map<String, Object> summary = buildSummary(today);
+        Map<String, Object> summary = buildSummary(closeDate);
 
         BigDecimal petrolSales = toBigDecimal(summary.get("petrolSales"));
         BigDecimal petrolLiters = toBigDecimal(summary.get("petrolLiters"));
@@ -75,7 +104,7 @@ public class DailyReportController {
         BigDecimal discrepancy = cashCounted.subtract(totalCashSales);
 
         DailyReport report = DailyReport.builder()
-                .reportDate(today)
+                .reportDate(closeDate)
                 .petrolSales(petrolSales)
                 .petrolLiters(petrolLiters)
                 .dieselSales(dieselSales)
@@ -111,6 +140,43 @@ public class DailyReportController {
         LocalDate reportDate = LocalDate.parse(date);
         return dailyReportRepository.findByReportDate(reportDate)
                 .map(r -> ResponseEntity.ok(toResponse(r)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{date}/transactions")
+    public ResponseEntity<?> getTransactionsForDate(@PathVariable String date) {
+        LocalDate reportDate = LocalDate.parse(date);
+        List<Transaction> transactions = transactionRepository.findByDateWithDetails(reportDate);
+        List<com.samjhana.dto.TransactionResponse> filtered = transactions.stream()
+                .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
+                .map(com.samjhana.dto.TransactionResponse::from)
+                .toList();
+        return ResponseEntity.ok(filtered);
+    }
+
+    @PatchMapping("/{date}/verify")
+    public ResponseEntity<?> verifyReport(
+            @PathVariable String date,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal com.samjhana.entity.User user) {
+
+        if (user.getRole() != com.samjhana.entity.User.UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Only admin can verify reports"));
+        }
+
+        LocalDate reportDate = LocalDate.parse(date);
+        return dailyReportRepository.findByReportDate(reportDate)
+                .map(report -> {
+                    report.setVerificationStatus(DailyReport.VerificationStatus.VERIFIED);
+                    report.setVerifiedBy(user);
+                    report.setVerifiedAt(LocalDateTime.now());
+                    if (body != null && body.containsKey("notes")) {
+                        report.setVerificationNotes(body.get("notes"));
+                    }
+                    DailyReport saved = dailyReportRepository.save(report);
+                    return ResponseEntity.ok(toResponse(saved));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -240,6 +306,13 @@ public class DailyReportController {
         map.put("notes", report.getNotes());
         map.put("closedBy", report.getClosedBy().getFullName());
         map.put("closedAt", report.getClosedAt().toString());
+        map.put("verificationStatus", report.getVerificationStatus() != null
+                ? report.getVerificationStatus().name() : "PENDING");
+        map.put("verifiedBy", report.getVerifiedBy() != null
+                ? report.getVerifiedBy().getFullName() : null);
+        map.put("verifiedAt", report.getVerifiedAt() != null
+                ? report.getVerifiedAt().toString() : null);
+        map.put("verificationNotes", report.getVerificationNotes());
         return map;
     }
 }

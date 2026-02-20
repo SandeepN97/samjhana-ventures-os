@@ -5,6 +5,7 @@ import { ArrowLeft, Home, Check, CreditCard, Settings } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
+import useBusinessDate from '../hooks/useBusinessDate';
 
 export default function RentalEntryPage() {
   const navigate = useNavigate();
@@ -12,13 +13,14 @@ export default function RentalEntryPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
+  const { businessDate } = useBusinessDate();
 
   // Mode: 'payment' (staff & admin) or 'manage' (admin only)
   const [mode, setMode] = useState('payment');
 
   // Payment form state (for staff - simplified)
   const [paymentValues, setPaymentValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: businessDate,
     propertyName: '',
     tenantName: '',
     rentalMonth: new Date().toISOString().slice(0, 7),
@@ -28,7 +30,7 @@ export default function RentalEntryPage() {
 
   // Full form state (for admin - full control)
   const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: businessDate,
     transactionType: 'INCOME',
     propertyName: '',
     tenantName: '',
@@ -41,6 +43,13 @@ export default function RentalEntryPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (businessDate) {
+      setPaymentValues(prev => ({ ...prev, transactionDate: businessDate }));
+      setValues(prev => ({ ...prev, transactionDate: businessDate }));
+    }
+  }, [businessDate]);
 
   // Calculate total amount (admin mode)
   const totalAmount = (parseFloat(values.rentAmount) || 0) + (parseFloat(values.depositAmount) || 0);
@@ -120,7 +129,7 @@ export default function RentalEntryPage() {
 
       setTimeout(() => {
         setPaymentValues({
-          transactionDate: new Date().toISOString().split('T')[0],
+          transactionDate: businessDate,
           propertyName: '',
           tenantName: '',
           rentalMonth: new Date().toISOString().slice(0, 7),
@@ -164,7 +173,7 @@ export default function RentalEntryPage() {
 
       setTimeout(() => {
         setValues({
-          transactionDate: new Date().toISOString().split('T')[0],
+          transactionDate: businessDate,
           transactionType: 'INCOME',
           propertyName: '',
           tenantName: '',

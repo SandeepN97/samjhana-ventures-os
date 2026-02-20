@@ -136,9 +136,8 @@ export default function QuickActionButtons() {
         />
         <SecondaryButton
           icon={FileText}
-          label={isNepali ? 'पेन्डिङ समीक्षा' : 'Pending Review'}
-          onClick={() => navigate('/pending')}
-          badge={5}
+          label={isNepali ? 'दैनिक बन्द' : 'Daily Close'}
+          onClick={() => navigate('/reports/close')}
         />
         {isAdmin && (
           <SecondaryButton

@@ -85,6 +85,21 @@ public class DailyReport {
     @Column(name = "closed_at", nullable = false)
     private LocalDateTime closedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", length = 20)
+    @Builder.Default
+    private VerificationStatus verificationStatus = VerificationStatus.PENDING;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verified_by")
+    private User verifiedBy;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "verification_notes", length = 1000)
+    private String verificationNotes;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -92,4 +107,9 @@ public class DailyReport {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public enum VerificationStatus {
+        PENDING,
+        VERIFIED
+    }
 }

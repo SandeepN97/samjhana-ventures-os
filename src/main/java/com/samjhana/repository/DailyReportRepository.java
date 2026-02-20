@@ -15,4 +15,6 @@ public interface DailyReportRepository extends JpaRepository<DailyReport, UUID> 
     Optional<DailyReport> findByReportDate(LocalDate reportDate);
 
     List<DailyReport> findAllByOrderByReportDateDesc();
+
+    List<DailyReport> findByReportDateBetweenOrderByReportDateDesc(LocalDate start, LocalDate end);
 }
