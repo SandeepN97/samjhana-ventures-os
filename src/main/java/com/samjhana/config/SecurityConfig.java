@@ -64,7 +64,8 @@ public class SecurityConfig {
                     "/fuel-prices",
                     "/fuel-orders",
                     "/staff",
-                    "/ev-vehicles"
+                    "/ev-vehicles",
+                    "/analytics"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

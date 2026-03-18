@@ -105,6 +105,7 @@ const resources = {
         dailyReport: 'Daily Report',
         dailyClose: 'Daily Close',
         staffManagement: 'Staff Management',
+        analytics: 'Analytics',
         addNew: 'Add New',
       },
 
@@ -850,6 +851,7 @@ const resources = {
         dailyReport: 'दैनिक रिपोर्ट',
         dailyClose: 'दैनिक बन्द',
         staffManagement: 'कर्मचारी व्यवस्थापन',
+        analytics: 'विश्लेषण',
         addNew: 'नयाँ थप्नुहोस्',
       },
 

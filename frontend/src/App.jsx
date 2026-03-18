@@ -22,6 +22,7 @@ import StaffManagementPage from './pages/StaffManagementPage';
 import DailyClosePage from './pages/DailyClosePage';
 import EvVehiclePage from './pages/EvVehiclePage';
 import RentalPropertyPage from './pages/RentalPropertyPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -198,6 +199,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <RentalPropertyPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <PrivateRoute>
+              <AnalyticsPage />
             </PrivateRoute>
           }
         />

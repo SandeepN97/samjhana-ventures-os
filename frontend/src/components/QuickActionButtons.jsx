@@ -11,7 +11,8 @@ import {
   TrendingUp,
   FileText,
   Settings,
-  Users
+  Users,
+  BarChart3,
 } from 'lucide-react';
 
 /**
@@ -81,6 +82,7 @@ export default function QuickActionButtons() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
   const isStaff = user.role === 'STAFF';
+  const canViewAnalytics = user.role === 'ADMIN' || user.role === 'SON';
 
   const visibleButtons = isStaff
     ? BUSINESS_BUTTONS.filter((b) => b.code !== 'loan')
@@ -136,6 +138,13 @@ export default function QuickActionButtons() {
             icon={Users}
             label={t('home.staffManagement')}
             onClick={() => navigate('/staff')}
+          />
+        )}
+        {canViewAnalytics && (
+          <SecondaryButton
+            icon={BarChart3}
+            label={t('home.analytics')}
+            onClick={() => navigate('/analytics')}
           />
         )}
       </div>
