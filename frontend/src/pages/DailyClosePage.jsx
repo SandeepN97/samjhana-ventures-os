@@ -18,8 +18,6 @@ import {
   Clock,
   Sofa,
   Home,
-  Calendar,
-  ChevronRight,
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
@@ -59,7 +57,6 @@ export default function DailyClosePage() {
   const [verifying, setVerifying] = useState(false);
 
   // Recent reports
-  const [recentReports, setRecentReports] = useState([]);
 
   useEffect(() => {
     loadPage();
@@ -73,14 +70,8 @@ export default function DailyClosePage() {
       const bDate = bdRes.data.date;
       setBusinessDate(bDate);
 
-      // Fetch summary for business date and recent reports in parallel
-      const [summaryRes, recentRes] = await Promise.all([
-        api.get(`/api/daily-reports/today-summary?date=${bDate}`),
-        api.get('/api/daily-reports/recent'),
-      ]);
-
+      const summaryRes = await api.get(`/api/daily-reports/today-summary?date=${bDate}`);
       setSummary(summaryRes.data);
-      setRecentReports(Array.isArray(recentRes.data) ? recentRes.data : []);
 
       // If this date is closed, also fetch transactions
       if (summaryRes.data.isClosed) {
@@ -311,13 +302,6 @@ export default function DailyClosePage() {
             onVerify={handleVerify}
           />
 
-          {/* Recent Reports */}
-          <RecentReports
-            reports={recentReports}
-            currentDate={businessDate}
-            formatAmount={formatAmount}
-            formatDateLabel={formatDateLabel}
-          />
         </div>
 
         {/* Edit Transaction Modal */}
@@ -489,13 +473,6 @@ export default function DailyClosePage() {
             : t('dailyClose.closeDay')}
         </button>
 
-        {/* Recent Reports */}
-        <RecentReports
-          reports={recentReports}
-          currentDate={businessDate}
-          formatAmount={formatAmount}
-          formatDateLabel={formatDateLabel}
-        />
       </div>
     </div>
   );
@@ -854,97 +831,3 @@ function VerificationSection({ report, isAdmin, verifyNotes, setVerifyNotes, ver
   );
 }
 
-// =============================================================================
-// Sub-component: Recent Reports (This Week / This Month)
-// =============================================================================
-
-function RecentReports({ reports, currentDate, formatAmount, formatDateLabel }) {
-  const { t } = useTranslation();
-  if (reports.length === 0) return null;
-
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Monday
-  const weekStartStr = weekStart.toISOString().split('T')[0];
-
-  const thisWeek = reports.filter(r => r.reportDate >= weekStartStr);
-  const earlier = reports.filter(r => r.reportDate < weekStartStr);
-
-  const weekTotal = thisWeek.reduce((sum, r) => sum + (parseFloat(r.totalSystemSales) || 0), 0);
-  const monthTotal = reports.reduce((sum, r) => sum + (parseFloat(r.totalSystemSales) || 0), 0);
-
-  return (
-    <div className="space-y-4">
-      {/* This Week */}
-      {thisWeek.length > 0 && (
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-indigo-600" />
-              {t('dailyClose.thisWeek')}
-            </h2>
-            <span className="text-sm font-bold text-indigo-600">{formatAmount(weekTotal)}</span>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm divide-y">
-            {thisWeek.map(r => (
-              <ReportRow key={r.id} report={r} currentDate={currentDate} formatAmount={formatAmount} formatDateLabel={formatDateLabel} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Earlier This Month */}
-      {earlier.length > 0 && (
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              {t('dailyClose.earlierThisMonth')}
-            </h2>
-            <span className="text-sm font-bold text-gray-600">{formatAmount(monthTotal)}</span>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm divide-y">
-            {earlier.map(r => (
-              <ReportRow key={r.id} report={r} currentDate={currentDate} formatAmount={formatAmount} formatDateLabel={formatDateLabel} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ReportRow({ report, currentDate, formatAmount, formatDateLabel }) {
-  const isCurrentDay = report.reportDate === currentDate;
-  const isVerified = report.verificationStatus === 'VERIFIED';
-
-  return (
-    <div className={`px-4 py-3 flex items-center justify-between ${isCurrentDay ? 'bg-indigo-50' : ''}`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${isCurrentDay ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
-          {new Date(report.reportDate + 'T00:00:00').getDate()}
-        </div>
-        <div>
-          <p className="font-medium text-gray-800 text-sm">{formatDateLabel(report.reportDate)}</p>
-          <p className="text-xs text-gray-400">{report.closedBy}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="text-right">
-          <p className="font-bold text-gray-800">{formatAmount(report.totalSystemSales)}</p>
-          {parseFloat(report.discrepancy) !== 0 && Math.abs(parseFloat(report.discrepancy)) > 0.5 && (
-            <p className={`text-xs font-medium ${parseFloat(report.discrepancy) > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-              {parseFloat(report.discrepancy) > 0 ? '+' : ''}{formatAmount(report.discrepancy)}
-            </p>
-          )}
-        </div>
-        {isVerified ? (
-          <ShieldCheck className="w-5 h-5 text-green-500" />
-        ) : (
-          <Clock className="w-5 h-5 text-yellow-400" />
-        )}
-      </div>
-    </div>
-  );
-}
