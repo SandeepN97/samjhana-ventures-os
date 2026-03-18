@@ -48,13 +48,13 @@ public class AuditLog {
     /**
      * Previous state of the entity (JSON)
      */
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String oldValues;
 
     /**
      * New state of the entity (JSON)
      */
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String newValues;
 
     @Column(length = 500)

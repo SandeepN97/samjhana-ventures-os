@@ -79,7 +79,7 @@ public class Resource {
     /**
      * Dynamic attributes stored as JSON string
      */
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String attributes;
 
     @Column(nullable = false)

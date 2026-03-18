@@ -51,7 +51,7 @@ public class FurnitureItem {
     @Column(nullable = false)
     private Integer reorderLevel = 2;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Builder.Default
