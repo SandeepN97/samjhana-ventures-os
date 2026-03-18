@@ -11,8 +11,7 @@ export default function SearchableSelect({
   className = '',
   accentColor = 'green',
 }) {
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef(null);
@@ -46,7 +45,7 @@ export default function SearchableSelect({
     );
   }, [options, search]);
 
-  const defaultPlaceholder = isNepali ? '-- छान्नुहोस् --' : '-- Select --';
+  const defaultPlaceholder = t('common.select');
 
   const ringClass = `focus:ring-${accentColor}-500`;
 
@@ -86,7 +85,7 @@ export default function SearchableSelect({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isNepali ? 'खोज्नुहोस्...' : 'Search...'}
+                placeholder={t('common.search')}
                 className="w-full bg-transparent text-base outline-none"
               />
             </div>
@@ -96,7 +95,7 @@ export default function SearchableSelect({
           <div className="max-h-60 overflow-y-auto">
             {filtered.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-400 text-center">
-                {isNepali ? 'कुनै विकल्प भेटिएन' : 'No options found'}
+                {t('common.noOptions')}
               </div>
             ) : (
               filtered.map(opt => {

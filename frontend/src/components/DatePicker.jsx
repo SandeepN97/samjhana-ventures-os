@@ -45,7 +45,7 @@ function bsViewNext({ year, month }) {
 }
 
 export default function DatePicker({ value, onChange, error, className = '', accentColor = 'green' }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
@@ -118,7 +118,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
         aria-label="Pick date"
       >
         <span className={displayValue ? 'text-gray-900' : 'text-gray-400'}>
-          {displayValue || (isNepali ? 'मिति छान्नुहोस्' : 'Select date')}
+          {displayValue || t('common.selectDate')}
         </span>
         <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
       </div>
@@ -162,7 +162,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
               <button type="button"
                 onClick={() => { selectDay(new Date()); setBsView(bsViewFromAd(new Date())); }}
                 className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">
-                आज
+                {t('common.today')}
               </button>
             </>
           ) : (
@@ -200,7 +200,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
               </div>
               <button type="button" onClick={() => selectDay(new Date())}
                 className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">
-                Today
+                {t('common.today')}
               </button>
             </>
           )}

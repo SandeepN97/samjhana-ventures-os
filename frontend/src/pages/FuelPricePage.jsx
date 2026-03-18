@@ -7,7 +7,7 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function FuelPricePage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
@@ -70,7 +70,7 @@ export default function FuelPricePage() {
     setError('');
 
     if (!formValues.petrolPrice && !formValues.dieselPrice) {
-      setError(isNepali ? 'कम्तिमा एउटा मूल्य आवश्यक छ' : 'At least one price is required');
+      setError(t('fuelPrice.atLeastOneRequired'));
       return;
     }
 
@@ -87,13 +87,13 @@ export default function FuelPricePage() {
       }
 
       await api.post('/api/fuel-prices/bulk', payload);
-      setSuccessMessage(isNepali ? 'मूल्य अपडेट भयो!' : 'Prices updated!');
+      setSuccessMessage(t('fuelPrice.pricesUpdated'));
       fetchCurrentPrices();
       fetchPriceHistory();
 
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || (isNepali ? 'सेभ गर्न असफल' : 'Failed to save'));
+      setError(err.response?.data?.message || t('fuelPrice.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -104,12 +104,12 @@ export default function FuelPricePage() {
     setError('');
     try {
       await api.post('/api/fuel-prices/fetch-noc');
-      setSuccessMessage(isNepali ? 'NOC बाट मूल्य अपडेट भयो!' : 'Prices fetched from NOC!');
+      setSuccessMessage(t('fuelPrice.nocPricesUpdated'));
       fetchCurrentPrices();
       fetchPriceHistory();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || (isNepali ? 'NOC बाट मूल्य ल्याउन असफल' : 'Failed to fetch NOC prices'));
+      setError(err.response?.data?.message || t('fuelPrice.nocFetchFailed'));
     } finally {
       setFetchingNoc(false);
     }
@@ -138,7 +138,7 @@ export default function FuelPricePage() {
             </button>
             <Fuel className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'इन्धन मूल्य' : 'Fuel Prices'}
+              {t('fuelPrice.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -149,22 +149,22 @@ export default function FuelPricePage() {
       <div className="px-4 py-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-red-500">
-            <p className="text-lg text-red-600 font-bold">⛽ {isNepali ? 'पेट्रोल' : 'Petrol'}</p>
+            <p className="text-lg text-red-600 font-bold">⛽ {t('fuelPrice.petrol')}</p>
             <p className="text-5xl font-black text-gray-900 mt-2">
               {currentPrices.petrol
                 ? `रु ${parseFloat(currentPrices.petrol).toFixed(2)}`
-                : (isNepali ? 'सेट नभएको' : 'Not set')}
+                : t('fuelPrice.notSet')}
             </p>
-            <p className="text-sm text-gray-500 mt-2 font-medium">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
+            <p className="text-sm text-gray-500 mt-2 font-medium">{t('fuelPrice.perLiter')}</p>
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-yellow-500">
-            <p className="text-lg text-yellow-600 font-bold">🛢️ {isNepali ? 'डिजेल' : 'Diesel'}</p>
+            <p className="text-lg text-yellow-600 font-bold">🛢️ {t('fuelPrice.diesel')}</p>
             <p className="text-5xl font-black text-gray-900 mt-2">
               {currentPrices.diesel
                 ? `रु ${parseFloat(currentPrices.diesel).toFixed(2)}`
-                : (isNepali ? 'सेट नभएको' : 'Not set')}
+                : t('fuelPrice.notSet')}
             </p>
-            <p className="text-sm text-gray-500 mt-2 font-medium">{isNepali ? 'प्रति लिटर' : 'per liter'}</p>
+            <p className="text-sm text-gray-500 mt-2 font-medium">{t('fuelPrice.perLiter')}</p>
           </div>
         </div>
       </div>
@@ -183,8 +183,8 @@ export default function FuelPricePage() {
           >
             <RefreshCw className={`w-5 h-5 ${fetchingNoc ? 'animate-spin' : ''}`} />
             {fetchingNoc
-              ? (isNepali ? 'NOC बाट ल्याउँदै...' : 'Fetching from NOC...')
-              : (isNepali ? 'NOC बाट मूल्य ल्याउनुहोस्' : 'Fetch NOC Prices')}
+              ? t('fuelPrice.fetchingNoc')
+              : t('fuelPrice.fetchNocPrices')}
           </button>
         </div>
       )}
@@ -194,9 +194,7 @@ export default function FuelPricePage() {
         <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl flex items-center">
           <Eye className="w-5 h-5 mr-2 flex-shrink-0" />
           <span className="text-sm">
-            {isNepali
-              ? 'तपाईं मूल्य हेर्न मात्र सक्नुहुन्छ। मूल्य परिवर्तन गर्न एडमिनलाई सम्पर्क गर्नुहोस्।'
-              : 'You can only view prices. Contact admin to update prices.'}
+            {t('fuelPrice.viewOnlyNotice')}
           </span>
         </div>
       )}
@@ -222,13 +220,13 @@ export default function FuelPricePage() {
           <div className="bg-white rounded-xl p-4 shadow-sm space-y-4">
             <h2 className="font-bold text-lg text-gray-800 flex items-center gap-2">
               <Plus className="w-5 h-5" />
-              {isNepali ? 'मूल्य अपडेट गर्नुहोस्' : 'Update Prices'}
+              {t('fuelPrice.updatePrices')}
             </h2>
 
             {/* Effective Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'लागू मिति' : 'Effective Date'}
+                {t('fuelPrice.effectiveDate')}
               </label>
               <input
                 type="date"
@@ -241,7 +239,7 @@ export default function FuelPricePage() {
             {/* Petrol Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'पेट्रोल मूल्य (प्रति लिटर)' : 'Petrol Price (per liter)'}
+                {t('fuelPrice.petrolPrice')}
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">रु</span>
@@ -261,7 +259,7 @@ export default function FuelPricePage() {
             {/* Diesel Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'डिजेल मूल्य (प्रति लिटर)' : 'Diesel Price (per liter)'}
+                {t('fuelPrice.dieselPrice')}
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">रु</span>
@@ -294,12 +292,12 @@ export default function FuelPricePage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
-                  {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+                  {t('fuelPrice.saving')}
                 </span>
               ) : (
                 <span className="flex items-center justify-center">
                   <Check className="w-5 h-5 mr-2" />
-                  {isNepali ? 'मूल्य सेभ गर्नुहोस्' : 'Save Prices'}
+                  {t('fuelPrice.savePrices')}
                 </span>
               )}
             </button>
@@ -315,7 +313,7 @@ export default function FuelPricePage() {
         >
           <span className="flex items-center gap-2 font-bold text-gray-700">
             <History className="w-5 h-5" />
-            {isNepali ? 'मूल्य इतिहास' : 'Price History'}
+            {t('fuelPrice.priceHistory')}
           </span>
           <span className="text-gray-400">{showHistory ? '▲' : '▼'}</span>
         </button>
@@ -324,7 +322,7 @@ export default function FuelPricePage() {
           <div className="mt-2 bg-white rounded-xl shadow-sm overflow-hidden">
             {priceHistory.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                {isNepali ? 'कुनै इतिहास छैन' : 'No history'}
+                {t('fuelPrice.noHistory')}
               </div>
             ) : (
               <div className="divide-y">
@@ -337,8 +335,8 @@ export default function FuelPricePage() {
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {price.fuelType === 'PETROL'
-                          ? (isNepali ? 'पेट्रोल' : 'Petrol')
-                          : (isNepali ? 'डिजेल' : 'Diesel')}
+                          ? t('fuelPrice.petrol')
+                          : t('fuelPrice.diesel')}
                       </span>
                       {price.updatedByName === 'NOC Auto-Update' && (
                         <span className="inline-block px-2 py-0.5 rounded text-xs font-medium mr-2 bg-green-100 text-green-700">

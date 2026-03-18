@@ -6,16 +6,15 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 
 const STATUS_TABS = [
-  { value: 'ALL', labelEn: 'All', labelNe: 'सबै' },
-  { value: 'PENDING', labelEn: 'Pending', labelNe: 'बाँकी' },
-  { value: 'IN_PROGRESS', labelEn: 'In Progress', labelNe: 'प्रगतिमा' },
-  { value: 'DELIVERED', labelEn: 'Delivered', labelNe: 'डेलिभर' },
+  { value: 'ALL', tKey: 'furnitureInv.catAll' },
+  { value: 'PENDING', tKey: 'furnitureOrd.pending' },
+  { value: 'IN_PROGRESS', tKey: 'furnitureOrd.inProgress' },
+  { value: 'DELIVERED', tKey: 'furnitureOrd.delivered' },
 ];
 
 export default function FurnitureOrderHistoryPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +50,7 @@ export default function FurnitureOrderHistoryPage() {
         setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
       }
     } catch (err) {
-      alert(isNepali ? 'स्थिति अपडेट गर्न सकिएन' : 'Failed to update status');
+      alert(t('furnitureOrd.failedUpdateStatus'));
     } finally {
       setUpdatingStatus(false);
     }
@@ -78,16 +77,16 @@ export default function FurnitureOrderHistoryPage() {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'DELIVERED': return isNepali ? 'डेलिभर' : 'Delivered';
-      case 'IN_PROGRESS': return isNepali ? 'प्रगतिमा' : 'In Progress';
-      default: return isNepali ? 'बाँकी' : 'Pending';
+      case 'DELIVERED': return t('furnitureOrd.delivered');
+      case 'IN_PROGRESS': return t('furnitureOrd.inProgress');
+      default: return t('furnitureOrd.pending');
     }
   };
 
   const getItemsSummary = (items) => {
     if (!items || !Array.isArray(items)) return '';
     if (items.length === 1) return items[0].itemName || '';
-    return `${items[0].itemName || ''} + ${items.length - 1} ${isNepali ? 'थप' : 'more'}`;
+    return `${items[0].itemName || ''} + ${items.length - 1} ${t('furnitureOrd.more')}`;
   };
 
   return (
@@ -100,7 +99,7 @@ export default function FurnitureOrderHistoryPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <ClipboardList className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{isNepali ? 'अर्डर इतिहास' : 'Order History'}</h1>
+            <h1 className="text-xl font-bold ml-3">{t('furnitureOrd.historyTitle')}</h1>
           </div>
           <LanguageToggle />
         </div>
@@ -114,7 +113,7 @@ export default function FurnitureOrderHistoryPage() {
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 selectedTab === tab.value ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
-              {isNepali ? tab.labelNe : tab.labelEn}
+              {t(tab.tKey)}
             </button>
           ))}
         </div>
@@ -125,7 +124,7 @@ export default function FurnitureOrderHistoryPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={isNepali ? 'ग्राहक नाम खोज्नुहोस्...' : 'Search by customer name...'}
+            placeholder={t('furnitureOrd.searchByCustomer')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-amber-500" />
         </div>
       </div>
@@ -135,7 +134,7 @@ export default function FurnitureOrderHistoryPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h2 className="text-lg font-bold text-gray-800">{isNepali ? 'अर्डर विवरण' : 'Order Details'}</h2>
+              <h2 className="text-lg font-bold text-gray-800">{t('furnitureOrd.orderDetails')}</h2>
               <button onClick={() => setSelectedOrder(null)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-6 h-6 text-gray-500" />
               </button>
@@ -145,11 +144,11 @@ export default function FurnitureOrderHistoryPage() {
               {/* Customer & Date */}
               <div className="flex justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">{isNepali ? 'ग्राहक' : 'Customer'}</p>
-                  <p className="font-bold text-gray-800">{selectedOrder.customerName || (isNepali ? 'वाक-इन' : 'Walk-in')}</p>
+                  <p className="text-sm text-gray-500">{t('furnitureOrd.customer')}</p>
+                  <p className="font-bold text-gray-800">{selectedOrder.customerName || t('furnitureOrd.walkIn')}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">{isNepali ? 'मिति' : 'Date'}</p>
+                  <p className="text-sm text-gray-500">{t('furnitureOrd.dateLabel')}</p>
                   <p className="font-medium text-gray-800">{selectedOrder.transactionDate}</p>
                 </div>
               </div>
@@ -157,7 +156,7 @@ export default function FurnitureOrderHistoryPage() {
               {/* Items */}
               {selectedOrder.items && Array.isArray(selectedOrder.items) && (
                 <div>
-                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">{isNepali ? 'सामानहरू' : 'Items'}</p>
+                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">{t('furnitureOrd.items')}</p>
                   <div className="space-y-2">
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-3 flex justify-between">
@@ -174,7 +173,7 @@ export default function FurnitureOrderHistoryPage() {
 
               {/* Total */}
               <div className="bg-purple-50 rounded-lg p-3 flex justify-between items-center">
-                <p className="font-bold text-purple-800">{isNepali ? 'कुल रकम' : 'Total'}</p>
+                <p className="font-bold text-purple-800">{t('furnitureOrd.total')}</p>
                 <p className="text-xl font-bold text-purple-800">{formatCurrency(selectedOrder.amount)}</p>
               </div>
 
@@ -182,19 +181,19 @@ export default function FurnitureOrderHistoryPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {selectedOrder.paymentMethod && (
                   <div>
-                    <p className="text-gray-500">{isNepali ? 'भुक्तानी' : 'Payment'}</p>
+                    <p className="text-gray-500">{t('furnitureOrd.payment')}</p>
                     <p className="font-medium">{selectedOrder.paymentMethod}</p>
                   </div>
                 )}
                 {selectedOrder.deliveryDate && (
                   <div>
-                    <p className="text-gray-500">{isNepali ? 'डेलिभरी मिति' : 'Delivery Date'}</p>
+                    <p className="text-gray-500">{t('furnitureOrd.deliveryDate')}</p>
                     <p className="font-medium">{selectedOrder.deliveryDate}</p>
                   </div>
                 )}
                 {selectedOrder.deliveryAddress && (
                   <div className="col-span-2">
-                    <p className="text-gray-500">{isNepali ? 'ठेगाना' : 'Address'}</p>
+                    <p className="text-gray-500">{t('furnitureOrd.address')}</p>
                     <p className="font-medium">{selectedOrder.deliveryAddress}</p>
                   </div>
                 )}
@@ -202,19 +201,19 @@ export default function FurnitureOrderHistoryPage() {
 
               {selectedOrder.notes && (
                 <div>
-                  <p className="text-sm text-gray-500">{isNepali ? 'टिप्पणी' : 'Notes'}</p>
+                  <p className="text-sm text-gray-500">{t('common.notes')}</p>
                   <p className="text-gray-700">{selectedOrder.notes}</p>
                 </div>
               )}
 
               {/* Update Delivery Status */}
               <div>
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">{isNepali ? 'डेलिभरी स्थिति अपडेट' : 'Update Delivery Status'}</p>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-2">{t('furnitureOrd.updateDeliveryStatus')}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'PENDING', labelEn: 'Pending', labelNe: 'बाँकी', color: 'yellow' },
-                    { value: 'IN_PROGRESS', labelEn: 'In Progress', labelNe: 'प्रगतिमा', color: 'blue' },
-                    { value: 'DELIVERED', labelEn: 'Delivered', labelNe: 'डेलिभर', color: 'green' },
+                    { value: 'PENDING', tKey: 'furnitureOrd.pending', color: 'yellow' },
+                    { value: 'IN_PROGRESS', tKey: 'furnitureOrd.inProgress', color: 'blue' },
+                    { value: 'DELIVERED', tKey: 'furnitureOrd.delivered', color: 'green' },
                   ].map(ds => (
                     <button key={ds.value} disabled={updatingStatus}
                       onClick={() => handleUpdateDeliveryStatus(selectedOrder.id, ds.value)}
@@ -226,7 +225,7 @@ export default function FurnitureOrderHistoryPage() {
                           : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
                       }`}>
                       {selectedOrder.deliveryStatus === ds.value && <Check className="w-3 h-3" />}
-                      {isNepali ? ds.labelNe : ds.labelEn}
+                      {t(ds.tKey)}
                     </button>
                   ))}
                 </div>
@@ -244,10 +243,10 @@ export default function FurnitureOrderHistoryPage() {
       ) : filteredOrders.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <ClipboardList className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">{isNepali ? 'कुनै अर्डर छैन' : 'No orders found'}</p>
+          <p className="text-lg">{t('furnitureOrd.noOrdersFound')}</p>
           <button onClick={() => navigate('/furniture/orders/new')}
             className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700">
-            {isNepali ? 'पहिलो अर्डर बनाउनुहोस्' : 'Create First Order'}
+            {t('furnitureOrd.createFirstOrder')}
           </button>
         </div>
       ) : (
@@ -259,7 +258,7 @@ export default function FurnitureOrderHistoryPage() {
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-800">
-                    {order.customerName || (isNepali ? 'वाक-इन ग्राहक' : 'Walk-in Customer')}
+                    {order.customerName || t('furnitureOrd.walkInCustomer')}
                   </h3>
                   <p className="text-sm text-gray-500">{getItemsSummary(order.items)}</p>
                 </div>
@@ -276,7 +275,7 @@ export default function FurnitureOrderHistoryPage() {
               {order.deliveryDate && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
                   <Truck className="w-3 h-3" />
-                  {isNepali ? 'डेलिभरी' : 'Delivery'}: {order.deliveryDate}
+                  {t('furnitureOrd.delivery')}: {order.deliveryDate}
                 </div>
               )}
             </div>

@@ -7,8 +7,7 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function FurnitureCustomerPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +67,7 @@ export default function FurnitureCustomerPage() {
     setFormSuccess('');
 
     if (!formData.name.trim()) {
-      setFormError(isNepali ? 'ग्राहकको नाम आवश्यक छ' : 'Customer name is required');
+      setFormError(t('furnitureCust.customerNameRequired'));
       return;
     }
 
@@ -76,28 +75,28 @@ export default function FurnitureCustomerPage() {
     try {
       if (editingCustomer) {
         await api.put(`/api/furniture/customers/${editingCustomer.id}`, formData);
-        setFormSuccess(isNepali ? 'ग्राहक अपडेट भयो!' : 'Customer updated!');
+        setFormSuccess(t('furnitureCust.customerUpdated'));
       } else {
         await api.post('/api/furniture/customers', formData);
-        setFormSuccess(isNepali ? 'ग्राहक थपियो!' : 'Customer added!');
+        setFormSuccess(t('furnitureCust.customerAdded'));
       }
 
       fetchCustomers();
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
-      setFormError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save'));
+      setFormError(err.response?.data?.message || t('common.failedToSave'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (customer) => {
-    if (!confirm(isNepali ? `${customer.name} हटाउने?` : `Remove ${customer.name}?`)) return;
+    if (!confirm(`Remove ${customer.name}?`)) return;
     try {
       await api.delete(`/api/furniture/customers/${customer.id}`);
       fetchCustomers();
     } catch (err) {
-      alert(err.response?.data?.message || (isNepali ? 'हटाउन सकिएन' : 'Failed to remove'));
+      alert(err.response?.data?.message || t('common.failedToRemove'));
     }
   };
 
@@ -132,7 +131,7 @@ export default function FurnitureCustomerPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <Users className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{isNepali ? 'ग्राहकहरू' : 'Customers'}</h1>
+            <h1 className="text-xl font-bold ml-3">{t('furnitureCust.title')}</h1>
           </div>
           <LanguageToggle />
         </div>
@@ -145,7 +144,7 @@ export default function FurnitureCustomerPage() {
           className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700"
         >
           <UserPlus className="w-5 h-5" />
-          {isNepali ? 'नयाँ ग्राहक' : 'Add Customer'}
+          {t('furnitureCust.addCustomer')}
         </button>
       </div>
 
@@ -154,7 +153,7 @@ export default function FurnitureCustomerPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={isNepali ? 'नाम वा फोन खोज्नुहोस्...' : 'Search name or phone...'}
+            placeholder={t('furnitureCust.searchNamePhone')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500" />
         </div>
       </div>
@@ -185,7 +184,7 @@ export default function FurnitureCustomerPage() {
               )}
 
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
-                {isNepali ? 'खरिद इतिहास' : 'Purchase History'}
+                {t('furnitureCust.purchaseHistory')}
               </h3>
               {customerOrders.length > 0 ? (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -200,15 +199,15 @@ export default function FurnitureCustomerPage() {
                         order.deliveryStatus === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {order.deliveryStatus === 'DELIVERED' ? (isNepali ? 'डेलिभर' : 'Delivered') :
-                         order.deliveryStatus === 'IN_PROGRESS' ? (isNepali ? 'प्रगतिमा' : 'In Progress') :
-                         (isNepali ? 'बाँकी' : 'Pending')}
+                        {order.deliveryStatus === 'DELIVERED' ? t('furnitureOrd.delivered') :
+                         order.deliveryStatus === 'IN_PROGRESS' ? t('furnitureOrd.inProgress') :
+                         t('furnitureOrd.pending')}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 text-center py-4">{isNepali ? 'कुनै खरिद छैन' : 'No purchases yet'}</p>
+                <p className="text-sm text-gray-400 text-center py-4">{t('furnitureCust.noPurchases')}</p>
               )}
             </div>
           </div>
@@ -221,7 +220,7 @@ export default function FurnitureCustomerPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="text-lg font-bold text-gray-800">
-                {editingCustomer ? (isNepali ? 'ग्राहक सम्पादन' : 'Edit Customer') : (isNepali ? 'नयाँ ग्राहक थप्नुहोस्' : 'Add New Customer')}
+                {editingCustomer ? t('furnitureCust.editCustomer') : t('furnitureCust.addNewCustomer')}
               </h2>
               <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-6 h-6 text-gray-500" />
@@ -233,41 +232,41 @@ export default function FurnitureCustomerPage() {
               {formSuccess && <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'नाम' : 'Name'} *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.name')} *</label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                  placeholder={isNepali ? 'ग्राहकको नाम' : 'Customer name'} />
+                  placeholder={t('furnitureCust.customerName')} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'नेपाली नाम' : 'Name (Nepali)'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.nameNepali')}</label>
                 <input type="text" value={formData.nameNepali} onChange={(e) => setFormData({ ...formData, nameNepali: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'फोन' : 'Phone'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.phone')}</label>
                 <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                  placeholder={isNepali ? 'फोन नम्बर' : 'Phone number'} />
+                  placeholder={t('common.phone')} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'ठेगाना' : 'Address'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.address')}</label>
                 <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'टिप्पणी' : 'Notes'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.notes')}</label>
                 <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 resize-none" />
               </div>
 
               <button type="submit" disabled={submitting}
                 className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}>
-                {submitting ? (isNepali ? 'सेभ हुँदैछ...' : 'Saving...') :
-                  editingCustomer ? (isNepali ? 'अपडेट गर्नुहोस्' : 'Update Customer') : (isNepali ? 'ग्राहक थप्नुहोस्' : 'Add Customer')}
+                {submitting ? t('common.saving') :
+                  editingCustomer ? t('furnitureCust.updateCustomer') : t('furnitureCust.addCustomer')}
               </button>
             </form>
           </div>
@@ -282,10 +281,10 @@ export default function FurnitureCustomerPage() {
       ) : filteredCustomers.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">{isNepali ? 'कुनै ग्राहक छैन' : 'No customers found'}</p>
+          <p className="text-lg">{t('furnitureCust.noCustomers')}</p>
           <button onClick={() => { resetForm(); setShowForm(true); }}
             className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">
-            {isNepali ? 'पहिलो ग्राहक थप्नुहोस्' : 'Add First Customer'}
+            {t('furnitureCust.addFirstCustomer')}
           </button>
         </div>
       ) : (
@@ -319,7 +318,7 @@ export default function FurnitureCustomerPage() {
                     </button>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-gray-800">{customer.totalPurchases || 0} {isNepali ? 'खरिद' : 'orders'}</p>
+                    <p className="text-sm font-bold text-gray-800">{customer.totalPurchases || 0} {t('furnitureCust.orders')}</p>
                     <p className="text-xs text-gray-500">{formatCurrency(customer.totalAmount)}</p>
                   </div>
                 </div>

@@ -15,7 +15,7 @@ const BUSINESS_CONFIG = {
 
 export default function ReportsPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isStaff = user.role === 'STAFF';
@@ -106,9 +106,9 @@ export default function ReportsPage() {
 
   const getPeriodLabel = () => {
     switch (period) {
-      case 'today': return isNepali ? 'आज' : 'Today';
-      case 'week': return isNepali ? 'यो हप्ता' : 'This Week';
-      case 'month': return isNepali ? 'यो महिना' : 'This Month';
+      case 'today': return t('common.today');
+      case 'week': return t('common.thisWeek');
+      case 'month': return t('common.thisMonth');
       default: return '';
     }
   };
@@ -126,7 +126,7 @@ export default function ReportsPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'रिपोर्ट' : 'Reports'}
+              {t('reports.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -139,12 +139,10 @@ export default function ReportsPage() {
           /* Staff can only view today's report */
           <div className="text-center">
             <span className="inline-block bg-indigo-600 text-white py-3 px-8 rounded-xl font-bold">
-              {isNepali ? 'आजको रिपोर्ट' : "Today's Report"}
+              {t('reports.todayReport')}
             </span>
             <p className="text-xs text-gray-500 mt-2">
-              {isNepali
-                ? 'साप्ताहिक र मासिक रिपोर्ट हेर्न एडमिनलाई सम्पर्क गर्नुहोस्'
-                : 'Contact admin to view weekly and monthly reports'}
+              {t('reports.contactAdminWeekly')}
             </p>
           </div>
         ) : (
@@ -159,9 +157,9 @@ export default function ReportsPage() {
                     : 'bg-gray-100 text-gray-700'
                 }`}
               >
-                {p === 'today' && (isNepali ? 'आज' : 'Today')}
-                {p === 'week' && (isNepali ? 'हप्ता' : 'Week')}
-                {p === 'month' && (isNepali ? 'महिना' : 'Month')}
+                {p === 'today' && t('reports.today')}
+                {p === 'week' && t('reports.week')}
+                {p === 'month' && t('reports.month')}
               </button>
             ))}
           </div>
@@ -175,7 +173,7 @@ export default function ReportsPage() {
           className="w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg shadow-md active:scale-95 transition-all"
         >
           <ClipboardCheck className="w-6 h-6" />
-          {isNepali ? 'आजको रिपोर्ट बन्द गर्नुहोस्' : "Close Today's Report"}
+          {t('reports.closeTodayReport')}
         </button>
       </div>
 
@@ -192,7 +190,7 @@ export default function ReportsPage() {
               <div className="flex items-center gap-2 text-green-600 mb-2">
                 <TrendingUp className="w-5 h-5" />
                 <span className="text-sm font-medium">
-                  {isNepali ? 'आम्दानी' : 'Income'}
+                  {t('reports.income')}
                 </span>
               </div>
               <p className="text-2xl font-bold text-gray-800">
@@ -205,7 +203,7 @@ export default function ReportsPage() {
               <div className="flex items-center gap-2 text-red-600 mb-2">
                 <TrendingDown className="w-5 h-5" />
                 <span className="text-sm font-medium">
-                  {isNepali ? 'खर्च' : 'Expense'}
+                  {t('reports.expense')}
                 </span>
               </div>
               <p className="text-2xl font-bold text-gray-800">
@@ -219,14 +217,14 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm opacity-80">
-                  {isNepali ? 'खुद रकम' : 'Net Amount'} ({getPeriodLabel()})
+                  {t('reports.netAmount')} ({getPeriodLabel()})
                 </p>
                 <p className="text-3xl font-bold">
                   {netAmount >= 0 ? '+' : '-'}{formatAmount(netAmount)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm opacity-80">{isNepali ? 'कारोबार' : 'Transactions'}</p>
+                <p className="text-sm opacity-80">{t('reports.transactions')}</p>
                 <p className="text-2xl font-bold">{filteredTxns.length}</p>
               </div>
             </div>
@@ -236,12 +234,12 @@ export default function ReportsPage() {
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b bg-gray-50">
               <h2 className="font-bold text-gray-800">
-                {isNepali ? 'व्यापार विवरण' : 'Business Breakdown'}
+                {t('dashboard.businessBreakdown')}
               </h2>
             </div>
             {businessBreakdown.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                {isNepali ? 'कुनै डाटा छैन' : 'No data'}
+                {t('reports.noData')}
               </div>
             ) : (
               <div className="divide-y">
@@ -259,7 +257,7 @@ export default function ReportsPage() {
                               {isNepali ? business.labelNe : business.label}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {business.count} {isNepali ? 'कारोबार' : 'transactions'}
+                              {business.count} {t('reports.transactions')}
                             </p>
                           </div>
                         </div>

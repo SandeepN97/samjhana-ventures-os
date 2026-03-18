@@ -9,8 +9,7 @@ import SearchableSelect from '../components/SearchableSelect';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (user.role === 'STAFF') {
@@ -19,18 +18,16 @@ export default function LoanEntryPage() {
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-sm">
           <ShieldOff className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            {isNepali ? 'पहुँच अस्वीकृत' : 'Access Denied'}
+            {t('common.accessDenied')}
           </h1>
           <p className="text-gray-500 mb-6">
-            {isNepali
-              ? 'ऋण व्यवस्थापन कर्मचारीहरूको लागि उपलब्ध छैन।'
-              : 'Loan management is not available for staff members.'}
+            {t('loan.accessDeniedMsg')}
           </p>
           <button
             onClick={() => navigate('/')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            {isNepali ? 'गृहपृष्ठमा फर्कनुहोस्' : 'Go to Home'}
+            {t('loan.goHome')}
           </button>
         </div>
       </div>
@@ -188,7 +185,7 @@ export default function LoanEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'ऋण थपियो!' : 'Loan added!');
+      setSuccessMessage(t('loan.loanAdded'));
       setNewLoan({
         bankName: '',
         loanAmount: '',
@@ -233,7 +230,7 @@ export default function LoanEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'भुक्तानी सेभ भयो!' : 'Payment recorded!');
+      setSuccessMessage(t('rental.savedSuccess'));
       setPayment({
         loanId: '',
         paymentDate: new Date().toISOString().split('T')[0],
@@ -273,7 +270,7 @@ export default function LoanEntryPage() {
             </button>
             <Landmark className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'बैंक ऋण' : 'Bank Loans'}
+              {t('business.loan')}
             </h1>
           </div>
           <LanguageToggle />
@@ -305,19 +302,19 @@ export default function LoanEntryPage() {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
-              <p className="text-xs text-gray-500">{isNepali ? 'कुल ऋण' : 'Total Borrowed'}</p>
+              <p className="text-xs text-gray-500">{t('loan.totalBorrowed')}</p>
               <p className="text-xl font-bold text-gray-800">{formatAmount(totalBorrowed)}</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-green-500">
-              <p className="text-xs text-gray-500">{isNepali ? 'सांवा तिरेको' : 'Principal Paid'}</p>
+              <p className="text-xs text-gray-500">{t('loan.principalPaid')}</p>
               <p className="text-xl font-bold text-green-600">{formatAmount(totalPaid)}</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-yellow-500">
-              <p className="text-xs text-gray-500">{isNepali ? 'ब्याज तिरेको' : 'Interest Paid'}</p>
+              <p className="text-xs text-gray-500">{t('loan.interestPaid')}</p>
               <p className="text-xl font-bold text-yellow-600">{formatAmount(totalInterestPaid)}</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-blue-500">
-              <p className="text-xs text-gray-500">{isNepali ? 'बाँकी रकम' : 'Remaining'}</p>
+              <p className="text-xs text-gray-500">{t('loan.remainingBalance')}</p>
               <p className="text-xl font-bold text-blue-600">{formatAmount(totalRemaining)}</p>
             </div>
           </div>
@@ -329,7 +326,7 @@ export default function LoanEntryPage() {
               className="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
-              {isNepali ? 'नयाँ ऋण' : 'Add Loan'}
+              {t('loan.addLoan')}
             </button>
             <button
               onClick={() => setMode('make_payment')}
@@ -341,7 +338,7 @@ export default function LoanEntryPage() {
               }`}
             >
               <CreditCard className="w-5 h-5" />
-              {isNepali ? 'भुक्तानी' : 'Make Payment'}
+              {t('loan.makePayment')}
             </button>
           </div>
 
@@ -349,14 +346,14 @@ export default function LoanEntryPage() {
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b bg-gray-50">
               <h2 className="font-bold text-gray-800">
-                {isNepali ? 'सक्रिय ऋणहरू' : 'Active Loans'} ({loans.length})
+                {t('loan.activeLoans')} ({loans.length})
               </h2>
             </div>
             {loans.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <Landmark className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>{isNepali ? 'कुनै ऋण छैन' : 'No loans recorded'}</p>
-                <p className="text-sm mt-1">{isNepali ? 'नयाँ ऋण थप्नुहोस्' : 'Add a new loan to get started'}</p>
+                <p>{t('loan.noLoans')}</p>
+                <p className="text-sm mt-1">{t('loan.addLoanToStart')}</p>
               </div>
             ) : (
               <div className="divide-y">
@@ -372,20 +369,20 @@ export default function LoanEntryPage() {
                           <div>
                             <p className="font-bold text-gray-800">{loan.bankName}</p>
                             <p className="text-xs text-gray-500">
-                              {isNepali ? 'सुरु:' : 'Started:'} {new Date(loan.startDate).toLocaleDateString()}
+                              {t('loan.started')} {new Date(loan.startDate).toLocaleDateString()}
                               {loan.interestRate > 0 && ` • ${loan.interestRate}%`}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-500">{isNepali ? 'बाँकी' : 'Remaining'}</p>
+                          <p className="text-sm text-gray-500">{t('loan.remaining')}</p>
                           <p className="text-lg font-bold text-red-600">{formatAmount(loan.remaining)}</p>
                         </div>
                       </div>
                       {/* Progress Bar */}
                       <div className="mt-2">
                         <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>{formatAmount(loan.principalPaid)} {isNepali ? 'तिरियो' : 'paid'}</span>
+                          <span>{formatAmount(loan.principalPaid)} {t('loan.paid')}</span>
                           <span>{formatAmount(loan.originalAmount)}</span>
                         </div>
                         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -395,7 +392,7 @@ export default function LoanEntryPage() {
                           />
                         </div>
                         <p className="text-xs text-gray-400 mt-1 text-right">
-                          {paidPercent.toFixed(1)}% {isNepali ? 'पूरा' : 'complete'}
+                          {paidPercent.toFixed(1)}% {t('loan.complete')}
                         </p>
                       </div>
                     </div>
@@ -411,21 +408,21 @@ export default function LoanEntryPage() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
             <Landmark className="w-8 h-8 text-red-500" />
             <div>
-              <p className="font-bold text-red-800">{isNepali ? 'नयाँ बैंक ऋण थप्नुहोस्' : 'Add New Bank Loan'}</p>
-              <p className="text-sm text-red-600">{isNepali ? 'व्यापारले लिएको ऋण' : 'Loan taken by business from bank'}</p>
+              <p className="font-bold text-red-800">{t('loan.addNewBankLoan')}</p>
+              <p className="text-sm text-red-600">{t('loan.loanTakenByBusiness')}</p>
             </div>
           </div>
 
           {/* Bank Name */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'बैंकको नाम' : 'Bank Name'} <span className="text-red-500">*</span>
+              {t('loan.bankName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newLoan.bankName}
               onChange={(e) => handleNewLoanChange('bankName', e.target.value)}
-              placeholder={isNepali ? 'जस्तै: नेपाल बैंक' : 'e.g., Nepal Bank'}
+              placeholder={t('loan.bankNamePlaceholder')}
               className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 ${errors.bankName ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.bankName && <p className="text-red-500 text-sm mt-1">{errors.bankName}</p>}
@@ -434,7 +431,7 @@ export default function LoanEntryPage() {
           {/* Loan Amount */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'ऋण रकम' : 'Loan Amount'} <span className="text-red-500">*</span>
+              {t('loan.loanAmount')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -455,7 +452,7 @@ export default function LoanEntryPage() {
           {/* Interest Rate */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'ब्याज दर' : 'Interest Rate'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+              {t('loan.interestRate')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
             </label>
             <div className="relative">
               <input
@@ -475,7 +472,7 @@ export default function LoanEntryPage() {
           {/* Start Date */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'ऋण मिति' : 'Loan Date'} <span className="text-red-500">*</span>
+              {t('loan.loanDate')} <span className="text-red-500">*</span>
             </label>
             <DatePicker
               value={newLoan.startDate}
@@ -488,13 +485,13 @@ export default function LoanEntryPage() {
           {/* Notes */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'टिप्पणी' : 'Notes'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+              {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
             </label>
             <textarea
               value={newLoan.notes}
               onChange={(e) => handleNewLoanChange('notes', e.target.value)}
               rows={2}
-              placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+              placeholder={t('common.additionalNotes')}
               className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
             />
           </div>
@@ -513,12 +510,12 @@ export default function LoanEntryPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+                {t('common.savingEllipsis')}
               </span>
             ) : (
               <span className="flex items-center justify-center">
                 <Check className="w-6 h-6 mr-2" />
-                {isNepali ? 'ऋण थप्नुहोस्' : 'Add Loan'}
+                {t('loan.addLoan')}
               </span>
             )}
           </button>
@@ -529,15 +526,15 @@ export default function LoanEntryPage() {
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
             <CreditCard className="w-8 h-8 text-green-500" />
             <div>
-              <p className="font-bold text-green-800">{isNepali ? 'ऋण भुक्तानी' : 'Loan Payment'}</p>
-              <p className="text-sm text-green-600">{isNepali ? 'बैंकलाई भुक्तानी गर्नुहोस्' : 'Record payment to bank'}</p>
+              <p className="font-bold text-green-800">{t('loan.loanPayment')}</p>
+              <p className="text-sm text-green-600">{t('loan.recordPaymentToBank')}</p>
             </div>
           </div>
 
           {/* Select Loan */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'ऋण छान्नुहोस्' : 'Select Loan'} <span className="text-red-500">*</span>
+              {t('loan.selectLoan')} <span className="text-red-500">*</span>
             </label>
             <SearchableSelect
               value={payment.loanId}
@@ -545,9 +542,9 @@ export default function LoanEntryPage() {
               options={loans.map(loan => ({
                 value: loan.id,
                 label: loan.bankName,
-                subtitle: `${isNepali ? 'बाँकी:' : 'Remaining:'} ${formatAmount(loan.remaining)}`,
+                subtitle: `${t('loan.remaining')}: ${formatAmount(loan.remaining)}`,
               }))}
-              placeholder={isNepali ? '-- ऋण छान्नुहोस् --' : '-- Select a loan --'}
+              placeholder={t('loan.selectLoanPlaceholder')}
               error={errors.loanId}
               accentColor="green"
             />
@@ -559,11 +556,11 @@ export default function LoanEntryPage() {
             <div className="bg-gray-100 rounded-xl p-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-gray-500">{isNepali ? 'मूल ऋण' : 'Original Loan'}</p>
+                  <p className="text-sm text-gray-500">{t('loan.originalLoan')}</p>
                   <p className="font-bold">{formatAmount(selectedLoan.originalAmount)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">{isNepali ? 'बाँकी रकम' : 'Remaining'}</p>
+                  <p className="text-sm text-gray-500">{t('loan.remaining')}</p>
                   <p className="font-bold text-red-600">{formatAmount(selectedLoan.remaining)}</p>
                 </div>
               </div>
@@ -573,7 +570,7 @@ export default function LoanEntryPage() {
           {/* Payment Date */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'भुक्तानी मिति' : 'Payment Date'} <span className="text-red-500">*</span>
+              {t('loan.paymentDate')} <span className="text-red-500">*</span>
             </label>
             <DatePicker
               value={payment.paymentDate}
@@ -586,7 +583,7 @@ export default function LoanEntryPage() {
           {/* Principal Amount */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'सांवा रकम' : 'Principal Amount'} <span className="text-red-500">*</span>
+              {t('loan.principalAmount')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -607,7 +604,7 @@ export default function LoanEntryPage() {
           {/* Interest Amount */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'ब्याज रकम' : 'Interest Amount'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+              {t('loan.interestAmount')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -626,25 +623,25 @@ export default function LoanEntryPage() {
 
           {/* Total Payment Display */}
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-80">{isNepali ? 'कुल भुक्तानी' : 'Total Payment'}</p>
+            <p className="text-sm opacity-80">{t('loan.totalPayment')}</p>
             <p className="text-3xl font-bold">
               {formatAmount((parseFloat(payment.principalAmount) || 0) + (parseFloat(payment.interestAmount) || 0))}
             </p>
             <p className="text-xs opacity-70 mt-1">
-              {isNepali ? 'सांवा' : 'Principal'}: {formatAmount(payment.principalAmount || 0)} + {isNepali ? 'ब्याज' : 'Interest'}: {formatAmount(payment.interestAmount || 0)}
+              {t('loan.principalAmount')}: {formatAmount(payment.principalAmount || 0)} + {t('loan.interestAmount')}: {formatAmount(payment.interestAmount || 0)}
             </p>
           </div>
 
           {/* Notes */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'टिप्पणी' : 'Notes'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+              {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
             </label>
             <textarea
               value={payment.notes}
               onChange={(e) => handlePaymentChange('notes', e.target.value)}
               rows={2}
-              placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+              placeholder={t('common.additionalNotes')}
               className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
           </div>
@@ -663,12 +660,12 @@ export default function LoanEntryPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+                {t('common.savingEllipsis')}
               </span>
             ) : (
               <span className="flex items-center justify-center">
                 <Check className="w-6 h-6 mr-2" />
-                {isNepali ? 'भुक्तानी सेभ गर्नुहोस्' : 'Save Payment'}
+                {t('rental.savePayment')}
               </span>
             )}
           </button>

@@ -6,8 +6,7 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleLogout = () => {
@@ -32,7 +31,7 @@ export default function DashboardPage() {
             onClick={handleLogout}
             className="text-white text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
           >
-            {isNepali ? 'लग आउट' : 'Logout'}
+            {t('nav.logout')}
           </button>
         </div>
       </div>

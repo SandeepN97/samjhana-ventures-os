@@ -295,7 +295,8 @@ function DateInput({ field, value, onChange, error }) {
   );
 }
 
-function SelectInput({ field, value, onChange, error, isNepali }) {
+function SelectInput({ field, value, onChange, error }) {
+  const { t } = useTranslation();
   const options = field.options ? JSON.parse(field.options) : [];
 
   return (
@@ -306,7 +307,7 @@ function SelectInput({ field, value, onChange, error, isNepali }) {
         value: opt.value || opt,
         label: opt.label || opt,
       }))}
-      placeholder={`-- ${isNepali ? 'छान्नुहोस्' : 'Select'} --`}
+      placeholder={t('common.select')}
       error={error}
       accentColor="blue"
     />

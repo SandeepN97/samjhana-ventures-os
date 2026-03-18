@@ -24,7 +24,7 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
@@ -93,22 +93,22 @@ export default function SettingsPage() {
     setUserSuccess('');
 
     if (!newUser.username.trim()) {
-      setUserError(isNepali ? 'प्रयोगकर्ता नाम आवश्यक छ' : 'Username is required');
+      setUserError(t('settings.usernameRequired'));
       return;
     }
     if (!newUser.password || newUser.password.length < 3) {
-      setUserError(isNepali ? 'पासवर्ड कम्तिमा ३ अक्षर हुनुपर्छ' : 'Password must be at least 3 characters');
+      setUserError(t('settings.passwordMin3'));
       return;
     }
     if (newUser.password !== newUserPasswordConfirm) {
-      setUserError(isNepali ? 'पासवर्ड मेल खाएन' : 'Passwords do not match');
+      setUserError(t('settings.passwordsNoMatch'));
       return;
     }
 
     setSubmitting(true);
     try {
       await api.post('/api/admin/users', newUser);
-      setUserSuccess(isNepali ? 'प्रयोगकर्ता सिर्जना भयो!' : 'User created successfully!');
+      setUserSuccess(t('settings.userCreated'));
       setNewUser({ username: '', password: '', fullName: '', fullNameNepali: '', role: 'STAFF' });
       setNewUserPasswordConfirm('');
       fetchUsers();
@@ -124,7 +124,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteUser = async (username) => {
-    if (!confirm(isNepali ? `${username} लाई हटाउने?` : `Deactivate ${username}?`)) return;
+    if (!confirm(`Deactivate ${username}?`)) return;
 
     try {
       await api.delete(`/api/admin/users/${username}`);
@@ -137,7 +137,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setProfileMsg({ type: '', text: '' });
     if (!profileFullName.trim()) {
-      setProfileMsg({ type: 'error', text: isNepali ? 'पूरा नाम आवश्यक छ' : 'Full name is required' });
+      setProfileMsg({ type: 'error', text: t('settings.fullNameRequired') });
       return;
     }
 
@@ -152,7 +152,7 @@ export default function SettingsPage() {
       const updatedUser = { ...user, fullName: profileFullName.trim(), fullNameNepali: profileFullNameNe.trim() };
       localStorage.setItem('user', JSON.stringify(updatedUser));
 
-      setProfileMsg({ type: 'success', text: isNepali ? 'प्रोफाइल अपडेट भयो!' : 'Profile updated!' });
+      setProfileMsg({ type: 'success', text: t('settings.profileUpdated') });
       setTimeout(() => {
         setActiveSection(null);
         setProfileMsg({ type: '', text: '' });
@@ -168,15 +168,15 @@ export default function SettingsPage() {
     setPwMsg({ type: '', text: '' });
 
     if (!currentPassword) {
-      setPwMsg({ type: 'error', text: isNepali ? 'हालको पासवर्ड आवश्यक छ' : 'Current password is required' });
+      setPwMsg({ type: 'error', text: t('settings.currentPasswordRequired') });
       return;
     }
     if (!newPassword || newPassword.length < 3) {
-      setPwMsg({ type: 'error', text: isNepali ? 'नयाँ पासवर्ड कम्तिमा ३ अक्षर हुनुपर्छ' : 'New password must be at least 3 characters' });
+      setPwMsg({ type: 'error', text: t('settings.newPasswordMin3') });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPwMsg({ type: 'error', text: isNepali ? 'पासवर्ड मिलेन' : 'Passwords do not match' });
+      setPwMsg({ type: 'error', text: t('settings.passwordsMismatch') });
       return;
     }
 
@@ -188,7 +188,7 @@ export default function SettingsPage() {
         newPassword,
       });
 
-      setPwMsg({ type: 'success', text: isNepali ? 'पासवर्ड परिवर्तन भयो!' : 'Password changed successfully!' });
+      setPwMsg({ type: 'success', text: t('settings.passwordChanged') });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -211,10 +211,10 @@ export default function SettingsPage() {
 
   const getRoleLabel = (role) => {
     const labels = {
-      ADMIN: isNepali ? 'एडमिन' : 'Admin',
-      DAD: isNepali ? 'बुबा' : 'Dad',
-      SON: isNepali ? 'छोरा' : 'Son',
-      STAFF: isNepali ? 'कर्मचारी' : 'Staff'
+      ADMIN: t('settings.roleAdmin'),
+      DAD: t('settings.roleDad'),
+      SON: t('settings.roleSon'),
+      STAFF: t('settings.roleStaff')
     };
     return labels[role] || role;
   };
@@ -255,10 +255,10 @@ export default function SettingsPage() {
             </button>
             <h1 className="text-xl font-bold ml-3">
               {activeSection === 'editProfile'
-                ? (isNepali ? 'प्रोफाइल सम्पादन' : 'Edit Profile')
+                ? t('settings.editProfile')
                 : activeSection === 'changePassword'
-                ? (isNepali ? 'पासवर्ड परिवर्तन' : 'Change Password')
-                : (isNepali ? 'सेटिंग्स' : 'Settings')}
+                ? t('settings.changePassword')
+                : t('settings.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -290,7 +290,7 @@ export default function SettingsPage() {
             {/* Username (read-only) */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
-                {isNepali ? 'प्रयोगकर्ता नाम' : 'Username'}
+                {t('settings.username')}
               </label>
               <input
                 type="text"
@@ -303,7 +303,7 @@ export default function SettingsPage() {
             {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'पूरा नाम (English)' : 'Full Name (English)'} *
+                {t('settings.fullNameEnglish')} *
               </label>
               <input
                 type="text"
@@ -317,7 +317,7 @@ export default function SettingsPage() {
             {/* Full Name Nepali */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'पूरा नाम (नेपाली)' : 'Full Name (Nepali)'}
+                {t('settings.fullNameNepali')}
               </label>
               <input
                 type="text"
@@ -331,7 +331,7 @@ export default function SettingsPage() {
             {/* Role (read-only) */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
-                {isNepali ? 'भूमिका' : 'Role'}
+                {t('settings.role')}
               </label>
               <div className="px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50">
                 <span className={`text-sm px-2 py-1 rounded-full ${getRoleColor(user.role)}`}>
@@ -353,7 +353,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  {isNepali ? 'सेभ गर्नुहोस्' : 'Save Changes'}
+                  {t('settings.saveChanges')}
                 </>
               )}
             </button>
@@ -377,7 +377,7 @@ export default function SettingsPage() {
             {/* Current Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'हालको पासवर्ड' : 'Current Password'} *
+                {t('settings.currentPassword')} *
               </label>
               <div className="relative">
                 <input
@@ -400,7 +400,7 @@ export default function SettingsPage() {
             {/* New Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'नयाँ पासवर्ड' : 'New Password'} *
+                {t('settings.newPassword')} *
               </label>
               <div className="relative">
                 <input
@@ -423,7 +423,7 @@ export default function SettingsPage() {
             {/* Confirm Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'पासवर्ड पुष्टि' : 'Confirm Password'} *
+                {t('settings.confirmPassword')} *
               </label>
               <input
                 type="password"
@@ -434,7 +434,7 @@ export default function SettingsPage() {
               />
               {confirmPassword && newPassword && confirmPassword !== newPassword && (
                 <p className="text-red-500 text-sm mt-1">
-                  {isNepali ? 'पासवर्ड मिलेन' : 'Passwords do not match'}
+                  {t('settings.passwordsMismatch')}
                 </p>
               )}
             </div>
@@ -452,7 +452,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <Shield className="w-5 h-5" />
-                  {isNepali ? 'पासवर्ड परिवर्तन गर्नुहोस्' : 'Change Password'}
+                  {t('settings.changePasswordBtn')}
                 </>
               )}
             </button>
@@ -487,7 +487,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50">
                 <h2 className="font-bold text-gray-700 text-sm uppercase">
-                  {isNepali ? 'प्राथमिकताहरू' : 'Preferences'}
+                  {t('settings.preferences')}
                 </h2>
               </div>
 
@@ -498,10 +498,10 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-3">
                   <Globe className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800">{isNepali ? 'भाषा' : 'Language'}</span>
+                  <span className="text-gray-800">{t('settings.language')}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-500">{isNepali ? 'नेपाली' : 'English'}</span>
+                  <span className="text-gray-500">{t('settings.languageName')}</span>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
               </button>
@@ -510,7 +510,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between px-4 py-4 border-t">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800">{isNepali ? 'सूचनाहरू' : 'Notifications'}</span>
+                  <span className="text-gray-800">{t('settings.notifications')}</span>
                 </div>
                 <button
                   onClick={handleNotificationToggle}
@@ -531,7 +531,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50">
                 <h2 className="font-bold text-gray-700 text-sm uppercase">
-                  {isNepali ? 'खाता' : 'Account'}
+                  {t('settings.account')}
                 </h2>
               </div>
 
@@ -541,7 +541,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-3">
                   <User className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800">{isNepali ? 'प्रोफाइल सम्पादन' : 'Edit Profile'}</span>
+                  <span className="text-gray-800">{t('settings.editProfile')}</span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
@@ -552,7 +552,7 @@ export default function SettingsPage() {
               >
                 <div className="flex items-center gap-3">
                   <Shield className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800">{isNepali ? 'पासवर्ड परिवर्तन' : 'Change Password'}</span>
+                  <span className="text-gray-800">{t('settings.changePassword')}</span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
@@ -563,14 +563,14 @@ export default function SettingsPage() {
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
                   <h2 className="font-bold text-gray-700 text-sm uppercase">
-                    {isNepali ? 'प्रयोगकर्ता व्यवस्थापन' : 'User Management'}
+                    {t('settings.userManagement')}
                   </h2>
                   <button
                     onClick={() => setShowUserForm(!showUserForm)}
                     className="flex items-center gap-1 text-blue-600 text-sm font-medium"
                   >
                     {showUserForm ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                    {showUserForm ? (isNepali ? 'बन्द' : 'Close') : (isNepali ? 'नयाँ' : 'Add')}
+                    {showUserForm ? t('settings.close') : t('settings.add')}
                   </button>
                 </div>
 
@@ -578,7 +578,7 @@ export default function SettingsPage() {
                 {showUserForm && (
                   <div className="p-4 border-b bg-blue-50">
                     <h3 className="font-bold text-gray-800 mb-3">
-                      {isNepali ? 'नयाँ प्रयोगकर्ता थप्नुहोस्' : 'Add New User'}
+                      {t('settings.addNewUser')}
                     </h3>
 
                     {userError && (
@@ -596,20 +596,20 @@ export default function SettingsPage() {
                     <form onSubmit={handleCreateUser} className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isNepali ? 'प्रयोगकर्ता नाम' : 'Username'} *
+                          {t('settings.username')} *
                         </label>
                         <input
                           type="text"
                           value={newUser.username}
                           onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                          placeholder={isNepali ? 'प्रयोगकर्ता नाम' : 'Username'}
+                          placeholder={t('settings.username')}
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isNepali ? 'पासवर्ड' : 'Password'} *
+                          {t('settings.password')} *
                         </label>
                         <div className="relative">
                           <input
@@ -617,7 +617,7 @@ export default function SettingsPage() {
                             value={newUser.password}
                             onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
-                            placeholder={isNepali ? 'पासवर्ड' : 'Password'}
+                            placeholder={t('settings.password')}
                           />
                           <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                             onClick={() => setShowNewUserPw(!showNewUserPw)}>
@@ -628,7 +628,7 @@ export default function SettingsPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isNepali ? 'पासवर्ड पुष्टि गर्नुहोस्' : 'Confirm Password'} *
+                          {t('settings.confirmPassword')} *
                         </label>
                         <div className="relative">
                           <input
@@ -636,7 +636,7 @@ export default function SettingsPage() {
                             value={newUserPasswordConfirm}
                             onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
                             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
-                            placeholder={isNepali ? 'पासवर्ड दोहोर्याउनुहोस्' : 'Repeat password'}
+                            placeholder={t('settings.repeatPassword')}
                           />
                           <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                             onClick={() => setShowNewUserPwConfirm(!showNewUserPwConfirm)}>
@@ -647,30 +647,30 @@ export default function SettingsPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isNepali ? 'पूरा नाम' : 'Full Name'}
+                          {t('settings.fullName')}
                         </label>
                         <input
                           type="text"
                           value={newUser.fullName}
                           onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                          placeholder={isNepali ? 'पूरा नाम' : 'Full name'}
+                          placeholder={t('settings.fullName')}
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isNepali ? 'भूमिका' : 'Role'} *
+                          {t('settings.role')} *
                         </label>
                         <select
                           value={newUser.role}
                           onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                         >
-                          <option value="STAFF">{isNepali ? 'कर्मचारी (बिक्री मात्र)' : 'Staff (Sales only)'}</option>
-                          <option value="DAD">{isNepali ? 'बुबा (पूर्ण पहुँच)' : 'Dad (Full access)'}</option>
-                          <option value="SON">{isNepali ? 'छोरा (समीक्षा/स्वीकृति)' : 'Son (Review/Approve)'}</option>
-                          <option value="ADMIN">{isNepali ? 'एडमिन (सबै पहुँच)' : 'Admin (All access)'}</option>
+                          <option value="STAFF">{t('settings.staffRoleLabel')}</option>
+                          <option value="DAD">{t('settings.dadRoleLabel')}</option>
+                          <option value="SON">{t('settings.sonRoleLabel')}</option>
+                          <option value="ADMIN">{t('settings.adminRoleLabel')}</option>
                         </select>
                       </div>
 
@@ -682,8 +682,8 @@ export default function SettingsPage() {
                         }`}
                       >
                         {submitting
-                          ? (isNepali ? 'सिर्जना हुँदैछ...' : 'Creating...')
-                          : (isNepali ? 'प्रयोगकर्ता सिर्जना गर्नुहोस्' : 'Create User')}
+                          ? t('settings.creating')
+                          : t('settings.createUser')}
                       </button>
                     </form>
                   </div>
@@ -696,7 +696,7 @@ export default function SettingsPage() {
                   </div>
                 ) : users.length === 0 ? (
                   <div className="px-4 py-6 text-center text-gray-500">
-                    {isNepali ? 'कुनै प्रयोगकर्ता छैन' : 'No users found'}
+                    {t('settings.noUsers')}
                   </div>
                 ) : (
                   <div className="divide-y">
@@ -735,17 +735,17 @@ export default function SettingsPage() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50">
                 <h2 className="font-bold text-gray-700 text-sm uppercase">
-                  {isNepali ? 'सहयोग' : 'Support'}
+                  {t('settings.support')}
                 </h2>
               </div>
 
               <div className="px-4 py-4">
                 <div className="flex items-center gap-3 mb-2">
                   <HelpCircle className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800 font-medium">{isNepali ? 'मद्दत' : 'Help & Support'}</span>
+                  <span className="text-gray-800 font-medium">{t('settings.helpSupport')}</span>
                 </div>
                 <p className="text-sm text-gray-500 ml-8">
-                  {isNepali ? 'समस्या भएमा निशालाई सम्पर्क गर्नुहोस्' : 'Contact Nisha for any issues'}
+                  {t('settings.helpContactMsg')}
                 </p>
               </div>
             </div>
@@ -756,7 +756,7 @@ export default function SettingsPage() {
               className="w-full bg-white rounded-xl shadow-sm px-4 py-4 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-5 h-5" />
-              <span className="font-bold">{isNepali ? 'लग आउट' : 'Logout'}</span>
+              <span className="font-bold">{t('settings.logout')}</span>
             </button>
 
             {/* App Version */}
