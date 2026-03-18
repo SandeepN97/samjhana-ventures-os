@@ -87,7 +87,7 @@ export default function SearchableSelect({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isNepali ? 'खोज्नुहोस्...' : 'Search...'}
-                className="w-full bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-base outline-none"
               />
             </div>
           </div>

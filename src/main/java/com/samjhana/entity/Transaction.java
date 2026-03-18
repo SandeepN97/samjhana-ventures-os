@@ -83,7 +83,7 @@ public class Transaction {
      * Dynamic fields stored as JSON string.
      * H2 doesn't have native JSONB, so we store as CLOB and parse in application.
      */
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String customFields;
 
     @Enumerated(EnumType.STRING)

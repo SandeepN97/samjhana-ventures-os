@@ -45,16 +45,16 @@ export default function FurnitureEntryPage() {
 
   const validate = () => {
     const newErrors = {};
-    if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
-    if (!values.transactionType) newErrors.transactionType = 'Transaction type is required';
+    if (!values.transactionDate) newErrors.transactionDate = isNepali ? 'मिति आवश्यक छ' : 'Date is required';
+    if (!values.transactionType) newErrors.transactionType = isNepali ? 'कारोबार प्रकार आवश्यक छ' : 'Transaction type is required';
     if (!values.itemName || values.itemName.trim() === '') {
-      newErrors.itemName = 'Item name is required';
+      newErrors.itemName = isNepali ? 'सामानको नाम आवश्यक छ' : 'Item name is required';
     }
     if (!values.quantity || parseInt(values.quantity) < 1) {
-      newErrors.quantity = 'Quantity must be at least 1';
+      newErrors.quantity = isNepali ? 'संख्या कम्तिमा १ हुनुपर्छ' : 'Quantity must be at least 1';
     }
     if (!values.unitPrice || parseFloat(values.unitPrice) <= 0) {
-      newErrors.unitPrice = 'Unit price must be greater than 0';
+      newErrors.unitPrice = isNepali ? 'एकाइ मूल्य ० भन्दा बढी हुनुपर्छ' : 'Unit price must be greater than 0';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -96,7 +96,7 @@ export default function FurnitureEntryPage() {
         setSuccessMessage('');
       }, 2000);
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      setErrors({ submit: err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन। फेरि प्रयास गर्नुहोस्।' : 'Failed to save. Please try again.') });
     } finally {
       setIsLoading(false);
     }

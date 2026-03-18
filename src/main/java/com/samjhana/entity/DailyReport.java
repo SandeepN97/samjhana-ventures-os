@@ -52,6 +52,10 @@ public class DailyReport {
     @Builder.Default
     private BigDecimal evUnits = BigDecimal.ZERO;
 
+    @Column(name = "rental_sales", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal rentalSales = BigDecimal.ZERO;
+
     @Column(name = "other_sales", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal otherSales = BigDecimal.ZERO;

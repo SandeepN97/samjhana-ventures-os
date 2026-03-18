@@ -21,6 +21,7 @@ import FuelOrderPage from './pages/FuelOrderPage';
 import StaffManagementPage from './pages/StaffManagementPage';
 import DailyClosePage from './pages/DailyClosePage';
 import EvVehiclePage from './pages/EvVehiclePage';
+import RentalPropertyPage from './pages/RentalPropertyPage';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -189,6 +190,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <EvVehiclePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/rental-properties"
+          element={
+            <PrivateRoute>
+              <RentalPropertyPage />
             </PrivateRoute>
           }
         />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings } from 'lucide-react';
+import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, TrendingUp, TrendingDown, Pencil, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
@@ -12,26 +12,24 @@ export default function EVEntryPage() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
   const { businessDate } = useBusinessDate();
 
-  const [chargingMode, setChargingMode] = useState('METER');
   const [vehicles, setVehicles] = useState([]);
+  const [vehicleLoadError, setVehicleLoadError] = useState(false);
+
+  const [neaRate, setNeaRate] = useState(() => localStorage.getItem('ev_nea_rate') || '');
+  const [editingRate, setEditingRate] = useState(!localStorage.getItem('ev_nea_rate'));
+  const [rateInput, setRateInput] = useState(() => localStorage.getItem('ev_nea_rate') || '');
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
-    chargerType: 'DC_FAST',
-    openingMeter: '',
-    closingMeter: '',
-    unitRate: '',
-    // Percentage mode fields
     vehicleId: '',
     startPercent: '',
     endPercent: '',
-    // Common
     paymentMethod: 'CASH',
-    neaBillRef: '',
     notes: '',
   });
   const [errors, setErrors] = useState({});
@@ -45,32 +43,42 @@ export default function EVEntryPage() {
   }, [businessDate]);
 
   useEffect(() => {
-    api.get('/api/ev-vehicles').then(res => {
-      setVehicles(res.data);
-    }).catch(() => {});
+    api.get('/api/ev-vehicles')
+      .then(res => setVehicles(res.data))
+      .catch(() => setVehicleLoadError(true));
   }, []);
 
-  // Selected vehicle info
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
 
-  // Calculate units and amount for METER mode
-  const unitsCharged = values.openingMeter && values.closingMeter
-    ? Math.max(0, parseFloat(values.closingMeter) - parseFloat(values.openingMeter))
-    : 0;
-  const meterAmount = unitsCharged && values.unitRate
-    ? (unitsCharged * parseFloat(values.unitRate)).toFixed(2)
-    : '0.00';
-
-  // Calculate amount for PERCENTAGE mode
   const startPct = values.startPercent !== '' ? parseFloat(values.startPercent) : NaN;
   const endPct = values.endPercent !== '' ? parseFloat(values.endPercent) : NaN;
-  const percentCharged = (!isNaN(startPct) && !isNaN(endPct))
-    ? Math.max(0, endPct - startPct)
-    : 0;
+  const percentCharged = (!isNaN(startPct) && !isNaN(endPct)) ? Math.max(0, endPct - startPct) : 0;
   const percentRate = selectedVehicle ? parseFloat(selectedVehicle.ratePerPercent) : 0;
-  const percentAmount = (percentCharged * percentRate).toFixed(2);
+  const calculatedAmount = (percentCharged * percentRate).toFixed(2);
 
-  const calculatedAmount = chargingMode === 'PERCENTAGE' ? percentAmount : meterAmount;
+  // Profit calculation using battery capacity from vehicle
+  const batteryKw = selectedVehicle ? parseFloat(selectedVehicle.batteryCapacityKw) : 0;
+  const estimatedKwh = batteryKw > 0 ? (percentCharged / 100) * batteryKw : 0;
+  const neaRateVal = neaRate !== '' ? parseFloat(neaRate) : NaN;
+  const hasProfit = !isNaN(neaRateVal) && neaRateVal > 0 && estimatedKwh > 0;
+  const neaCost = hasProfit ? estimatedKwh * neaRateVal : 0;
+  const profit = hasProfit ? parseFloat(calculatedAmount) - neaCost : 0;
+  const profitMargin = hasProfit && parseFloat(calculatedAmount) > 0
+    ? ((profit / parseFloat(calculatedAmount)) * 100).toFixed(1) : '0.0';
+
+  const saveNeaRate = () => {
+    const val = rateInput.trim();
+    if (val && parseFloat(val) > 0) {
+      setNeaRate(val);
+      localStorage.setItem('ev_nea_rate', val);
+      setEditingRate(false);
+    }
+  };
+
+  const cancelEditRate = () => {
+    setRateInput(neaRate);
+    setEditingRate(false);
+  };
 
   const handleChange = (fieldKey, value) => {
     setValues(prev => ({ ...prev, [fieldKey]: value }));
@@ -82,43 +90,24 @@ export default function EVEntryPage() {
   const validate = () => {
     const newErrors = {};
     if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
-
-    if (chargingMode === 'PERCENTAGE') {
-      if (!values.vehicleId) newErrors.vehicleId = isNepali ? 'गाडी छान्नुहोस्' : 'Select a vehicle';
-      if (!values.startPercent && values.startPercent !== '0') {
-        newErrors.startPercent = isNepali ? 'सुरुको % आवश्यक छ' : 'Start % is required';
-      }
-      if (!values.endPercent) {
-        newErrors.endPercent = isNepali ? 'अन्तिम % आवश्यक छ' : 'End % is required';
-      }
-      const start = parseFloat(values.startPercent);
-      const end = parseFloat(values.endPercent);
-      if (!isNaN(start) && (start < 0 || start > 100)) {
-        newErrors.startPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
-      }
-      if (!isNaN(end) && (end < 0 || end > 100)) {
-        newErrors.endPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
-      }
-      if (!isNaN(start) && !isNaN(end) && end <= start) {
-        newErrors.endPercent = isNepali ? 'अन्तिम % सुरुको भन्दा ठूलो हुनुपर्छ' : 'End % must be greater than start %';
-      }
-    } else {
-      if (!values.chargerType) newErrors.chargerType = 'Charger type is required';
-      if (!values.openingMeter || parseFloat(values.openingMeter) < 0) {
-        newErrors.openingMeter = 'Opening meter reading is required';
-      }
-      if (!values.closingMeter || parseFloat(values.closingMeter) < 0) {
-        newErrors.closingMeter = 'Closing meter reading is required';
-      }
-      if (values.openingMeter && values.closingMeter &&
-          parseFloat(values.closingMeter) < parseFloat(values.openingMeter)) {
-        newErrors.closingMeter = 'Closing meter must be greater than opening';
-      }
-      if (!values.unitRate || parseFloat(values.unitRate) <= 0) {
-        newErrors.unitRate = 'Unit rate must be greater than 0';
-      }
+    if (!values.vehicleId) newErrors.vehicleId = isNepali ? 'गाडी छान्नुहोस्' : 'Select a vehicle';
+    if (!values.startPercent && values.startPercent !== '0') {
+      newErrors.startPercent = isNepali ? 'सुरुको % आवश्यक छ' : 'Start % is required';
     }
-
+    if (!values.endPercent) {
+      newErrors.endPercent = isNepali ? 'अन्तिम % आवश्यक छ' : 'End % is required';
+    }
+    const start = parseFloat(values.startPercent);
+    const end = parseFloat(values.endPercent);
+    if (!isNaN(start) && (start < 0 || start > 100)) {
+      newErrors.startPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
+    }
+    if (!isNaN(end) && (end < 0 || end > 100)) {
+      newErrors.endPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
+    }
+    if (!isNaN(start) && !isNaN(end) && end <= start) {
+      newErrors.endPercent = isNepali ? 'अन्तिम % सुरुको भन्दा ठूलो हुनुपर्छ' : 'End % must be greater than start %';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -129,31 +118,24 @@ export default function EVEntryPage() {
 
     setIsLoading(true);
     try {
-      let customFields;
-      if (chargingMode === 'PERCENTAGE') {
-        customFields = {
-          chargingMode: 'PERCENTAGE',
-          vehicleId: values.vehicleId,
-          vehicleName: selectedVehicle?.vehicleName,
-          batteryCapacityKw: selectedVehicle?.batteryCapacityKw,
-          startPercent: parseFloat(values.startPercent),
-          endPercent: parseFloat(values.endPercent),
-          ratePerPercent: percentRate,
-          percentCharged: percentCharged,
-          paymentMethod: values.paymentMethod,
-        };
-      } else {
-        customFields = {
-          chargingMode: 'METER',
-          chargerType: values.chargerType,
-          openingMeter: parseFloat(values.openingMeter),
-          closingMeter: parseFloat(values.closingMeter),
-          unitRate: parseFloat(values.unitRate),
-          unitsCharged: unitsCharged,
-          paymentMethod: values.paymentMethod,
-          neaBillRef: values.neaBillRef || null,
-        };
-      }
+      const customFields = {
+        chargingMode: 'PERCENTAGE',
+        vehicleId: values.vehicleId,
+        vehicleName: selectedVehicle?.vehicleName,
+        batteryCapacityKw: batteryKw,
+        startPercent: parseFloat(values.startPercent),
+        endPercent: parseFloat(values.endPercent),
+        ratePerPercent: percentRate,
+        percentCharged,
+        estimatedKwh: parseFloat(estimatedKwh.toFixed(3)),
+        paymentMethod: values.paymentMethod,
+        ...(hasProfit && {
+          neaRatePerUnit: neaRateVal,
+          neaCost: parseFloat(neaCost.toFixed(2)),
+          profit: parseFloat(profit.toFixed(2)),
+          profitMargin: parseFloat(profitMargin),
+        }),
+      };
 
       const payload = {
         businessCode: 'ev',
@@ -170,15 +152,10 @@ export default function EVEntryPage() {
       setTimeout(() => {
         setValues({
           transactionDate: businessDate,
-          chargerType: 'DC_FAST',
-          openingMeter: '',
-          closingMeter: '',
-          unitRate: '',
           vehicleId: '',
           startPercent: '',
           endPercent: '',
           paymentMethod: 'CASH',
-          neaBillRef: '',
           notes: '',
         });
         setSuccessMessage('');
@@ -222,6 +199,75 @@ export default function EVEntryPage() {
         </div>
       </header>
 
+      {/* NEA Rate Banner */}
+      <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-green-600 font-semibold">⚡ {isNepali ? 'NEA दर प्रति युनिट' : 'NEA Rate per Unit'}</p>
+            {editingRate ? (
+              <div className="flex items-center gap-2 mt-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">रु</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    autoFocus
+                    value={rateInput}
+                    onChange={(e) => setRateInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveNeaRate(); if (e.key === 'Escape') cancelEditRate(); }}
+                    placeholder="0.00"
+                    className="pl-8 pr-12 py-2 text-xl font-bold border-2 border-green-400 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kWh</span>
+                </div>
+                <button onClick={saveNeaRate} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                  <Check className="w-4 h-4" />
+                </button>
+                {neaRate && (
+                  <button onClick={cancelEditRate} className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-2xl font-black text-gray-900">
+                रु {parseFloat(neaRate).toFixed(2)} <span className="text-sm font-normal text-gray-400">/kWh</span>
+              </p>
+            )}
+          </div>
+          {!editingRate && (
+            <button
+              onClick={() => { setRateInput(neaRate); setEditingRate(true); }}
+              className="flex items-center gap-1 text-sm text-green-600 font-medium px-3 py-2 rounded-lg hover:bg-green-50"
+            >
+              <Pencil className="w-4 h-4" />
+              {isNepali ? 'बदल्नुहोस्' : 'Update'}
+            </button>
+          )}
+        </div>
+        {!neaRate && !editingRate && (
+          <p className="text-xs text-amber-500 mt-1">{isNepali ? 'नाफा देखाउन दर हाल्नुहोस्' : 'Enter rate to see profit calculation'}</p>
+        )}
+      </div>
+
+      {/* Vehicle load error */}
+      {vehicleLoadError && (
+        <div className="mx-4 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+          {isNepali ? 'गाडीहरू लोड गर्न सकिएन। पृष्ठ रिफ्रेस गर्नुहोस्।' : 'Failed to load vehicles. Please refresh the page.'}
+        </div>
+      )}
+
+      {/* No vehicles warning */}
+      {!vehicleLoadError && vehicles.length === 0 && (
+        <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
+          {isAdmin
+            ? (isNepali ? 'पहिले EV गाडी थप्नुहोस्।' : 'No EV vehicles set up yet. Add vehicles first.')
+            : (isNepali ? 'कुनै गाडी छैन। Admin लाई सम्पर्क गर्नुहोस्।' : 'No vehicles available. Contact admin.')}
+        </div>
+      )}
+
       {/* Success Message */}
       {successMessage && (
         <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
@@ -236,36 +282,6 @@ export default function EVEntryPage() {
           {errors.submit}
         </div>
       )}
-
-      {/* Mode Toggle */}
-      <div className="px-4 pt-4">
-        <div className="grid grid-cols-2 gap-2 bg-gray-200 rounded-xl p-1">
-          <button
-            type="button"
-            onClick={() => setChargingMode('METER')}
-            className={`py-3 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
-              chargingMode === 'METER'
-                ? 'bg-white text-green-700 shadow'
-                : 'text-gray-500'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            {isNepali ? 'मिटर रिडिङ' : 'Meter Reading'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setChargingMode('PERCENTAGE')}
-            className={`py-3 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
-              chargingMode === 'PERCENTAGE'
-                ? 'bg-white text-green-700 shadow'
-                : 'text-gray-500'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            {isNepali ? 'प्रतिशत आधारित' : 'Percentage Based'}
-          </button>
-        </div>
-      </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
@@ -282,201 +298,141 @@ export default function EVEntryPage() {
           />
         </div>
 
-        {chargingMode === 'PERCENTAGE' ? (
-          <>
-            {/* Vehicle Dropdown */}
+        {/* Vehicle Dropdown */}
+        <div>
+          <label className="block text-lg font-medium text-gray-700 mb-2">
+            {isNepali ? 'गाडी छान्नुहोस्' : 'Select Vehicle'} <span className="text-red-500">*</span>
+          </label>
+          <SearchableSelect
+            value={values.vehicleId}
+            onChange={(val) => handleChange('vehicleId', val)}
+            options={vehicles.map(v => ({
+              value: v.id,
+              label: v.vehicleName,
+              subtitle: `${v.batteryCapacityKw}KW, ${v.seatingCapacity} ${isNepali ? 'सीट' : 'seats'} - रु ${v.ratePerPercent}/%`,
+            }))}
+            placeholder={isNepali ? '-- गाडी छान्नुहोस् --' : '-- Select Vehicle --'}
+            error={errors.vehicleId}
+            accentColor="green"
+          />
+          {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId}</p>}
+        </div>
+
+        {/* Selected Vehicle Info */}
+        {selectedVehicle && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
+            <Car className="w-8 h-8 text-green-600" />
             <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'गाडी छान्नुहोस्' : 'Select Vehicle'} <span className="text-red-500">*</span>
-              </label>
-              <SearchableSelect
-                value={values.vehicleId}
-                onChange={(val) => handleChange('vehicleId', val)}
-                options={vehicles.map(v => ({
-                  value: v.id,
-                  label: v.vehicleName,
-                  subtitle: `${v.batteryCapacityKw}KW, ${v.seatingCapacity} ${isNepali ? 'सीट' : 'seats'} - रु ${v.ratePerPercent}/%`,
-                }))}
-                placeholder={isNepali ? '-- गाडी छान्नुहोस् --' : '-- Select Vehicle --'}
-                error={errors.vehicleId}
-                accentColor="green"
-              />
-              {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId}</p>}
+              <p className="font-bold text-green-800">{selectedVehicle.vehicleName}</p>
+              <p className="text-sm text-green-600">
+                {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {isNepali ? 'सीट' : 'seats'} | रु {selectedVehicle.ratePerPercent}/{isNepali ? 'प्रतिशत' : '%'}
+              </p>
             </div>
-
-            {/* Selected Vehicle Info */}
-            {selectedVehicle && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-                <Car className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="font-bold text-green-800">{selectedVehicle.vehicleName}</p>
-                  <p className="text-sm text-green-600">
-                    {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {isNepali ? 'सीट' : 'seats'} | रु {selectedVehicle.ratePerPercent}/{isNepali ? 'प्रतिशत' : '%'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Start Percent */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'सुरुको ब्याट्री %' : 'Start Battery %'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  inputMode="numeric"
-                  value={values.startPercent}
-                  onChange={(e) => handleChange('startPercent', e.target.value)}
-                  placeholder="0"
-                  className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.startPercent ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
-              </div>
-              {errors.startPercent && <p className="text-red-500 text-sm mt-1">{errors.startPercent}</p>}
-            </div>
-
-            {/* End Percent */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'अन्तिम ब्याट्री %' : 'End Battery %'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  inputMode="numeric"
-                  value={values.endPercent}
-                  onChange={(e) => handleChange('endPercent', e.target.value)}
-                  placeholder="100"
-                  className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.endPercent ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
-              </div>
-              {errors.endPercent && <p className="text-red-500 text-sm mt-1">{errors.endPercent}</p>}
-            </div>
-
-            {/* Percent Charged - Calculated */}
-            <div className="bg-gray-200 rounded-xl p-4">
-              <p className="text-sm text-gray-600">{isNepali ? 'चार्ज प्रतिशत' : 'Percent Charged'}</p>
-              {(values.startPercent !== '' && values.endPercent !== '' && selectedVehicle) ? (
-                <p className="text-2xl font-bold text-gray-800">{percentCharged}% @ रु {percentRate}/%</p>
-              ) : (
-                <p className="text-2xl font-bold text-gray-400">{isNepali ? 'गाडी र % भर्नुहोस्' : 'Select vehicle & enter %'}</p>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Charger Type */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'चार्जर प्रकार' : 'Charger Type'} <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'DC_FAST', labelEn: 'DC Fast', labelNe: 'DC फास्ट', icon: '⚡' },
-                  { value: 'AC_SLOW', labelEn: 'AC Slow', labelNe: 'AC स्लो', icon: '🔌' },
-                ].map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => handleChange('chargerType', type.value)}
-                    className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                      values.chargerType === type.value
-                        ? 'bg-green-500 text-white border-green-500'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
-                    }`}
-                  >
-                    <span>{type.icon}</span>
-                    {isNepali ? type.labelNe : type.labelEn}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Opening Meter */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'सुरुको मिटर रिडिङ' : 'Opening Meter'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  inputMode="decimal"
-                  value={values.openingMeter}
-                  onChange={(e) => handleChange('openingMeter', e.target.value)}
-                  placeholder="0.00"
-                  className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.openingMeter ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">kWh</span>
-              </div>
-              {errors.openingMeter && <p className="text-red-500 text-sm mt-1">{errors.openingMeter}</p>}
-            </div>
-
-            {/* Closing Meter */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'अन्तिम मिटर रिडिङ' : 'Closing Meter'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  inputMode="decimal"
-                  value={values.closingMeter}
-                  onChange={(e) => handleChange('closingMeter', e.target.value)}
-                  placeholder="0.00"
-                  className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.closingMeter ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">kWh</span>
-              </div>
-              {errors.closingMeter && <p className="text-red-500 text-sm mt-1">{errors.closingMeter}</p>}
-            </div>
-
-            {/* Units Charged - Calculated */}
-            <div className="bg-gray-200 rounded-xl p-4">
-              <p className="text-sm text-gray-600">{isNepali ? 'चार्ज युनिट' : 'Units Charged'}</p>
-              <p className="text-2xl font-bold text-gray-800">{unitsCharged.toFixed(2)} kWh</p>
-            </div>
-
-            {/* Unit Rate */}
-            <div>
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                {isNepali ? 'प्रति युनिट दर' : 'Rate per Unit'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  inputMode="decimal"
-                  value={values.unitRate}
-                  onChange={(e) => handleChange('unitRate', e.target.value)}
-                  placeholder="0.00"
-                  className={`w-full pl-12 pr-16 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.unitRate ? 'border-red-500' : 'border-gray-300'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">/kWh</span>
-              </div>
-              {errors.unitRate && <p className="text-red-500 text-sm mt-1">{errors.unitRate}</p>}
-            </div>
-          </>
+          </div>
         )}
 
-        {/* Calculated Amount */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-          <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
-          <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
+        {/* Start Percent */}
+        <div>
+          <label className="block text-lg font-medium text-gray-700 mb-2">
+            {isNepali ? 'सुरुको ब्याट्री %' : 'Start Battery %'} <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              inputMode="numeric"
+              value={values.startPercent}
+              onChange={(e) => handleChange('startPercent', e.target.value)}
+              placeholder="0"
+              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.startPercent ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
+          </div>
+          {errors.startPercent && <p className="text-red-500 text-sm mt-1">{errors.startPercent}</p>}
         </div>
+
+        {/* End Percent */}
+        <div>
+          <label className="block text-lg font-medium text-gray-700 mb-2">
+            {isNepali ? 'अन्तिम ब्याट्री %' : 'End Battery %'} <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              inputMode="numeric"
+              value={values.endPercent}
+              onChange={(e) => handleChange('endPercent', e.target.value)}
+              placeholder="100"
+              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.endPercent ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
+          </div>
+          {errors.endPercent && <p className="text-red-500 text-sm mt-1">{errors.endPercent}</p>}
+        </div>
+
+        {/* Charging Summary - Calculated */}
+        {(values.startPercent !== '' && values.endPercent !== '' && selectedVehicle) && (
+          <div className="bg-gray-100 rounded-xl p-4 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-gray-500">{isNepali ? 'चार्ज प्रतिशत' : 'Percent Charged'}</p>
+              <p className="text-xl font-bold text-gray-800">{percentCharged}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">{isNepali ? 'अनुमानित kWh' : 'Est. kWh Used'}</p>
+              <p className="text-xl font-bold text-gray-800">{estimatedKwh.toFixed(2)} kWh</p>
+            </div>
+            <div className="col-span-2 text-xs text-gray-400 -mt-1">
+              {percentCharged}% of {batteryKw} kWh battery = {estimatedKwh.toFixed(2)} kWh
+            </div>
+          </div>
+        )}
+
+        {/* Total Amount + Profit Breakdown */}
+        {hasProfit ? (
+          <div className="rounded-xl overflow-hidden border border-green-200">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 text-white flex justify-between items-center">
+              <div>
+                <p className="text-sm opacity-80">{isNepali ? 'कुल रकम (राजस्व)' : 'Total Amount (Revenue)'}</p>
+                <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
+              </div>
+              {profit >= 0 ? <TrendingUp className="w-8 h-8 opacity-60" /> : <TrendingDown className="w-8 h-8 opacity-60" />}
+            </div>
+            <div className="bg-white divide-y divide-gray-100">
+              <div className="flex justify-between items-center px-4 py-3">
+                <div>
+                  <p className="text-sm text-gray-500">{isNepali ? 'NEA खर्च' : 'NEA Cost'}</p>
+                  <p className="text-xs text-gray-400">{estimatedKwh.toFixed(2)} kWh × रु {neaRateVal}/kWh</p>
+                </div>
+                <p className="text-lg font-semibold text-red-500">
+                  − रु {neaCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className={`flex justify-between items-center px-4 py-3 ${profit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div>
+                  <p className={`text-sm font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {isNepali ? 'नाफा' : 'Profit'}
+                  </p>
+                  <p className={`text-xs ${profit >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                    {profitMargin}% {isNepali ? 'मार्जिन' : 'margin'}
+                  </p>
+                </div>
+                <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {profit >= 0 ? '' : '− '}रु {Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
+            <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
+          </div>
+        )}
 
         {/* Payment Method */}
         <div>
@@ -510,22 +466,6 @@ export default function EVEntryPage() {
             </button>
           </div>
         </div>
-
-        {/* NEA Bill Reference (meter mode only) */}
-        {chargingMode === 'METER' && (
-          <div>
-            <label className="block text-lg font-medium text-gray-700 mb-2">
-              {isNepali ? 'NEA बिल सन्दर्भ' : 'NEA Bill Reference'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
-            </label>
-            <input
-              type="text"
-              value={values.neaBillRef}
-              onChange={(e) => handleChange('neaBillRef', e.target.value)}
-              placeholder="NEA-2026-001"
-              className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-        )}
 
         {/* Notes */}
         <div>

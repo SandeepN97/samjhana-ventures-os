@@ -85,7 +85,7 @@ export default function FurnitureCustomerPage() {
       fetchCustomers();
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to save');
+      setFormError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save'));
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +97,7 @@ export default function FurnitureCustomerPage() {
       await api.delete(`/api/furniture/customers/${customer.id}`);
       fetchCustomers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove');
+      alert(err.response?.data?.message || (isNepali ? 'हटाउन सकिएन' : 'Failed to remove'));
     }
   };
 
@@ -196,9 +196,13 @@ export default function FurnitureCustomerPage() {
                         <span className="font-bold">{formatCurrency(order.amount)}</span>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        order.deliveryStatus === 'DELIVERED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        order.deliveryStatus === 'DELIVERED' ? 'bg-green-100 text-green-700' :
+                        order.deliveryStatus === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                        'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {order.deliveryStatus || 'PENDING'}
+                        {order.deliveryStatus === 'DELIVERED' ? (isNepali ? 'डेलिभर' : 'Delivered') :
+                         order.deliveryStatus === 'IN_PROGRESS' ? (isNepali ? 'प्रगतिमा' : 'In Progress') :
+                         (isNepali ? 'बाँकी' : 'Pending')}
                       </span>
                     </div>
                   ))}

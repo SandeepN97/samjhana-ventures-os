@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: samjhana-backend
+    runtime: java
+    plan: free
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -Dspring.profiles.active=prod -jar target/*.jar
+    healthCheckPath: /api/fuel-prices/current
+    envVars:
+      - key: JAVA_VERSION
+        value: 21
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false        # set manually in Render dashboard
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SAMJHANA_CORS_ALLOWED_ORIGINS
+        sync: false        # set to your Vercel URL after deploy

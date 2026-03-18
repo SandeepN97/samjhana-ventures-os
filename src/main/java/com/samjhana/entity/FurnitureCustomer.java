@@ -32,7 +32,7 @@ public class FurnitureCustomer {
 
     private String address;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String notes;
 
     @Builder.Default

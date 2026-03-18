@@ -114,7 +114,7 @@ export default function FurnitureInventoryPage() {
       fetchItems();
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to save');
+      setFormError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save'));
     } finally {
       setSubmitting(false);
     }
@@ -126,7 +126,7 @@ export default function FurnitureInventoryPage() {
       await api.delete(`/api/furniture/items/${item.id}`);
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove');
+      alert(err.response?.data?.message || (isNepali ? 'हटाउन सकिएन' : 'Failed to remove'));
     }
   };
 
@@ -148,6 +148,11 @@ export default function FurnitureInventoryPage() {
   const formatCurrency = (amount) => {
     const num = parseFloat(amount) || 0;
     return `रु ${num.toLocaleString('en-IN')}`;
+  };
+
+  const getCategoryLabel = (value) => {
+    const cat = CATEGORIES.find(c => c.value === value);
+    return cat ? (isNepali ? cat.labelNe : cat.labelEn) : value;
   };
 
   return (
@@ -328,7 +333,7 @@ export default function FurnitureInventoryPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-gray-800">{item.name}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{item.category}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{getCategoryLabel(item.category)}</span>
                     </div>
                     {item.nameNepali && <p className="text-sm text-gray-500 mb-1">{item.nameNepali}</p>}
                     <p className="text-xs text-gray-400 mb-2">SKU: {item.sku}</p>

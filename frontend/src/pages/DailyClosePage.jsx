@@ -52,6 +52,7 @@ export default function DailyClosePage() {
   const [editModal, setEditModal] = useState({ open: false, transaction: null });
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Verification state
   const [verifyNotes, setVerifyNotes] = useState('');
@@ -132,6 +133,7 @@ export default function DailyClosePage() {
   // Edit transaction
   const openEditModal = (t) => {
     const customFields = parseCustomFields(t.customFields);
+    setEditError('');
     setEditForm({
       amount: t.amount,
       transactionType: t.transactionType,
@@ -145,6 +147,7 @@ export default function DailyClosePage() {
   const handleEditSave = async () => {
     const t = editModal.transaction;
     setEditSaving(true);
+    setEditError('');
     try {
       const { amount, transactionType, notes: editNotes, referenceNumber, ...customFields } = editForm;
       await api.put(`/api/transactions/${t.id}`, {
@@ -158,7 +161,7 @@ export default function DailyClosePage() {
       setEditModal({ open: false, transaction: null });
       loadPage();
     } catch (err) {
-      console.error('Failed to update transaction', err);
+      setEditError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save changes'));
     } finally {
       setEditSaving(false);
     }
@@ -328,8 +331,9 @@ export default function DailyClosePage() {
             setEditForm={setEditForm}
             isNepali={isNepali}
             saving={editSaving}
+            error={editError}
             onSave={handleEditSave}
-            onClose={() => setEditModal({ open: false, transaction: null })}
+            onClose={() => { setEditModal({ open: false, transaction: null }); setEditError(''); }}
           />
         )}
       </div>
@@ -511,6 +515,7 @@ function SalesBreakdown({ report, isNepali, formatAmount, formatLiters, formatUn
     { icon: Fuel, color: 'bg-orange-500', label: isNepali ? 'पेट्रोल' : 'Petrol', amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
     { icon: Fuel, color: 'bg-gray-700', label: isNepali ? 'डिजेल' : 'Diesel', amount: report.dieselSales, detail: formatLiters(report.dieselLiters) },
     { icon: Zap, color: 'bg-green-500', label: isNepali ? 'EV' : 'EV', amount: report.evSales, detail: formatUnits(report.evUnits) },
+    { icon: Home, color: 'bg-blue-500', label: isNepali ? 'भाडा' : 'Rent', amount: report.rentalSales, detail: null },
     { icon: Package, color: 'bg-purple-500', label: isNepali ? 'अन्य' : 'Other', amount: report.otherSales, detail: null },
   ];
 
@@ -616,15 +621,30 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
                     {t.transactionType === 'SALE' ? (isNepali ? 'बिक्री' : 'Sale') : t.transactionType}
                   </p>
                   {t.businessCode === 'petrol' && customFields.fuelType && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {customFields.fuelType} - {customFields.liters}L @ रु{customFields.ratePerLiter}/L
-                      {customFields.paymentMethod && ` (${customFields.paymentMethod})`}
-                    </p>
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.fuelType}</span>
+                      <span>· {customFields.liters}L</span>
+                      <span>@ रु{customFields.ratePerLiter}/L</span>
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
                   )}
-                  {t.businessCode === 'ev' && (customFields.openingMeter != null) && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {customFields.openingMeter} → {customFields.closingMeter} kWh @ रु{customFields.unitRate}
-                    </p>
+                  {t.businessCode === 'ev' && customFields.chargingMode === 'PERCENTAGE' && (
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.vehicleName}</span>
+                      <span>· {customFields.startPercent}%→{customFields.endPercent}%</span>
+                      <span>· रु{customFields.ratePerPercent}/%</span>
+                      {customFields.estimatedKwh && <span>· ~{customFields.estimatedKwh} kWh</span>}
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
+                  )}
+                  {t.businessCode === 'rental' && customFields.propertyName && (
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.propertyName}</span>
+                      {customFields.tenantName && <span>· {customFields.tenantName}</span>}
+                      {customFields.rentalMonth && <span>· {customFields.rentalMonth}</span>}
+                      {customFields.paymentType && <span>· {customFields.paymentType}</span>}
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
                   )}
                   {t.notes && <p className="text-xs text-gray-400 mt-1 italic">"{t.notes}"</p>}
                   <p className="text-xs text-gray-400 mt-1">{isNepali ? 'द्वारा:' : 'By:'} {t.enteredByName}</p>
@@ -655,7 +675,7 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
 // Sub-component: Edit Transaction Modal
 // =============================================================================
 
-function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, saving, onSave, onClose }) {
+function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, saving, error, onSave, onClose }) {
   const businessCode = transaction.businessCode;
   const updateField = (key, value) => setEditForm(prev => ({ ...prev, [key]: value }));
 
@@ -722,21 +742,26 @@ function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, sa
 
           {businessCode === 'ev' && (
             <>
+              {editForm.vehicleName && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800 font-medium">
+                  ⚡ {editForm.vehicleName}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सुरु' : 'Opening'}</label>
-                  <input type="number" value={editForm.openingMeter || ''} onChange={(e) => updateField('openingMeter', e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सुरु %' : 'Start %'}</label>
+                  <input type="number" value={editForm.startPercent ?? ''} onChange={(e) => updateField('startPercent', e.target.value)}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'अन्तिम' : 'Closing'}</label>
-                  <input type="number" value={editForm.closingMeter || ''} onChange={(e) => updateField('closingMeter', e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'अन्तिम %' : 'End %'}</label>
+                  <input type="number" value={editForm.endPercent ?? ''} onChange={(e) => updateField('endPercent', e.target.value)}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर' : 'Unit Rate'}</label>
-                <input type="number" value={editForm.unitRate || ''} onChange={(e) => updateField('unitRate', e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर/%' : 'Rate/%'}</label>
+                <input type="number" value={editForm.ratePerPercent ?? ''} onChange={(e) => updateField('ratePerPercent', e.target.value)}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
               </div>
               <div>
@@ -763,6 +788,11 @@ function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, sa
           </div>
         </div>
 
+        {error && (
+          <div className="mx-4 mb-2 bg-red-100 border border-red-300 text-red-700 text-sm px-3 py-2 rounded-lg">
+            {error}
+          </div>
+        )}
         <div className="flex border-t sticky bottom-0 bg-white rounded-b-2xl">
           <button onClick={onClose} className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 transition-colors border-r">
             {isNepali ? 'रद्द' : 'Cancel'}
