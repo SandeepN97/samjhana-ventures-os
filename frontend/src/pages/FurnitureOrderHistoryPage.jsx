@@ -51,7 +51,7 @@ export default function FurnitureOrderHistoryPage() {
         setSelectedOrder({ ...selectedOrder, deliveryStatus: newStatus });
       }
     } catch (err) {
-      alert('Failed to update status');
+      alert(isNepali ? 'स्थिति अपडेट गर्न सकिएन' : 'Failed to update status');
     } finally {
       setUpdatingStatus(false);
     }
