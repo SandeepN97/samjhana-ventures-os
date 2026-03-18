@@ -297,7 +297,11 @@ export default function ReportsPage() {
                 {businessBreakdown.map((business) => {
                   const Icon = business.icon;
                   return (
-                    <div key={business.code} className="p-4">
+                    <button
+                      key={business.code}
+                      onClick={() => navigate('/records', { state: { filter: business.code } })}
+                      className="w-full p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                           <div className={`${business.color} p-2 rounded-lg`}>
@@ -312,10 +316,13 @@ export default function ReportsPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`font-bold ${business.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {business.net >= 0 ? '+' : '-'}{formatAmount(business.net)}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className={`font-bold ${business.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {business.net >= 0 ? '+' : '-'}{formatAmount(business.net)}
+                            </p>
+                          </div>
+                          <span className="text-gray-300">›</span>
                         </div>
                       </div>
                       {business.expense > 0 && (
@@ -324,7 +331,7 @@ export default function ReportsPage() {
                           <span className="text-red-600">−{formatAmount(business.expense)}</span>
                         </div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
