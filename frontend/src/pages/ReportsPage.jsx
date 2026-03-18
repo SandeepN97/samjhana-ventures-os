@@ -318,14 +318,12 @@ export default function ReportsPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-4 text-sm">
-                        <span className="text-green-600">
-                          +{formatAmount(business.income)}
-                        </span>
-                        <span className="text-red-600">
-                          -{formatAmount(business.expense)}
-                        </span>
-                      </div>
+                      {business.expense > 0 && (
+                        <div className="flex gap-4 text-sm">
+                          <span className="text-green-600">+{formatAmount(business.income)}</span>
+                          <span className="text-red-600">−{formatAmount(business.expense)}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
