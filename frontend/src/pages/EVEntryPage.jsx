@@ -47,17 +47,28 @@ export default function EVEntryPage() {
     api.get('/api/ev-vehicles')
       .then(res => setVehicles(res.data))
       .catch(() => setVehicleLoadError(true));
-    api.get('/api/settings/nea_rate')
+    // Load NEA rate from backend; fall back to localStorage if backend fails
+    const cachedRate = localStorage.getItem('ev_nea_rate') || '';
+    api.get('/api/settings/nea_rate', { skipAuthRedirect: true })
       .then(res => {
-        const val = res.data.value;
+        const val = res.data.value || cachedRate;
         if (val) {
           setNeaRate(val);
           setRateInput(val);
+          localStorage.setItem('ev_nea_rate', val);
         } else {
           setEditingRate(canEditNeaRate);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Backend unavailable — use cached value from localStorage
+        if (cachedRate) {
+          setNeaRate(cachedRate);
+          setRateInput(cachedRate);
+        } else {
+          setEditingRate(canEditNeaRate);
+        }
+      });
   }, []);
 
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
@@ -81,13 +92,16 @@ export default function EVEntryPage() {
   const saveNeaRate = async () => {
     const val = rateInput.trim();
     if (!val || parseFloat(val) <= 0) return;
+    // Always save to localStorage immediately so the rate is never lost
+    localStorage.setItem('ev_nea_rate', val);
+    setNeaRate(val);
+    setEditingRate(false);
+    // Also persist to backend (best-effort, never causes logout)
     setRateSaving(true);
     try {
-      await api.put('/api/settings/nea_rate', { value: val });
-      setNeaRate(val);
-      setEditingRate(false);
+      await api.put('/api/settings/nea_rate', { value: val }, { skipAuthRedirect: true });
     } catch (err) {
-      // silently fall back — rate not saved to server
+      // Backend save failed — rate is still saved in localStorage
     } finally {
       setRateSaving(false);
     }
