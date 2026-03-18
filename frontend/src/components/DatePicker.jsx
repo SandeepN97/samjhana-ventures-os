@@ -15,7 +15,7 @@ const MONTH_NAMES_EN = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const DAY_HEADERS_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const DAY_HEADERS_NE = ['आ', 'सो', 'मं', 'बु', 'बि', 'शु', 'श'];
+const DAY_HEADERS_NE = ['आइत', 'सोम', 'मंग', 'बुध', 'बिही', 'शुक्र', 'शनि'];
 
 function formatAdDisplay(dateStr) {
   if (!dateStr) return '';
@@ -124,7 +124,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg p-2.5 min-w-[280px]">
+        <div className="absolute z-50 mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg p-2.5 min-w-[300px]">
           {isNepali ? (
             // BS Calendar
             <>
@@ -141,7 +141,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
               </div>
               <div className="grid grid-cols-7 mb-0.5">
                 {DAY_HEADERS_NE.map((d, i) => (
-                  <div key={i} className="text-center text-[11px] font-medium text-gray-400 py-0.5">{d}</div>
+                  <div key={i} className="text-center text-[10px] font-medium text-gray-400 py-0.5 truncate px-0.5">{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-0.5">
