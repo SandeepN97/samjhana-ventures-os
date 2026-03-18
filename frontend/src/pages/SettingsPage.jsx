@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [showNewUserPw, setShowNewUserPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
 
@@ -603,13 +604,19 @@ export default function SettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {isNepali ? 'पासवर्ड' : 'Password'} *
                         </label>
-                        <input
-                          type="password"
-                          value={newUser.password}
-                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                          className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                          placeholder={isNepali ? 'पासवर्ड' : 'Password'}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showNewUserPw ? 'text' : 'password'}
+                            value={newUser.password}
+                            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
+                            placeholder={isNepali ? 'पासवर्ड' : 'Password'}
+                          />
+                          <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                            onClick={() => setShowNewUserPw(!showNewUserPw)}>
+                            {showNewUserPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
                       </div>
 
                       <div>
