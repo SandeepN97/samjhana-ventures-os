@@ -169,37 +169,42 @@ export default function PetrolEntryPage() {
       </header>
 
       {/* Today's Prices Banner */}
-      <div className={`mx-4 mt-4 grid gap-3 ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
-        <div className="bg-white rounded-xl shadow-sm border-t-4 border-red-500 px-2 py-3 flex flex-col items-center min-w-0">
+      <div className="mx-4 mt-4 flex gap-3">
+        {/* Petrol */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-red-500 px-3 py-3 flex flex-col items-center min-w-0">
           <p className="text-xs font-bold text-red-600">⛽ {t('petrol.petrol')}</p>
-          <p className="text-lg font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
+          <p className="text-xl font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
             {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
           </p>
           <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border-t-4 border-yellow-500 px-2 py-3 flex flex-col items-center min-w-0">
+        {/* Diesel */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-yellow-500 px-3 py-3 flex flex-col items-center min-w-0">
           <p className="text-xs font-bold text-yellow-600">🛢️ {t('petrol.diesel')}</p>
-          <p className="text-lg font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
+          <p className="text-xl font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
             {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
           </p>
           <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
         </div>
-        <button
-          onClick={() => navigate('/fuel-prices')}
-          className="bg-white rounded-xl shadow-sm border-t-4 border-orange-400 px-2 py-3 flex flex-col items-center justify-center gap-1 text-orange-600 font-medium hover:bg-orange-50 active:scale-95 transition-all"
-        >
-          <Settings className="w-5 h-5" />
-          <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
-        </button>
-        {isAdmin && (
+        {/* Prices + Orders stacked in one column */}
+        <div className="flex flex-col gap-3">
           <button
-            onClick={() => navigate('/fuel-orders')}
-            className="bg-white rounded-xl shadow-sm border-t-4 border-blue-400 px-2 py-3 flex flex-col items-center justify-center gap-1 text-blue-600 font-medium hover:bg-blue-50 active:scale-95 transition-all"
+            onClick={() => navigate('/fuel-prices')}
+            className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-orange-400 px-3 py-2 flex flex-col items-center justify-center gap-0.5 text-orange-600 hover:bg-orange-50 active:scale-95 transition-all"
           >
-            <Truck className="w-5 h-5" />
-            <span className="text-xs font-bold">{t('petrol.ordersBtn')}</span>
+            <Settings className="w-4 h-4" />
+            <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
           </button>
-        )}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/fuel-orders')}
+              className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-blue-400 px-3 py-2 flex flex-col items-center justify-center gap-0.5 text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+            >
+              <Truck className="w-4 h-4" />
+              <span className="text-xs font-bold">{t('petrol.ordersBtn')}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Success Message */}
