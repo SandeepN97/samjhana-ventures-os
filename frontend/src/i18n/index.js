@@ -582,6 +582,9 @@ const resources = {
         enteredBy: 'By:',
         all: 'All',
         litersShort: 'L',
+        dateAll: 'All Time',
+        dateWeek: 'This Week',
+        dateMonth: 'This Month',
       },
 
       // Reports
@@ -1328,6 +1331,9 @@ const resources = {
         enteredBy: 'प्रविष्टकर्ता:',
         all: 'सबै',
         litersShort: 'लि.',
+        dateAll: 'सबै समय',
+        dateWeek: 'यो हप्ता',
+        dateMonth: 'यो महिना',
       },
 
       // Reports

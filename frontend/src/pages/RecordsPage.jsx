@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet } from 'lucide-react';
+import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+
+const today = () => new Date().toISOString().split('T')[0];
+const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
+const startOfWeek = () => {
+  const d = new Date();
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().split('T')[0];
+};
+const startOfMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; };
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-red-500', label: 'Petrol', labelNe: 'पेट्रोल' },
@@ -24,6 +34,8 @@ export default function RecordsPage() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchTransactions();
@@ -65,6 +77,23 @@ export default function RecordsPage() {
     return `रु ${parseFloat(amount).toLocaleString('en-IN')}`;
   };
 
+  const applyDatePreset = (preset) => {
+    if (preset === 'today')  { setDateFrom(today());      setDateTo(today()); }
+    if (preset === 'week')   { setDateFrom(startOfWeek()); setDateTo(today()); }
+    if (preset === 'month')  { setDateFrom(startOfMonth()); setDateTo(today()); }
+    if (preset === 'all')    { setDateFrom('');            setDateTo(''); }
+  };
+
+  const clearDates = () => { setDateFrom(''); setDateTo(''); };
+
+  const activeDatePreset = () => {
+    if (!dateFrom && !dateTo) return 'all';
+    if (dateFrom === today() && dateTo === today()) return 'today';
+    if (dateFrom === startOfWeek() && dateTo === today()) return 'week';
+    if (dateFrom === startOfMonth() && dateTo === today()) return 'month';
+    return 'custom';
+  };
+
   const filteredTransactions = transactions.filter(txn => {
     // Filter by fuel type for petrol/diesel
     if (filter === 'petrol') {
@@ -72,6 +101,10 @@ export default function RecordsPage() {
     } else if (filter === 'diesel') {
       if (txn.businessCode !== 'petrol' || txn.customFields?.fuelType !== 'diesel') return false;
     }
+
+    // Date range filter
+    if (dateFrom && txn.transactionDate < dateFrom) return false;
+    if (dateTo && txn.transactionDate > dateTo) return false;
 
     // Search filter
     if (!searchTerm) return true;
@@ -131,6 +164,53 @@ export default function RecordsPage() {
             placeholder={t('common.search')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
           />
+        </div>
+      </div>
+
+      {/* Date Filter */}
+      <div className="px-4 py-3 bg-white border-b space-y-2">
+        {/* Quick presets */}
+        <div className="flex gap-2">
+          {[
+            { key: 'all',   label: t('records.dateAll') },
+            { key: 'today', label: t('common.today') },
+            { key: 'week',  label: t('records.dateWeek') },
+            { key: 'month', label: t('records.dateMonth') },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => applyDatePreset(key)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                activeDatePreset() === key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* Custom date range */}
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          <span className="text-gray-400 text-sm">→</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={clearDates} className="p-1 text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
