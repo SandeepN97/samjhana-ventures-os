@@ -621,26 +621,30 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
                     {t.transactionType === 'SALE' ? (isNepali ? 'बिक्री' : 'Sale') : t.transactionType}
                   </p>
                   {t.businessCode === 'petrol' && customFields.fuelType && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {customFields.fuelType} - {customFields.liters}L @ रु{customFields.ratePerLiter}/L
-                      {customFields.paymentMethod && ` (${customFields.paymentMethod})`}
-                    </p>
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.fuelType}</span>
+                      <span>· {customFields.liters}L</span>
+                      <span>@ रु{customFields.ratePerLiter}/L</span>
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
                   )}
                   {t.businessCode === 'ev' && customFields.chargingMode === 'PERCENTAGE' && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {customFields.vehicleName} · {customFields.startPercent}% → {customFields.endPercent}% ({customFields.percentCharged}% @ रु{customFields.ratePerPercent}/%)
-                      {customFields.estimatedKwh ? ` · ~${customFields.estimatedKwh} kWh` : ''}
-                      {customFields.paymentMethod ? ` · ${customFields.paymentMethod}` : ''}
-                    </p>
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.vehicleName}</span>
+                      <span>· {customFields.startPercent}%→{customFields.endPercent}%</span>
+                      <span>· रु{customFields.ratePerPercent}/%</span>
+                      {customFields.estimatedKwh && <span>· ~{customFields.estimatedKwh} kWh</span>}
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
                   )}
                   {t.businessCode === 'rental' && customFields.propertyName && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {customFields.propertyName}
-                      {customFields.tenantName ? ` · ${customFields.tenantName}` : ''}
-                      {customFields.rentalMonth ? ` · ${customFields.rentalMonth}` : ''}
-                      {customFields.paymentType ? ` · ${customFields.paymentType}` : ''}
-                      {customFields.paymentMethod ? ` (${customFields.paymentMethod})` : ''}
-                    </p>
+                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-1">
+                      <span>{customFields.propertyName}</span>
+                      {customFields.tenantName && <span>· {customFields.tenantName}</span>}
+                      {customFields.rentalMonth && <span>· {customFields.rentalMonth}</span>}
+                      {customFields.paymentType && <span>· {customFields.paymentType}</span>}
+                      {customFields.paymentMethod && <span>· {customFields.paymentMethod}</span>}
+                    </div>
                   )}
                   {t.notes && <p className="text-xs text-gray-400 mt-1 italic">"{t.notes}"</p>}
                   <p className="text-xs text-gray-400 mt-1">{isNepali ? 'द्वारा:' : 'By:'} {t.enteredByName}</p>

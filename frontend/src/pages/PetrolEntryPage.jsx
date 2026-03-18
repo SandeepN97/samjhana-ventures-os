@@ -171,7 +171,7 @@ export default function PetrolEntryPage() {
 
       {/* Today's Prices Banner */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-6">
             <div className="text-center">
               <p className="text-sm text-red-500 font-semibold">⛽ {isNepali ? 'पेट्रोल' : 'Petrol'}</p>

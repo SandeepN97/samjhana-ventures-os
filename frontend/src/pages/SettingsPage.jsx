@@ -701,19 +701,17 @@ export default function SettingsPage() {
                 ) : (
                   <div className="divide-y">
                     {users.map((u) => (
-                      <div key={u.id} className="px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <span className="font-bold text-gray-600">
-                              {u.fullName?.charAt(0) || u.username?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-800">{u.fullName || u.username}</p>
-                            <p className="text-xs text-gray-500">@{u.username}</p>
-                          </div>
+                      <div key={u.id} className="px-4 py-3 flex items-center gap-3">
+                        <div className="w-10 h-10 flex-shrink-0 bg-gray-200 rounded-full flex items-center justify-center">
+                          <span className="font-bold text-gray-600">
+                            {u.fullName?.charAt(0) || u.username?.charAt(0) || '?'}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 truncate">{u.fullName || u.username}</p>
+                          <p className="text-xs text-gray-500 truncate">@{u.username}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <span className={`text-xs px-2 py-1 rounded-full ${getRoleColor(u.role)}`}>
                             {getRoleLabel(u.role)}
                           </span>
