@@ -169,44 +169,37 @@ export default function PetrolEntryPage() {
       </header>
 
       {/* Today's Prices Banner */}
-      <div className="mx-4 mt-4 flex gap-3">
-        {/* Price Cards */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-          <div className="bg-white rounded-xl shadow-sm border-l-4 border-red-500 px-4 py-3 min-w-0">
-            <p className="text-xs font-bold text-red-600">⛽ {t('petrol.petrol')}</p>
-            <p className="text-2xl font-black text-gray-900 break-words leading-tight mt-0.5">
-              {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
-            </p>
-            <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border-l-4 border-yellow-500 px-4 py-3 min-w-0">
-            <p className="text-xs font-bold text-yellow-600">🛢️ {t('petrol.diesel')}</p>
-            <p className="text-2xl font-black text-gray-900 break-words leading-tight mt-0.5">
-              {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
-            </p>
-            <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
-          </div>
+      <div className={`mx-4 mt-4 grid gap-3 ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <div className="bg-white rounded-xl shadow-sm border-t-4 border-red-500 px-2 py-3 flex flex-col items-center min-w-0">
+          <p className="text-xs font-bold text-red-600">⛽ {t('petrol.petrol')}</p>
+          <p className="text-lg font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
+            {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
+          </p>
+          <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
         </div>
-
-        {/* Action Buttons stacked */}
-        <div className="flex flex-col gap-3">
-          {isAdmin && (
-            <button
-              onClick={() => navigate('/fuel-orders')}
-              className="flex flex-col items-center justify-center gap-1 text-blue-600 font-medium bg-white rounded-xl shadow-sm px-4 py-3 hover:bg-blue-50 active:scale-95 transition-all flex-1"
-            >
-              <Truck className="w-5 h-5" />
-              <span className="text-xs">{t('petrol.ordersBtn')}</span>
-            </button>
-          )}
+        <div className="bg-white rounded-xl shadow-sm border-t-4 border-yellow-500 px-2 py-3 flex flex-col items-center min-w-0">
+          <p className="text-xs font-bold text-yellow-600">🛢️ {t('petrol.diesel')}</p>
+          <p className="text-lg font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
+            {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
+          </p>
+          <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
+        </div>
+        <button
+          onClick={() => navigate('/fuel-prices')}
+          className="bg-white rounded-xl shadow-sm border-t-4 border-orange-400 px-2 py-3 flex flex-col items-center justify-center gap-1 text-orange-600 font-medium hover:bg-orange-50 active:scale-95 transition-all"
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
+        </button>
+        {isAdmin && (
           <button
-            onClick={() => navigate('/fuel-prices')}
-            className="flex flex-col items-center justify-center gap-1 text-orange-600 font-medium bg-white rounded-xl shadow-sm px-4 py-3 hover:bg-orange-50 active:scale-95 transition-all flex-1"
+            onClick={() => navigate('/fuel-orders')}
+            className="bg-white rounded-xl shadow-sm border-t-4 border-blue-400 px-2 py-3 flex flex-col items-center justify-center gap-1 text-blue-600 font-medium hover:bg-blue-50 active:scale-95 transition-all"
           >
-            <Settings className="w-5 h-5" />
-            <span className="text-xs">{t('petrol.pricesBtn')}</span>
+            <Truck className="w-5 h-5" />
+            <span className="text-xs font-bold">{t('petrol.ordersBtn')}</span>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Success Message */}
