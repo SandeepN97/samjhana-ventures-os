@@ -303,14 +303,6 @@ export default function PetrolEntryPage() {
               placeholder="0.00"
               className="w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed select-none"
             />
-            <button
-              type="button"
-              onClick={() => navigate('/fuel-prices')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-orange-600 font-medium bg-orange-50 border border-orange-200 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors"
-            >
-              <Settings className="w-3 h-3" />
-              {t('petrol.changePrice')}
-            </button>
           </div>
           {errors.ratePerLiter && <p className="text-red-500 text-sm mt-1">{errors.ratePerLiter}</p>}
         </div>
