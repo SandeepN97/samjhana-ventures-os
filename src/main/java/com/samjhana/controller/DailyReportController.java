@@ -96,6 +96,7 @@ public class DailyReportController {
         BigDecimal dieselLiters = toBigDecimal(summary.get("dieselLiters"));
         BigDecimal evSales = toBigDecimal(summary.get("evSales"));
         BigDecimal evUnits = toBigDecimal(summary.get("evUnits"));
+        BigDecimal rentalSales = toBigDecimal(summary.get("rentalSales"));
         BigDecimal otherSales = toBigDecimal(summary.get("otherSales"));
         BigDecimal totalSystemSales = toBigDecimal(summary.get("totalSystemSales"));
         BigDecimal totalCashSales = toBigDecimal(summary.get("totalCashSales"));
@@ -111,6 +112,7 @@ public class DailyReportController {
                 .dieselLiters(dieselLiters)
                 .evSales(evSales)
                 .evUnits(evUnits)
+                .rentalSales(rentalSales)
                 .otherSales(otherSales)
                 .totalSystemSales(totalSystemSales)
                 .totalCashSales(totalCashSales)
@@ -200,6 +202,7 @@ public class DailyReportController {
         BigDecimal dieselLiters = BigDecimal.ZERO;
         BigDecimal evSales = BigDecimal.ZERO;
         BigDecimal evUnits = BigDecimal.ZERO;
+        BigDecimal rentalSales = BigDecimal.ZERO;
         BigDecimal otherSales = BigDecimal.ZERO;
         BigDecimal totalCashSales = BigDecimal.ZERO;
         BigDecimal totalBankSales = BigDecimal.ZERO;
@@ -240,12 +243,14 @@ public class DailyReportController {
                     BigDecimal closing = toBigDecimal(fields.get("closingMeter"));
                     evUnits = evUnits.add(closing.subtract(opening));
                 }
+            } else if ("rental".equals(businessCode)) {
+                rentalSales = rentalSales.add(amount);
             } else {
                 otherSales = otherSales.add(amount);
             }
         }
 
-        BigDecimal totalSystemSales = petrolSales.add(dieselSales).add(evSales).add(otherSales);
+        BigDecimal totalSystemSales = petrolSales.add(dieselSales).add(evSales).add(rentalSales).add(otherSales);
 
         // Check if today is already closed
         boolean isClosed = dailyReportRepository.findByReportDate(date).isPresent();
@@ -258,6 +263,7 @@ public class DailyReportController {
         result.put("dieselLiters", dieselLiters);
         result.put("evSales", evSales);
         result.put("evUnits", evUnits);
+        result.put("rentalSales", rentalSales);
         result.put("otherSales", otherSales);
         result.put("totalSystemSales", totalSystemSales);
         result.put("totalCashSales", totalCashSales);
@@ -302,6 +308,7 @@ public class DailyReportController {
         map.put("dieselLiters", report.getDieselLiters());
         map.put("evSales", report.getEvSales());
         map.put("evUnits", report.getEvUnits());
+        map.put("rentalSales", report.getRentalSales() != null ? report.getRentalSales() : BigDecimal.ZERO);
         map.put("otherSales", report.getOtherSales());
         map.put("totalSystemSales", report.getTotalSystemSales());
         map.put("totalCashSales", report.getTotalCashSales());

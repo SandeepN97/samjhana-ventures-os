@@ -515,6 +515,7 @@ function SalesBreakdown({ report, isNepali, formatAmount, formatLiters, formatUn
     { icon: Fuel, color: 'bg-orange-500', label: isNepali ? 'पेट्रोल' : 'Petrol', amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
     { icon: Fuel, color: 'bg-gray-700', label: isNepali ? 'डिजेल' : 'Diesel', amount: report.dieselSales, detail: formatLiters(report.dieselLiters) },
     { icon: Zap, color: 'bg-green-500', label: isNepali ? 'EV' : 'EV', amount: report.evSales, detail: formatUnits(report.evUnits) },
+    { icon: Home, color: 'bg-blue-500', label: isNepali ? 'भाडा' : 'Rent', amount: report.rentalSales, detail: null },
     { icon: Package, color: 'bg-purple-500', label: isNepali ? 'अन्य' : 'Other', amount: report.otherSales, detail: null },
   ];
 
@@ -630,6 +631,15 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
                       {customFields.vehicleName} · {customFields.startPercent}% → {customFields.endPercent}% ({customFields.percentCharged}% @ रु{customFields.ratePerPercent}/%)
                       {customFields.estimatedKwh ? ` · ~${customFields.estimatedKwh} kWh` : ''}
                       {customFields.paymentMethod ? ` · ${customFields.paymentMethod}` : ''}
+                    </p>
+                  )}
+                  {t.businessCode === 'rental' && customFields.propertyName && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {customFields.propertyName}
+                      {customFields.tenantName ? ` · ${customFields.tenantName}` : ''}
+                      {customFields.rentalMonth ? ` · ${customFields.rentalMonth}` : ''}
+                      {customFields.paymentType ? ` · ${customFields.paymentType}` : ''}
+                      {customFields.paymentMethod ? ` (${customFields.paymentMethod})` : ''}
                     </p>
                   )}
                   {t.notes && <p className="text-xs text-gray-400 mt-1 italic">"{t.notes}"</p>}
