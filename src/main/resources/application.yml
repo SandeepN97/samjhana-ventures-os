@@ -163,14 +163,21 @@ spring:
     activate:
       on-profile: prod
 
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
   h2:
     console:
       enabled: false
 
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
 logging:
   level:
