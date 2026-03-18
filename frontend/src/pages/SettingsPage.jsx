@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showNewUserPw, setShowNewUserPw] = useState(false);
+  const [showNewUserPwConfirm, setShowNewUserPwConfirm] = useState(false);
+  const [newUserPasswordConfirm, setNewUserPasswordConfirm] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
 
@@ -98,12 +100,17 @@ export default function SettingsPage() {
       setUserError(isNepali ? 'पासवर्ड कम्तिमा ३ अक्षर हुनुपर्छ' : 'Password must be at least 3 characters');
       return;
     }
+    if (newUser.password !== newUserPasswordConfirm) {
+      setUserError(isNepali ? 'पासवर्ड मेल खाएन' : 'Passwords do not match');
+      return;
+    }
 
     setSubmitting(true);
     try {
       await api.post('/api/admin/users', newUser);
       setUserSuccess(isNepali ? 'प्रयोगकर्ता सिर्जना भयो!' : 'User created successfully!');
       setNewUser({ username: '', password: '', fullName: '', fullNameNepali: '', role: 'STAFF' });
+      setNewUserPasswordConfirm('');
       fetchUsers();
       setTimeout(() => {
         setShowUserForm(false);
@@ -615,6 +622,25 @@ export default function SettingsPage() {
                           <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                             onClick={() => setShowNewUserPw(!showNewUserPw)}>
                             {showNewUserPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {isNepali ? 'पासवर्ड पुष्टि गर्नुहोस्' : 'Confirm Password'} *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showNewUserPwConfirm ? 'text' : 'password'}
+                            value={newUserPasswordConfirm}
+                            onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
+                            className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
+                            placeholder={isNepali ? 'पासवर्ड दोहोर्याउनुहोस्' : 'Repeat password'}
+                          />
+                          <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                            onClick={() => setShowNewUserPwConfirm(!showNewUserPwConfirm)}>
+                            {showNewUserPwConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
                       </div>
