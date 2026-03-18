@@ -82,7 +82,8 @@ export default function QuickActionButtons() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
   const isStaff = user.role === 'STAFF';
-  const canViewAnalytics = user.role === 'ADMIN' || user.role === 'SON';
+  const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canViewAnalytics = canManage;
 
   const visibleButtons = isStaff
     ? BUSINESS_BUTTONS.filter((b) => b.code !== 'loan')

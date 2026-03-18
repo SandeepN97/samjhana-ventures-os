@@ -11,7 +11,7 @@ export default function FuelOrderPage() {
   const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   // Redirect non-admins
   if (!isAdmin) {

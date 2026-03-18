@@ -70,9 +70,9 @@ public class AdminController {
             role = "STAFF";
         }
         role = role.toUpperCase();
-        if (!List.of("ADMIN", "DAD", "SON", "STAFF").contains(role)) {
+        if (!List.of("ADMIN", "MANAGER", "STAFF").contains(role)) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Invalid role. Must be ADMIN, DAD, SON, or STAFF"));
+                    .body(Map.of("message", "Invalid role. Must be ADMIN, MANAGER, or STAFF"));
         }
 
         // Create user

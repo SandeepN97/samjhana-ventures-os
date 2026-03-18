@@ -19,7 +19,7 @@ export default function ReportsPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isStaff = user.role === 'STAFF';
-  const canViewProfit = user.role === 'ADMIN' || user.role === 'SON';
+  const canViewProfit = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);

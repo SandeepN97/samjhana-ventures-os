@@ -10,7 +10,7 @@ export default function FuelPricePage() {
   const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [currentPrices, setCurrentPrices] = useState({ petrol: null, diesel: null });
   const [priceHistory, setPriceHistory] = useState([]);

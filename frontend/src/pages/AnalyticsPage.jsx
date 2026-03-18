@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isStaff = user.role === 'STAFF';
-  const canViewProfit = user.role === 'ADMIN' || user.role === 'SON';
+  const canViewProfit = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [period, setPeriod] = useState(isStaff ? 'today' : 'week');
   const [data, setData] = useState(null);
@@ -223,7 +223,7 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* Profit Breakdown — ADMIN/SON only */}
+          {/* Profit Breakdown — ADMIN/MANAGER only */}
           {canViewProfit && data.businesses && (
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
@@ -280,7 +280,7 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          {/* Loan Portfolio — ADMIN/SON only */}
+          {/* Loan Portfolio — ADMIN/MANAGER only */}
           {canViewProfit && data.loanPortfolio && (
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">

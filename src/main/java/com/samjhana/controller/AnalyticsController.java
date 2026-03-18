@@ -55,8 +55,7 @@ public class AnalyticsController {
                 .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
                 .toList();
 
-        boolean canViewProfit = user != null &&
-                ("ADMIN".equals(user.getRole().name()) || "SON".equals(user.getRole().name()));
+        boolean canViewProfit = user != null && user.canManage();
 
         // Revenue types: SALE, INCOME, PAYMENT
         // Expense types: PURCHASE, EXPENSE, DISBURSEMENT

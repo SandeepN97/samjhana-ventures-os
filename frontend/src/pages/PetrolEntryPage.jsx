@@ -12,7 +12,7 @@ export default function PetrolEntryPage() {
   const location = useLocation();
   const { t } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
 
   const [values, setValues] = useState({

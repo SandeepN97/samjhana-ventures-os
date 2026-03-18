@@ -31,7 +31,7 @@ public class SystemSettingController {
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal User user) {
 
-        if (user == null || (user.getRole() != User.UserRole.ADMIN && user.getRole() != User.UserRole.SON)) {
+        if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required"));
         }

@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * User Entity - Represents system users (Dad and Son).
+ * User Entity.
  * 
  * Role-based access:
- * - DAD: Can create transactions, view dashboards, take photos
- * - SON: Can review, approve, categorize, view analytics
- * - ADMIN: Full system access
+ * - STAFF: Data entry only (no loans, no price changes, no reports)
+ * - MANAGER: Full entry + reports + approvals + price changes
+ * - ADMIN: Full access including user management
  * 
  * Implements Spring Security's UserDetails for authentication.
  */
@@ -83,10 +83,9 @@ public class User implements UserDetails {
      * User roles with specific permissions
      */
     public enum UserRole {
-        DAD,    // Primary data entry role - can create transactions
-        SON,    // Review and approval role - can approve/reject
-        ADMIN,  // Full access - system administration
-        STAFF   // Limited access - can only sell, no price updates
+        STAFF,    // Data entry only — no loans, no price changes, no reports
+        MANAGER,  // Full entry + reports + approvals + price changes
+        ADMIN     // Full access including user management
     }
 
     // =========================================================================
@@ -127,24 +126,16 @@ public class User implements UserDetails {
     // Helper Methods
     // =========================================================================
 
-    public boolean isDad() {
-        return role == UserRole.DAD;
-    }
-
-    public boolean isSon() {
-        return role == UserRole.SON;
+    public boolean isManager() {
+        return role == UserRole.MANAGER;
     }
 
     public boolean isAdmin() {
         return role == UserRole.ADMIN;
     }
 
-    public boolean canApprove() {
-        return role == UserRole.SON || role == UserRole.ADMIN;
-    }
-
-    public boolean canCreateTransaction() {
-        return true;  // All roles can create transactions
+    public boolean canManage() {
+        return role == UserRole.MANAGER || role == UserRole.ADMIN;
     }
 
     /**

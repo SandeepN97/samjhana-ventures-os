@@ -212,8 +212,7 @@ export default function SettingsPage() {
   const getRoleLabel = (role) => {
     const labels = {
       ADMIN: t('settings.roleAdmin'),
-      DAD: t('settings.roleDad'),
-      SON: t('settings.roleSon'),
+      MANAGER: t('settings.roleManager'),
       STAFF: t('settings.roleStaff')
     };
     return labels[role] || role;
@@ -222,8 +221,7 @@ export default function SettingsPage() {
   const getRoleColor = (role) => {
     const colors = {
       ADMIN: 'bg-red-100 text-red-700',
-      DAD: 'bg-blue-100 text-blue-700',
-      SON: 'bg-green-100 text-green-700',
+      MANAGER: 'bg-green-100 text-green-700',
       STAFF: 'bg-gray-100 text-gray-700'
     };
     return colors[role] || 'bg-gray-100 text-gray-700';
@@ -668,8 +666,7 @@ export default function SettingsPage() {
                           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                         >
                           <option value="STAFF">{t('settings.staffRoleLabel')}</option>
-                          <option value="DAD">{t('settings.dadRoleLabel')}</option>
-                          <option value="SON">{t('settings.sonRoleLabel')}</option>
+                          <option value="MANAGER">{t('settings.managerRoleLabel')}</option>
                           <option value="ADMIN">{t('settings.adminRoleLabel')}</option>
                         </select>
                       </div>

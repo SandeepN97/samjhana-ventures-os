@@ -13,8 +13,8 @@ export default function EVEntryPage() {
   const { t } = useTranslation();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
-  const canEditNeaRate = user.role === 'ADMIN' || user.role === 'SON';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
 
   const [vehicles, setVehicles] = useState([]);
