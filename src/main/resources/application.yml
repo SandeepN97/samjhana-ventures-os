@@ -14,7 +14,6 @@ spring:
   # =============================================================================
   datasource:
     url: jdbc:h2:file:./data/samjhana-db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
-    driver-class-name: org.h2.Driver
     username: sa
     password: ${DB_PASSWORD:samjhana2024}
 
@@ -165,7 +164,6 @@ spring:
 
   datasource:
     url: ${DATABASE_URL}
-    driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
 
