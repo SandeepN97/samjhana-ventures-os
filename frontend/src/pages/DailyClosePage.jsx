@@ -18,6 +18,7 @@ import {
   Clock,
   Sofa,
   Home,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
@@ -56,7 +57,11 @@ export default function DailyClosePage() {
   const [verifyNotes, setVerifyNotes] = useState('');
   const [verifying, setVerifying] = useState(false);
 
-  // Recent reports
+  // Confirm modal
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Last close for comparison (#6)
+  const [lastReport, setLastReport] = useState(null);
 
   useEffect(() => {
     loadPage();
@@ -70,8 +75,16 @@ export default function DailyClosePage() {
       const bDate = bdRes.data.date;
       setBusinessDate(bDate);
 
-      const summaryRes = await api.get(`/api/daily-reports/today-summary?date=${bDate}`);
+      const [summaryRes, recentRes] = await Promise.all([
+        api.get(`/api/daily-reports/today-summary?date=${bDate}`),
+        api.get('/api/daily-reports/recent'),
+      ]);
       setSummary(summaryRes.data);
+
+      // Most recent closed report (for yesterday comparison)
+      const recent = Array.isArray(recentRes.data) ? recentRes.data : [];
+      const prev = recent.find(r => r.reportDate !== bDate) || null;
+      setLastReport(prev);
 
       // If this date is closed, also fetch transactions
       if (summaryRes.data.isClosed) {
@@ -108,6 +121,7 @@ export default function DailyClosePage() {
         cashCounted: parseFloat(cashCounted),
         notes: notes || null,
       });
+      setShowConfirm(false);
       loadPage();
     } catch (err) {
       if (err.response?.status === 409) {
@@ -376,14 +390,40 @@ export default function DailyClosePage() {
               </div>
             </div>
           </div>
+          {/* #6 — Last close comparison */}
+          {lastReport && (() => {
+            const lastTotal = parseFloat(lastReport.totalSystemSales) || 0;
+            const diff = systemTotal - lastTotal;
+            const pct = lastTotal > 0 ? ((diff / lastTotal) * 100).toFixed(1) : null;
+            return (
+              <div className="border-t border-indigo-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-70">
+                <span>{t('dailyClose.lastClose')} ({lastReport.reportDate})</span>
+                <span className="flex items-center gap-1">
+                  {formatAmount(lastTotal)}
+                  {pct !== null && (
+                    <span className={diff >= 0 ? 'text-green-300' : 'text-red-300'}>
+                      {diff >= 0 ? '▲' : '▼'}{Math.abs(pct)}%
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Cash Counting Input */}
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <label className="block text-lg font-bold text-gray-800 mb-3">
+          <label className="block text-lg font-bold text-gray-800 mb-1">
             <Banknote className="w-6 h-6 inline-block mr-2 text-green-600" />
             {t('dailyClose.countCash')}
           </label>
+          {/* #5 — Cash hint */}
+          <p className="text-sm text-gray-500 mb-3">
+            {t('dailyClose.cashHint')} <span className="font-bold text-green-700">{formatAmount(cashSalesTotal)}</span>
+            {bankSalesTotal > 0 && (
+              <span className="text-gray-400"> · {t('dailyClose.bankHint')} {formatAmount(bankSalesTotal)}</span>
+            )}
+          </p>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-bold">रु</span>
             <input
@@ -460,7 +500,7 @@ export default function DailyClosePage() {
 
         {/* Submit Button */}
         <button
-          onClick={handleSubmit}
+          onClick={() => setShowConfirm(true)}
           disabled={isSubmitting || !cashCounted}
           className={`w-full py-4 rounded-xl text-white text-xl font-bold shadow-lg transition-all active:scale-95 ${
             isSubmitting || !cashCounted
@@ -468,12 +508,29 @@ export default function DailyClosePage() {
               : 'bg-green-600 hover:bg-green-700'
           }`}
         >
-          {isSubmitting
-            ? t('dailyClose.closing')
-            : t('dailyClose.closeDay')}
+          {t('dailyClose.closeDay')}
         </button>
-
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <ConfirmCloseModal
+          businessDate={businessDate}
+          formatDateLabel={formatDateLabel}
+          systemTotal={systemTotal}
+          cashSalesTotal={cashSalesTotal}
+          bankSalesTotal={bankSalesTotal}
+          cashCounted={cashCounted}
+          discrepancy={discrepancy}
+          isMatch={isMatch}
+          transactionCount={summary?.transactionCount || 0}
+          notes={notes}
+          isSubmitting={isSubmitting}
+          formatAmount={formatAmount}
+          onConfirm={handleSubmit}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -827,6 +884,98 @@ function VerificationSection({ report, isAdmin, verifyNotes, setVerifyNotes, ver
         className={`w-full py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
         {verifying ? t('dailyClose.verifying') : t('dailyClose.verifyReport')}
       </button>
+    </div>
+  );
+}
+
+// =============================================================================
+// Sub-component: Confirm Close Modal (#4)
+// =============================================================================
+
+function ConfirmCloseModal({
+  businessDate, formatDateLabel, systemTotal, cashSalesTotal, bankSalesTotal,
+  cashCounted, discrepancy, isMatch, transactionCount, notes,
+  isSubmitting, formatAmount, onConfirm, onCancel,
+}) {
+  const { t } = useTranslation();
+  const cashNum = parseFloat(cashCounted) || 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+        <div className="p-5 border-b flex items-center gap-3">
+          <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
+          <h2 className="text-lg font-bold text-gray-800">{t('dailyClose.confirmTitle')}</h2>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {/* Date */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">{t('common.date')}</span>
+            <span className="font-bold text-gray-800">{formatDateLabel(businessDate)}, {businessDate}</span>
+          </div>
+
+          {/* Transactions */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">{t('dailyClose.transactions')}</span>
+            <span className="font-bold text-gray-800">{transactionCount}</span>
+          </div>
+
+          {/* Total sales */}
+          <div className="flex justify-between text-sm border-t pt-3">
+            <span className="text-gray-500">{t('dailyClose.totalSales')}</span>
+            <span className="font-bold text-gray-800">{formatAmount(systemTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm pl-3">
+            <span className="text-gray-400">↳ {t('common.cash')}</span>
+            <span className="font-medium text-green-700">{formatAmount(cashSalesTotal)}</span>
+          </div>
+          {bankSalesTotal > 0 && (
+            <div className="flex justify-between text-sm pl-3">
+              <span className="text-gray-400">↳ {t('common.bank')}</span>
+              <span className="font-medium text-blue-700">{formatAmount(bankSalesTotal)}</span>
+            </div>
+          )}
+
+          {/* Cash counted */}
+          <div className="flex justify-between text-sm border-t pt-3">
+            <span className="text-gray-500">{t('dailyClose.cashCounted')}</span>
+            <span className="font-bold text-gray-800">{formatAmount(cashNum)}</span>
+          </div>
+
+          {/* Discrepancy */}
+          <div className={`flex justify-between items-center rounded-xl px-3 py-2 ${isMatch ? 'bg-green-50' : discrepancy > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+            <span className={`text-sm font-bold ${isMatch ? 'text-green-700' : discrepancy > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+              {isMatch ? t('dailyClose.matchLabel') : discrepancy > 0 ? t('dailyClose.overLabel') : t('dailyClose.shortLabel')}
+            </span>
+            <span className={`font-bold ${isMatch ? 'text-green-600' : discrepancy > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+              {isMatch ? 'रु 0' : `${discrepancy > 0 ? '+' : ''}${formatAmount(discrepancy)}`}
+            </span>
+          </div>
+
+          {notes && (
+            <p className="text-xs text-gray-500 italic border-t pt-2">"{notes}"</p>
+          )}
+        </div>
+
+        <div className="flex border-t">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 transition-colors border-r rounded-bl-2xl"
+          >
+            {t('dailyClose.cancelLabel')}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="flex-1 py-4 text-white font-bold bg-green-600 hover:bg-green-700 transition-colors rounded-br-2xl flex items-center justify-center gap-2"
+          >
+            {isSubmitting
+              ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+              : <><Lock className="w-4 h-4" /> {t('dailyClose.confirmClose')}</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
