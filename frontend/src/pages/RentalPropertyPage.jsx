@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Home, Plus, Edit2, Trash2, X, Check, User, ShieldOff, Calendar } from 'lucide-react';
+import { ArrowLeft, Home, Plus, Edit2, Trash2, X, Check, User, ShieldOff, Calendar, BookOpen, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
@@ -39,6 +39,8 @@ export default function RentalPropertyPage() {
   const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [ledgerModal, setLedgerModal] = useState(null); // { property, data }
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   useEffect(() => { fetchProperties(); }, []);
 
@@ -126,6 +128,19 @@ export default function RentalPropertyPage() {
       alert(err.response?.data?.message || 'Failed to remove');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const openLedger = async (property) => {
+    setLedgerModal({ property, data: null });
+    setLedgerLoading(true);
+    try {
+      const res = await api.get(`/api/rental-properties/${property.id}/ledger`);
+      setLedgerModal({ property, data: res.data });
+    } catch {
+      setLedgerModal({ property, data: { error: true } });
+    } finally {
+      setLedgerLoading(false);
     }
   };
 
@@ -293,23 +308,136 @@ export default function RentalPropertyPage() {
                   </div>
                   {property.notes && <p className="text-xs text-gray-400 mt-1">{property.notes}</p>}
                 </div>
-                {property.isActive && (
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(property)} disabled={deletingId === property.id}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-40">
-                      <Edit2 className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleDelete(property)} disabled={deletingId === property.id}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40">
-                      {deletingId === property.id
-                        ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600" />
-                        : <Trash2 className="w-5 h-5" />}
-                    </button>
-                  </div>
-                )}
+                <div className="flex gap-1 ml-2">
+                  <button onClick={() => openLedger(property)}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title={isNepali ? 'भुक्तानी इतिहास' : 'Payment History'}>
+                    <BookOpen className="w-5 h-5" />
+                  </button>
+                  {property.isActive && (
+                    <>
+                      <button onClick={() => openEdit(property)} disabled={deletingId === property.id}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-40">
+                        <Edit2 className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => handleDelete(property)} disabled={deletingId === property.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40">
+                        {deletingId === property.id
+                          ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600" />
+                          : <Trash2 className="w-5 h-5" />}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Ledger Modal */}
+      {ledgerModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-white rounded-t-xl z-10">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">{ledgerModal.property.propertyName}</h2>
+                {ledgerModal.property.tenantName && (
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <User className="w-3 h-3" /> {ledgerModal.property.tenantName}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => setLedgerModal(null)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+
+            {ledgerLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              </div>
+            ) : ledgerModal.data?.error ? (
+              <div className="p-6 text-center text-red-500">
+                {isNepali ? 'लोड गर्न सकिएन' : 'Failed to load payment history'}
+              </div>
+            ) : ledgerModal.data ? (
+              <>
+                {/* Summary banner */}
+                {(() => {
+                  const bal = parseFloat(ledgerModal.data.outstandingBalance);
+                  const isOwed = bal < -0.99;
+                  const isCredit = bal > 0.99;
+                  return (
+                    <div className={`mx-4 mt-4 rounded-xl p-4 flex justify-between items-center
+                      ${isOwed ? 'bg-red-50 border border-red-200' : isCredit ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+                      <div>
+                        <p className={`text-sm font-medium ${isOwed ? 'text-red-600' : isCredit ? 'text-green-600' : 'text-gray-600'}`}>
+                          {isOwed
+                            ? (isNepali ? 'बाँकी बक्यौता' : 'Outstanding Balance')
+                            : isCredit
+                              ? (isNepali ? 'अग्रिम भुक्तानी' : 'Credit Balance')
+                              : (isNepali ? 'खाता सफा' : 'Account Clear')}
+                        </p>
+                        <p className="text-xs text-gray-400">{ledgerModal.data.totalPayments} {isNepali ? 'भुक्तानी' : 'payments'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isOwed ? <TrendingDown className="w-5 h-5 text-red-500" /> : isCredit ? <TrendingUp className="w-5 h-5 text-green-500" /> : <Check className="w-5 h-5 text-gray-400" />}
+                        <span className={`text-2xl font-black ${isOwed ? 'text-red-700' : isCredit ? 'text-green-700' : 'text-gray-500'}`}>
+                          {isOwed ? '−' : isCredit ? '+' : ''} रु {Math.abs(bal).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Payment history */}
+                {ledgerModal.data.payments.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400 text-sm">
+                    {isNepali ? 'कुनै भुक्तानी अभिलेख छैन' : 'No payment records yet'}
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 space-y-2 max-h-[55vh] overflow-y-auto">
+                    {ledgerModal.data.payments.map((p, i) => {
+                      const bal = parseFloat(p.balance);
+                      const isPartial = bal < -0.99;
+                      const isOver = bal > 0.99;
+                      const runBal = parseFloat(p.runningBalance);
+                      return (
+                        <div key={p.id || i} className="border border-gray-100 rounded-xl p-3">
+                          <div className="flex justify-between items-start mb-1">
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm">
+                                {p.rentalMonth || p.transactionDate}
+                              </p>
+                              <p className="text-xs text-gray-400">{p.transactionDate} · {p.paymentMethod} · {p.recordedBy}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-800">रु {parseFloat(p.amountReceived).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium
+                                ${isPartial ? 'bg-amber-100 text-amber-700' : isOver ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                {isPartial ? (isNepali ? 'आंशिक' : 'Partial') : isOver ? (isNepali ? 'बढी' : 'Over') : (isNepali ? 'पूर्ण' : 'Full')}
+                              </span>
+                            </div>
+                          </div>
+                          {/* Balance row */}
+                          <div className="flex justify-between items-center text-xs text-gray-500 border-t border-gray-50 pt-1 mt-1">
+                            <span>{isNepali ? 'सम्झौता' : 'Agreed'}: रु {parseFloat(p.monthlyRent).toLocaleString('en-IN')}</span>
+                            <span className={`font-medium ${isPartial ? 'text-red-500' : isOver ? 'text-blue-500' : 'text-gray-400'}`}>
+                              {isPartial ? `−रु ${Math.abs(bal).toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${isNepali ? 'कम' : 'short'}` : isOver ? `+रु ${bal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '✓'}
+                            </span>
+                            <span className={`font-medium ${runBal < -0.99 ? 'text-red-500' : runBal > 0.99 ? 'text-green-600' : 'text-gray-400'}`}>
+                              {isNepali ? 'चालु' : 'Running'}: {runBal < -0.99 ? `−रु ${Math.abs(runBal).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : runBal > 0.99 ? `+रु ${runBal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '✓'}
+                            </span>
+                          </div>
+                          {p.notes && <p className="text-xs text-gray-400 italic mt-1">"{p.notes}"</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

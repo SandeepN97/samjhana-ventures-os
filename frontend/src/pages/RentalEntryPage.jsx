@@ -18,6 +18,7 @@ export default function RentalEntryPage() {
   const { businessDate } = useBusinessDate();
 
   const [properties, setProperties] = useState([]);
+  const [ledger, setLedger] = useState(null); // { outstandingBalance, totalPayments }
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
     propertyId: '',
@@ -37,6 +38,14 @@ export default function RentalEntryPage() {
   useEffect(() => {
     api.get('/api/rental-properties').then(res => setProperties(res.data)).catch(() => {});
   }, []);
+
+  // Fetch outstanding balance whenever selected property changes
+  useEffect(() => {
+    if (!values.propertyId) { setLedger(null); return; }
+    api.get(`/api/rental-properties/${values.propertyId}/ledger`)
+      .then(res => setLedger(res.data))
+      .catch(() => setLedger(null));
+  }, [values.propertyId]);
 
   const selectedProperty = properties.find(p => p.id === values.propertyId);
   const monthlyRent = selectedProperty ? parseFloat(selectedProperty.monthlyRent) : 0;
@@ -213,6 +222,25 @@ export default function RentalEntryPage() {
               <span className="text-sm text-blue-600">{isNepali ? 'मासिक भाडा (सम्झौता)' : 'Agreed Monthly Rent'}</span>
               <span className="text-xl font-black text-blue-800">रु {monthlyRent.toLocaleString('en-IN')}</span>
             </div>
+            {ledger && parseFloat(ledger.outstandingBalance) < -0.99 && (
+              <div className="border-t border-red-200 pt-2 flex justify-between items-center bg-red-50 -mx-4 px-4 pb-1 rounded-b-xl mt-1">
+                <div>
+                  <p className="text-sm font-bold text-red-700">{isNepali ? 'बाँकी बक्यौता' : 'Outstanding Balance'}</p>
+                  <p className="text-xs text-red-500">{ledger.totalPayments} {isNepali ? 'भुक्तानी अभिलेख' : 'payments on record'}</p>
+                </div>
+                <span className="text-xl font-black text-red-700">
+                  रु {Math.abs(parseFloat(ledger.outstandingBalance)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+            {ledger && parseFloat(ledger.outstandingBalance) > 0.99 && (
+              <div className="border-t border-green-200 pt-2 flex justify-between items-center bg-green-50 -mx-4 px-4 pb-1 rounded-b-xl mt-1">
+                <p className="text-sm font-bold text-green-700">{isNepali ? 'अग्रिम भुक्तानी' : 'Credit Balance'}</p>
+                <span className="text-xl font-black text-green-700">
+                  रु {parseFloat(ledger.outstandingBalance).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
