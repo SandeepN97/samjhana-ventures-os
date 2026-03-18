@@ -148,23 +148,23 @@ export default function FuelPricePage() {
       {/* Current Prices Display */}
       <div className="px-4 py-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-red-500">
-            <p className="text-lg text-red-600 font-bold">⛽ {t('fuelPrice.petrol')}</p>
-            <p className="text-5xl font-black text-gray-900 mt-2">
+          <div className="bg-white rounded-2xl p-4 shadow-md border-l-4 border-red-500 min-w-0">
+            <p className="text-sm font-bold text-red-600 truncate">⛽ {t('fuelPrice.petrol')}</p>
+            <p className="text-3xl font-black text-gray-900 mt-2 break-words leading-tight">
               {currentPrices.petrol
                 ? `रु ${parseFloat(currentPrices.petrol).toFixed(2)}`
                 : t('fuelPrice.notSet')}
             </p>
-            <p className="text-sm text-gray-500 mt-2 font-medium">{t('fuelPrice.perLiter')}</p>
+            <p className="text-xs text-gray-500 mt-1 font-medium">{t('fuelPrice.perLiter')}</p>
           </div>
-          <div className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-yellow-500">
-            <p className="text-lg text-yellow-600 font-bold">🛢️ {t('fuelPrice.diesel')}</p>
-            <p className="text-5xl font-black text-gray-900 mt-2">
+          <div className="bg-white rounded-2xl p-4 shadow-md border-l-4 border-yellow-500 min-w-0">
+            <p className="text-sm font-bold text-yellow-600 truncate">🛢️ {t('fuelPrice.diesel')}</p>
+            <p className="text-3xl font-black text-gray-900 mt-2 break-words leading-tight">
               {currentPrices.diesel
                 ? `रु ${parseFloat(currentPrices.diesel).toFixed(2)}`
                 : t('fuelPrice.notSet')}
             </p>
-            <p className="text-sm text-gray-500 mt-2 font-medium">{t('fuelPrice.perLiter')}</p>
+            <p className="text-xs text-gray-500 mt-1 font-medium">{t('fuelPrice.perLiter')}</p>
           </div>
         </div>
       </div>
