@@ -413,17 +413,10 @@ export default function DailyClosePage() {
 
         {/* Cash Counting Input */}
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <label className="block text-lg font-bold text-gray-800 mb-1">
+          <label className="block text-lg font-bold text-gray-800 mb-3">
             <Banknote className="w-6 h-6 inline-block mr-2 text-green-600" />
             {t('dailyClose.countCash')}
           </label>
-          {/* #5 — Cash hint */}
-          <p className="text-sm text-gray-500 mb-3">
-            {t('dailyClose.cashHint')} <span className="font-bold text-green-700">{formatAmount(cashSalesTotal)}</span>
-            {bankSalesTotal > 0 && (
-              <span className="text-gray-400"> · {t('dailyClose.bankHint')} {formatAmount(bankSalesTotal)}</span>
-            )}
-          </p>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-bold">रु</span>
             <input
