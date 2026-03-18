@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, TrendingUp, TrendingDown, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
@@ -14,14 +14,16 @@ export default function EVEntryPage() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
+  const canEditNeaRate = user.role === 'ADMIN' || user.role === 'SON';
   const { businessDate } = useBusinessDate();
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
 
-  const [neaRate, setNeaRate] = useState(() => localStorage.getItem('ev_nea_rate') || '');
-  const [editingRate, setEditingRate] = useState(!localStorage.getItem('ev_nea_rate'));
-  const [rateInput, setRateInput] = useState(() => localStorage.getItem('ev_nea_rate') || '');
+  const [neaRate, setNeaRate] = useState('');
+  const [editingRate, setEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState('');
+  const [rateSaving, setRateSaving] = useState(false);
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -45,6 +47,17 @@ export default function EVEntryPage() {
     api.get('/api/ev-vehicles')
       .then(res => setVehicles(res.data))
       .catch(() => setVehicleLoadError(true));
+    api.get('/api/settings/nea_rate')
+      .then(res => {
+        const val = res.data.value;
+        if (val) {
+          setNeaRate(val);
+          setRateInput(val);
+        } else {
+          setEditingRate(canEditNeaRate);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
@@ -65,12 +78,18 @@ export default function EVEntryPage() {
   const profitMargin = hasProfit && parseFloat(calculatedAmount) > 0
     ? ((profit / parseFloat(calculatedAmount)) * 100).toFixed(1) : '0.0';
 
-  const saveNeaRate = () => {
+  const saveNeaRate = async () => {
     const val = rateInput.trim();
-    if (val && parseFloat(val) > 0) {
+    if (!val || parseFloat(val) <= 0) return;
+    setRateSaving(true);
+    try {
+      await api.put('/api/settings/nea_rate', { value: val });
       setNeaRate(val);
-      localStorage.setItem('ev_nea_rate', val);
       setEditingRate(false);
+    } catch (err) {
+      // silently fall back — rate not saved to server
+    } finally {
+      setRateSaving(false);
     }
   };
 
@@ -221,7 +240,7 @@ export default function EVEntryPage() {
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kWh</span>
                 </div>
-                <button onClick={saveNeaRate} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                <button onClick={saveNeaRate} disabled={rateSaving} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
                   <Check className="w-4 h-4" />
                 </button>
                 {neaRate && (
@@ -236,7 +255,7 @@ export default function EVEntryPage() {
               </p>
             )}
           </div>
-          {!editingRate && (
+          {!editingRate && canEditNeaRate && (
             <button
               onClick={() => { setRateInput(neaRate); setEditingRate(true); }}
               className="flex items-center gap-1 text-sm text-green-600 font-medium px-3 py-2 rounded-lg hover:bg-green-50"
@@ -389,47 +408,11 @@ export default function EVEntryPage() {
           </div>
         )}
 
-        {/* Total Amount + Profit Breakdown */}
-        {hasProfit ? (
-          <div className="rounded-xl overflow-hidden border border-green-200">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 text-white flex justify-between items-center">
-              <div>
-                <p className="text-sm opacity-80">{t('ev.totalAmountRevenue')}</p>
-                <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
-              </div>
-              {profit >= 0 ? <TrendingUp className="w-8 h-8 opacity-60" /> : <TrendingDown className="w-8 h-8 opacity-60" />}
-            </div>
-            <div className="bg-white divide-y divide-gray-100">
-              <div className="flex justify-between items-center px-4 py-3">
-                <div>
-                  <p className="text-sm text-gray-500">{t('ev.neaCost')}</p>
-                  <p className="text-xs text-gray-400">{estimatedKwh.toFixed(2)} kWh × रु {neaRateVal}/kWh</p>
-                </div>
-                <p className="text-lg font-semibold text-red-500">
-                  − रु {neaCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className={`flex justify-between items-center px-4 py-3 ${profit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                <div>
-                  <p className={`text-sm font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                    {t('ev.profit')}
-                  </p>
-                  <p className={`text-xs ${profit >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                    {profitMargin}% {t('ev.margin')}
-                  </p>
-                </div>
-                <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {profit >= 0 ? '' : '− '}रु {Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
-            <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
-          </div>
-        )}
+        {/* Total Amount */}
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
+          <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
+          <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
+        </div>
 
         {/* Payment Method */}
         <div>

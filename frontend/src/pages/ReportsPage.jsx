@@ -19,6 +19,7 @@ export default function ReportsPage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isStaff = user.role === 'STAFF';
+  const canViewProfit = user.role === 'ADMIN' || user.role === 'SON';
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,17 @@ export default function ReportsPage() {
       count: businessTxns.length,
     };
   }).filter(b => b.count > 0);
+
+  // EV profit summary — only computed/shown for ADMIN and SON
+  const evProfitData = canViewProfit ? (() => {
+    const evTxns = filteredTxns.filter(t => t.businessCode === 'ev' && t.transactionType === 'SALE');
+    const txnsWithProfit = evTxns.filter(t => t.customFields?.profit != null);
+    const totalProfit = txnsWithProfit.reduce((sum, t) => sum + parseFloat(t.customFields.profit), 0);
+    const totalRevenue = evTxns.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    const totalNeaCost = txnsWithProfit.reduce((sum, t) => sum + parseFloat(t.customFields.neaCost || 0), 0);
+    const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0.0';
+    return { totalProfit, totalRevenue, totalNeaCost, margin, count: evTxns.length, trackedCount: txnsWithProfit.length };
+  })() : null;
 
   const formatAmount = (amount) => {
     return `रु ${Math.abs(amount).toLocaleString('en-IN')}`;
@@ -229,6 +241,45 @@ export default function ReportsPage() {
               </div>
             </div>
           </div>
+
+          {/* EV Profit Summary — admin/manager only */}
+          {canViewProfit && evProfitData && evProfitData.count > 0 && (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b bg-green-50 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-green-600" />
+                <h2 className="font-bold text-green-800">{t('reports.evProfit')}</h2>
+              </div>
+              <div className="divide-y">
+                <div className="flex justify-between items-center px-4 py-3">
+                  <div>
+                    <p className="text-sm text-gray-500">{t('reports.evRevenue')}</p>
+                    <p className="text-xs text-gray-400">{evProfitData.count} {t('reports.transactions')}</p>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-800">{formatAmount(evProfitData.totalRevenue)}</p>
+                </div>
+                <div className="flex justify-between items-center px-4 py-3">
+                  <div>
+                    <p className="text-sm text-gray-500">{t('reports.evNeaCost')}</p>
+                    <p className="text-xs text-gray-400">{evProfitData.trackedCount} {t('reports.evTracked')}</p>
+                  </div>
+                  <p className="text-lg font-semibold text-red-500">− {formatAmount(evProfitData.totalNeaCost)}</p>
+                </div>
+                <div className={`flex justify-between items-center px-4 py-3 ${evProfitData.totalProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div>
+                    <p className={`text-sm font-bold ${evProfitData.totalProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      {t('reports.evNetProfit')}
+                    </p>
+                    <p className={`text-xs ${evProfitData.totalProfit >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                      {evProfitData.margin}% {t('ev.margin')}
+                    </p>
+                  </div>
+                  <p className={`text-2xl font-bold ${evProfitData.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {evProfitData.totalProfit >= 0 ? '+' : '−'}{formatAmount(evProfitData.totalProfit)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Business Breakdown */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">

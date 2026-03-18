@@ -597,6 +597,11 @@ const resources = {
         transactions: 'Transactions',
         noData: 'No data',
         closeTodayReport: "Close Today's Report",
+        evProfit: 'EV Profit Summary',
+        evRevenue: 'Total Revenue',
+        evNeaCost: 'NEA Electricity Cost',
+        evTracked: 'transactions with NEA rate',
+        evNetProfit: 'Net Profit',
       },
 
       // Fuel Price
@@ -1337,6 +1342,11 @@ const resources = {
         transactions: 'कारोबार',
         noData: 'कुनै डाटा छैन',
         closeTodayReport: 'आजको रिपोर्ट बन्द गर्नुहोस्',
+        evProfit: 'EV नाफा सारांश',
+        evRevenue: 'कुल आम्दानी',
+        evNeaCost: 'NEA बिजुली खर्च',
+        evTracked: 'NEA दर भएका कारोबार',
+        evNetProfit: 'खुद नाफा',
       },
 
       // Fuel Price
