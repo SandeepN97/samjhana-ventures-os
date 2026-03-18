@@ -96,7 +96,7 @@ export default function QuickActionButtons() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-6 shadow-lg">
+      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 pt-14 pb-6 shadow-lg">
         <h1 className="text-2xl font-bold text-center">
           🏢 {isNepali ? 'सम्झना भेन्चर्स' : 'Samjhana Ventures'}
         </h1>
