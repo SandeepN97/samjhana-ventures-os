@@ -38,6 +38,7 @@ export default function RentalPropertyPage() {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => { fetchProperties(); }, []);
 
@@ -117,11 +118,14 @@ export default function RentalPropertyPage() {
 
   const handleDelete = async (property) => {
     if (!confirm(isNepali ? `${property.propertyName} लाई हटाउने?` : `Remove ${property.propertyName}?`)) return;
+    setDeletingId(property.id);
     try {
       await api.delete(`/api/rental-properties/${property.id}`);
       fetchProperties();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to remove');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -291,11 +295,15 @@ export default function RentalPropertyPage() {
                 </div>
                 {property.isActive && (
                   <div className="flex gap-1">
-                    <button onClick={() => openEdit(property)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                    <button onClick={() => openEdit(property)} disabled={deletingId === property.id}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-40">
                       <Edit2 className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(property)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                      <Trash2 className="w-5 h-5" />
+                    <button onClick={() => handleDelete(property)} disabled={deletingId === property.id}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40">
+                      {deletingId === property.id
+                        ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600" />
+                        : <Trash2 className="w-5 h-5" />}
                     </button>
                   </div>
                 )}

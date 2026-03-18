@@ -12,11 +12,13 @@ export default function EVEntryPage() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
   const { businessDate } = useBusinessDate();
 
   const [vehicles, setVehicles] = useState([]);
+  const [vehicleLoadError, setVehicleLoadError] = useState(false);
 
   const [neaRate, setNeaRate] = useState(() => localStorage.getItem('ev_nea_rate') || '');
   const [editingRate, setEditingRate] = useState(!localStorage.getItem('ev_nea_rate'));
@@ -41,9 +43,9 @@ export default function EVEntryPage() {
   }, [businessDate]);
 
   useEffect(() => {
-    api.get('/api/ev-vehicles').then(res => {
-      setVehicles(res.data);
-    }).catch(() => {});
+    api.get('/api/ev-vehicles')
+      .then(res => setVehicles(res.data))
+      .catch(() => setVehicleLoadError(true));
   }, []);
 
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
@@ -249,6 +251,22 @@ export default function EVEntryPage() {
           <p className="text-xs text-amber-500 mt-1">{isNepali ? 'नाफा देखाउन दर हाल्नुहोस्' : 'Enter rate to see profit calculation'}</p>
         )}
       </div>
+
+      {/* Vehicle load error */}
+      {vehicleLoadError && (
+        <div className="mx-4 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+          {isNepali ? 'गाडीहरू लोड गर्न सकिएन। पृष्ठ रिफ्रेस गर्नुहोस्।' : 'Failed to load vehicles. Please refresh the page.'}
+        </div>
+      )}
+
+      {/* No vehicles warning */}
+      {!vehicleLoadError && vehicles.length === 0 && (
+        <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
+          {isAdmin
+            ? (isNepali ? 'पहिले EV गाडी थप्नुहोस्।' : 'No EV vehicles set up yet. Add vehicles first.')
+            : (isNepali ? 'कुनै गाडी छैन। Admin लाई सम्पर्क गर्नुहोस्।' : 'No vehicles available. Contact admin.')}
+        </div>
+      )}
 
       {/* Success Message */}
       {successMessage && (

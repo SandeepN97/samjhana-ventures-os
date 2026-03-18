@@ -103,7 +103,11 @@ public class RentalPropertyController {
                     .body(Map.of("message", "Admin access required"));
         }
 
-        RentalProperty property = rentalPropertyRepository.findById(UUID.fromString(id)).orElse(null);
+        UUID uuid;
+        try { uuid = UUID.fromString(id); } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid property ID"));
+        }
+        RentalProperty property = rentalPropertyRepository.findById(uuid).orElse(null);
         if (property == null) return ResponseEntity.notFound().build();
 
         if (body.get("propertyName") != null && !body.get("propertyName").toString().trim().isEmpty()) {
@@ -146,7 +150,11 @@ public class RentalPropertyController {
                     .body(Map.of("message", "Admin access required"));
         }
 
-        RentalProperty property = rentalPropertyRepository.findById(UUID.fromString(id)).orElse(null);
+        UUID uuid;
+        try { uuid = UUID.fromString(id); } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid property ID"));
+        }
+        RentalProperty property = rentalPropertyRepository.findById(uuid).orElse(null);
         if (property == null) return ResponseEntity.notFound().build();
 
         property.setIsActive(false);

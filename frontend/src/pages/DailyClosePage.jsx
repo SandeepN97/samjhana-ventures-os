@@ -52,6 +52,7 @@ export default function DailyClosePage() {
   const [editModal, setEditModal] = useState({ open: false, transaction: null });
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Verification state
   const [verifyNotes, setVerifyNotes] = useState('');
@@ -132,6 +133,7 @@ export default function DailyClosePage() {
   // Edit transaction
   const openEditModal = (t) => {
     const customFields = parseCustomFields(t.customFields);
+    setEditError('');
     setEditForm({
       amount: t.amount,
       transactionType: t.transactionType,
@@ -145,6 +147,7 @@ export default function DailyClosePage() {
   const handleEditSave = async () => {
     const t = editModal.transaction;
     setEditSaving(true);
+    setEditError('');
     try {
       const { amount, transactionType, notes: editNotes, referenceNumber, ...customFields } = editForm;
       await api.put(`/api/transactions/${t.id}`, {
@@ -158,7 +161,7 @@ export default function DailyClosePage() {
       setEditModal({ open: false, transaction: null });
       loadPage();
     } catch (err) {
-      console.error('Failed to update transaction', err);
+      setEditError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save changes'));
     } finally {
       setEditSaving(false);
     }
@@ -328,8 +331,9 @@ export default function DailyClosePage() {
             setEditForm={setEditForm}
             isNepali={isNepali}
             saving={editSaving}
+            error={editError}
             onSave={handleEditSave}
-            onClose={() => setEditModal({ open: false, transaction: null })}
+            onClose={() => { setEditModal({ open: false, transaction: null }); setEditError(''); }}
           />
         )}
       </div>
@@ -657,7 +661,7 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
 // Sub-component: Edit Transaction Modal
 // =============================================================================
 
-function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, saving, onSave, onClose }) {
+function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, saving, error, onSave, onClose }) {
   const businessCode = transaction.businessCode;
   const updateField = (key, value) => setEditForm(prev => ({ ...prev, [key]: value }));
 
@@ -770,6 +774,11 @@ function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, sa
           </div>
         </div>
 
+        {error && (
+          <div className="mx-4 mb-2 bg-red-100 border border-red-300 text-red-700 text-sm px-3 py-2 rounded-lg">
+            {error}
+          </div>
+        )}
         <div className="flex border-t sticky bottom-0 bg-white rounded-b-2xl">
           <button onClick={onClose} className="flex-1 py-4 text-gray-600 font-bold hover:bg-gray-50 transition-colors border-r">
             {isNepali ? 'रद्द' : 'Cancel'}

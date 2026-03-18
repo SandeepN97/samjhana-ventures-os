@@ -110,7 +110,10 @@ export default function DatePicker({ value, onChange, error, className = '', acc
           ${error ? 'border-red-500' : 'border-gray-300'}
           ${className}`}
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); } }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o); }
+          if (e.key === 'Escape') { e.preventDefault(); setOpen(false); }
+        }}
         role="button"
         aria-label="Pick date"
       >
