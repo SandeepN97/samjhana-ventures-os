@@ -621,9 +621,11 @@ function TransactionList({ transactions, isNepali, isAdmin, formatAmount, parseC
                       {customFields.paymentMethod && ` (${customFields.paymentMethod})`}
                     </p>
                   )}
-                  {t.businessCode === 'ev' && (customFields.openingMeter != null) && (
+                  {t.businessCode === 'ev' && customFields.chargingMode === 'PERCENTAGE' && (
                     <p className="text-xs text-gray-400 mt-1">
-                      {customFields.openingMeter} → {customFields.closingMeter} kWh @ रु{customFields.unitRate}
+                      {customFields.vehicleName} · {customFields.startPercent}% → {customFields.endPercent}% ({customFields.percentCharged}% @ रु{customFields.ratePerPercent}/%)
+                      {customFields.estimatedKwh ? ` · ~${customFields.estimatedKwh} kWh` : ''}
+                      {customFields.paymentMethod ? ` · ${customFields.paymentMethod}` : ''}
                     </p>
                   )}
                   {t.notes && <p className="text-xs text-gray-400 mt-1 italic">"{t.notes}"</p>}
@@ -722,21 +724,26 @@ function EditTransactionModal({ transaction, editForm, setEditForm, isNepali, sa
 
           {businessCode === 'ev' && (
             <>
+              {editForm.vehicleName && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800 font-medium">
+                  ⚡ {editForm.vehicleName}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सुरु' : 'Opening'}</label>
-                  <input type="number" value={editForm.openingMeter || ''} onChange={(e) => updateField('openingMeter', e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सुरु %' : 'Start %'}</label>
+                  <input type="number" value={editForm.startPercent ?? ''} onChange={(e) => updateField('startPercent', e.target.value)}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'अन्तिम' : 'Closing'}</label>
-                  <input type="number" value={editForm.closingMeter || ''} onChange={(e) => updateField('closingMeter', e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'अन्तिम %' : 'End %'}</label>
+                  <input type="number" value={editForm.endPercent ?? ''} onChange={(e) => updateField('endPercent', e.target.value)}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर' : 'Unit Rate'}</label>
-                <input type="number" value={editForm.unitRate || ''} onChange={(e) => updateField('unitRate', e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'दर/%' : 'Rate/%'}</label>
+                <input type="number" value={editForm.ratePerPercent ?? ''} onChange={(e) => updateField('ratePerPercent', e.target.value)}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
               </div>
               <div>

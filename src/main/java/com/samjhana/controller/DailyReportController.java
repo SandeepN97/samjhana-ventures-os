@@ -232,9 +232,14 @@ public class DailyReportController {
                 }
             } else if ("ev".equals(businessCode)) {
                 evSales = evSales.add(amount);
-                BigDecimal opening = toBigDecimal(fields.get("openingMeter"));
-                BigDecimal closing = toBigDecimal(fields.get("closingMeter"));
-                evUnits = evUnits.add(closing.subtract(opening));
+                String chargingMode = fields.get("chargingMode") != null ? fields.get("chargingMode").toString() : "METER";
+                if ("PERCENTAGE".equals(chargingMode)) {
+                    evUnits = evUnits.add(toBigDecimal(fields.get("estimatedKwh")));
+                } else {
+                    BigDecimal opening = toBigDecimal(fields.get("openingMeter"));
+                    BigDecimal closing = toBigDecimal(fields.get("closingMeter"));
+                    evUnits = evUnits.add(closing.subtract(opening));
+                }
             } else {
                 otherSales = otherSales.add(amount);
             }
