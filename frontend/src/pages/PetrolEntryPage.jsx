@@ -286,28 +286,31 @@ export default function PetrolEntryPage() {
           {errors.liters && <p className="text-red-500 text-sm mt-1">{errors.liters}</p>}
         </div>
 
-        {/* Rate per Liter */}
+        {/* Rate per Liter — read-only, set via Prices button */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
             {t('petrol.rateLabel')} <span className="text-red-500">*</span>
             {fuelPrices[values.fuelType] && (
-              <span className="text-sm text-green-600 ml-2">
-                ({t('petrol.todayRate')})
-              </span>
+              <span className="text-sm text-green-600 ml-2">({t('petrol.todayRate')})</span>
             )}
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400">रु</span>
             <input
               type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
+              readOnly
               value={values.ratePerLiter}
-              onChange={(e) => handleChange('ratePerLiter', e.target.value)}
               placeholder="0.00"
-              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.ratePerLiter ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed select-none"
             />
+            <button
+              type="button"
+              onClick={() => navigate('/fuel-prices')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-orange-600 font-medium bg-orange-50 border border-orange-200 px-2 py-1 rounded-lg hover:bg-orange-100 transition-colors"
+            >
+              <Settings className="w-3 h-3" />
+              {t('petrol.changePrice')}
+            </button>
           </div>
           {errors.ratePerLiter && <p className="text-red-500 text-sm mt-1">{errors.ratePerLiter}</p>}
         </div>
