@@ -7,6 +7,8 @@ import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
 import useBusinessDate from '../hooks/useBusinessDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function EVEntryPage() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export default function EVEntryPage() {
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
@@ -35,7 +38,6 @@ export default function EVEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (businessDate) {
@@ -179,21 +181,18 @@ export default function EVEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('ev.savedSuccess'));
+      showToast(t('ev.savedSuccess'), 'success');
 
-      setTimeout(() => {
-        setValues({
-          transactionDate: businessDate,
-          vehicleId: '',
-          startPercent: '',
-          endPercent: '',
-          paymentMethod: 'CASH',
-          notes: '',
-        });
-        setSuccessMessage('');
-      }, 2000);
+      setValues({
+        transactionDate: businessDate,
+        vehicleId: '',
+        startPercent: '',
+        endPercent: '',
+        paymentMethod: 'CASH',
+        notes: '',
+      });
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -220,10 +219,10 @@ export default function EVEntryPage() {
             {isAdmin && (
               <button
                 onClick={() => navigate('/ev-vehicles')}
-                className="p-2 rounded-full hover:bg-green-600 transition-colors"
-                title={t('ev.manageVehicles')}
+                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-green-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
+                <span className="text-[10px] font-medium leading-none">{t('ev.manageVehicles')}</span>
               </button>
             )}
             <LanguageToggle />
@@ -295,21 +294,6 @@ export default function EVEntryPage() {
       {!vehicleLoadError && vehicles.length === 0 && (
         <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
           {isAdmin ? t('ev.noVehiclesAdmin') : t('ev.noVehiclesStaff')}
-        </div>
-      )}
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
         </div>
       )}
 
@@ -501,6 +485,7 @@ export default function EVEntryPage() {
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

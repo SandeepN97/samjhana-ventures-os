@@ -7,7 +7,9 @@ import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
 import useBusinessDate from '../hooks/useBusinessDate';
-import { formatBsDate, adToBs, BS_MONTHS_NE, toNepaliDigits } from '../utils/nepaliDate';
+import { formatBsDate } from '../utils/nepaliDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function RentalEntryPage() {
   const navigate = useNavigate();
@@ -16,20 +18,20 @@ export default function RentalEntryPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [properties, setProperties] = useState([]);
   const [ledger, setLedger] = useState(null); // { outstandingBalance, totalPayments }
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
     propertyId: '',
-    rentalMonth: new Date().toISOString().slice(0, 7),
+    rentalMonth: new Date().toISOString().split('T')[0],
     amountReceived: '',
     paymentMethod: 'CASH',
     notes: '',
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (businessDate) setValues(prev => ({ ...prev, transactionDate: businessDate }));
@@ -100,21 +102,18 @@ export default function RentalEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('rental.savedSuccess'));
+      showToast(t('rental.savedSuccess'), 'success');
 
-      setTimeout(() => {
-        setValues({
-          transactionDate: businessDate,
-          propertyId: '',
-          rentalMonth: new Date().toISOString().slice(0, 7),
-          amountReceived: '',
-          paymentMethod: 'CASH',
-          notes: '',
-        });
-        setSuccessMessage('');
-      }, 2000);
+      setValues({
+        transactionDate: businessDate,
+        propertyId: '',
+        rentalMonth: new Date().toISOString().split('T')[0],
+        amountReceived: '',
+        paymentMethod: 'CASH',
+        notes: '',
+      });
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -132,30 +131,26 @@ export default function RentalEntryPage() {
             <h1 className="text-xl font-bold ml-3">{t('rental.title')}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/rental-tenants')}
+              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <User className="w-5 h-5" />
+              <span className="text-[10px] font-medium leading-none">{t('rental.tenants')}</span>
+            </button>
             {isAdmin && (
               <button
                 onClick={() => navigate('/rental-properties')}
-                className="p-2 rounded-full hover:bg-blue-700 transition-colors"
-                title={t('rental.manageProperties')}
+                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Settings className="w-5 h-5" />
+                <span className="text-[10px] font-medium leading-none">{t('rental.manage')}</span>
               </button>
             )}
             <LanguageToggle />
           </div>
         </div>
       </header>
-
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />{successMessage}
-        </div>
-      )}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
 
       {properties.length === 0 && (
         <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
@@ -247,22 +242,12 @@ export default function RentalEntryPage() {
           <label className="block text-lg font-medium text-gray-700 mb-2">
             {t('rental.rentalMonth')} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="month"
+          <DatePicker
             value={values.rentalMonth}
-            onChange={(e) => handleChange('rentalMonth', e.target.value)}
-            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.rentalMonth ? 'border-red-500' : 'border-gray-300'}`}
+            onChange={(val) => handleChange('rentalMonth', val)}
+            error={errors.rentalMonth}
+            accentColor="blue"
           />
-          {isNepali && values.rentalMonth && (() => {
-            try {
-              const bs = adToBs(new Date(values.rentalMonth + '-15T12:00:00'));
-              return (
-                <p className="text-sm text-blue-600 mt-1">
-                  ≈ {BS_MONTHS_NE[bs.month]} {toNepaliDigits(bs.year)}
-                </p>
-              );
-            } catch { return null; }
-          })()}
           {errors.rentalMonth && <p className="text-red-500 text-sm mt-1">{errors.rentalMonth}</p>}
         </div>
 
@@ -373,6 +358,7 @@ export default function RentalEntryPage() {
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

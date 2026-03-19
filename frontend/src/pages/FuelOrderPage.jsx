@@ -5,6 +5,8 @@ import { ArrowLeft, Truck, Check, Fuel, Droplet, ShieldOff } from 'lucide-react'
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FuelOrderPage() {
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ export default function FuelOrderPage() {
     );
   }
 
+  const { toasts, showToast, removeToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +53,6 @@ export default function FuelOrderPage() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -123,23 +125,20 @@ export default function FuelOrderPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('fuelOrder.orderSaved'));
+      showToast(t('fuelOrder.orderSaved'), 'success');
 
       // Reset form and refresh orders
-      setTimeout(() => {
-        setValues(prev => ({
-          orderDate: new Date().toISOString().split('T')[0],
-          fuelType: prev.fuelType,
-          liters: '',
-          ratePerLiter: '',
-          supplierName: '',
-          notes: '',
-        }));
-        setSuccessMessage('');
-        fetchOrders();
-      }, 1500);
+      setValues(prev => ({
+        orderDate: new Date().toISOString().split('T')[0],
+        fuelType: prev.fuelType,
+        liters: '',
+        ratePerLiter: '',
+        supplierName: '',
+        notes: '',
+      }));
+      fetchOrders();
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save order' });
+      showToast(err.response?.data?.message || 'Failed to save order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -177,21 +176,6 @@ export default function FuelOrderPage() {
           <LanguageToggle />
         </div>
       </header>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
 
       {/* New Order Form */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-4">
@@ -401,6 +385,7 @@ export default function FuelOrderPage() {
           </div>
         )}
       </div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

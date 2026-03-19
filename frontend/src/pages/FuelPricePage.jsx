@@ -4,6 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Fuel, Check, History, Plus, Eye, RefreshCw } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import DatePicker from '../components/DatePicker';
+import { formatBsDate } from '../utils/nepaliDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FuelPricePage() {
   const navigate = useNavigate();
@@ -11,14 +15,13 @@ export default function FuelPricePage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const { toasts, showToast, removeToast } = useToast();
 
   const [currentPrices, setCurrentPrices] = useState({ petrol: null, diesel: null });
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [error, setError] = useState('');
   const [fetchingNoc, setFetchingNoc] = useState(false);
 
   const [formValues, setFormValues] = useState({
@@ -67,10 +70,9 @@ export default function FuelPricePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (!formValues.petrolPrice && !formValues.dieselPrice) {
-      setError(t('fuelPrice.atLeastOneRequired'));
+      showToast(t('fuelPrice.atLeastOneRequired'), 'error');
       return;
     }
 
@@ -87,13 +89,11 @@ export default function FuelPricePage() {
       }
 
       await api.post('/api/fuel-prices/bulk', payload);
-      setSuccessMessage(t('fuelPrice.pricesUpdated'));
+      showToast(t('fuelPrice.pricesUpdated'), 'success');
       fetchCurrentPrices();
       fetchPriceHistory();
-
-      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || t('fuelPrice.failedToSave'));
+      showToast(err.response?.data?.message || t('fuelPrice.failedToSave'), 'error');
     } finally {
       setSaving(false);
     }
@@ -101,28 +101,18 @@ export default function FuelPricePage() {
 
   const handleFetchNoc = async () => {
     setFetchingNoc(true);
-    setError('');
     try {
       await api.post('/api/fuel-prices/fetch-noc');
-      setSuccessMessage(t('fuelPrice.nocPricesUpdated'));
+      showToast(t('fuelPrice.nocPricesUpdated'), 'success');
       fetchCurrentPrices();
       fetchPriceHistory();
-      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || t('fuelPrice.nocFetchFailed'));
+      showToast(err.response?.data?.message || t('fuelPrice.nocFetchFailed'), 'error');
     } finally {
       setFetchingNoc(false);
     }
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(isNepali ? 'ne-NP' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -199,21 +189,6 @@ export default function FuelPricePage() {
         </div>
       )}
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="mx-4 mt-2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {error}
-        </div>
-      )}
-
       {/* Update Form - Admin Only */}
       {isAdmin && (
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
@@ -225,14 +200,13 @@ export default function FuelPricePage() {
 
             {/* Effective Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('fuelPrice.effectiveDate')}
+              <label className="block text-lg font-medium text-gray-700 mb-2">
+                {t('fuelPrice.effectiveDate')} <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={formValues.effectiveDate}
-                onChange={(e) => setFormValues(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onChange={(val) => setFormValues(prev => ({ ...prev, effectiveDate: val }))}
+                accentColor="orange"
               />
             </div>
 
@@ -344,7 +318,7 @@ export default function FuelPricePage() {
                         </span>
                       )}
                       <span className="text-sm text-gray-500">
-                        {formatDate(price.effectiveDate)}
+                        {formatBsDate(price.effectiveDate, isNepali)}
                       </span>
                     </div>
                     <span className="font-bold text-gray-800">
@@ -357,6 +331,7 @@ export default function FuelPricePage() {
           </div>
         )}
       </div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

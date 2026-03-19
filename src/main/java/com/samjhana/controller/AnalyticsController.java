@@ -30,21 +30,26 @@ public class AnalyticsController {
     @GetMapping("/summary")
     public ResponseEntity<?> summary(
             @RequestParam(defaultValue = "week") String period,
+            @RequestParam(defaultValue = "0") int offset,
             @AuthenticationPrincipal User user) {
 
         LocalDate today = LocalDate.now();
         LocalDate dateFrom;
-        LocalDate dateTo = today;
+        LocalDate dateTo;
 
         switch (period) {
             case "today":
-                dateFrom = today;
+                dateTo = today.minusDays(offset);
+                dateFrom = dateTo;
                 break;
             case "month":
-                dateFrom = today.with(TemporalAdjusters.firstDayOfMonth());
+                LocalDate monthBase = today.minusMonths(offset);
+                dateFrom = monthBase.with(TemporalAdjusters.firstDayOfMonth());
+                dateTo   = monthBase.with(TemporalAdjusters.lastDayOfMonth());
                 break;
             default: // week
-                dateFrom = today.minusDays(6);
+                dateTo   = today.minusDays((long) offset * 7);
+                dateFrom = dateTo.minusDays(6);
                 break;
         }
 

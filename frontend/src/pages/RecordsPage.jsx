@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 const today = () => new Date().toISOString().split('T')[0];
 const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
@@ -29,10 +31,10 @@ export default function RecordsPage() {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+  const { toasts, showToast, removeToast } = useToast();
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [filter, setFilter] = useState(location.state?.filter || 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -60,7 +62,7 @@ export default function RecordsPage() {
       }));
       setTransactions(parsed);
     } catch (err) {
-      setError(t('records.failedToLoad'));
+      showToast(t('records.failedToLoad'), 'error');
     } finally {
       setLoading(false);
     }
@@ -239,10 +241,6 @@ export default function RecordsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
         </div>
-      ) : error ? (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {error}
-        </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <p className="text-lg">{t('records.noRecords')}</p>
@@ -335,6 +333,7 @@ export default function RecordsPage() {
           })}
         </div>
       )}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

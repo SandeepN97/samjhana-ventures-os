@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import { formatBsDate } from '../utils/nepaliDate';
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-orange-500' },
@@ -37,6 +40,7 @@ export default function DailyClosePage() {
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const { toasts, showToast, removeToast } = useToast();
 
   const [businessDate, setBusinessDate] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -44,7 +48,6 @@ export default function DailyClosePage() {
   const [cashCounted, setCashCounted] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   // Transaction list & edit state
   const [transactions, setTransactions] = useState([]);
@@ -59,6 +62,9 @@ export default function DailyClosePage() {
 
   // Confirm modal
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Transaction review toggle (open view)
+  const [showTxnReview, setShowTxnReview] = useState(false);
 
   // Last close for comparison (#6)
   const [lastReport, setLastReport] = useState(null);
@@ -86,13 +92,11 @@ export default function DailyClosePage() {
       const prev = recent.find(r => r.reportDate !== bDate) || null;
       setLastReport(prev);
 
-      // If this date is closed, also fetch transactions
-      if (summaryRes.data.isClosed) {
-        fetchTransactions(bDate);
-      }
+      // Always fetch transactions so we can show them in both open and closed views
+      fetchTransactions(bDate);
     } catch (err) {
       console.error('Failed to load page', err);
-      setError(t('dailyClose.failedToLoad'));
+      showToast(t('dailyClose.failedToLoad'), 'error');
     } finally {
       setLoading(false);
     }
@@ -109,12 +113,11 @@ export default function DailyClosePage() {
 
   const handleSubmit = async () => {
     if (!cashCounted || parseFloat(cashCounted) < 0) {
-      setError(t('dailyClose.enterCashFirst'));
+      showToast(t('dailyClose.enterCashFirst'), 'error');
       return;
     }
 
     setIsSubmitting(true);
-    setError('');
     try {
       await api.post('/api/daily-reports/close', {
         date: businessDate,
@@ -125,10 +128,10 @@ export default function DailyClosePage() {
       loadPage();
     } catch (err) {
       if (err.response?.status === 409) {
-        setError(t('dailyClose.alreadyClosed'));
+        showToast(t('dailyClose.alreadyClosed'), 'error');
         loadPage();
       } else {
-        setError(t('dailyClose.failedToClose'));
+        showToast(t('dailyClose.failedToClose'), 'error');
       }
     } finally {
       setIsSubmitting(false);
@@ -136,31 +139,31 @@ export default function DailyClosePage() {
   };
 
   // Edit transaction
-  const openEditModal = (t) => {
-    const customFields = parseCustomFields(t.customFields);
+  const openEditModal = (txn) => {
+    const customFields = parseCustomFields(txn.customFields);
     setEditError('');
     setEditForm({
-      amount: t.amount,
-      transactionType: t.transactionType,
-      notes: t.notes || '',
-      referenceNumber: t.referenceNumber || '',
+      amount: txn.amount,
+      transactionType: txn.transactionType,
+      notes: txn.notes || '',
+      referenceNumber: txn.referenceNumber || '',
       ...customFields,
     });
-    setEditModal({ open: true, transaction: t });
+    setEditModal({ open: true, transaction: txn });
   };
 
   const handleEditSave = async () => {
-    const t = editModal.transaction;
+    const txn = editModal.transaction;
     setEditSaving(true);
     setEditError('');
     try {
       const { amount, transactionType, notes: editNotes, referenceNumber, ...customFields } = editForm;
-      await api.put(`/api/transactions/${t.id}`, {
+      await api.put(`/api/transactions/${txn.id}`, {
         amount: parseFloat(amount),
         transactionType,
         notes: editNotes,
         referenceNumber,
-        transactionDate: t.transactionDate,
+        transactionDate: txn.transactionDate,
         customFields,
       });
       setEditModal({ open: false, transaction: null });
@@ -225,7 +228,7 @@ export default function DailyClosePage() {
     if (dateStr === todayStr) return t('common.today');
     if (dateStr === tomorrowStr) return t('dailyClose.tomorrow');
     if (dateStr === yesterdayStr) return t('common.yesterday');
-    return d.toLocaleDateString(isNepali ? 'ne-NP' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+    return formatBsDate(dateStr, isNepali);
   };
 
   const cashNum = parseFloat(cashCounted) || 0;
@@ -330,6 +333,7 @@ export default function DailyClosePage() {
             onClose={() => { setEditModal({ open: false, transaction: null }); setEditError(''); }}
           />
         )}
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
     );
   }
@@ -357,12 +361,13 @@ export default function DailyClosePage() {
       </header>
 
       <div className="p-4 space-y-4">
-        {/* Sales Breakdown */}
+
+        {/* ── Step 1: Today's Sales Summary ── */}
         {summary && (
           <SalesBreakdown report={summary} formatAmount={formatAmount} formatLiters={formatLiters} formatUnits={formatUnits} />
         )}
 
-        {/* Total System Sales */}
+        {/* Total System Sales with last-close comparison inline */}
         <div className="bg-indigo-600 text-white rounded-xl p-4 shadow-sm">
           <div className="flex justify-between items-center mb-3">
             <div>
@@ -390,19 +395,18 @@ export default function DailyClosePage() {
               </div>
             </div>
           </div>
-          {/* #6 — Last close comparison */}
           {lastReport && (() => {
             const lastTotal = parseFloat(lastReport.totalSystemSales) || 0;
             const diff = systemTotal - lastTotal;
             const pct = lastTotal > 0 ? ((diff / lastTotal) * 100).toFixed(1) : null;
             return (
-              <div className="border-t border-indigo-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-70">
-                <span>{t('dailyClose.lastClose')} ({lastReport.reportDate})</span>
-                <span className="flex items-center gap-1">
+              <div className="border-t border-indigo-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-80">
+                <span>{t('dailyClose.lastClose')} · {formatBsDate(lastReport.reportDate, isNepali)}</span>
+                <span className="flex items-center gap-1 font-bold">
                   {formatAmount(lastTotal)}
                   {pct !== null && (
                     <span className={diff >= 0 ? 'text-green-300' : 'text-red-300'}>
-                      {diff >= 0 ? '▲' : '▼'}{Math.abs(pct)}%
+                      {diff >= 0 ? ' ▲' : ' ▼'}{Math.abs(pct)}%
                     </span>
                   )}
                 </span>
@@ -411,68 +415,108 @@ export default function DailyClosePage() {
           })()}
         </div>
 
-        {/* Cash Counting Input */}
+        {/* ── Step 2: Verify Today's Entries ── */}
+        {transactions.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowTxnReview(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2 font-bold text-gray-700">
+                <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+                {t('reports.reviewTransactions')}
+                <span className="text-sm font-normal text-gray-400">({transactions.length})</span>
+              </span>
+              <span className="text-gray-400 text-sm">{showTxnReview ? '▲' : '▼'}</span>
+            </button>
+            {showTxnReview && (
+              <div className="border-t max-h-72 overflow-y-auto">
+                <TransactionList
+                  transactions={transactions}
+                  isAdmin={isAdmin}
+                  formatAmount={formatAmount}
+                  parseCustomFields={parseCustomFields}
+                  onEdit={openEditModal}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Step 3: Count Cash ── */}
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <label className="block text-lg font-bold text-gray-800 mb-3">
-            <Banknote className="w-6 h-6 inline-block mr-2 text-green-600" />
-            {t('dailyClose.countCash')}
-          </label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Banknote className="w-6 h-6 text-green-600" />
+              {t('dailyClose.countCash')}
+            </label>
+            {cashSalesTotal > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg font-medium">
+                {t('common.cash')}: <span className="text-indigo-700 font-bold">{formatAmount(cashSalesTotal)}</span>
+              </span>
+            )}
+          </div>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-bold">रु</span>
             <input
               type="number"
               inputMode="decimal"
               value={cashCounted}
-              onChange={(e) => { setCashCounted(e.target.value); setError(''); }}
+              onChange={(e) => setCashCounted(e.target.value)}
               placeholder={t('dailyClose.enterCashAmount')}
               className="w-full pl-12 pr-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-colors"
             />
           </div>
-
-          {/* Short / Over indicator */}
-          {cashCounted !== '' && (
-            <div className={`mt-4 p-4 rounded-xl ${isMatch
-              ? 'bg-green-50 border border-green-200'
-              : discrepancy > 0
-                ? 'bg-blue-50 border border-blue-200'
-                : 'bg-red-50 border border-red-200'
-            }`}>
-              {isMatch ? (
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-green-800">{t('dailyClose.cashMatches')}</p>
-                    <p className="text-sm text-green-600">{t('dailyClose.countedCashMatchesSales')}</p>
-                  </div>
-                </div>
-              ) : discrepancy > 0 ? (
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-8 h-8 text-blue-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-blue-800">{t('dailyClose.overLabel')}</p>
-                    <p className="text-2xl font-bold text-blue-600">+{formatAmount(discrepancy)}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <TrendingDown className="w-8 h-8 text-red-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-red-800">{t('dailyClose.shortLabel')}</p>
-                    <p className="text-2xl font-bold text-red-600">-{formatAmount(Math.abs(discrepancy))}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Notes */}
+        {/* ── Short / Over Result ── prominent standalone card ── */}
+        {cashCounted !== '' && (
+          <div className={`rounded-xl overflow-hidden shadow-sm ${
+            isMatch ? 'bg-green-500' : discrepancy > 0 ? 'bg-blue-500' : 'bg-red-500'
+          } text-white`}>
+            {/* Comparison rows */}
+            <div className="px-4 pt-4 pb-2 space-y-2">
+              <div className="flex justify-between items-center text-sm opacity-90">
+                <span>{t('dailyClose.totalSales')} ({t('common.cash')})</span>
+                <span className="font-bold">{formatAmount(cashSalesTotal)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm opacity-90">
+                <span>{t('dailyClose.cashCounted')}</span>
+                <span className="font-bold">{formatAmount(parseFloat(cashCounted) || 0)}</span>
+              </div>
+            </div>
+            {/* Result banner */}
+            <div className={`mx-3 mb-3 mt-1 rounded-lg px-4 py-3 flex items-center justify-between ${
+              isMatch ? 'bg-green-600' : discrepancy > 0 ? 'bg-blue-600' : 'bg-red-600'
+            }`}>
+              <div className="flex items-center gap-2">
+                {isMatch
+                  ? <CheckCircle2 className="w-7 h-7" />
+                  : discrepancy > 0
+                    ? <TrendingUp className="w-7 h-7" />
+                    : <TrendingDown className="w-7 h-7" />}
+                <span className="text-lg font-bold">
+                  {isMatch
+                    ? t('dailyClose.cashMatches')
+                    : discrepancy > 0
+                      ? t('dailyClose.overLabel')
+                      : t('dailyClose.shortLabel')}
+                </span>
+              </div>
+              <span className="text-3xl font-black">
+                {isMatch
+                  ? '✓'
+                  : `${discrepancy > 0 ? '+' : '−'}${formatAmount(Math.abs(discrepancy))}`}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Notes — only when discrepancy */}
         {hasDiscrepancy && (
           <div className="bg-white rounded-xl shadow-sm p-4">
             <label className="block text-sm font-bold text-gray-700 mb-2">
-              {discrepancy > 0
-                ? t('dailyClose.reasonForOver')
-                : t('dailyClose.reasonForShort')}
+              {discrepancy > 0 ? t('dailyClose.reasonForOver') : t('dailyClose.reasonForShort')}
             </label>
             <textarea
               value={notes}
@@ -484,14 +528,7 @@ export default function DailyClosePage() {
           </div>
         )}
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-center font-medium">
-            {error}
-          </div>
-        )}
-
-        {/* Submit Button */}
+        {/* ── Close Day Button ── */}
         <button
           onClick={() => setShowConfirm(true)}
           disabled={isSubmitting || !cashCounted}
@@ -524,6 +561,18 @@ export default function DailyClosePage() {
           onCancel={() => setShowConfirm(false)}
         />
       )}
+      {editModal.open && (
+        <EditTransactionModal
+          transaction={editModal.transaction}
+          editForm={editForm}
+          setEditForm={setEditForm}
+          saving={editSaving}
+          error={editError}
+          onSave={handleEditSave}
+          onClose={() => { setEditModal({ open: false, transaction: null }); setEditError(''); }}
+        />
+      )}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

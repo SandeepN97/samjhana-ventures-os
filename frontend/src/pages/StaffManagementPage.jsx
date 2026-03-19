@@ -32,15 +32,10 @@ const BUSINESS_UNITS = [
 ];
 
 const STAFF_ROLES = [
-  { value: 'MANAGER', labelEn: 'Manager', labelNe: 'म्यानेजर' },
-  { value: 'CASHIER', labelEn: 'Cashier', labelNe: 'क्यासियर' },
-  { value: 'PUMP_OPERATOR', labelEn: 'Pump Operator', labelNe: 'पम्प सञ्चालक' },
-  { value: 'SALES_PERSON', labelEn: 'Sales Person', labelNe: 'बिक्री कर्मचारी' },
-  { value: 'DELIVERY', labelEn: 'Delivery', labelNe: 'डेलिभरी' },
-  { value: 'CLEANER', labelEn: 'Cleaner', labelNe: 'सफाई कर्मचारी' },
-  { value: 'GUARD', labelEn: 'Security Guard', labelNe: 'गार्ड' },
-  { value: 'HELPER', labelEn: 'Helper', labelNe: 'हेल्पर' },
-  { value: 'OTHER', labelEn: 'Other', labelNe: 'अन्य' },
+  { value: 'MANAGER',         labelEn: 'Manager',         labelNe: 'म्यानेजर' },
+  { value: 'OPERATOR',        labelEn: 'Operator',        labelNe: 'अपरेटर' },
+  { value: 'FURNITURE_STAFF', labelEn: 'Furniture Staff', labelNe: 'फर्निचर कर्मचारी' },
+  { value: 'DRIVER',          labelEn: 'Driver',          labelNe: 'चालक' },
 ];
 
 export default function StaffManagementPage() {
@@ -87,7 +82,7 @@ export default function StaffManagementPage() {
     address: '',
     addressNepali: '',
     businessUnit: 'PETROL',
-    staffRole: 'HELPER',
+    staffRole: 'OPERATOR',
     monthlySalary: '',
     joinDate: new Date().toISOString().split('T')[0],
     emergencyContact: '',
@@ -124,7 +119,7 @@ export default function StaffManagementPage() {
       address: '',
       addressNepali: '',
       businessUnit: 'PETROL',
-      staffRole: 'HELPER',
+      staffRole: 'OPERATOR',
       monthlySalary: '',
       joinDate: new Date().toISOString().split('T')[0],
       emergencyContact: '',

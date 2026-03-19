@@ -6,10 +6,13 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FurnitureOrderPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -30,8 +33,6 @@ export default function FurnitureOrderPage() {
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -82,16 +83,15 @@ export default function FurnitureOrderPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
 
     if (lineItems.length === 0) {
-      setErrorMessage(t('furnitureOrd.addAtLeastOne'));
+      showToast(t('furnitureOrd.addAtLeastOne'), 'error');
       return;
     }
 
     const invalidItems = lineItems.filter(li => !li.itemId || li.quantity < 1);
     if (invalidItems.length > 0) {
-      setErrorMessage(t('furnitureOrd.fillAllItems'));
+      showToast(t('furnitureOrd.fillAllItems'), 'error');
       return;
     }
 
@@ -125,13 +125,11 @@ export default function FurnitureOrderPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('furnitureOrd.orderSaved'));
+      showToast(t('furnitureOrd.orderSaved'), 'success');
 
-      setTimeout(() => {
-        navigate('/furniture/orders');
-      }, 2000);
+      navigate('/furniture/orders');
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Failed to save order');
+      showToast(err.response?.data?.message || 'Failed to save order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -162,19 +160,6 @@ export default function FurnitureOrderPage() {
           <LanguageToggle />
         </div>
       </header>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />{successMessage}
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errorMessage}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}
@@ -420,6 +405,7 @@ export default function FurnitureOrderPage() {
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

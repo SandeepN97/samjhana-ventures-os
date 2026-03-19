@@ -6,11 +6,41 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { toasts, showToast, removeToast } = useToast();
+  const [mode, setMode] = useState('summary'); // 'summary', 'add_loan', 'make_payment'
+  const [loans, setLoans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  // Form for adding new loan
+  const [newLoan, setNewLoan] = useState({
+    bankName: '',
+    loanAmount: '',
+    interestRate: '',
+    startDate: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
+
+  // Form for making payment
+  const [payment, setPayment] = useState({
+    loanId: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    principalAmount: '',
+    interestAmount: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    if (user.role !== 'STAFF') fetchLoans();
+  }, []);
 
   if (user.role === 'STAFF') {
     return (
@@ -33,35 +63,6 @@ export default function LoanEntryPage() {
       </div>
     );
   }
-
-  const [mode, setMode] = useState('summary'); // 'summary', 'add_loan', 'make_payment'
-  const [loans, setLoans] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errors, setErrors] = useState({});
-
-  // Form for adding new loan
-  const [newLoan, setNewLoan] = useState({
-    bankName: '',
-    loanAmount: '',
-    interestRate: '',
-    startDate: new Date().toISOString().split('T')[0],
-    notes: '',
-  });
-
-  // Form for making payment
-  const [payment, setPayment] = useState({
-    loanId: '',
-    paymentDate: new Date().toISOString().split('T')[0],
-    principalAmount: '',
-    interestAmount: '',
-    notes: '',
-  });
-
-  useEffect(() => {
-    fetchLoans();
-  }, []);
 
   const fetchLoans = async () => {
     setLoading(true);
@@ -185,7 +186,7 @@ export default function LoanEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('loan.loanAdded'));
+      showToast(t('loan.loanAdded'), 'success');
       setNewLoan({
         bankName: '',
         loanAmount: '',
@@ -194,12 +195,9 @@ export default function LoanEntryPage() {
         notes: '',
       });
       fetchLoans();
-      setTimeout(() => {
-        setSuccessMessage('');
-        setMode('summary');
-      }, 1500);
+      setMode('summary');
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save' });
+      showToast(err.response?.data?.message || 'Failed to save', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -230,7 +228,7 @@ export default function LoanEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('rental.savedSuccess'));
+      showToast(t('rental.savedSuccess'), 'success');
       setPayment({
         loanId: '',
         paymentDate: new Date().toISOString().split('T')[0],
@@ -239,12 +237,9 @@ export default function LoanEntryPage() {
         notes: '',
       });
       fetchLoans();
-      setTimeout(() => {
-        setSuccessMessage('');
-        setMode('summary');
-      }, 1500);
+      setMode('summary');
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save' });
+      showToast(err.response?.data?.message || 'Failed to save', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,21 +271,6 @@ export default function LoanEntryPage() {
           <LanguageToggle />
         </div>
       </header>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -671,6 +651,7 @@ export default function LoanEntryPage() {
           </button>
         </form>
       )}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

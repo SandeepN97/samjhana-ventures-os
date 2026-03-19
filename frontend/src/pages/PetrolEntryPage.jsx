@@ -6,6 +6,8 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import useBusinessDate from '../hooks/useBusinessDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ export default function PetrolEntryPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -25,11 +28,12 @@ export default function PetrolEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
-  // Current fuel prices from database
+  // Current fuel prices from database (selling price)
   const [fuelPrices, setFuelPrices] = useState({ petrol: null, diesel: null });
   const [pricesLoaded, setPricesLoaded] = useState(false);
+  // Latest purchase/cost price per fuel type (from fuel orders)
+  const [purchaseRates, setPurchaseRates] = useState({ petrol: null, diesel: null });
 
   // Set business date when loaded
   useEffect(() => {
@@ -55,13 +59,38 @@ export default function PetrolEntryPage() {
 
   const fetchCurrentPrices = useCallback(async () => {
     try {
-      // Add timestamp to prevent caching
-      const res = await api.get(`/api/fuel-prices/current?_t=${Date.now()}`);
-      const prices = {
-        petrol: res.data.petrol?.pricePerLiter || null,
-        diesel: res.data.diesel?.pricePerLiter || null,
-      };
-      setFuelPrices(prices);
+      const [priceRes, txnRes] = await Promise.all([
+        api.get(`/api/fuel-prices/current?_t=${Date.now()}`),
+        api.get('/api/transactions?businessCode=petrol'),
+      ]);
+
+      setFuelPrices({
+        petrol: priceRes.data.petrol?.pricePerLiter || null,
+        diesel: priceRes.data.diesel?.pricePerLiter || null,
+      });
+
+      // Find the most recent PURCHASE transaction for each fuel type
+      const purchases = txnRes.data.filter(t =>
+        t.transactionType === 'PURCHASE' && t.customFields
+      ).map(t => ({
+        ...t,
+        customFields: typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields,
+      }));
+
+      const latest = { petrol: null, diesel: null };
+      for (const p of purchases) {
+        const ft = p.customFields?.fuelType;
+        if ((ft === 'petrol' || ft === 'diesel') && p.customFields?.ratePerLiter) {
+          if (!latest[ft] || p.transactionDate > latest[ft].transactionDate) {
+            latest[ft] = p;
+          }
+        }
+      }
+      setPurchaseRates({
+        petrol: latest.petrol ? parseFloat(latest.petrol.customFields.ratePerLiter) : null,
+        diesel: latest.diesel ? parseFloat(latest.diesel.customFields.ratePerLiter) : null,
+      });
+
       setPricesLoaded(true);
     } catch (err) {
       console.error('Failed to fetch fuel prices', err);
@@ -120,28 +149,26 @@ export default function PetrolEntryPage() {
           fuelType: values.fuelType,
           liters: parseFloat(values.liters),
           ratePerLiter: parseFloat(values.ratePerLiter),
+          purchaseRate: purchaseRates[values.fuelType] || null,
           paymentMethod: values.paymentMethod,
         },
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(t('petrol.savedSuccess'));
+      showToast(t('petrol.savedSuccess'), 'success');
 
-      // Reset form after short delay
-      setTimeout(() => {
-        setValues(prev => ({
-          transactionDate: businessDate,
-          fuelType: prev.fuelType,
-          transactionType: 'SALE',
-          liters: '',
-          ratePerLiter: fuelPrices[prev.fuelType] ? fuelPrices[prev.fuelType].toString() : '',
-          paymentMethod: 'CASH',
-          notes: '',
-        }));
-        setSuccessMessage('');
-      }, 2000);
+      // Reset form
+      setValues(prev => ({
+        transactionDate: businessDate,
+        fuelType: prev.fuelType,
+        transactionType: 'SALE',
+        liters: '',
+        ratePerLiter: fuelPrices[prev.fuelType] ? fuelPrices[prev.fuelType].toString() : '',
+        paymentMethod: 'CASH',
+        notes: '',
+      }));
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -168,59 +195,58 @@ export default function PetrolEntryPage() {
         </div>
       </header>
 
-      {/* Today's Prices Banner */}
-      <div className="mx-4 mt-4 flex gap-3">
-        {/* Petrol */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-red-500 px-3 py-3 flex flex-col items-center min-w-0">
-          <p className="text-xs font-bold text-red-600">⛽ {t('petrol.petrol')}</p>
-          <p className="text-xl font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
-            {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
+      {/* Today's Prices + Actions — three columns */}
+      <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm overflow-hidden flex">
+
+        {/* Petrol col */}
+        <div className="flex-1 flex flex-col items-center justify-center pt-3 pb-4 px-2 border-r border-gray-100">
+          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mb-1.5">
+            <span className="text-base leading-none">⛽</span>
+          </div>
+          <p className="text-xs font-bold text-red-600">{t('petrol.petrol')}</p>
+          <p className="text-base font-black text-gray-900 mt-0.5">
+            {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '—'}
           </p>
-          <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
+          <p className="text-[10px] text-gray-400">{t('fuelPrice.perLiter')}</p>
         </div>
-        {/* Diesel */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-yellow-500 px-3 py-3 flex flex-col items-center min-w-0">
-          <p className="text-xs font-bold text-yellow-600">🛢️ {t('petrol.diesel')}</p>
-          <p className="text-xl font-black text-gray-900 break-words leading-tight mt-0.5 text-center">
-            {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
+
+        {/* Diesel col */}
+        <div className="flex-1 flex flex-col items-center justify-center pt-3 pb-4 px-2 border-r border-gray-100">
+          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center mb-1.5">
+            <span className="text-base leading-none">🛢️</span>
+          </div>
+          <p className="text-xs font-bold text-yellow-600">{t('petrol.diesel')}</p>
+          <p className="text-base font-black text-gray-900 mt-0.5">
+            {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '—'}
           </p>
-          <p className="text-xs text-gray-400">{t('fuelPrice.perLiter')}</p>
+          <p className="text-[10px] text-gray-400">{t('fuelPrice.perLiter')}</p>
         </div>
-        {/* Prices + Orders stacked in one column */}
-        <div className="flex flex-col gap-3">
+
+        {/* Actions col */}
+        <div className="flex flex-col">
           <button
             onClick={() => navigate('/fuel-prices')}
-            className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-orange-400 px-3 py-2 flex flex-col items-center justify-center gap-0.5 text-orange-600 hover:bg-orange-50 active:scale-95 transition-all"
+            className="flex-1 px-4 flex items-center justify-center gap-2 text-orange-600 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b border-gray-100"
           >
-            <Settings className="w-4 h-4" />
+            <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <Settings className="w-3.5 h-3.5" />
+            </div>
             <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
           </button>
           {isAdmin && (
             <button
               onClick={() => navigate('/fuel-orders')}
-              className="flex-1 bg-white rounded-xl shadow-sm border-t-4 border-blue-400 px-3 py-2 flex flex-col items-center justify-center gap-0.5 text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+              className="flex-1 px-4 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors"
             >
-              <Truck className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Truck className="w-3.5 h-3.5" />
+              </div>
               <span className="text-xs font-bold">{t('petrol.ordersBtn')}</span>
             </button>
           )}
         </div>
+
       </div>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
@@ -387,6 +413,7 @@ export default function PetrolEntryPage() {
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

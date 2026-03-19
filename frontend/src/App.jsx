@@ -22,6 +22,7 @@ import StaffManagementPage from './pages/StaffManagementPage';
 import DailyClosePage from './pages/DailyClosePage';
 import EvVehiclePage from './pages/EvVehiclePage';
 import RentalPropertyPage from './pages/RentalPropertyPage';
+import RentalTenantsPage from './pages/RentalTenantsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 
 function PrivateRoute({ children }) {
@@ -199,6 +200,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <RentalPropertyPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/rental-tenants"
+          element={
+            <PrivateRoute>
+              <RentalTenantsPage />
             </PrivateRoute>
           }
         />
