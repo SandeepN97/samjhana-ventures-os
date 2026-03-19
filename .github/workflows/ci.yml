@@ -56,7 +56,7 @@ jobs:
         working-directory: frontend
 
       - name: Backend tests + coverage
-        run: mvn test jacoco:report --no-transfer-progress
+        run: mvn test --no-transfer-progress
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET_CI }}
           SPRING_PROFILES_ACTIVE: test
