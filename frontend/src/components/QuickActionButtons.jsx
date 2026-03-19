@@ -8,7 +8,6 @@ import {
   Home,
   Landmark,
   Plus,
-  TrendingUp,
   FileText,
   Settings,
   Users,
@@ -154,14 +153,9 @@ export default function QuickActionButtons() {
           onClick={() => navigate('/')}
         />
         <NavButton
-          icon={FileText}
-          label={t('nav.records')}
-          onClick={() => navigate('/records')}
-        />
-        <NavButton
-          icon={TrendingUp}
-          label={t('nav.reports')}
-          onClick={() => navigate('/reports')}
+          icon={BarChart3}
+          label={t('nav.analytics')}
+          onClick={() => navigate('/analytics')}
         />
         <NavButton
           icon={Settings}
