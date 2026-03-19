@@ -27,4 +27,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.business JOIN FETCH t.enteredBy WHERE t.transactionDate = :date ORDER BY t.createdAt DESC")
     List<Transaction> findByDateWithDetails(@Param("date") LocalDate date);
+
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.business JOIN FETCH t.enteredBy WHERE t.transactionDate BETWEEN :start AND :end ORDER BY t.transactionDate DESC")
+    List<Transaction> findByDateRangeWithDetails(@Param("start") LocalDate start, @Param("end") LocalDate end);
 }

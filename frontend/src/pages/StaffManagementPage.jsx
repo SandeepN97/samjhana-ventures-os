@@ -32,20 +32,15 @@ const BUSINESS_UNITS = [
 ];
 
 const STAFF_ROLES = [
-  { value: 'MANAGER', labelEn: 'Manager', labelNe: 'म्यानेजर' },
-  { value: 'CASHIER', labelEn: 'Cashier', labelNe: 'क्यासियर' },
-  { value: 'PUMP_OPERATOR', labelEn: 'Pump Operator', labelNe: 'पम्प सञ्चालक' },
-  { value: 'SALES_PERSON', labelEn: 'Sales Person', labelNe: 'बिक्री कर्मचारी' },
-  { value: 'DELIVERY', labelEn: 'Delivery', labelNe: 'डेलिभरी' },
-  { value: 'CLEANER', labelEn: 'Cleaner', labelNe: 'सफाई कर्मचारी' },
-  { value: 'GUARD', labelEn: 'Security Guard', labelNe: 'गार्ड' },
-  { value: 'HELPER', labelEn: 'Helper', labelNe: 'हेल्पर' },
-  { value: 'OTHER', labelEn: 'Other', labelNe: 'अन्य' },
+  { value: 'MANAGER',         labelEn: 'Manager',         labelNe: 'म्यानेजर' },
+  { value: 'OPERATOR',        labelEn: 'Operator',        labelNe: 'अपरेटर' },
+  { value: 'FURNITURE_STAFF', labelEn: 'Furniture Staff', labelNe: 'फर्निचर कर्मचारी' },
+  { value: 'DRIVER',          labelEn: 'Driver',          labelNe: 'चालक' },
 ];
 
 export default function StaffManagementPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
@@ -57,18 +52,16 @@ export default function StaffManagementPage() {
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-sm">
           <ShieldOff className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            {isNepali ? 'पहुँच अस्वीकृत' : 'Access Denied'}
+            {t('staff.accessDenied')}
           </h1>
           <p className="text-gray-500 mb-4">
-            {isNepali
-              ? 'तपाईंसँग कर्मचारी व्यवस्थापन गर्ने अनुमति छैन।'
-              : 'You do not have permission to manage staff.'}
+            {t('staff.noPermission')}
           </p>
           <button
             onClick={() => navigate('/')}
             className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700"
           >
-            {isNepali ? 'फिर्ता जानुहोस्' : 'Go Back'}
+            {t('common.goBack')}
           </button>
         </div>
       </div>
@@ -89,7 +82,7 @@ export default function StaffManagementPage() {
     address: '',
     addressNepali: '',
     businessUnit: 'PETROL',
-    staffRole: 'HELPER',
+    staffRole: 'OPERATOR',
     monthlySalary: '',
     joinDate: new Date().toISOString().split('T')[0],
     emergencyContact: '',
@@ -126,7 +119,7 @@ export default function StaffManagementPage() {
       address: '',
       addressNepali: '',
       businessUnit: 'PETROL',
-      staffRole: 'HELPER',
+      staffRole: 'OPERATOR',
       monthlySalary: '',
       joinDate: new Date().toISOString().split('T')[0],
       emergencyContact: '',
@@ -167,7 +160,7 @@ export default function StaffManagementPage() {
     setFormSuccess('');
 
     if (!formData.fullName.trim()) {
-      setFormError(isNepali ? 'पूरा नाम आवश्यक छ' : 'Full name is required');
+      setFormError(t('staff.fullNameRequired'));
       return;
     }
 
@@ -180,10 +173,10 @@ export default function StaffManagementPage() {
 
       if (editingStaff) {
         await api.put(`/api/staff/${editingStaff.id}`, payload);
-        setFormSuccess(isNepali ? 'कर्मचारी अपडेट भयो!' : 'Staff updated!');
+        setFormSuccess(t('staff.staffUpdated'));
       } else {
         await api.post('/api/staff', payload);
-        setFormSuccess(isNepali ? 'कर्मचारी थपियो!' : 'Staff added!');
+        setFormSuccess(t('staff.staffAdded'));
       }
 
       fetchStaff();
@@ -199,7 +192,7 @@ export default function StaffManagementPage() {
   };
 
   const handleDelete = async (staff) => {
-    if (!confirm(isNepali ? `${staff.fullName} लाई हटाउने?` : `Remove ${staff.fullName}?`)) return;
+    if (!confirm(`${t('staff.removeConfirm')} ${staff.fullName}?`)) return;
 
     try {
       await api.delete(`/api/staff/${staff.id}`);
@@ -269,7 +262,7 @@ export default function StaffManagementPage() {
             </button>
             <Users className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'कर्मचारी व्यवस्थापन' : 'Staff Management'}
+              {t('staff.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -283,7 +276,7 @@ export default function StaffManagementPage() {
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700"
         >
           <UserPlus className="w-5 h-5" />
-          {isNepali ? 'नयाँ कर्मचारी' : 'Add Staff'}
+          {t('staff.addStaff')}
         </button>
 
         <SearchableSelect
@@ -293,7 +286,7 @@ export default function StaffManagementPage() {
             value: unit.value,
             label: isNepali ? unit.labelNe : unit.labelEn,
           }))}
-          placeholder={isNepali ? 'सबै इकाई' : 'All Units'}
+          placeholder={t('staff.allUnits')}
           accentColor="indigo"
           className="py-2 text-base"
         />
@@ -307,7 +300,7 @@ export default function StaffManagementPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={isNepali ? 'नाम वा फोन खोज्नुहोस्...' : 'Search name or phone...'}
+            placeholder={t('staff.searchPlaceholder')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500"
           />
         </div>
@@ -320,8 +313,8 @@ export default function StaffManagementPage() {
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="text-lg font-bold text-gray-800">
                 {editingStaff
-                  ? (isNepali ? 'कर्मचारी सम्पादन' : 'Edit Staff')
-                  : (isNepali ? 'नयाँ कर्मचारी थप्नुहोस्' : 'Add New Staff')}
+                  ? t('staff.editStaff')
+                  : t('staff.addNewStaff')}
               </h2>
               <button
                 onClick={() => { setShowForm(false); resetForm(); }}
@@ -347,21 +340,21 @@ export default function StaffManagementPage() {
               {/* Full Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'पूरा नाम' : 'Full Name'} *
+                  {t('staff.fullName')} *
                 </label>
                 <input
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  placeholder={isNepali ? 'पूरा नाम' : 'Full name'}
+                  placeholder={t('staff.fullNamePlaceholder')}
                 />
               </div>
 
               {/* Full Name Nepali */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'नाम (नेपालीमा)' : 'Name (Nepali)'}
+                  {t('staff.nameNepali')}
                 </label>
                 <input
                   type="text"
@@ -375,7 +368,7 @@ export default function StaffManagementPage() {
               {/* Phone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'फोन नम्बर' : 'Phone Number'}
+                  {t('staff.phone')}
                 </label>
                 <input
                   type="tel"
@@ -390,7 +383,7 @@ export default function StaffManagementPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'कार्य इकाई' : 'Business Unit'} *
+                    {t('staff.businessUnit')} *
                   </label>
                   <SearchableSelect
                     value={formData.businessUnit}
@@ -405,7 +398,7 @@ export default function StaffManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'पद' : 'Role'} *
+                    {t('staff.role')} *
                   </label>
                   <SearchableSelect
                     value={formData.staffRole}
@@ -424,7 +417,7 @@ export default function StaffManagementPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'मासिक तलब' : 'Monthly Salary'}
+                    {t('staff.monthlySalary')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">रु</span>
@@ -439,7 +432,7 @@ export default function StaffManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'काममा आएको मिति' : 'Join Date'}
+                    {t('staff.joinDate')}
                   </label>
                   <DatePicker
                     value={formData.joinDate}
@@ -452,28 +445,28 @@ export default function StaffManagementPage() {
               {/* Address */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'ठेगाना' : 'Address'}
+                  {t('staff.address')}
                 </label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  placeholder={isNepali ? 'ठेगाना' : 'Address'}
+                  placeholder={t('staff.address')}
                 />
               </div>
 
               {/* Citizenship */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'नागरिकता नम्बर' : 'Citizenship Number'}
+                  {t('staff.citizenship')}
                 </label>
                 <input
                   type="text"
                   value={formData.citizenshipNumber}
                   onChange={(e) => setFormData({ ...formData, citizenshipNumber: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                  placeholder={isNepali ? 'नागरिकता नम्बर' : 'Citizenship number'}
+                  placeholder={t('staff.citizenshipPlaceholder')}
                 />
               </div>
 
@@ -481,7 +474,7 @@ export default function StaffManagementPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'आपतकालीन सम्पर्क' : 'Emergency Contact'}
+                    {t('staff.emergencyContact')}
                   </label>
                   <input
                     type="tel"
@@ -493,14 +486,14 @@ export default function StaffManagementPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'सम्पर्क व्यक्तिको नाम' : 'Contact Name'}
+                    {t('staff.contactName')}
                   </label>
                   <input
                     type="text"
                     value={formData.emergencyContactName}
                     onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
-                    placeholder={isNepali ? 'नाम' : 'Name'}
+                    placeholder={t('common.name')}
                   />
                 </div>
               </div>
@@ -508,14 +501,14 @@ export default function StaffManagementPage() {
               {/* Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'टिप्पणी' : 'Notes'}
+                  {t('staff.notes')}
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={2}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
-                  placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+                  placeholder={t('common.additionalNotes')}
                 />
               </div>
 
@@ -528,10 +521,10 @@ export default function StaffManagementPage() {
                 }`}
               >
                 {submitting
-                  ? (isNepali ? 'सेभ हुँदैछ...' : 'Saving...')
+                  ? t('staff.saving')
                   : editingStaff
-                    ? (isNepali ? 'अपडेट गर्नुहोस्' : 'Update Staff')
-                    : (isNepali ? 'कर्मचारी थप्नुहोस्' : 'Add Staff')}
+                    ? t('staff.updateStaff')
+                    : t('staff.addStaff')}
               </button>
             </form>
           </div>
@@ -546,8 +539,8 @@ export default function StaffManagementPage() {
       ) : filteredStaff.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">{isNepali ? 'कुनै कर्मचारी छैन' : 'No staff found'}</p>
-          <p className="text-sm mt-1">{isNepali ? 'नयाँ कर्मचारी थप्नुहोस्' : 'Add your first staff member'}</p>
+          <p className="text-lg">{t('staff.noStaff')}</p>
+          <p className="text-sm mt-1">{t('staff.addFirstStaff')}</p>
         </div>
       ) : (
         <div className="px-4 py-4 space-y-3">

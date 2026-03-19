@@ -1,28 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, TrendingUp, TrendingDown, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
 import useBusinessDate from '../hooks/useBusinessDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function EVEntryPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
 
-  const [neaRate, setNeaRate] = useState(() => localStorage.getItem('ev_nea_rate') || '');
-  const [editingRate, setEditingRate] = useState(!localStorage.getItem('ev_nea_rate'));
-  const [rateInput, setRateInput] = useState(() => localStorage.getItem('ev_nea_rate') || '');
+  const [neaRate, setNeaRate] = useState('');
+  const [editingRate, setEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState('');
+  const [rateSaving, setRateSaving] = useState(false);
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -34,7 +38,6 @@ export default function EVEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (businessDate) {
@@ -46,6 +49,28 @@ export default function EVEntryPage() {
     api.get('/api/ev-vehicles')
       .then(res => setVehicles(res.data))
       .catch(() => setVehicleLoadError(true));
+    // Load NEA rate from backend; fall back to localStorage if backend fails
+    const cachedRate = localStorage.getItem('ev_nea_rate') || '';
+    api.get('/api/settings/nea_rate', { skipAuthRedirect: true })
+      .then(res => {
+        const val = res.data.value || cachedRate;
+        if (val) {
+          setNeaRate(val);
+          setRateInput(val);
+          localStorage.setItem('ev_nea_rate', val);
+        } else {
+          setEditingRate(canEditNeaRate);
+        }
+      })
+      .catch(() => {
+        // Backend unavailable — use cached value from localStorage
+        if (cachedRate) {
+          setNeaRate(cachedRate);
+          setRateInput(cachedRate);
+        } else {
+          setEditingRate(canEditNeaRate);
+        }
+      });
   }, []);
 
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
@@ -66,12 +91,21 @@ export default function EVEntryPage() {
   const profitMargin = hasProfit && parseFloat(calculatedAmount) > 0
     ? ((profit / parseFloat(calculatedAmount)) * 100).toFixed(1) : '0.0';
 
-  const saveNeaRate = () => {
+  const saveNeaRate = async () => {
     const val = rateInput.trim();
-    if (val && parseFloat(val) > 0) {
-      setNeaRate(val);
-      localStorage.setItem('ev_nea_rate', val);
-      setEditingRate(false);
+    if (!val || parseFloat(val) <= 0) return;
+    // Always save to localStorage immediately so the rate is never lost
+    localStorage.setItem('ev_nea_rate', val);
+    setNeaRate(val);
+    setEditingRate(false);
+    // Also persist to backend (best-effort, never causes logout)
+    setRateSaving(true);
+    try {
+      await api.put('/api/settings/nea_rate', { value: val }, { skipAuthRedirect: true });
+    } catch (err) {
+      // Backend save failed — rate is still saved in localStorage
+    } finally {
+      setRateSaving(false);
     }
   };
 
@@ -90,23 +124,23 @@ export default function EVEntryPage() {
   const validate = () => {
     const newErrors = {};
     if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
-    if (!values.vehicleId) newErrors.vehicleId = isNepali ? 'गाडी छान्नुहोस्' : 'Select a vehicle';
+    if (!values.vehicleId) newErrors.vehicleId = t('ev.selectVehicle');
     if (!values.startPercent && values.startPercent !== '0') {
-      newErrors.startPercent = isNepali ? 'सुरुको % आवश्यक छ' : 'Start % is required';
+      newErrors.startPercent = t('ev.startPctRequired');
     }
     if (!values.endPercent) {
-      newErrors.endPercent = isNepali ? 'अन्तिम % आवश्यक छ' : 'End % is required';
+      newErrors.endPercent = t('ev.endPctRequired');
     }
     const start = parseFloat(values.startPercent);
     const end = parseFloat(values.endPercent);
     if (!isNaN(start) && (start < 0 || start > 100)) {
-      newErrors.startPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
+      newErrors.startPercent = t('ev.mustBe0to100');
     }
     if (!isNaN(end) && (end < 0 || end > 100)) {
-      newErrors.endPercent = isNepali ? '0-100 बीचमा हुनुपर्छ' : 'Must be between 0-100';
+      newErrors.endPercent = t('ev.mustBe0to100');
     }
     if (!isNaN(start) && !isNaN(end) && end <= start) {
-      newErrors.endPercent = isNepali ? 'अन्तिम % सुरुको भन्दा ठूलो हुनुपर्छ' : 'End % must be greater than start %';
+      newErrors.endPercent = t('ev.endMustBeGreater');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -147,21 +181,18 @@ export default function EVEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'सफलतापूर्वक सेभ भयो!' : 'Saved successfully!');
+      showToast(t('ev.savedSuccess'), 'success');
 
-      setTimeout(() => {
-        setValues({
-          transactionDate: businessDate,
-          vehicleId: '',
-          startPercent: '',
-          endPercent: '',
-          paymentMethod: 'CASH',
-          notes: '',
-        });
-        setSuccessMessage('');
-      }, 2000);
+      setValues({
+        transactionDate: businessDate,
+        vehicleId: '',
+        startPercent: '',
+        endPercent: '',
+        paymentMethod: 'CASH',
+        notes: '',
+      });
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -181,17 +212,17 @@ export default function EVEntryPage() {
             </button>
             <Zap className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'EV चार्जिंग' : 'EV Charging'}
+              {t('ev.title')}
             </h1>
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
               <button
                 onClick={() => navigate('/ev-vehicles')}
-                className="p-2 rounded-full hover:bg-green-600 transition-colors"
-                title={isNepali ? 'गाडी व्यवस्थापन' : 'Manage Vehicles'}
+                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-green-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
+                <span className="text-[10px] font-medium leading-none">{t('ev.manageVehicles')}</span>
               </button>
             )}
             <LanguageToggle />
@@ -203,7 +234,7 @@ export default function EVEntryPage() {
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-green-600 font-semibold">⚡ {isNepali ? 'NEA दर प्रति युनिट' : 'NEA Rate per Unit'}</p>
+            <p className="text-sm text-green-600 font-semibold">⚡ {t('ev.neaRatePerUnit')}</p>
             {editingRate ? (
               <div className="flex items-center gap-2 mt-1">
                 <div className="relative">
@@ -222,7 +253,7 @@ export default function EVEntryPage() {
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kWh</span>
                 </div>
-                <button onClick={saveNeaRate} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                <button onClick={saveNeaRate} disabled={rateSaving} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
                   <Check className="w-4 h-4" />
                 </button>
                 {neaRate && (
@@ -237,49 +268,32 @@ export default function EVEntryPage() {
               </p>
             )}
           </div>
-          {!editingRate && (
+          {!editingRate && canEditNeaRate && (
             <button
               onClick={() => { setRateInput(neaRate); setEditingRate(true); }}
               className="flex items-center gap-1 text-sm text-green-600 font-medium px-3 py-2 rounded-lg hover:bg-green-50"
             >
               <Pencil className="w-4 h-4" />
-              {isNepali ? 'बदल्नुहोस्' : 'Update'}
+              {t('common.update')}
             </button>
           )}
         </div>
         {!neaRate && !editingRate && (
-          <p className="text-xs text-amber-500 mt-1">{isNepali ? 'नाफा देखाउन दर हाल्नुहोस्' : 'Enter rate to see profit calculation'}</p>
+          <p className="text-xs text-amber-500 mt-1">{t('ev.enterRateForProfit')}</p>
         )}
       </div>
 
       {/* Vehicle load error */}
       {vehicleLoadError && (
         <div className="mx-4 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-          {isNepali ? 'गाडीहरू लोड गर्न सकिएन। पृष्ठ रिफ्रेस गर्नुहोस्।' : 'Failed to load vehicles. Please refresh the page.'}
+          {t('ev.failedToLoadVehicles')}
         </div>
       )}
 
       {/* No vehicles warning */}
       {!vehicleLoadError && vehicles.length === 0 && (
         <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
-          {isAdmin
-            ? (isNepali ? 'पहिले EV गाडी थप्नुहोस्।' : 'No EV vehicles set up yet. Add vehicles first.')
-            : (isNepali ? 'कुनै गाडी छैन। Admin लाई सम्पर्क गर्नुहोस्।' : 'No vehicles available. Contact admin.')}
-        </div>
-      )}
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
+          {isAdmin ? t('ev.noVehiclesAdmin') : t('ev.noVehiclesStaff')}
         </div>
       )}
 
@@ -288,7 +302,7 @@ export default function EVEntryPage() {
         {/* Date */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
+            {t('common.date')} <span className="text-red-500">*</span>
           </label>
           <DatePicker
             value={values.transactionDate}
@@ -301,7 +315,7 @@ export default function EVEntryPage() {
         {/* Vehicle Dropdown */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'गाडी छान्नुहोस्' : 'Select Vehicle'} <span className="text-red-500">*</span>
+            {t('ev.selectVehicle')} <span className="text-red-500">*</span>
           </label>
           <SearchableSelect
             value={values.vehicleId}
@@ -309,9 +323,9 @@ export default function EVEntryPage() {
             options={vehicles.map(v => ({
               value: v.id,
               label: v.vehicleName,
-              subtitle: `${v.batteryCapacityKw}KW, ${v.seatingCapacity} ${isNepali ? 'सीट' : 'seats'} - रु ${v.ratePerPercent}/%`,
+              subtitle: `${v.batteryCapacityKw}KW, ${v.seatingCapacity} ${t('ev.seats')} - रु ${v.ratePerPercent}/%`,
             }))}
-            placeholder={isNepali ? '-- गाडी छान्नुहोस् --' : '-- Select Vehicle --'}
+            placeholder={t('ev.selectVehiclePlaceholder')}
             error={errors.vehicleId}
             accentColor="green"
           />
@@ -325,7 +339,7 @@ export default function EVEntryPage() {
             <div>
               <p className="font-bold text-green-800">{selectedVehicle.vehicleName}</p>
               <p className="text-sm text-green-600">
-                {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {isNepali ? 'सीट' : 'seats'} | रु {selectedVehicle.ratePerPercent}/{isNepali ? 'प्रतिशत' : '%'}
+                {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {t('ev.seats')} | रु {selectedVehicle.ratePerPercent}/{t('ev.perPercent')}
               </p>
             </div>
           </div>
@@ -334,7 +348,7 @@ export default function EVEntryPage() {
         {/* Start Percent */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'सुरुको ब्याट्री %' : 'Start Battery %'} <span className="text-red-500">*</span>
+            {t('ev.startBatteryPct')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -356,7 +370,7 @@ export default function EVEntryPage() {
         {/* End Percent */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'अन्तिम ब्याट्री %' : 'End Battery %'} <span className="text-red-500">*</span>
+            {t('ev.endBatteryPct')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -379,11 +393,11 @@ export default function EVEntryPage() {
         {(values.startPercent !== '' && values.endPercent !== '' && selectedVehicle) && (
           <div className="bg-gray-100 rounded-xl p-4 grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-gray-500">{isNepali ? 'चार्ज प्रतिशत' : 'Percent Charged'}</p>
+              <p className="text-xs text-gray-500">{t('ev.percentCharged')}</p>
               <p className="text-xl font-bold text-gray-800">{percentCharged}%</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">{isNepali ? 'अनुमानित kWh' : 'Est. kWh Used'}</p>
+              <p className="text-xs text-gray-500">{t('ev.estimatedKwh')}</p>
               <p className="text-xl font-bold text-gray-800">{estimatedKwh.toFixed(2)} kWh</p>
             </div>
             <div className="col-span-2 text-xs text-gray-400 -mt-1">
@@ -392,52 +406,16 @@ export default function EVEntryPage() {
           </div>
         )}
 
-        {/* Total Amount + Profit Breakdown */}
-        {hasProfit ? (
-          <div className="rounded-xl overflow-hidden border border-green-200">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 text-white flex justify-between items-center">
-              <div>
-                <p className="text-sm opacity-80">{isNepali ? 'कुल रकम (राजस्व)' : 'Total Amount (Revenue)'}</p>
-                <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
-              </div>
-              {profit >= 0 ? <TrendingUp className="w-8 h-8 opacity-60" /> : <TrendingDown className="w-8 h-8 opacity-60" />}
-            </div>
-            <div className="bg-white divide-y divide-gray-100">
-              <div className="flex justify-between items-center px-4 py-3">
-                <div>
-                  <p className="text-sm text-gray-500">{isNepali ? 'NEA खर्च' : 'NEA Cost'}</p>
-                  <p className="text-xs text-gray-400">{estimatedKwh.toFixed(2)} kWh × रु {neaRateVal}/kWh</p>
-                </div>
-                <p className="text-lg font-semibold text-red-500">
-                  − रु {neaCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className={`flex justify-between items-center px-4 py-3 ${profit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                <div>
-                  <p className={`text-sm font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                    {isNepali ? 'नाफा' : 'Profit'}
-                  </p>
-                  <p className={`text-xs ${profit >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                    {profitMargin}% {isNepali ? 'मार्जिन' : 'margin'}
-                  </p>
-                </div>
-                <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {profit >= 0 ? '' : '− '}रु {Math.abs(profit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
-            <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
-          </div>
-        )}
+        {/* Total Amount */}
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
+          <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
+          <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
+        </div>
 
         {/* Payment Method */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'भुक्तानी विधि' : 'Payment Method'} <span className="text-red-500">*</span>
+            {t('common.paymentMethod')} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -450,7 +428,7 @@ export default function EVEntryPage() {
               }`}
             >
               <Banknote className="w-5 h-5" />
-              {isNepali ? 'नगद' : 'Cash'}
+              {t('common.cash')}
             </button>
             <button
               type="button"
@@ -462,7 +440,7 @@ export default function EVEntryPage() {
               }`}
             >
               <Building2 className="w-5 h-5" />
-              {isNepali ? 'बैंक' : 'Bank'}
+              {t('common.bank')}
             </button>
           </div>
         </div>
@@ -470,13 +448,13 @@ export default function EVEntryPage() {
         {/* Notes */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'टिप्पणी' : 'Notes'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+            {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
           </label>
           <textarea
             value={values.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
-            placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+            placeholder={t('common.additionalNotes')}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
           />
         </div>
@@ -497,16 +475,17 @@ export default function EVEntryPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
               </svg>
-              {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+              {t('common.savingEllipsis')}
             </span>
           ) : (
             <span className="flex items-center justify-center">
               <Check className="w-6 h-6 mr-2" />
-              {isNepali ? 'सेभ गर्नुहोस्' : 'Save Entry'}
+              {t('common.saveEntry')}
             </span>
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

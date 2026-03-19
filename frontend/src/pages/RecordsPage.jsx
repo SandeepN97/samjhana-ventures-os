@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet } from 'lucide-react';
+import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+
+const today = () => new Date().toISOString().split('T')[0];
+const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
+const startOfWeek = () => {
+  const d = new Date();
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().split('T')[0];
+};
+const startOfMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; };
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-red-500', label: 'Petrol', labelNe: 'पेट्रोल' },
@@ -16,14 +28,17 @@ const BUSINESS_ICONS = {
 
 export default function RecordsPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const location = useLocation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+  const { toasts, showToast, removeToast } = useToast();
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(location.state?.filter || 'all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchTransactions();
@@ -41,13 +56,13 @@ export default function RecordsPage() {
       }
       const res = await api.get(url);
       // Parse customFields JSON string to object for each transaction
-      const parsed = res.data.map(t => ({
-        ...t,
-        customFields: t.customFields ? (typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields) : null
+      const parsed = res.data.map(txn => ({
+        ...txn,
+        customFields: txn.customFields ? (typeof txn.customFields === 'string' ? JSON.parse(txn.customFields) : txn.customFields) : null
       }));
       setTransactions(parsed);
     } catch (err) {
-      setError(isNepali ? 'डाटा लोड गर्न असफल' : 'Failed to load data');
+      showToast(t('records.failedToLoad'), 'error');
     } finally {
       setLoading(false);
     }
@@ -65,21 +80,42 @@ export default function RecordsPage() {
     return `रु ${parseFloat(amount).toLocaleString('en-IN')}`;
   };
 
-  const filteredTransactions = transactions.filter(t => {
+  const applyDatePreset = (preset) => {
+    if (preset === 'today')  { setDateFrom(today());      setDateTo(today()); }
+    if (preset === 'week')   { setDateFrom(startOfWeek()); setDateTo(today()); }
+    if (preset === 'month')  { setDateFrom(startOfMonth()); setDateTo(today()); }
+    if (preset === 'all')    { setDateFrom('');            setDateTo(''); }
+  };
+
+  const clearDates = () => { setDateFrom(''); setDateTo(''); };
+
+  const activeDatePreset = () => {
+    if (!dateFrom && !dateTo) return 'all';
+    if (dateFrom === today() && dateTo === today()) return 'today';
+    if (dateFrom === startOfWeek() && dateTo === today()) return 'week';
+    if (dateFrom === startOfMonth() && dateTo === today()) return 'month';
+    return 'custom';
+  };
+
+  const filteredTransactions = transactions.filter(txn => {
     // Filter by fuel type for petrol/diesel
     if (filter === 'petrol') {
-      if (t.businessCode !== 'petrol' || t.customFields?.fuelType !== 'petrol') return false;
+      if (txn.businessCode !== 'petrol' || txn.customFields?.fuelType !== 'petrol') return false;
     } else if (filter === 'diesel') {
-      if (t.businessCode !== 'petrol' || t.customFields?.fuelType !== 'diesel') return false;
+      if (txn.businessCode !== 'petrol' || txn.customFields?.fuelType !== 'diesel') return false;
     }
+
+    // Date range filter
+    if (dateFrom && txn.transactionDate < dateFrom) return false;
+    if (dateTo && txn.transactionDate > dateTo) return false;
 
     // Search filter
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      t.businessName?.toLowerCase().includes(search) ||
-      t.notes?.toLowerCase().includes(search) ||
-      t.enteredByName?.toLowerCase().includes(search)
+      txn.businessName?.toLowerCase().includes(search) ||
+      txn.notes?.toLowerCase().includes(search) ||
+      txn.enteredByName?.toLowerCase().includes(search)
     );
   });
 
@@ -93,9 +129,9 @@ export default function RecordsPage() {
 
   const getStatusLabel = (status) => {
     const labels = {
-      PENDING_REVIEW: isNepali ? 'पेन्डिङ' : 'Pending',
-      APPROVED: isNepali ? 'स्वीकृत' : 'Approved',
-      REJECTED: isNepali ? 'अस्वीकृत' : 'Rejected',
+      PENDING_REVIEW: t('status.pendingReview'),
+      APPROVED: t('status.approved'),
+      REJECTED: t('status.rejected'),
     };
     return labels[status] || status;
   };
@@ -113,7 +149,7 @@ export default function RecordsPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'रेकर्डहरू' : 'Records'}
+              {t('records.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -128,9 +164,56 @@ export default function RecordsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={isNepali ? 'खोज्नुहोस्...' : 'Search...'}
+            placeholder={t('common.search')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
           />
+        </div>
+      </div>
+
+      {/* Date Filter */}
+      <div className="px-4 py-3 bg-white border-b space-y-2">
+        {/* Quick presets */}
+        <div className="flex gap-2">
+          {[
+            { key: 'all',   label: t('records.dateAll') },
+            { key: 'today', label: t('common.today') },
+            { key: 'week',  label: t('records.dateWeek') },
+            { key: 'month', label: t('records.dateMonth') },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => applyDatePreset(key)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                activeDatePreset() === key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* Custom date range */}
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          <span className="text-gray-400 text-sm">→</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={clearDates} className="p-1 text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -140,7 +223,7 @@ export default function RecordsPage() {
           <FilterButton
             active={filter === 'all'}
             onClick={() => setFilter('all')}
-            label={isNepali ? 'सबै' : 'All'}
+            label={t('records.all')}
           />
           {Object.entries(BUSINESS_ICONS).map(([code, { label, labelNe }]) => (
             <FilterButton
@@ -158,30 +241,26 @@ export default function RecordsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
         </div>
-      ) : error ? (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {error}
-        </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
-          <p className="text-lg">{isNepali ? 'कुनै रेकर्ड छैन' : 'No records found'}</p>
+          <p className="text-lg">{t('records.noRecords')}</p>
         </div>
       ) : (
         <div className="px-4 py-4 space-y-3">
-          {filteredTransactions.map((t) => {
+          {filteredTransactions.map((txn) => {
             // For petrol transactions, use fuel type specific icon/color
-            let business = BUSINESS_ICONS[t.businessCode] || {};
-            if (t.businessCode === 'petrol' && t.customFields?.fuelType) {
-              business = BUSINESS_ICONS[t.customFields.fuelType] || business;
+            let business = BUSINESS_ICONS[txn.businessCode] || {};
+            if (txn.businessCode === 'petrol' && txn.customFields?.fuelType) {
+              business = BUSINESS_ICONS[txn.customFields.fuelType] || business;
             }
             const Icon = business.icon || Filter;
-            const fuelType = t.customFields?.fuelType;
-            const liters = t.customFields?.liters;
-            const ratePerLiter = t.customFields?.ratePerLiter;
+            const fuelType = txn.customFields?.fuelType;
+            const liters = txn.customFields?.liters;
+            const ratePerLiter = txn.customFields?.ratePerLiter;
 
             return (
               <div
-                key={t.id}
+                key={txn.id}
                 className="bg-white rounded-xl shadow-sm p-4 active:bg-gray-50 transition-colors"
               >
                 <div className="flex items-start justify-between">
@@ -191,71 +270,70 @@ export default function RecordsPage() {
                     </div>
                     <div>
                       <p className="font-bold text-gray-800">
-                        {t.businessCode === 'petrol' && fuelType
-                          ? (isNepali
-                              ? (fuelType === 'petrol' ? 'पेट्रोल' : 'डिजेल')
-                              : (fuelType === 'petrol' ? 'Petrol' : 'Diesel'))
-                          : t.businessName}
+                        {txn.businessCode === 'petrol' && fuelType
+                          ? (fuelType === 'petrol' ? t('petrol.petrol') : t('petrol.diesel'))
+                          : txn.businessName}
                       </p>
-                      <p className="text-sm text-gray-500">{formatDate(t.transactionDate)}</p>
+                      <p className="text-sm text-gray-500">{formatDate(txn.transactionDate)}</p>
                       {/* Show fuel details for petrol/diesel */}
-                      {t.businessCode === 'petrol' && liters && ratePerLiter && (
+                      {txn.businessCode === 'petrol' && liters && ratePerLiter && (
                         <p className="text-sm text-gray-600 mt-1">
-                          {parseFloat(liters).toFixed(2)} {isNepali ? 'लि.' : 'L'} × रु {parseFloat(ratePerLiter).toFixed(2)}
-                          {t.customFields?.paymentMethod && (
+                          {parseFloat(liters).toFixed(2)} {t('records.litersShort')} × रु {parseFloat(ratePerLiter).toFixed(2)}
+                          {txn.customFields?.paymentMethod && (
                             <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
-                              t.customFields.paymentMethod === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                              txn.customFields.paymentMethod === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {t.customFields.paymentMethod === 'CASH' ? (isNepali ? 'नगद' : 'Cash') : (isNepali ? 'बैंक' : 'Bank')}
+                              {txn.customFields.paymentMethod === 'CASH' ? t('common.cash') : t('common.bank')}
                             </span>
                           )}
                         </p>
                       )}
                       {/* Show EV details */}
-                      {t.businessCode === 'ev' && t.customFields?.unitsCharged && (
+                      {txn.businessCode === 'ev' && txn.customFields?.unitsCharged && (
                         <p className="text-sm text-gray-600 mt-1">
-                          {parseFloat(t.customFields.unitsCharged).toFixed(2)} kWh × रु {parseFloat(t.customFields.unitRate).toFixed(2)}
-                          {t.customFields?.paymentMethod && (
+                          {parseFloat(txn.customFields.unitsCharged).toFixed(2)} kWh × रु {parseFloat(txn.customFields.unitRate).toFixed(2)}
+                          {txn.customFields?.paymentMethod && (
                             <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
-                              t.customFields.paymentMethod === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                              txn.customFields.paymentMethod === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {t.customFields.paymentMethod === 'CASH' ? (isNepali ? 'नगद' : 'Cash') : (isNepali ? 'बैंक' : 'Bank')}
+                              {txn.customFields.paymentMethod === 'CASH' ? t('common.cash') : t('common.bank')}
                             </span>
                           )}
                         </p>
                       )}
-                      {t.notes && (
-                        <p className="text-sm text-gray-500 mt-1 italic">{t.notes}</p>
+                      {txn.notes && (
+                        <p className="text-sm text-gray-500 mt-1 italic">{txn.notes}</p>
                       )}
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-lg font-bold ${t.transactionType === 'SALE' ? 'text-green-600' : 'text-red-600'}`}>
-                      {t.transactionType === 'SALE' ? '+' : '-'}{formatAmount(t.amount)}
+                    <p className={`text-lg font-bold ${txn.transactionType === 'SALE' ? 'text-green-600' : 'text-red-600'}`}>
+                      {txn.transactionType === 'SALE' ? '+' : '-'}{formatAmount(txn.amount)}
                     </p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(t.status)}`}>
-                      {getStatusLabel(t.status)}
+                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(txn.status)}`}>
+                      {getStatusLabel(txn.status)}
                     </span>
                   </div>
                 </div>
                 {/* Rejection reason for rejected transactions */}
-                {t.status === 'REJECTED' && t.reviewNotes && (
+                {txn.status === 'REJECTED' && txn.reviewNotes && (
                   <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-2">
                     <p className="text-xs text-red-600 font-medium">
-                      {isNepali ? 'अस्वीकृतिको कारण:' : 'Rejection reason:'}
+                      {t('records.rejectionReason')}
                     </p>
-                    <p className="text-sm text-red-700 mt-1">{t.reviewNotes}</p>
+                    <p className="text-sm text-red-700 mt-1">{txn.reviewNotes}</p>
                   </div>
                 )}
                 <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-500">
-                  <span>{isNepali ? 'प्रविष्टकर्ता:' : 'By:'} {t.enteredByName}</span>
-                  <span>{t.transactionType === 'SALE' ? (isNepali ? 'बिक्री' : 'Sale') : (isNepali ? 'खरिद' : 'Purchase')}</span>
+                  <span>{t('records.enteredBy')} {txn.enteredByName}</span>
+                  <span>{txn.transactionType === 'SALE' ? t('transactionType.sale') : t('transactionType.purchase')}</span>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

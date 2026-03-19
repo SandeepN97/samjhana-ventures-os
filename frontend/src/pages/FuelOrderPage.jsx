@@ -5,13 +5,15 @@ import { ArrowLeft, Truck, Check, Fuel, Droplet, ShieldOff } from 'lucide-react'
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FuelOrderPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   // Redirect non-admins
   if (!isAdmin) {
@@ -20,24 +22,23 @@ export default function FuelOrderPage() {
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-sm">
           <ShieldOff className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            {isNepali ? 'पहुँच अस्वीकृत' : 'Access Denied'}
+            {t('fuelOrder.accessDenied')}
           </h1>
           <p className="text-gray-500 mb-4">
-            {isNepali
-              ? 'तपाईंसँग अर्डर व्यवस्थापन गर्ने अनुमति छैन।'
-              : 'You do not have permission to manage orders.'}
+            {t('fuelOrder.noPermission')}
           </p>
           <button
             onClick={() => navigate('/entry/petrol')}
             className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700"
           >
-            {isNepali ? 'फिर्ता जानुहोस्' : 'Go Back'}
+            {t('common.goBack')}
           </button>
         </div>
       </div>
     );
   }
 
+  const { toasts, showToast, removeToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +53,6 @@ export default function FuelOrderPage() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -125,23 +125,20 @@ export default function FuelOrderPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'अर्डर सफलतापूर्वक सेभ भयो!' : 'Order saved successfully!');
+      showToast(t('fuelOrder.orderSaved'), 'success');
 
       // Reset form and refresh orders
-      setTimeout(() => {
-        setValues(prev => ({
-          orderDate: new Date().toISOString().split('T')[0],
-          fuelType: prev.fuelType,
-          liters: '',
-          ratePerLiter: '',
-          supplierName: '',
-          notes: '',
-        }));
-        setSuccessMessage('');
-        fetchOrders();
-      }, 1500);
+      setValues(prev => ({
+        orderDate: new Date().toISOString().split('T')[0],
+        fuelType: prev.fuelType,
+        liters: '',
+        ratePerLiter: '',
+        supplierName: '',
+        notes: '',
+      }));
+      fetchOrders();
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save order' });
+      showToast(err.response?.data?.message || 'Failed to save order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -173,39 +170,24 @@ export default function FuelOrderPage() {
             </button>
             <Truck className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'इन्धन अर्डर' : 'Fuel Orders'}
+              {t('fuelOrder.title')}
             </h1>
           </div>
           <LanguageToggle />
         </div>
       </header>
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
-
       {/* New Order Form */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-4">
         <h2 className="text-lg font-bold text-gray-800 mb-4">
-          {isNepali ? 'नयाँ अर्डर थप्नुहोस्' : 'Add New Order'}
+          {t('fuelOrder.addNewOrder')}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'अर्डर मिति' : 'Order Date'} <span className="text-red-500">*</span>
+              {t('fuelOrder.orderDate')} <span className="text-red-500">*</span>
             </label>
             <DatePicker
               value={values.orderDate}
@@ -218,7 +200,7 @@ export default function FuelOrderPage() {
           {/* Fuel Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'इन्धन प्रकार' : 'Fuel Type'} <span className="text-red-500">*</span>
+              {t('fuelOrder.fuelType')} <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -231,7 +213,7 @@ export default function FuelOrderPage() {
                 }`}
               >
                 <Fuel className="w-5 h-5" />
-                {isNepali ? 'पेट्रोल' : 'Petrol'}
+                {t('fuelOrder.petrol')}
               </button>
               <button
                 type="button"
@@ -243,7 +225,7 @@ export default function FuelOrderPage() {
                 }`}
               >
                 <Droplet className="w-5 h-5" />
-                {isNepali ? 'डिजेल' : 'Diesel'}
+                {t('fuelOrder.diesel')}
               </button>
             </div>
           </div>
@@ -251,7 +233,7 @@ export default function FuelOrderPage() {
           {/* Liters */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'लिटर' : 'Liters'} <span className="text-red-500">*</span>
+              {t('fuelOrder.liters')} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -260,7 +242,7 @@ export default function FuelOrderPage() {
               inputMode="decimal"
               value={values.liters}
               onChange={(e) => handleChange('liters', e.target.value)}
-              placeholder={isNepali ? 'लिटर प्रविष्ट गर्नुहोस्' : 'Enter liters'}
+              placeholder={t('fuelOrder.enterLiters')}
               className={`w-full px-4 py-3 text-xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.liters && <p className="text-red-500 text-sm mt-1">{errors.liters}</p>}
@@ -269,7 +251,7 @@ export default function FuelOrderPage() {
           {/* Rate per Liter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'प्रति लिटर दर (खरिद मूल्य)' : 'Rate per Liter (Purchase Price)'} <span className="text-red-500">*</span>
+              {t('fuelOrder.ratePerLiter')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-gray-500">रु</span>
@@ -290,13 +272,13 @@ export default function FuelOrderPage() {
           {/* Supplier Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'आपूर्तिकर्ता' : 'Supplier'} ({isNepali ? 'ऐच्छिक' : 'optional'})
+              {t('fuelOrder.supplier')} ({t('common.optional')})
             </label>
             <input
               type="text"
               value={values.supplierName}
               onChange={(e) => handleChange('supplierName', e.target.value)}
-              placeholder={isNepali ? 'आपूर्तिकर्ताको नाम' : 'Supplier name'}
+              placeholder={t('fuelOrder.supplierName')}
               className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
@@ -304,20 +286,20 @@ export default function FuelOrderPage() {
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isNepali ? 'टिप्पणी' : 'Notes'} ({isNepali ? 'ऐच्छिक' : 'optional'})
+              {t('fuelOrder.notes')} ({t('common.optional')})
             </label>
             <textarea
               value={values.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
               rows={2}
-              placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+              placeholder={t('fuelOrder.additionalNotes')}
               className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             />
           </div>
 
           {/* Total Amount */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
+            <p className="text-sm opacity-80">{t('fuelOrder.totalAmount')}</p>
             <p className="text-2xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
           </div>
 
@@ -337,12 +319,12 @@ export default function FuelOrderPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
-                {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+                {t('fuelOrder.saving')}
               </span>
             ) : (
               <span className="flex items-center justify-center">
                 <Check className="w-5 h-5 mr-2" />
-                {isNepali ? 'अर्डर सेभ गर्नुहोस्' : 'Save Order'}
+                {t('fuelOrder.saveOrder')}
               </span>
             )}
           </button>
@@ -352,7 +334,7 @@ export default function FuelOrderPage() {
       {/* Order History */}
       <div className="mx-4 mt-6">
         <h2 className="text-lg font-bold text-gray-800 mb-3">
-          {isNepali ? 'अर्डर इतिहास' : 'Order History'}
+          {t('fuelOrder.orderHistory')}
         </h2>
 
         {loading ? (
@@ -362,7 +344,7 @@ export default function FuelOrderPage() {
         ) : orders.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
             <Truck className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>{isNepali ? 'कुनै अर्डर छैन' : 'No orders yet'}</p>
+            <p>{t('fuelOrder.noOrders')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -380,11 +362,11 @@ export default function FuelOrderPage() {
                       </div>
                       <div>
                         <p className="font-bold text-gray-800">
-                          {isPetrol ? (isNepali ? 'पेट्रोल' : 'Petrol') : (isNepali ? 'डिजेल' : 'Diesel')}
+                          {isPetrol ? t('fuelOrder.petrol') : t('fuelOrder.diesel')}
                         </p>
                         <p className="text-sm text-gray-500">{formatDate(order.transactionDate)}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          {order.customFields?.liters?.toFixed(2)} {isNepali ? 'लि.' : 'L'} × रु {order.customFields?.ratePerLiter?.toFixed(2)}
+                          {order.customFields?.liters?.toFixed(2)} {t('fuelOrder.litersShort')} × रु {order.customFields?.ratePerLiter?.toFixed(2)}
                         </p>
                         {order.notes && (
                           <p className="text-sm text-gray-500 mt-1 italic">{order.notes}</p>
@@ -403,6 +385,7 @@ export default function FuelOrderPage() {
           </div>
         )}
       </div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

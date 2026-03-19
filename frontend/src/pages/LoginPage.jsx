@@ -6,7 +6,7 @@ import api from '../utils/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
 
   // Mode: 'login' or 'changePassword'
@@ -59,8 +59,8 @@ export default function LoginPage() {
     } catch (err) {
       setError(
         err.response?.status === 401
-          ? (isNepali ? 'गलत प्रयोगकर्ता नाम वा पासवर्ड' : 'Invalid username or password')
-          : (isNepali ? 'लगइन असफल। फेरि प्रयास गर्नुहोस्।' : 'Login failed. Please try again.')
+          ? t('login.invalidCredentials')
+          : t('login.loginFailed')
       );
     } finally {
       setLoading(false);
@@ -74,19 +74,19 @@ export default function LoginPage() {
 
     // Validate
     if (!username.trim()) {
-      setError(isNepali ? 'प्रयोगकर्ता नाम आवश्यक छ' : 'Username is required');
+      setError(t('login.usernameRequired'));
       return;
     }
     if (!currentPassword) {
-      setError(isNepali ? 'हालको पासवर्ड आवश्यक छ' : 'Current password is required');
+      setError(t('login.currentPasswordRequired'));
       return;
     }
     if (!newPassword || newPassword.length < 3) {
-      setError(isNepali ? 'नयाँ पासवर्ड कम्तिमा ३ अक्षर हुनुपर्छ' : 'New password must be at least 3 characters');
+      setError(t('login.newPasswordMin3'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(isNepali ? 'नयाँ पासवर्ड मेल खाँदैन' : 'New passwords do not match');
+      setError(t('login.passwordsNoMatch'));
       return;
     }
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
         currentPassword,
         newPassword,
       });
-      setSuccess(isNepali ? 'पासवर्ड सफलतापूर्वक परिवर्तन भयो!' : 'Password changed successfully!');
+      setSuccess(t('login.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -110,7 +110,7 @@ export default function LoginPage() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        (isNepali ? 'पासवर्ड परिवर्तन असफल' : 'Failed to change password')
+        t('login.changeFailed')
       );
     } finally {
       setLoading(false);
@@ -136,19 +136,19 @@ export default function LoginPage() {
             className="flex items-center text-gray-500 hover:text-gray-700 mb-4 -mt-2"
           >
             <ArrowLeft className="w-5 h-5 mr-1" />
-            {isNepali ? 'लगइनमा फर्कनुहोस्' : 'Back to Login'}
+            {t('login.backToLogin')}
           </button>
         )}
 
         <h1 className="text-2xl font-bold text-center text-gray-800 mb-1">
           {mode === 'login'
-            ? (isNepali ? 'सम्झना भेन्चर्स' : 'Samjhana Ventures')
-            : (isNepali ? 'पासवर्ड परिवर्तन' : 'Change Password')}
+            ? t('login.title')
+            : t('login.changePasswordTitle')}
         </h1>
         <p className="text-center text-gray-500 mb-6">
           {mode === 'login'
-            ? (isNepali ? 'Samjhana Ventures' : 'सम्झना भेन्चर्स')
-            : (isNepali ? 'नयाँ पासवर्ड सेट गर्नुहोस्' : 'Set a new password')}
+            ? t('login.subtitle')
+            : t('login.changePasswordSubtitle')}
         </p>
 
         {/* Error Message */}
@@ -171,14 +171,14 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'प्रयोगकर्ता नाम' : 'Username'}
+                {t('login.username')}
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'प्रयोगकर्ता नाम' : 'Enter username'}
+                placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 required
               />
@@ -186,14 +186,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'पासवर्ड' : 'Password'}
+                {t('login.password')}
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'पासवर्ड' : 'Enter password'}
+                placeholder={t('login.passwordPlaceholder')}
                 autoComplete="current-password"
                 required
               />
@@ -205,8 +205,8 @@ export default function LoginPage() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
             >
               {loading
-                ? (isNepali ? 'लगइन हुँदैछ...' : 'Logging in...')
-                : (isNepali ? 'लगइन' : 'Login')}
+                ? t('login.loggingIn')
+                : t('login.loginBtn')}
             </button>
 
             {/* Change Password Link */}
@@ -216,7 +216,7 @@ export default function LoginPage() {
                 onClick={() => switchMode('changePassword')}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
-                {isNepali ? 'पासवर्ड परिवर्तन गर्नुहोस्' : 'Change Password'}
+                {t('login.changePasswordLink')}
               </button>
             </div>
           </form>
@@ -227,14 +227,14 @@ export default function LoginPage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'प्रयोगकर्ता नाम' : 'Username'}
+                {t('login.username')}
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'प्रयोगकर्ता नाम' : 'Enter username'}
+                placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 required
               />
@@ -242,14 +242,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'हालको पासवर्ड' : 'Current Password'}
+                {t('login.currentPassword')}
               </label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'हालको पासवर्ड' : 'Current password'}
+                placeholder={t('login.currentPasswordPlaceholder')}
                 autoComplete="current-password"
                 required
               />
@@ -257,14 +257,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'नयाँ पासवर्ड' : 'New Password'}
+                {t('login.newPassword')}
               </label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'नयाँ पासवर्ड' : 'New password'}
+                placeholder={t('login.newPasswordPlaceholder')}
                 autoComplete="new-password"
                 required
               />
@@ -272,14 +272,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isNepali ? 'नयाँ पासवर्ड पुष्टि' : 'Confirm New Password'}
+                {t('login.confirmNewPassword')}
               </label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={isNepali ? 'पुष्टि गर्नुहोस्' : 'Confirm password'}
+                placeholder={t('login.confirmPlaceholder')}
                 autoComplete="new-password"
                 required
               />
@@ -291,8 +291,8 @@ export default function LoginPage() {
               className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
             >
               {loading
-                ? (isNepali ? 'परिवर्तन हुँदैछ...' : 'Changing...')
-                : (isNepali ? 'पासवर्ड परिवर्तन गर्नुहोस्' : 'Change Password')}
+                ? t('login.changing')
+                : t('login.changePasswordBtn')}
             </button>
           </form>
         )}

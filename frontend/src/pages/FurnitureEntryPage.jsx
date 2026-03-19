@@ -5,12 +5,14 @@ import { ArrowLeft, Sofa, Check } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import useBusinessDate from '../hooks/useBusinessDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FurnitureEntryPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -23,7 +25,6 @@ export default function FurnitureEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (businessDate) {
@@ -45,16 +46,16 @@ export default function FurnitureEntryPage() {
 
   const validate = () => {
     const newErrors = {};
-    if (!values.transactionDate) newErrors.transactionDate = isNepali ? 'मिति आवश्यक छ' : 'Date is required';
-    if (!values.transactionType) newErrors.transactionType = isNepali ? 'कारोबार प्रकार आवश्यक छ' : 'Transaction type is required';
+    if (!values.transactionDate) newErrors.transactionDate = t('furniture.dateRequired');
+    if (!values.transactionType) newErrors.transactionType = t('furniture.typeRequired');
     if (!values.itemName || values.itemName.trim() === '') {
-      newErrors.itemName = isNepali ? 'सामानको नाम आवश्यक छ' : 'Item name is required';
+      newErrors.itemName = t('furniture.itemNameRequired');
     }
     if (!values.quantity || parseInt(values.quantity) < 1) {
-      newErrors.quantity = isNepali ? 'संख्या कम्तिमा १ हुनुपर्छ' : 'Quantity must be at least 1';
+      newErrors.quantity = t('furniture.quantityMin');
     }
     if (!values.unitPrice || parseFloat(values.unitPrice) <= 0) {
-      newErrors.unitPrice = isNepali ? 'एकाइ मूल्य ० भन्दा बढी हुनुपर्छ' : 'Unit price must be greater than 0';
+      newErrors.unitPrice = t('furniture.priceMustBePositive');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -81,22 +82,19 @@ export default function FurnitureEntryPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'सफलतापूर्वक सेभ भयो!' : 'Saved successfully!');
+      showToast(t('furniture.savedSuccess'), 'success');
 
-      setTimeout(() => {
-        setValues({
-          transactionDate: businessDate,
-          transactionType: 'SALE',
-          itemName: '',
-          quantity: '1',
-          unitPrice: '',
-          customerName: '',
-          notes: '',
-        });
-        setSuccessMessage('');
-      }, 2000);
+      setValues({
+        transactionDate: businessDate,
+        transactionType: 'SALE',
+        itemName: '',
+        quantity: '1',
+        unitPrice: '',
+        customerName: '',
+        notes: '',
+      });
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन। फेरि प्रयास गर्नुहोस्।' : 'Failed to save. Please try again.') });
+      showToast(err.response?.data?.message || t('common.failedToSave'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -116,34 +114,19 @@ export default function FurnitureEntryPage() {
             </button>
             <Sofa className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'फर्निचर' : 'Furniture'}
+              {t('furniture.title')}
             </h1>
           </div>
           <LanguageToggle />
         </div>
       </header>
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
-
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
+            {t('common.date')} <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
@@ -156,12 +139,12 @@ export default function FurnitureEntryPage() {
         {/* Transaction Type */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'कारोबार प्रकार' : 'Transaction Type'} <span className="text-red-500">*</span>
+            {t('furniture.transactionType')} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { value: 'SALE', labelEn: 'Sale', labelNe: 'बिक्री', icon: '💰' },
-              { value: 'PURCHASE', labelEn: 'Purchase', labelNe: 'खरिद', icon: '🛒' },
+              { value: 'SALE', tKey: 'transactionType.sale', icon: '💰' },
+              { value: 'PURCHASE', tKey: 'transactionType.purchase', icon: '🛒' },
             ].map((type) => (
               <button
                 key={type.value}
@@ -174,7 +157,7 @@ export default function FurnitureEntryPage() {
                 }`}
               >
                 <span>{type.icon}</span>
-                {isNepali ? type.labelNe : type.labelEn}
+                {t(type.tKey)}
               </button>
             ))}
           </div>
@@ -183,13 +166,13 @@ export default function FurnitureEntryPage() {
         {/* Item Name */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'सामानको नाम' : 'Item Name'} <span className="text-red-500">*</span>
+            {t('furniture.itemName')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={values.itemName}
             onChange={(e) => handleChange('itemName', e.target.value)}
-            placeholder={isNepali ? 'जस्तै: डाइनिङ टेबल सेट' : 'e.g., Dining Table Set'}
+            placeholder={t('furnitureInv.itemNamePlaceholder')}
             className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.itemName ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.itemName && <p className="text-red-500 text-sm mt-1">{errors.itemName}</p>}
@@ -198,7 +181,7 @@ export default function FurnitureEntryPage() {
         {/* Quantity */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'संख्या' : 'Quantity'} <span className="text-red-500">*</span>
+            {t('common.quantity')} <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -214,7 +197,7 @@ export default function FurnitureEntryPage() {
         {/* Unit Price */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'एकाइ मूल्य' : 'Unit Price'} <span className="text-red-500">*</span>
+            {t('common.unitPrice')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -234,20 +217,20 @@ export default function FurnitureEntryPage() {
 
         {/* Calculated Amount */}
         <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl p-4 text-white">
-          <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
+          <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
           <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
         </div>
 
         {/* Customer Name */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'ग्राहक/आपूर्तिकर्ता नाम' : 'Customer/Supplier Name'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+            {t('furniture.customerSupplier')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
           </label>
           <input
             type="text"
             value={values.customerName}
             onChange={(e) => handleChange('customerName', e.target.value)}
-            placeholder={isNepali ? 'नाम लेख्नुहोस्' : 'Enter name'}
+            placeholder={t('common.name')}
             className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
@@ -255,13 +238,13 @@ export default function FurnitureEntryPage() {
         {/* Notes */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'टिप्पणी' : 'Notes'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+            {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
           </label>
           <textarea
             value={values.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
-            placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+            placeholder={t('common.additionalNotes')}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
           />
         </div>
@@ -282,16 +265,17 @@ export default function FurnitureEntryPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
               </svg>
-              {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+              {t('common.savingEllipsis')}
             </span>
           ) : (
             <span className="flex items-center justify-center">
               <Check className="w-6 h-6 mr-2" />
-              {isNepali ? 'सेभ गर्नुहोस्' : 'Save Entry'}
+              {t('common.saveEntry')}
             </span>
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

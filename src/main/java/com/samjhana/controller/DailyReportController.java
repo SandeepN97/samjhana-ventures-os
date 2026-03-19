@@ -162,9 +162,9 @@ public class DailyReportController {
             @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal com.samjhana.entity.User user) {
 
-        if (user.getRole() != com.samjhana.entity.User.UserRole.ADMIN) {
+        if (!user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Only admin can verify reports"));
+                    .body(Map.of("message", "Admin or manager access required"));
         }
 
         LocalDate reportDate = LocalDate.parse(date);

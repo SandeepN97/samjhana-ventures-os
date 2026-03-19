@@ -7,8 +7,7 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function FurnitureDashboardPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,10 +57,10 @@ export default function FurnitureDashboardPage() {
             <Sofa className="w-8 h-8 ml-2" />
             <div className="ml-3">
               <h1 className="text-xl font-bold">
-                {isNepali ? 'फर्निचर पसल' : 'Furniture Shop'}
+                {t('furnitureDash.title')}
               </h1>
               <p className="text-purple-200 text-xs">
-                {isNepali ? 'ड्यासबोर्ड' : 'Dashboard'}
+                {t('furnitureDash.dashboardLabel')}
               </p>
             </div>
           </div>
@@ -76,13 +75,13 @@ export default function FurnitureDashboardPage() {
           <div className="flex items-center gap-2 mb-1">
             <Package className="w-5 h-5 text-purple-500" />
             <span className="text-xs text-gray-500">
-              {isNepali ? 'स्टक मूल्य' : 'Stock Value'}
+              {t('furnitureDash.stockValue')}
             </span>
           </div>
           <p className="text-lg font-bold text-gray-800">
             {formatCurrency(data.totalStockValue)}
           </p>
-          <p className="text-xs text-gray-400">{data.totalItems || 0} {isNepali ? 'वस्तुहरू' : 'items'}</p>
+          <p className="text-xs text-gray-400">{data.totalItems || 0} {t('furnitureDash.itemsLabel')}</p>
         </div>
 
         {/* Today's Sales */}
@@ -90,13 +89,13 @@ export default function FurnitureDashboardPage() {
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-5 h-5 text-green-500" />
             <span className="text-xs text-gray-500">
-              {isNepali ? 'आजको बिक्री' : "Today's Sales"}
+              {t('furnitureDash.todaySales')}
             </span>
           </div>
           <p className="text-lg font-bold text-gray-800">
             {formatCurrency(data.todayRevenue)}
           </p>
-          <p className="text-xs text-gray-400">{data.todaySalesCount || 0} {isNepali ? 'अर्डर' : 'orders'}</p>
+          <p className="text-xs text-gray-400">{data.todaySalesCount || 0} {t('furnitureDash.orders')}</p>
         </div>
 
         {/* Low Stock Alert */}
@@ -104,11 +103,11 @@ export default function FurnitureDashboardPage() {
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className={`w-5 h-5 ${(data.lowStockCount || 0) > 0 ? 'text-red-500' : 'text-amber-400'}`} />
             <span className="text-xs text-gray-500">
-              {isNepali ? 'कम स्टक' : 'Low Stock'}
+              {t('furnitureDash.lowStock')}
             </span>
           </div>
           <p className="text-lg font-bold text-gray-800">{data.lowStockCount || 0}</p>
-          <p className="text-xs text-gray-400">{isNepali ? 'वस्तुहरू' : 'items'}</p>
+          <p className="text-xs text-gray-400">{t('furnitureDash.itemsLabel')}</p>
         </div>
 
         {/* Pending Deliveries */}
@@ -116,18 +115,18 @@ export default function FurnitureDashboardPage() {
           <div className="flex items-center gap-2 mb-1">
             <Truck className="w-5 h-5 text-blue-500" />
             <span className="text-xs text-gray-500">
-              {isNepali ? 'बाँकी डेलिभरी' : 'Pending Delivery'}
+              {t('furnitureDash.pendingDelivery')}
             </span>
           </div>
           <p className="text-lg font-bold text-gray-800">{data.pendingDeliveries || 0}</p>
-          <p className="text-xs text-gray-400">{isNepali ? 'अर्डर' : 'orders'}</p>
+          <p className="text-xs text-gray-400">{t('furnitureDash.orders')}</p>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="px-4 py-2">
         <h2 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">
-          {isNepali ? 'छिटो कार्यहरू' : 'Quick Actions'}
+          {t('furnitureDash.quickActions')}
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <button
@@ -135,7 +134,7 @@ export default function FurnitureDashboardPage() {
             className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
             <ShoppingCart className="w-8 h-8" />
-            <span className="text-sm font-bold">{isNepali ? 'नयाँ बिक्री' : 'New Sale'}</span>
+            <span className="text-sm font-bold">{t('furnitureDash.newSale')}</span>
           </button>
 
           <button
@@ -143,7 +142,7 @@ export default function FurnitureDashboardPage() {
             className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
             <Package className="w-8 h-8" />
-            <span className="text-sm font-bold">{isNepali ? 'सामान सूची' : 'Inventory'}</span>
+            <span className="text-sm font-bold">{t('furnitureDash.inventory')}</span>
           </button>
 
           <button
@@ -151,7 +150,7 @@ export default function FurnitureDashboardPage() {
             className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
             <Users className="w-8 h-8" />
-            <span className="text-sm font-bold">{isNepali ? 'ग्राहकहरू' : 'Customers'}</span>
+            <span className="text-sm font-bold">{t('furnitureDash.customers')}</span>
           </button>
 
           <button
@@ -159,7 +158,7 @@ export default function FurnitureDashboardPage() {
             className="bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
             <ClipboardList className="w-8 h-8" />
-            <span className="text-sm font-bold">{isNepali ? 'अर्डर इतिहास' : 'Order History'}</span>
+            <span className="text-sm font-bold">{t('furnitureDash.orderHistory')}</span>
           </button>
         </div>
       </div>
@@ -169,7 +168,7 @@ export default function FurnitureDashboardPage() {
         <div className="px-4 py-4">
           <h2 className="text-sm font-bold text-red-600 mb-3 uppercase tracking-wide flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
-            {isNepali ? 'कम स्टक चेतावनी' : 'Low Stock Alert'}
+            {t('furnitureDash.lowStockAlert')}
           </h2>
           <div className="space-y-2">
             {data.lowStockItems.map((item) => (
@@ -180,7 +179,7 @@ export default function FurnitureDashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-red-600">{item.stockQty}</p>
-                  <p className="text-xs text-gray-400">{isNepali ? 'बाँकी' : 'left'}</p>
+                  <p className="text-xs text-gray-400">{t('furnitureDash.left')}</p>
                 </div>
               </div>
             ))}
@@ -192,7 +191,7 @@ export default function FurnitureDashboardPage() {
       <div className="px-4 py-4">
         <h2 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-2">
           <Clock className="w-4 h-4" />
-          {isNepali ? 'हालका अर्डरहरू' : 'Recent Orders'}
+          {t('furnitureDash.recentOrders')}
         </h2>
         {data.recentOrders && data.recentOrders.length > 0 ? (
           <div className="space-y-2">
@@ -200,16 +199,16 @@ export default function FurnitureDashboardPage() {
               <div key={order.id} className="bg-white rounded-lg shadow-sm p-3">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-medium text-gray-800">
-                    {order.customerName || (isNepali ? 'वाक-इन ग्राहक' : 'Walk-in Customer')}
+                    {order.customerName || t('furnitureDash.walkInCustomer')}
                   </p>
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                     order.deliveryStatus === 'DELIVERED' ? 'bg-green-100 text-green-700' :
                     order.deliveryStatus === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
                     'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {order.deliveryStatus === 'DELIVERED' ? (isNepali ? 'डेलिभर' : 'Delivered') :
-                     order.deliveryStatus === 'IN_PROGRESS' ? (isNepali ? 'प्रगतिमा' : 'In Progress') :
-                     (isNepali ? 'बाँकी' : 'Pending')}
+                    {order.deliveryStatus === 'DELIVERED' ? t('furnitureDash.delivered') :
+                     order.deliveryStatus === 'IN_PROGRESS' ? t('furnitureDash.inProgress') :
+                     t('furnitureDash.pending')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
@@ -222,7 +221,7 @@ export default function FurnitureDashboardPage() {
         ) : (
           <div className="text-center py-8 text-gray-400">
             <ClipboardList className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>{isNepali ? 'कुनै अर्डर छैन' : 'No orders yet'}</p>
+            <p>{t('furnitureDash.noOrders')}</p>
           </div>
         )}
       </div>

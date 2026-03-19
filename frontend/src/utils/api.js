@@ -17,11 +17,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 ||
-        (error.response?.status === 403 && !error.response?.data?.message)) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+    // skipAuthRedirect: true means this request handles auth errors itself — don't auto-logout
+    if (!error.config?.skipAuthRedirect) {
+      if (error.response?.status === 401 ||
+          (error.response?.status === 403 && !error.response?.data?.message)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

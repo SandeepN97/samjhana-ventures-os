@@ -107,9 +107,9 @@ public class TransactionController {
             @RequestBody TransactionRequest request,
             @AuthenticationPrincipal User user) {
 
-        if (user.getRole() != User.UserRole.ADMIN) {
+        if (!user.canManage()) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Only admin can edit transactions"));
+                    .body(Map.of("message", "Admin or manager access required"));
         }
 
         return transactionRepository.findById(UUID.fromString(id))

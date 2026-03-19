@@ -4,6 +4,7 @@ import com.samjhana.dto.CreateUserRequest;
 import com.samjhana.dto.UserDto;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
+import com.samjhana.service.DemoDataSeederService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DemoDataSeederService demoDataSeederService;
 
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers(@AuthenticationPrincipal User currentUser) {
@@ -70,9 +72,9 @@ public class AdminController {
             role = "STAFF";
         }
         role = role.toUpperCase();
-        if (!List.of("ADMIN", "DAD", "SON", "STAFF").contains(role)) {
+        if (!List.of("ADMIN", "MANAGER", "STAFF").contains(role)) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Invalid role. Must be ADMIN, DAD, SON, or STAFF"));
+                    .body(Map.of("message", "Invalid role. Must be ADMIN, MANAGER, or STAFF"));
         }
 
         // Create user
@@ -122,5 +124,19 @@ public class AdminController {
         userRepository.save(user);
 
         return ResponseEntity.ok(Map.of("message", "User deactivated successfully"));
+    }
+
+    @PostMapping("/demo-reset")
+    public ResponseEntity<?> resetDemoData(@AuthenticationPrincipal User currentUser) {
+        if (currentUser.getRole() != User.UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Admin access required"));
+        }
+        try {
+            demoDataSeederService.resetAndSeed();
+            return ResponseEntity.ok(Map.of("message", "Demo data reset successfully. Login: admin/admin, ram_mgr/pass123, sita_staff/pass123"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Reset failed: " + e.getMessage()));
+        }
     }
 }

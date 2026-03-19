@@ -6,15 +6,17 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import useBusinessDate from '../hooks/useBusinessDate';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { businessDate } = useBusinessDate();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
@@ -26,11 +28,12 @@ export default function PetrolEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
-  // Current fuel prices from database
+  // Current fuel prices from database (selling price)
   const [fuelPrices, setFuelPrices] = useState({ petrol: null, diesel: null });
   const [pricesLoaded, setPricesLoaded] = useState(false);
+  // Latest purchase/cost price per fuel type (from fuel orders)
+  const [purchaseRates, setPurchaseRates] = useState({ petrol: null, diesel: null });
 
   // Set business date when loaded
   useEffect(() => {
@@ -56,13 +59,38 @@ export default function PetrolEntryPage() {
 
   const fetchCurrentPrices = useCallback(async () => {
     try {
-      // Add timestamp to prevent caching
-      const res = await api.get(`/api/fuel-prices/current?_t=${Date.now()}`);
-      const prices = {
-        petrol: res.data.petrol?.pricePerLiter || null,
-        diesel: res.data.diesel?.pricePerLiter || null,
-      };
-      setFuelPrices(prices);
+      const [priceRes, txnRes] = await Promise.all([
+        api.get(`/api/fuel-prices/current?_t=${Date.now()}`),
+        api.get('/api/transactions?businessCode=petrol'),
+      ]);
+
+      setFuelPrices({
+        petrol: priceRes.data.petrol?.pricePerLiter || null,
+        diesel: priceRes.data.diesel?.pricePerLiter || null,
+      });
+
+      // Find the most recent PURCHASE transaction for each fuel type
+      const purchases = txnRes.data.filter(t =>
+        t.transactionType === 'PURCHASE' && t.customFields
+      ).map(t => ({
+        ...t,
+        customFields: typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields,
+      }));
+
+      const latest = { petrol: null, diesel: null };
+      for (const p of purchases) {
+        const ft = p.customFields?.fuelType;
+        if ((ft === 'petrol' || ft === 'diesel') && p.customFields?.ratePerLiter) {
+          if (!latest[ft] || p.transactionDate > latest[ft].transactionDate) {
+            latest[ft] = p;
+          }
+        }
+      }
+      setPurchaseRates({
+        petrol: latest.petrol ? parseFloat(latest.petrol.customFields.ratePerLiter) : null,
+        diesel: latest.diesel ? parseFloat(latest.diesel.customFields.ratePerLiter) : null,
+      });
+
       setPricesLoaded(true);
     } catch (err) {
       console.error('Failed to fetch fuel prices', err);
@@ -121,28 +149,26 @@ export default function PetrolEntryPage() {
           fuelType: values.fuelType,
           liters: parseFloat(values.liters),
           ratePerLiter: parseFloat(values.ratePerLiter),
+          purchaseRate: purchaseRates[values.fuelType] || null,
           paymentMethod: values.paymentMethod,
         },
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'सफलतापूर्वक सेभ भयो!' : 'Saved successfully!');
+      showToast(t('petrol.savedSuccess'), 'success');
 
-      // Reset form after short delay
-      setTimeout(() => {
-        setValues(prev => ({
-          transactionDate: businessDate,
-          fuelType: prev.fuelType,
-          transactionType: 'SALE',
-          liters: '',
-          ratePerLiter: fuelPrices[prev.fuelType] ? fuelPrices[prev.fuelType].toString() : '',
-          paymentMethod: 'CASH',
-          notes: '',
-        }));
-        setSuccessMessage('');
-      }, 2000);
+      // Reset form
+      setValues(prev => ({
+        transactionDate: businessDate,
+        fuelType: prev.fuelType,
+        transactionType: 'SALE',
+        liters: '',
+        ratePerLiter: fuelPrices[prev.fuelType] ? fuelPrices[prev.fuelType].toString() : '',
+        paymentMethod: 'CASH',
+        notes: '',
+      }));
     } catch (err) {
-      setErrors({ submit: err.response?.data?.message || 'Failed to save. Please try again.' });
+      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -162,72 +188,72 @@ export default function PetrolEntryPage() {
             </button>
             <Fuel className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'पेट्रोल पम्प' : 'Petrol Pump'}
+              {t('petrol.title')}
             </h1>
           </div>
           <LanguageToggle />
         </div>
       </header>
 
-      {/* Today's Prices Banner */}
-      <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-6">
-            <div className="text-center">
-              <p className="text-sm text-red-500 font-semibold">⛽ {isNepali ? 'पेट्रोल' : 'Petrol'}</p>
-              <p className="text-2xl font-black text-gray-900">
-                {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '--'}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-yellow-500 font-semibold">🛢️ {isNepali ? 'डिजेल' : 'Diesel'}</p>
-              <p className="text-2xl font-black text-gray-900">
-                {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '--'}
-              </p>
-            </div>
+      {/* Today's Prices + Actions — three columns */}
+      <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm overflow-hidden flex">
+
+        {/* Petrol col */}
+        <div className="flex-1 flex flex-col items-center justify-center pt-3 pb-4 px-2 border-r border-gray-100">
+          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mb-1.5">
+            <span className="text-base leading-none">⛽</span>
           </div>
-          <div className="flex gap-2">
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/fuel-orders')}
-                className="flex items-center gap-1 text-sm text-blue-600 font-medium px-3 py-2 rounded-lg hover:bg-blue-50"
-              >
-                <Truck className="w-4 h-4" />
-                {isNepali ? 'अर्डर' : 'Orders'}
-              </button>
-            )}
+          <p className="text-xs font-bold text-red-600">{t('petrol.petrol')}</p>
+          <p className="text-base font-black text-gray-900 mt-0.5">
+            {fuelPrices.petrol ? `रु ${parseFloat(fuelPrices.petrol).toFixed(2)}` : '—'}
+          </p>
+          <p className="text-[10px] text-gray-400">{t('fuelPrice.perLiter')}</p>
+        </div>
+
+        {/* Diesel col */}
+        <div className="flex-1 flex flex-col items-center justify-center pt-3 pb-4 px-2 border-r border-gray-100">
+          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center mb-1.5">
+            <span className="text-base leading-none">🛢️</span>
+          </div>
+          <p className="text-xs font-bold text-yellow-600">{t('petrol.diesel')}</p>
+          <p className="text-base font-black text-gray-900 mt-0.5">
+            {fuelPrices.diesel ? `रु ${parseFloat(fuelPrices.diesel).toFixed(2)}` : '—'}
+          </p>
+          <p className="text-[10px] text-gray-400">{t('fuelPrice.perLiter')}</p>
+        </div>
+
+        {/* Actions col */}
+        <div className="flex flex-col">
+          <button
+            onClick={() => navigate('/fuel-prices')}
+            className="flex-1 px-4 flex items-center justify-center gap-2 text-orange-600 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b border-gray-100"
+          >
+            <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <Settings className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
+          </button>
+          {isAdmin && (
             <button
-              onClick={() => navigate('/fuel-prices')}
-              className="flex items-center gap-1 text-sm text-orange-600 font-medium px-3 py-2 rounded-lg hover:bg-orange-50"
+              onClick={() => navigate('/fuel-orders')}
+              className="flex-1 px-4 flex items-center justify-center gap-2 text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors"
             >
-              <Settings className="w-4 h-4" />
-              {isNepali ? 'मूल्य' : 'Prices'}
+              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Truck className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-bold">{t('petrol.ordersBtn')}</span>
             </button>
-          </div>
+          )}
         </div>
+
       </div>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {errors.submit && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errors.submit}
-        </div>
-      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
+            {t('common.date')} <span className="text-red-500">*</span>
           </label>
           <DatePicker
             value={values.transactionDate}
@@ -241,12 +267,12 @@ export default function PetrolEntryPage() {
         {/* Fuel Type */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'इन्धन प्रकार' : 'Fuel Type'} <span className="text-red-500">*</span>
+            {t('petrol.fuelType')} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { value: 'petrol', labelEn: 'Petrol', labelNe: 'पेट्रोल', color: 'red' },
-              { value: 'diesel', labelEn: 'Diesel', labelNe: 'डिजेल', color: 'yellow' },
+              { value: 'petrol', tKey: 'petrol.petrol', color: 'red' },
+              { value: 'diesel', tKey: 'petrol.diesel', color: 'yellow' },
             ].map((type) => (
               <button
                 key={type.value}
@@ -258,7 +284,7 @@ export default function PetrolEntryPage() {
                     : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
                 }`}
               >
-                <span>{isNepali ? type.labelNe : type.labelEn}</span>
+                <span>{t(type.tKey)}</span>
                 {fuelPrices[type.value] && (
                   <span className={`text-xs ${values.fuelType === type.value ? 'text-white/80' : 'text-gray-500'}`}>
                     रु {parseFloat(fuelPrices[type.value]).toFixed(2)}
@@ -272,7 +298,7 @@ export default function PetrolEntryPage() {
         {/* Liters */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'लिटर' : 'Liters'} <span className="text-red-500">*</span>
+            {t('petrol.litersLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -281,33 +307,28 @@ export default function PetrolEntryPage() {
             inputMode="decimal"
             value={values.liters}
             onChange={(e) => handleChange('liters', e.target.value)}
-            placeholder={isNepali ? 'लिटर प्रविष्ट गर्नुहोस्' : 'Enter liters'}
+            placeholder={t('petrol.enterLiters')}
             className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.liters && <p className="text-red-500 text-sm mt-1">{errors.liters}</p>}
         </div>
 
-        {/* Rate per Liter */}
+        {/* Rate per Liter — read-only, set via Prices button */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'प्रति लिटर दर' : 'Rate per Liter'} <span className="text-red-500">*</span>
+            {t('petrol.rateLabel')} <span className="text-red-500">*</span>
             {fuelPrices[values.fuelType] && (
-              <span className="text-sm text-green-600 ml-2">
-                ({isNepali ? 'आजको दर' : "Today's rate"})
-              </span>
+              <span className="text-sm text-green-600 ml-2">({t('petrol.todayRate')})</span>
             )}
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400">रु</span>
             <input
               type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
+              readOnly
               value={values.ratePerLiter}
-              onChange={(e) => handleChange('ratePerLiter', e.target.value)}
               placeholder="0.00"
-              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.ratePerLiter ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed select-none"
             />
           </div>
           {errors.ratePerLiter && <p className="text-red-500 text-sm mt-1">{errors.ratePerLiter}</p>}
@@ -315,14 +336,14 @@ export default function PetrolEntryPage() {
 
         {/* Calculated Amount - Read Only */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 text-white">
-          <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Total Amount'}</p>
+          <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
           <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
         </div>
 
         {/* Payment Method */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'भुक्तानी विधि' : 'Payment Method'} <span className="text-red-500">*</span>
+            {t('common.paymentMethod')} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -335,7 +356,7 @@ export default function PetrolEntryPage() {
               }`}
             >
               <Banknote className="w-5 h-5" />
-              {isNepali ? 'नगद' : 'Cash'}
+              {t('common.cash')}
             </button>
             <button
               type="button"
@@ -347,7 +368,7 @@ export default function PetrolEntryPage() {
               }`}
             >
               <Building2 className="w-5 h-5" />
-              {isNepali ? 'बैंक' : 'Bank'}
+              {t('common.bank')}
             </button>
           </div>
         </div>
@@ -355,13 +376,13 @@ export default function PetrolEntryPage() {
         {/* Notes */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'टिप्पणी (ऐच्छिक)' : 'Notes (optional)'}
+            {t('common.notes')} ({t('common.optional')})
           </label>
           <textarea
             value={values.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
-            placeholder={isNepali ? 'थप जानकारी...' : 'Additional notes...'}
+            placeholder={t('common.additionalNotes')}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
           />
         </div>
@@ -382,16 +403,17 @@ export default function PetrolEntryPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
               </svg>
-              {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+              {t('common.savingEllipsis')}
             </span>
           ) : (
             <span className="flex items-center justify-center">
               <Check className="w-6 h-6 mr-2" />
-              {isNepali ? 'सेभ गर्नुहोस्' : 'Save Entry'}
+              {t('common.saveEntry')}
             </span>
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

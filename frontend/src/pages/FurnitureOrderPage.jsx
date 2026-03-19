@@ -6,11 +6,13 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import DatePicker from '../components/DatePicker';
 import SearchableSelect from '../components/SearchableSelect';
+import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function FurnitureOrderPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
+  const { toasts, showToast, removeToast } = useToast();
 
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -31,8 +33,6 @@ export default function FurnitureOrderPage() {
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -83,21 +83,20 @@ export default function FurnitureOrderPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
 
     if (lineItems.length === 0) {
-      setErrorMessage(isNepali ? 'कम्तिमा एउटा सामान थप्नुहोस्' : 'Add at least one item');
+      showToast(t('furnitureOrd.addAtLeastOne'), 'error');
       return;
     }
 
     const invalidItems = lineItems.filter(li => !li.itemId || li.quantity < 1);
     if (invalidItems.length > 0) {
-      setErrorMessage(isNepali ? 'सबै सामान सही भर्नुहोस्' : 'Please fill all item details correctly');
+      showToast(t('furnitureOrd.fillAllItems'), 'error');
       return;
     }
 
     const customerName = isWalkIn
-      ? (walkInName || (isNepali ? 'वाक-इन ग्राहक' : 'Walk-in Customer'))
+      ? (walkInName || t('furnitureOrd.walkInCustomer'))
       : (selectedCustomer?.name || '');
 
     setIsSubmitting(true);
@@ -126,13 +125,11 @@ export default function FurnitureOrderPage() {
       };
 
       await api.post('/api/transactions', payload);
-      setSuccessMessage(isNepali ? 'अर्डर सफलतापूर्वक सेभ भयो!' : 'Order saved successfully!');
+      showToast(t('furnitureOrd.orderSaved'), 'success');
 
-      setTimeout(() => {
-        navigate('/furniture/orders');
-      }, 2000);
+      navigate('/furniture/orders');
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Failed to save order');
+      showToast(err.response?.data?.message || 'Failed to save order', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -158,30 +155,17 @@ export default function FurnitureOrderPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <ShoppingCart className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{isNepali ? 'नयाँ बिक्री' : 'New Sale'}</h1>
+            <h1 className="text-xl font-bold ml-3">{t('furnitureOrd.newSaleTitle')}</h1>
           </div>
           <LanguageToggle />
         </div>
       </header>
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mx-4 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl flex items-center">
-          <Check className="w-5 h-5 mr-2" />{successMessage}
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="mx-4 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-          {errorMessage}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'मिति' : 'Date'} <span className="text-red-500">*</span>
+            {t('furnitureOrd.dateLabel')} <span className="text-red-500">*</span>
           </label>
           <DatePicker
             value={transactionDate}
@@ -193,23 +177,23 @@ export default function FurnitureOrderPage() {
         {/* Customer Selection */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'ग्राहक' : 'Customer'}
+            {t('furnitureOrd.customer')}
           </label>
 
           <div className="flex gap-2 mb-3">
             <button type="button" onClick={() => { setIsWalkIn(false); setSelectedCustomerId(''); }}
               className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${!isWalkIn ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}>
-              {isNepali ? 'ग्राहक छान्नुहोस्' : 'Select Customer'}
+              {t('furnitureOrd.selectCustomer')}
             </button>
             <button type="button" onClick={() => { setIsWalkIn(true); setSelectedCustomerId(''); }}
               className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${isWalkIn ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}>
-              {isNepali ? 'वाक-इन' : 'Walk-in'}
+              {t('furnitureOrd.walkIn')}
             </button>
           </div>
 
           {isWalkIn ? (
             <input type="text" value={walkInName} onChange={(e) => setWalkInName(e.target.value)}
-              placeholder={isNepali ? 'ग्राहकको नाम (ऐच्छिक)' : 'Customer name (optional)'}
+              placeholder={t('furnitureOrd.customerNameOptional')}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
           ) : (
             <div className="relative">
@@ -218,7 +202,7 @@ export default function FurnitureOrderPage() {
                 <input type="text" value={customerSearch}
                   onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }}
                   onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder={isNepali ? 'ग्राहक खोज्नुहोस्...' : 'Search customer...'}
+                  placeholder={t('furnitureOrd.searchCustomer')}
                   className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
 
@@ -259,10 +243,10 @@ export default function FurnitureOrderPage() {
         {/* Line Items */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-lg font-medium text-gray-700">{isNepali ? 'सामानहरू' : 'Items'} <span className="text-red-500">*</span></label>
+            <label className="text-lg font-medium text-gray-700">{t('furnitureOrd.items')} <span className="text-red-500">*</span></label>
             <button type="button" onClick={addLineItem}
               className="flex items-center gap-1 text-purple-600 font-medium hover:text-purple-700">
-              <Plus className="w-5 h-5" /> {isNepali ? 'थप्नुहोस्' : 'Add'}
+              <Plus className="w-5 h-5" /> {t('furnitureOrd.add')}
             </button>
           </div>
 
@@ -270,7 +254,7 @@ export default function FurnitureOrderPage() {
             <button type="button" onClick={addLineItem}
               className="w-full py-8 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors">
               <Plus className="w-8 h-8 mx-auto mb-2" />
-              <p>{isNepali ? 'सामान थप्नुहोस्' : 'Add items to this order'}</p>
+              <p>{t('furnitureOrd.addItems')}</p>
             </button>
           )}
 
@@ -285,16 +269,16 @@ export default function FurnitureOrderPage() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सामान' : 'Item'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.itemLabel')}</label>
                   <SearchableSelect
                     value={li.itemId}
                     onChange={(val) => updateLineItem(index, 'itemId', val)}
                     options={inventoryItems.map(item => ({
                       value: item.id,
                       label: `${item.name} (${item.category})`,
-                      subtitle: `${isNepali ? 'स्टक' : 'Stock'}: ${item.stockQty}`,
+                      subtitle: `${t('furnitureOrd.stock')}: ${item.stockQty}`,
                     }))}
-                    placeholder={isNepali ? 'सामान छान्नुहोस्' : 'Select item'}
+                    placeholder={t('furnitureOrd.selectItem')}
                     accentColor="purple"
                     className="py-2 text-base"
                   />
@@ -302,13 +286,13 @@ export default function FurnitureOrderPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'संख्या' : 'Qty'}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.qty')}</label>
                     <input type="number" min="1" value={li.quantity}
                       onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-center font-bold" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'एकाइ मूल्य' : 'Unit Price'}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.unitPrice')}</label>
                     <input type="number" step="0.01" min="0" value={li.unitPrice}
                       onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-center font-bold" />
@@ -316,7 +300,7 @@ export default function FurnitureOrderPage() {
                 </div>
 
                 <div className="mt-2 text-right text-sm font-bold text-gray-600">
-                  {isNepali ? 'उप-जम्मा' : 'Subtotal'}: {formatCurrency(li.quantity * li.unitPrice)}
+                  {t('furnitureOrd.subtotal')}: {formatCurrency(li.quantity * li.unitPrice)}
                 </div>
               </div>
             ))}
@@ -326,24 +310,24 @@ export default function FurnitureOrderPage() {
         {/* Order Total */}
         {lineItems.length > 0 && (
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-80">{isNepali ? 'कुल रकम' : 'Order Total'}</p>
+            <p className="text-sm opacity-80">{t('furnitureOrd.orderTotal')}</p>
             <p className="text-3xl font-bold">{formatCurrency(orderTotal)}</p>
           </div>
         )}
 
         {/* Payment Method */}
         <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">{isNepali ? 'भुक्तानी' : 'Payment'}</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">{t('furnitureOrd.payment')}</label>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { value: 'CASH', labelEn: 'Cash', labelNe: 'नगद' },
-              { value: 'BANK', labelEn: 'Bank', labelNe: 'बैंक' },
+              { value: 'CASH', tKey: 'common.cash' },
+              { value: 'BANK', tKey: 'common.bank' },
             ].map(pm => (
               <button key={pm.value} type="button" onClick={() => setPaymentMethod(pm.value)}
                 className={`py-3 text-lg font-bold rounded-xl border-2 transition-all ${
                   paymentMethod === pm.value ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'
                 }`}>
-                {isNepali ? pm.labelNe : pm.labelEn}
+                {t(pm.tKey)}
               </button>
             ))}
           </div>
@@ -351,10 +335,10 @@ export default function FurnitureOrderPage() {
 
         {/* Delivery Info */}
         <div className="space-y-3">
-          <label className="block text-lg font-medium text-gray-700">{isNepali ? 'डेलिभरी जानकारी' : 'Delivery Info'}</label>
+          <label className="block text-lg font-medium text-gray-700">{t('furnitureOrd.deliveryInfo')}</label>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'डेलिभरी मिति' : 'Delivery Date'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.deliveryDate')}</label>
             <DatePicker
               value={deliveryDate}
               onChange={(val) => setDeliveryDate(val)}
@@ -363,18 +347,18 @@ export default function FurnitureOrderPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'डेलिभरी ठेगाना' : 'Delivery Address'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.deliveryAddress')}</label>
             <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'डेलिभरी स्थिति' : 'Delivery Status'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.deliveryStatus')}</label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { value: 'PENDING', labelEn: 'Pending', labelNe: 'बाँकी' },
-                { value: 'IN_PROGRESS', labelEn: 'In Progress', labelNe: 'प्रगतिमा' },
-                { value: 'DELIVERED', labelEn: 'Delivered', labelNe: 'डेलिभर' },
+                { value: 'PENDING', tKey: 'furnitureOrd.pending' },
+                { value: 'IN_PROGRESS', tKey: 'furnitureOrd.inProgress' },
+                { value: 'DELIVERED', tKey: 'furnitureOrd.delivered' },
               ].map(ds => (
                 <button key={ds.value} type="button" onClick={() => setDeliveryStatus(ds.value)}
                   className={`py-2 text-sm font-medium rounded-lg border-2 transition-colors ${
@@ -384,7 +368,7 @@ export default function FurnitureOrderPage() {
                         : 'bg-yellow-500 text-white border-yellow-500'
                       : 'bg-white text-gray-700 border-gray-300'
                   }`}>
-                  {isNepali ? ds.labelNe : ds.labelEn}
+                  {t(ds.tKey)}
                 </button>
               ))}
             </div>
@@ -394,7 +378,7 @@ export default function FurnitureOrderPage() {
         {/* Notes */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {isNepali ? 'टिप्पणी' : 'Notes'} <span className="text-gray-400 text-sm">({isNepali ? 'ऐच्छिक' : 'optional'})</span>
+            {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
           </label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
@@ -411,16 +395,17 @@ export default function FurnitureOrderPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
               </svg>
-              {isNepali ? 'सेभ हुँदैछ...' : 'Saving...'}
+              {t('furnitureOrd.saving')}
             </span>
           ) : (
             <span className="flex items-center justify-center">
               <Check className="w-6 h-6 mr-2" />
-              {isNepali ? 'अर्डर सेभ गर्नुहोस्' : 'Save Order'}
+              {t('furnitureOrd.saveOrder')}
             </span>
           )}
         </button>
       </form>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

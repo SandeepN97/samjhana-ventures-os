@@ -19,10 +19,10 @@ import LanguageToggle from '../components/LanguageToggle';
 
 export default function EvVehiclePage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   if (!isAdmin) {
     return (
@@ -30,18 +30,16 @@ export default function EvVehiclePage() {
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-sm">
           <ShieldOff className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            {isNepali ? 'पहुँच अस्वीकृत' : 'Access Denied'}
+            {t('evVehicle.accessDenied')}
           </h1>
           <p className="text-gray-500 mb-4">
-            {isNepali
-              ? 'तपाईंसँग गाडी व्यवस्थापन गर्ने अनुमति छैन।'
-              : 'You do not have permission to manage vehicles.'}
+            {t('evVehicle.noPermission')}
           </p>
           <button
             onClick={() => navigate('/')}
             className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700"
           >
-            {isNepali ? 'फिर्ता जानुहोस्' : 'Go Back'}
+            {t('common.goBack')}
           </button>
         </div>
       </div>
@@ -110,11 +108,11 @@ export default function EvVehiclePage() {
     setFormSuccess('');
 
     if (!formData.vehicleName.trim()) {
-      setFormError(isNepali ? 'गाडीको नाम आवश्यक छ' : 'Vehicle name is required');
+      setFormError(t('evVehicle.vehicleNameRequired'));
       return;
     }
     if (!formData.ratePerPercent || parseFloat(formData.ratePerPercent) <= 0) {
-      setFormError(isNepali ? 'प्रति % दर आवश्यक छ' : 'Rate per % is required');
+      setFormError(t('evVehicle.rateRequired'));
       return;
     }
 
@@ -129,10 +127,10 @@ export default function EvVehiclePage() {
 
       if (editingVehicle) {
         await api.put(`/api/ev-vehicles/${editingVehicle.id}`, payload);
-        setFormSuccess(isNepali ? 'गाडी अपडेट भयो!' : 'Vehicle updated!');
+        setFormSuccess(t('evVehicle.vehicleUpdated'));
       } else {
         await api.post('/api/ev-vehicles', payload);
-        setFormSuccess(isNepali ? 'गाडी थपियो!' : 'Vehicle added!');
+        setFormSuccess(t('evVehicle.vehicleAdded'));
       }
 
       fetchVehicles();
@@ -148,7 +146,7 @@ export default function EvVehiclePage() {
   };
 
   const handleDelete = async (vehicle) => {
-    if (!confirm(isNepali ? `${vehicle.vehicleName} लाई हटाउने?` : `Remove ${vehicle.vehicleName}?`)) return;
+    if (!confirm(`${t('evVehicle.removeConfirm')} ${vehicle.vehicleName}?`)) return;
 
     try {
       await api.delete(`/api/ev-vehicles/${vehicle.id}`);
@@ -172,7 +170,7 @@ export default function EvVehiclePage() {
             </button>
             <Car className="w-8 h-8 ml-2" />
             <h1 className="text-xl font-bold ml-3">
-              {isNepali ? 'EV गाडी व्यवस्थापन' : 'EV Vehicle Management'}
+              {t('evVehicle.title')}
             </h1>
           </div>
           <LanguageToggle />
@@ -186,10 +184,10 @@ export default function EvVehiclePage() {
           className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700"
         >
           <Plus className="w-5 h-5" />
-          {isNepali ? 'नयाँ गाडी' : 'Add Vehicle'}
+          {t('evVehicle.addVehicle')}
         </button>
         <span className="text-sm text-gray-500">
-          {vehicles.filter(v => v.isActive).length} {isNepali ? 'सक्रिय' : 'active'}
+          {vehicles.filter(v => v.isActive).length} {t('evVehicle.active')}
         </span>
       </div>
 
@@ -200,8 +198,8 @@ export default function EvVehiclePage() {
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="text-lg font-bold text-gray-800">
                 {editingVehicle
-                  ? (isNepali ? 'गाडी सम्पादन' : 'Edit Vehicle')
-                  : (isNepali ? 'नयाँ गाडी थप्नुहोस्' : 'Add New Vehicle')}
+                  ? t('evVehicle.editVehicle')
+                  : t('evVehicle.addNewVehicle')}
               </h2>
               <button
                 onClick={() => { setShowForm(false); resetForm(); }}
@@ -227,7 +225,7 @@ export default function EvVehiclePage() {
               {/* Vehicle Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'गाडीको नाम' : 'Vehicle Name'} *
+                  {t('evVehicle.vehicleName')} *
                 </label>
                 <input
                   type="text"
@@ -242,7 +240,7 @@ export default function EvVehiclePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'ब्याट्री (KW)' : 'Battery (KW)'}
+                    {t('evVehicle.battery')}
                   </label>
                   <input
                     type="number"
@@ -255,7 +253,7 @@ export default function EvVehiclePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isNepali ? 'सीट संख्या' : 'Seats'}
+                    {t('evVehicle.seats')}
                   </label>
                   <input
                     type="number"
@@ -270,7 +268,7 @@ export default function EvVehiclePage() {
               {/* Rate per Percent */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isNepali ? 'प्रति % दर (रु)' : 'Rate per % (Rs)'} *
+                  {t('evVehicle.ratePerPercent')} *
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">रु</span>
@@ -295,10 +293,10 @@ export default function EvVehiclePage() {
                 }`}
               >
                 {submitting
-                  ? (isNepali ? 'सेभ हुँदैछ...' : 'Saving...')
+                  ? t('evVehicle.saving')
                   : editingVehicle
-                    ? (isNepali ? 'अपडेट गर्नुहोस्' : 'Update Vehicle')
-                    : (isNepali ? 'गाडी थप्नुहोस्' : 'Add Vehicle')}
+                    ? t('evVehicle.updateVehicle')
+                    : t('evVehicle.addVehicle')}
               </button>
             </form>
           </div>
@@ -313,7 +311,7 @@ export default function EvVehiclePage() {
       ) : vehicles.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Car className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">{isNepali ? 'कुनै गाडी छैन' : 'No vehicles found'}</p>
+          <p className="text-lg">{t('evVehicle.noVehicles')}</p>
         </div>
       ) : (
         <div className="px-4 py-4 space-y-3">
@@ -328,7 +326,7 @@ export default function EvVehiclePage() {
                     <h3 className="font-bold text-gray-800">{vehicle.vehicleName}</h3>
                     {!vehicle.isActive && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                        {isNepali ? 'निष्क्रिय' : 'Inactive'}
+                        {t('evVehicle.inactive')}
                       </span>
                     )}
                   </div>
@@ -340,7 +338,7 @@ export default function EvVehiclePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4 text-blue-500" />
-                      {vehicle.seatingCapacity} {isNepali ? 'सीट' : 'seats'}
+                      {vehicle.seatingCapacity} {t('evVehicle.seatsLabel')}
                     </div>
                     <div className="flex items-center gap-1 font-bold text-green-700">
                       <Zap className="w-4 h-4" />

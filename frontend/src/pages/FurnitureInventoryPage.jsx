@@ -6,21 +6,20 @@ import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 
 const CATEGORIES = [
-  { value: 'ALL', labelEn: 'All', labelNe: 'सबै' },
-  { value: 'SOFA', labelEn: 'Sofa', labelNe: 'सोफा' },
-  { value: 'TABLE', labelEn: 'Table', labelNe: 'टेबल' },
-  { value: 'CHAIR', labelEn: 'Chair', labelNe: 'कुर्सी' },
-  { value: 'BED', labelEn: 'Bed', labelNe: 'खाट' },
-  { value: 'CABINET', labelEn: 'Cabinet', labelNe: 'क्याबिनेट' },
-  { value: 'WARDROBE', labelEn: 'Wardrobe', labelNe: 'अलमारी' },
-  { value: 'SHELF', labelEn: 'Shelf', labelNe: 'शेल्फ' },
-  { value: 'OTHER', labelEn: 'Other', labelNe: 'अन्य' },
+  { value: 'ALL', tKey: 'furnitureInv.catAll' },
+  { value: 'SOFA', tKey: 'furnitureInv.catSofa' },
+  { value: 'TABLE', tKey: 'furnitureInv.catTable' },
+  { value: 'CHAIR', tKey: 'furnitureInv.catChair' },
+  { value: 'BED', tKey: 'furnitureInv.catBed' },
+  { value: 'CABINET', tKey: 'furnitureInv.catCabinet' },
+  { value: 'WARDROBE', tKey: 'furnitureInv.catWardrobe' },
+  { value: 'SHELF', tKey: 'furnitureInv.catShelf' },
+  { value: 'OTHER', tKey: 'furnitureInv.catOther' },
 ];
 
 export default function FurnitureInventoryPage() {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +88,7 @@ export default function FurnitureInventoryPage() {
     setFormSuccess('');
 
     if (!formData.name.trim()) {
-      setFormError(isNepali ? 'सामानको नाम आवश्यक छ' : 'Item name is required');
+      setFormError(t('furnitureInv.itemNameRequired'));
       return;
     }
 
@@ -105,28 +104,28 @@ export default function FurnitureInventoryPage() {
 
       if (editingItem) {
         await api.put(`/api/furniture/items/${editingItem.id}`, payload);
-        setFormSuccess(isNepali ? 'सामान अपडेट भयो!' : 'Item updated!');
+        setFormSuccess(t('furnitureInv.itemUpdated'));
       } else {
         await api.post('/api/furniture/items', payload);
-        setFormSuccess(isNepali ? 'सामान थपियो!' : 'Item added!');
+        setFormSuccess(t('furnitureInv.itemAdded'));
       }
 
       fetchItems();
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
-      setFormError(err.response?.data?.message || (isNepali ? 'सेभ गर्न सकिएन' : 'Failed to save'));
+      setFormError(err.response?.data?.message || t('furnitureInv.failedToSave'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (item) => {
-    if (!confirm(isNepali ? `${item.name} हटाउने?` : `Remove ${item.name}?`)) return;
+    if (!confirm(`Remove ${item.name}?`)) return;
     try {
       await api.delete(`/api/furniture/items/${item.id}`);
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.message || (isNepali ? 'हटाउन सकिएन' : 'Failed to remove'));
+      alert(err.response?.data?.message || t('furnitureInv.failedToRemove'));
     }
   };
 
@@ -152,7 +151,7 @@ export default function FurnitureInventoryPage() {
 
   const getCategoryLabel = (value) => {
     const cat = CATEGORIES.find(c => c.value === value);
-    return cat ? (isNepali ? cat.labelNe : cat.labelEn) : value;
+    return cat ? t(cat.tKey) : value;
   };
 
   return (
@@ -165,7 +164,7 @@ export default function FurnitureInventoryPage() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <Package className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{isNepali ? 'सामान सूची' : 'Inventory'}</h1>
+            <h1 className="text-xl font-bold ml-3">{t('furnitureInv.title')}</h1>
           </div>
           <LanguageToggle />
         </div>
@@ -178,7 +177,7 @@ export default function FurnitureInventoryPage() {
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700"
         >
           <Plus className="w-5 h-5" />
-          {isNepali ? 'नयाँ सामान' : 'Add Item'}
+          {t('furnitureInv.addItem')}
         </button>
       </div>
 
@@ -195,7 +194,7 @@ export default function FurnitureInventoryPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {isNepali ? cat.labelNe : cat.labelEn}
+              {t(cat.tKey)}
             </button>
           ))}
         </div>
@@ -209,7 +208,7 @@ export default function FurnitureInventoryPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={isNepali ? 'नाम वा SKU खोज्नुहोस्...' : 'Search name or SKU...'}
+            placeholder={t('furnitureInv.searchNameSku')}
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -221,7 +220,7 @@ export default function FurnitureInventoryPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 my-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="text-lg font-bold text-gray-800">
-                {editingItem ? (isNepali ? 'सामान सम्पादन' : 'Edit Item') : (isNepali ? 'नयाँ सामान थप्नुहोस्' : 'Add New Item')}
+                {editingItem ? t('furnitureInv.editItem') : t('furnitureInv.addNewItem')}
               </h2>
               <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-6 h-6 text-gray-500" />
@@ -233,14 +232,14 @@ export default function FurnitureInventoryPage() {
               {formSuccess && <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'सामानको नाम' : 'Item Name'} *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.itemName')} *</label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder={isNepali ? 'जस्तै: डाइनिङ टेबल' : 'e.g., Dining Table'} />
+                  placeholder={t('furnitureInv.itemNamePlaceholder')} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'नेपाली नाम' : 'Name (Nepali)'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.nameNepali')}</label>
                 <input type="text" value={formData.nameNepali} onChange={(e) => setFormData({ ...formData, nameNepali: e.target.value })}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
               </div>
@@ -249,15 +248,15 @@ export default function FurnitureInventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
                   <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    placeholder={isNepali ? 'स्वचालित' : 'Auto-generated'}
+                    placeholder={t('furnitureInv.skuPlaceholder')}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'वर्ग' : 'Category'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.category')}</label>
                   <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
                     {CATEGORIES.filter(c => c.value !== 'ALL').map(cat => (
-                      <option key={cat.value} value={cat.value}>{isNepali ? cat.labelNe : cat.labelEn}</option>
+                      <option key={cat.value} value={cat.value}>{t(cat.tKey)}</option>
                     ))}
                   </select>
                 </div>
@@ -265,12 +264,12 @@ export default function FurnitureInventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'खरिद मूल्य' : 'Purchase Price'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.purchasePrice')}</label>
                   <input type="number" step="0.01" min="0" value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
                     placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'बिक्री मूल्य' : 'Selling Price'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.sellingPrice')}</label>
                   <input type="number" step="0.01" min="0" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
                     placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
                 </div>
@@ -278,27 +277,27 @@ export default function FurnitureInventoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'स्टक संख्या' : 'Stock Qty'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.stockQty')}</label>
                   <input type="number" min="0" value={formData.stockQty} onChange={(e) => setFormData({ ...formData, stockQty: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'न्यूनतम स्तर' : 'Reorder Level'}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.reorderLevel')}</label>
                   <input type="number" min="0" value={formData.reorderLevel} onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isNepali ? 'विवरण' : 'Description'}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.description')}</label>
                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none" />
               </div>
 
               <button type="submit" disabled={submitting}
                 className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                {submitting ? (isNepali ? 'सेभ हुँदैछ...' : 'Saving...') :
-                  editingItem ? (isNepali ? 'अपडेट गर्नुहोस्' : 'Update Item') : (isNepali ? 'सामान थप्नुहोस्' : 'Add Item')}
+                {submitting ? t('furnitureInv.saving') :
+                  editingItem ? t('furnitureInv.updateItem') : t('furnitureInv.addItem')}
               </button>
             </form>
           </div>
@@ -313,10 +312,10 @@ export default function FurnitureInventoryPage() {
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">{isNepali ? 'कुनै सामान छैन' : 'No items found'}</p>
+          <p className="text-lg">{t('furnitureInv.noItems')}</p>
           <button onClick={() => { resetForm(); setShowForm(true); }}
             className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
-            {isNepali ? 'पहिलो सामान थप्नुहोस्' : 'Add First Item'}
+            {t('furnitureInv.addFirstItem')}
           </button>
         </div>
       ) : (
@@ -339,8 +338,8 @@ export default function FurnitureInventoryPage() {
                     <p className="text-xs text-gray-400 mb-2">SKU: {item.sku}</p>
 
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{isNepali ? 'खरिद' : 'Buy'}: {formatCurrency(item.purchasePrice)}</span>
-                      <span className="text-gray-800 font-medium">{isNepali ? 'बिक्री' : 'Sell'}: {formatCurrency(item.sellingPrice)}</span>
+                      <span className="text-gray-500">{t('furnitureInv.buy')}: {formatCurrency(item.purchasePrice)}</span>
+                      <span className="text-gray-800 font-medium">{t('furnitureInv.sell')}: {formatCurrency(item.sellingPrice)}</span>
                       {profitMargin && <span className="text-green-600 text-xs">+{profitMargin}%</span>}
                     </div>
                   </div>
@@ -369,7 +368,7 @@ export default function FurnitureInventoryPage() {
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                    {isLowStock && <span className="text-xs text-red-500 font-medium">{isNepali ? 'कम स्टक!' : 'Low Stock!'}</span>}
+                    {isLowStock && <span className="text-xs text-red-500 font-medium">{t('furnitureInv.lowStockBadge')}</span>}
                   </div>
                 </div>
               </div>
