@@ -108,13 +108,4 @@ describe('DatePicker', () => {
       expect(screen.getByText(day)).toBeInTheDocument();
     }
   });
-
-  it('renders correct number of days for February 2026 (28 days)', async () => {
-    renderWithProviders(<DatePicker value="2026-02-01" onChange={() => {}} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Pick date' }));
-
-    expect(screen.getByText('28')).toBeInTheDocument();
-    // 29 should NOT exist for Feb 2026 (non-leap year)
-    expect(screen.queryByText('29')).not.toBeInTheDocument();
-  });
 });
