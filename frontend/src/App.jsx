@@ -13,7 +13,6 @@ import FurnitureOrderHistoryPage from './pages/FurnitureOrderHistoryPage';
 import RentalEntryPage from './pages/RentalEntryPage';
 import LoanEntryPage from './pages/LoanEntryPage';
 import RecordsPage from './pages/RecordsPage';
-import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import PendingReviewPage from './pages/PendingReviewPage';
 import FuelPricePage from './pages/FuelPricePage';
@@ -123,22 +122,8 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/reports"
-          element={
-            <PrivateRoute>
-              <ReportsPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/reports/daily"
-          element={
-            <PrivateRoute>
-              <ReportsPage />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/reports" element={<Navigate to="/reports/close" replace />} />
+        <Route path="/reports/daily" element={<Navigate to="/reports/close" replace />} />
         <Route
           path="/reports/close"
           element={
