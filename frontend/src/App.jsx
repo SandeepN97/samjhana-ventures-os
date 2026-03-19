@@ -1,5 +1,27 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, fontFamily: 'monospace' }}>
+          <h2 style={{ color: 'red' }}>Page Error</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#333', fontSize: 13 }}>
+            {this.state.error.toString()}{'\n'}{this.state.error.stack}
+          </pre>
+          <button onClick={() => { this.setState({ error: null }); window.history.back(); }}
+            style={{ marginTop: 16, padding: '8px 16px', cursor: 'pointer' }}>
+            Go Back
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PetrolEntryPage from './pages/PetrolEntryPage';
@@ -32,6 +54,7 @@ function PrivateRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -206,6 +229,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

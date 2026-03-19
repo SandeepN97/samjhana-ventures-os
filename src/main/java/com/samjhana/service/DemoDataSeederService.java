@@ -359,19 +359,22 @@ public class DemoDataSeederService {
 
     // ── Clear all data ─────────────────────────────────────────────────────
 
-    /** Drop all H2 CHECK constraints to avoid stale enum-value constraint violations.
+    /** Drop all CHECK constraints to avoid stale enum-value constraint violations.
+     *  Works with both H2 (schema=PUBLIC) and PostgreSQL (schema=public).
      *  With ddl-auto=update, Hibernate never updates old constraints, so a constraint
      *  created before a new enum value was added will block inserts. */
     private void dropAllCheckConstraints() {
         try {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT TABLE_NAME, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS " +
-                "WHERE CONSTRAINT_TYPE = 'CHECK' AND TABLE_SCHEMA = 'PUBLIC'"
+                "WHERE CONSTRAINT_TYPE = 'CHECK' AND UPPER(TABLE_SCHEMA) = 'PUBLIC'"
             );
             for (Map<String, Object> row : rows) {
                 try {
-                    jdbcTemplate.execute("ALTER TABLE \"" + row.get("TABLE_NAME") +
-                        "\" DROP CONSTRAINT IF EXISTS \"" + row.get("CONSTRAINT_NAME") + "\"");
+                    String table = String.valueOf(row.get("TABLE_NAME"));
+                    String constraint = String.valueOf(row.get("CONSTRAINT_NAME"));
+                    jdbcTemplate.execute("ALTER TABLE \"" + table +
+                        "\" DROP CONSTRAINT IF EXISTS \"" + constraint + "\"");
                     log.debug("Dropped check constraint {} on {}", row.get("CONSTRAINT_NAME"), row.get("TABLE_NAME"));
                 } catch (Exception e) {
                     log.warn("Could not drop constraint {} on {}: {}", row.get("CONSTRAINT_NAME"), row.get("TABLE_NAME"), e.getMessage());
