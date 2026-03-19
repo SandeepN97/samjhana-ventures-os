@@ -15,6 +15,26 @@ export default function FuelOrderPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
 
+  const { toasts, showToast, removeToast } = useToast();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Form state
+  const [values, setValues] = useState({
+    orderDate: new Date().toISOString().split('T')[0],
+    fuelType: 'petrol',
+    liters: '',
+    ratePerLiter: '',
+    supplierName: '',
+    notes: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
   // Redirect non-admins
   if (!isAdmin) {
     return (
@@ -37,26 +57,6 @@ export default function FuelOrderPage() {
       </div>
     );
   }
-
-  const { toasts, showToast, removeToast } = useToast();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Form state
-  const [values, setValues] = useState({
-    orderDate: new Date().toISOString().split('T')[0],
-    fuelType: 'petrol',
-    liters: '',
-    ratePerLiter: '',
-    supplierName: '',
-    notes: '',
-  });
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
 
   const fetchOrders = async () => {
     try {
