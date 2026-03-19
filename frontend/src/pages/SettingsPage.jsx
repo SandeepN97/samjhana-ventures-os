@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Globe,
   User,
-  Bell,
   Shield,
   HelpCircle,
   LogOut,
@@ -34,10 +33,6 @@ export default function SettingsPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN';
   const { toasts, showToast, removeToast } = useToast();
-
-  const [notifications, setNotifications] = useState(
-    () => localStorage.getItem('notifications') !== 'false'
-  );
 
   // Active section: null, 'editProfile', 'changePassword'
   const [activeSection, setActiveSection] = useState(null);
@@ -214,11 +209,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleNotificationToggle = () => {
-    const newVal = !notifications;
-    setNotifications(newVal);
-    localStorage.setItem('notifications', newVal.toString());
-  };
 
   const getRoleLabel = (role) => {
     const labels = {
@@ -515,25 +505,7 @@ export default function SettingsPage() {
                 </div>
               </button>
 
-              {/* Notifications */}
-              <div className="flex items-center justify-between px-4 py-4 border-t">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-800">{t('settings.notifications')}</span>
-                </div>
-                <button
-                  onClick={handleNotificationToggle}
-                  className={`w-12 h-7 rounded-full transition-colors ${
-                    notifications ? 'bg-blue-500' : 'bg-gray-300'
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                      notifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
+
             </div>
 
             {/* Account */}
