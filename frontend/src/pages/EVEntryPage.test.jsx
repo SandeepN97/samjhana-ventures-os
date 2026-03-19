@@ -54,7 +54,7 @@ describe('EVEntryPage', () => {
     expect(screen.getByText('End Battery %')).toBeInTheDocument();
   });
 
-  it('meter inputs have min=0 attribute', () => {
+  it('number inputs have min=0 attribute', () => {
     renderWithProviders(<EVEntryPage />);
     const numberInputs = screen.getAllByRole('spinbutton');
     numberInputs.forEach(input => {

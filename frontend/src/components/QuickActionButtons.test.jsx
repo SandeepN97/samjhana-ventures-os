@@ -31,9 +31,9 @@ describe('QuickActionButtons', () => {
     expect(screen.queryByText('Bank Loan')).not.toBeInTheDocument();
   });
 
-  it('shows Daily Close button', () => {
+  it('shows End of Day button', () => {
     renderWithProviders(<QuickActionButtons />);
-    expect(screen.getByText('Daily Close')).toBeInTheDocument();
+    expect(screen.getByText('End of Day')).toBeInTheDocument();
   });
 
   it('admin sees Staff Management button', () => {
@@ -44,7 +44,6 @@ describe('QuickActionButtons', () => {
   it('manager sees Staff Management button', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'MANAGER', username: 'mgr' }));
     renderWithProviders(<QuickActionButtons />);
-    // Manager can see analytics but not staff management (admin only)
     expect(screen.queryByText('Staff Management')).not.toBeInTheDocument();
   });
 
@@ -56,7 +55,6 @@ describe('QuickActionButtons', () => {
 
   it('admin and manager see Analytics button', () => {
     renderWithProviders(<QuickActionButtons />);
-    // Analytics appears in both secondary actions and bottom nav
     expect(screen.getAllByText('Analytics').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -66,9 +64,9 @@ describe('QuickActionButtons', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/entry/petrol');
   });
 
-  it('clicking Daily Close navigates to /reports/close', async () => {
+  it('clicking End of Day navigates to /reports/close', async () => {
     renderWithProviders(<QuickActionButtons />);
-    await userEvent.click(screen.getByText('Daily Close').closest('button'));
+    await userEvent.click(screen.getByText('End of Day').closest('button'));
     expect(mockNavigate).toHaveBeenCalledWith('/reports/close');
   });
 
