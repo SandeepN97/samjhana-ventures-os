@@ -125,11 +125,6 @@ export default function QuickActionButtons() {
       {/* Secondary Actions */}
       <div className="px-4 mt-6 space-y-3">
         <SecondaryButton
-          icon={TrendingUp}
-          label={t('home.dailyReport')}
-          onClick={() => navigate('/reports/daily')}
-        />
-        <SecondaryButton
           icon={FileText}
           label={t('home.dailyClose')}
           onClick={() => navigate('/reports/close')}
