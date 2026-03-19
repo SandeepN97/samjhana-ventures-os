@@ -47,11 +47,10 @@ describe('DailyClosePage', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
   });
 
-  it('renders Close Day title after loading', async () => {
+  it('renders End of Day title after loading', async () => {
     renderWithProviders(<DailyClosePage />);
     await waitFor(() => {
-      // "Close Day" appears in both the h1 header and the tab bar button
-      expect(screen.getAllByText('Close Day').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('End of Day').length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -62,12 +61,10 @@ describe('DailyClosePage', () => {
     });
   });
 
-  it('shows Close Day and Reports tabs', async () => {
+  it('shows End of Day and Reports tabs', async () => {
     renderWithProviders(<DailyClosePage />);
     await waitFor(() => {
-      // Tab buttons in the header (Close Day appears as h1 + tab button)
-      const closeDayBtns = screen.getAllByRole('button', { name: 'Close Day' });
-      expect(closeDayBtns.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('End of Day').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByRole('button', { name: 'Reports' })).toBeInTheDocument();
     });
   });
