@@ -4,14 +4,20 @@ import userEvent from '@testing-library/user-event';
 import PetrolEntryPage from './PetrolEntryPage';
 import { renderWithProviders } from '../test/test-utils';
 
-// Mock api module
+// Mock api module — different endpoints return different shapes
 vi.mock('../utils/api', () => ({
   default: {
-    get: vi.fn().mockResolvedValue({
-      data: {
-        petrol: { pricePerLiter: 154.5 },
-        diesel: { pricePerLiter: 148.0 },
-      },
+    get: vi.fn((url) => {
+      if (url && url.includes('/api/transactions')) {
+        return Promise.resolve({ data: [] });
+      }
+      // fuel-prices/current
+      return Promise.resolve({
+        data: {
+          petrol: { pricePerLiter: 154.5 },
+          diesel: { pricePerLiter: 148.0 },
+        },
+      });
     }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
   },
@@ -41,10 +47,8 @@ describe('PetrolEntryPage', () => {
 
   it('has date picker with today as default', async () => {
     renderWithProviders(<PetrolEntryPage />);
-    // Should display today's date formatted
-    const today = new Date();
-    const day = today.getDate();
-    // The DatePicker shows "19 Feb 2026" format
+    // Component uses toISOString() (UTC), so parse day from UTC to avoid timezone mismatch
+    const day = parseInt(new Date().toISOString().split('T')[0].split('-')[2]);
     const dateTrigger = screen.getByRole('button', { name: 'Pick date' });
     expect(dateTrigger.textContent).toContain(String(day));
   });
@@ -55,10 +59,10 @@ describe('PetrolEntryPage', () => {
     expect(literInput).toHaveAttribute('min', '0');
   });
 
-  it('rate input has min=0 to prevent negative values', () => {
+  it('rate input is read-only (set via Prices page)', () => {
     renderWithProviders(<PetrolEntryPage />);
     const rateInput = screen.getByPlaceholderText('0.00');
-    expect(rateInput).toHaveAttribute('min', '0');
+    expect(rateInput).toHaveAttribute('readonly');
   });
 
   it('shows validation error when liters is empty on submit', async () => {

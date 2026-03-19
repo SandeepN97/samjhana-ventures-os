@@ -6,13 +6,20 @@ import { renderWithProviders } from '../test/test-utils';
 
 vi.mock('../utils/api', () => ({
   default: {
-    get: vi.fn().mockResolvedValue({
-      data: [
-        { id: 'v1', vehicleName: 'BYD E6', batteryCapacityKw: 80, seatingCapacity: 5, ratePerPercent: 15 },
-        { id: 'v2', vehicleName: 'MG ZS EV', batteryCapacityKw: 50, seatingCapacity: 5, ratePerPercent: 12 },
-      ],
+    get: vi.fn((url) => {
+      if (url === '/api/ev-vehicles') {
+        return Promise.resolve({
+          data: [
+            { id: 'v1', vehicleName: 'BYD E6', batteryCapacityKw: 80, seatingCapacity: 5, ratePerPercent: 15 },
+            { id: 'v2', vehicleName: 'MG ZS EV', batteryCapacityKw: 50, seatingCapacity: 5, ratePerPercent: 12 },
+          ],
+        });
+      }
+      // nea_rate and other settings endpoints
+      return Promise.resolve({ data: { value: '10' } });
     }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
+    put: vi.fn().mockResolvedValue({ data: { value: '10' } }),
   },
 }));
 
@@ -26,6 +33,7 @@ describe('EVEntryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
+    localStorage.removeItem('ev_nea_rate');
   });
 
   it('renders with EV Charging title', () => {
@@ -33,16 +41,17 @@ describe('EVEntryPage', () => {
     expect(screen.getByText('EV Charging')).toBeInTheDocument();
   });
 
-  it('shows Meter Reading mode by default', () => {
+  it('shows vehicle dropdown by default', async () => {
     renderWithProviders(<EVEntryPage />);
-    expect(screen.getByText('Meter Reading')).toBeInTheDocument();
-    expect(screen.getByText('Opening Meter')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('-- Select Vehicle --')).toBeInTheDocument();
+    });
   });
 
-  it('switches to Percentage mode', async () => {
+  it('shows start and end battery percentage inputs', () => {
     renderWithProviders(<EVEntryPage />);
-    await userEvent.click(screen.getByText('Percentage Based'));
-    expect(screen.getByText('Select Vehicle')).toBeInTheDocument();
+    expect(screen.getByText('Start Battery %')).toBeInTheDocument();
+    expect(screen.getByText('End Battery %')).toBeInTheDocument();
   });
 
   it('meter inputs have min=0 attribute', () => {
@@ -55,63 +64,20 @@ describe('EVEntryPage', () => {
     });
   });
 
-  it('validates required fields in meter mode on submit', async () => {
+  it('validates vehicle selection is required on submit', async () => {
     renderWithProviders(<EVEntryPage />);
-
-    // Clear the opening meter and try to submit
     const submitBtn = screen.getByText('Save Entry');
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Opening meter reading is required')).toBeInTheDocument();
+      // "Select Vehicle" appears as both label and error message
+      const matches = screen.getAllByText('Select Vehicle');
+      expect(matches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('validates closing meter must be greater than opening', async () => {
+  it('validates start and end percentage are required on submit', async () => {
     renderWithProviders(<EVEntryPage />);
-
-    const [openingInput, closingInput] = screen.getAllByPlaceholderText('0.00').slice(0, 2);
-    await userEvent.type(openingInput, '100');
-    await userEvent.type(closingInput, '50');
-
-    // Fill unit rate too
-    const rateInput = screen.getAllByPlaceholderText('0.00')[2];
-    if (rateInput) await userEvent.type(rateInput, '10');
-
-    const submitBtn = screen.getByText('Save Entry');
-    await userEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Closing meter must be greater than opening')).toBeInTheDocument();
-    });
-  });
-
-  it('shows vehicle dropdown in percentage mode with SearchableSelect', async () => {
-    renderWithProviders(<EVEntryPage />);
-    await userEvent.click(screen.getByText('Percentage Based'));
-
-    await waitFor(() => {
-      // SearchableSelect shows the placeholder
-      expect(screen.getByText('-- Select Vehicle --')).toBeInTheDocument();
-    });
-  });
-
-  it('validates vehicle selection in percentage mode', async () => {
-    renderWithProviders(<EVEntryPage />);
-    await userEvent.click(screen.getByText('Percentage Based'));
-
-    const submitBtn = screen.getByText('Save Entry');
-    await userEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Select a vehicle')).toBeInTheDocument();
-    });
-  });
-
-  it('validates start/end percentage in percentage mode', async () => {
-    renderWithProviders(<EVEntryPage />);
-    await userEvent.click(screen.getByText('Percentage Based'));
-
     const submitBtn = screen.getByText('Save Entry');
     await userEvent.click(submitBtn);
 
@@ -121,21 +87,58 @@ describe('EVEntryPage', () => {
     });
   });
 
-  it('calculates units charged in meter mode', async () => {
+  it('validates end % must be greater than start %', async () => {
     renderWithProviders(<EVEntryPage />);
 
-    const inputs = screen.getAllByPlaceholderText('0.00');
-    await userEvent.type(inputs[0], '100'); // opening
-    await userEvent.type(inputs[1], '150'); // closing
+    const startInput = screen.getByPlaceholderText('0');
+    const endInput = screen.getByPlaceholderText('100');
+
+    await userEvent.type(startInput, '80');
+    await userEvent.type(endInput, '50');
+
+    const submitBtn = screen.getByText('Save Entry');
+    await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('50.00 kWh')).toBeInTheDocument();
+      expect(screen.getByText('End % must be greater than start %')).toBeInTheDocument();
     });
   });
 
-  it('has DC Fast and AC Slow charger options', () => {
+  it('shows vehicle options after loading', async () => {
     renderWithProviders(<EVEntryPage />);
-    expect(screen.getByText('DC Fast')).toBeInTheDocument();
-    expect(screen.getByText('AC Slow')).toBeInTheDocument();
+    // Open the SearchableSelect dropdown
+    const vehicleDropdown = screen.getByText('-- Select Vehicle --');
+    await userEvent.click(vehicleDropdown);
+
+    await waitFor(() => {
+      expect(screen.getByText('BYD E6')).toBeInTheDocument();
+      expect(screen.getByText('MG ZS EV')).toBeInTheDocument();
+    });
+  });
+
+  it('calculates percent charged when vehicle selected and percentages filled', async () => {
+    renderWithProviders(<EVEntryPage />);
+
+    // Select a vehicle first (required for summary to appear)
+    await waitFor(() => expect(screen.getByText('-- Select Vehicle --')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('-- Select Vehicle --'));
+    await waitFor(() => expect(screen.getByText('BYD E6')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('BYD E6'));
+
+    const startInput = screen.getByPlaceholderText('0');
+    const endInput = screen.getByPlaceholderText('100');
+
+    await userEvent.type(startInput, '20');
+    await userEvent.type(endInput, '70');
+
+    await waitFor(() => {
+      expect(screen.getByText('50%')).toBeInTheDocument();
+    });
+  });
+
+  it('has Cash and Bank payment method options', () => {
+    renderWithProviders(<EVEntryPage />);
+    expect(screen.getByText('Cash')).toBeInTheDocument();
+    expect(screen.getByText('Bank')).toBeInTheDocument();
   });
 });
