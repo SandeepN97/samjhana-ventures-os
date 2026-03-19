@@ -158,6 +158,11 @@ export default function QuickActionButtons() {
           onClick={() => navigate('/records')}
         />
         <NavButton
+          icon={BarChart3}
+          label={t('nav.analytics')}
+          onClick={() => navigate('/analytics')}
+        />
+        <NavButton
           icon={Settings}
           label={t('nav.settings')}
           onClick={() => navigate('/settings')}
