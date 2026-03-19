@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
-import { formatBsDate } from '../utils/nepaliDate';
+import { formatBsDate, adToBs, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../utils/nepaliDate';
 
 const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-orange-500', text: 'text-orange-600', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -205,10 +205,29 @@ export default function AnalyticsPage() {
       return { today: isNepali ? 'आज' : 'Today', week: isNepali ? 'यो हप्ता' : 'This Week', month: isNepali ? 'यो महिना' : 'This Month' }[period];
     }
     const { start, end } = currRange;
-    const fmtD = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: start.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
-    if (period === 'today') return fmtD(start);
-    if (period === 'month') return start.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-    return `${fmtD(start)} – ${fmtD(end)}`;
+    const MONTHS = isNepali ? BS_MONTHS_NE : BS_MONTHS_EN;
+    const fmtBs = (d) => {
+      const bs = adToBs(d);
+      const str = `${bs.day} ${MONTHS[bs.month]}`;
+      return isNepali ? toNepaliDigits(str) : str;
+    };
+    if (period === 'today') {
+      const bs = adToBs(start);
+      const str = `${bs.day} ${MONTHS[bs.month]} ${bs.year}`;
+      return isNepali ? toNepaliDigits(str) : str;
+    }
+    if (period === 'month') {
+      const bs = adToBs(start);
+      const str = `${MONTHS[bs.month]} ${bs.year}`;
+      return isNepali ? toNepaliDigits(str) : str;
+    }
+    // week: show BS date range, include year only if it spans a year boundary
+    const bsStart = adToBs(start);
+    const bsEnd   = adToBs(end);
+    const sameYear = bsStart.year === bsEnd.year;
+    const startStr = sameYear ? fmtBs(start) : `${fmtBs(start)} ${bsStart.year}`;
+    const endStr   = `${fmtBs(end)} ${bsEnd.year}`;
+    return isNepali ? toNepaliDigits(`${startStr} – ${endStr}`) : `${startStr} – ${endStr}`;
   })();
 
   const prevPeriodLabel = {
