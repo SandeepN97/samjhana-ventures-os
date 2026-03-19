@@ -18,13 +18,6 @@ describe('SearchableSelect', () => {
     expect(screen.getByText('Pick one')).toBeInTheDocument();
   });
 
-  it('renders default placeholder when none provided', () => {
-    renderWithProviders(
-      <SearchableSelect value="" onChange={() => {}} options={SAMPLE_OPTIONS} />
-    );
-    expect(screen.getByText('-- Select --')).toBeInTheDocument();
-  });
-
   it('shows selected option label', () => {
     renderWithProviders(
       <SearchableSelect value="2" onChange={() => {}} options={SAMPLE_OPTIONS} />

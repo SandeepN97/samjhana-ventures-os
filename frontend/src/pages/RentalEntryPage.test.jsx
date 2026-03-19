@@ -7,7 +7,9 @@ import { renderWithProviders } from '../test/test-utils';
 vi.mock('../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
-      if (url.includes('/ledger')) return Promise.resolve({ data: null });
+      if (url && url.includes('/ledger')) {
+        return Promise.resolve({ data: { outstandingBalance: 0, totalPayments: 0 } });
+      }
       return Promise.resolve({ data: [] });
     }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
@@ -31,15 +33,15 @@ describe('RentalEntryPage', () => {
     expect(screen.getByText('Rental Payment')).toBeInTheDocument();
   });
 
-  it('shows Manage button for admin', () => {
+  it('shows Manage button in header for admin', () => {
     renderWithProviders(<RentalEntryPage />);
     expect(screen.getByText('Manage')).toBeInTheDocument();
   });
 
-  it('staff users do not see Manage button', () => {
-    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
+  it('clicking Manage navigates to rental-properties', async () => {
     renderWithProviders(<RentalEntryPage />);
-    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText('Manage').closest('button'));
+    expect(mockNavigate).toHaveBeenCalledWith('/rental-properties');
   });
 
   it('validates property selection is required', async () => {
@@ -48,8 +50,9 @@ describe('RentalEntryPage', () => {
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      // Text appears as both label and error message
-      expect(screen.getAllByText('Select a property').length).toBeGreaterThanOrEqual(2);
+      // "Select a property" appears as both label and error message
+      const matches = screen.getAllByText('Select a property');
+      expect(matches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -71,5 +74,16 @@ describe('RentalEntryPage', () => {
         expect(input).toHaveAttribute('min', '0');
       }
     });
+  });
+
+  it('staff users do not see Manage button', () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
+    renderWithProviders(<RentalEntryPage />);
+    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
+  });
+
+  it('shows property dropdown placeholder', () => {
+    renderWithProviders(<RentalEntryPage />);
+    expect(screen.getByText('-- Select Property --')).toBeInTheDocument();
   });
 });

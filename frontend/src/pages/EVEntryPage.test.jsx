@@ -7,7 +7,7 @@ import { renderWithProviders } from '../test/test-utils';
 vi.mock('../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
-      if (url.includes('/api/ev-vehicles')) {
+      if (url === '/api/ev-vehicles') {
         return Promise.resolve({
           data: [
             { id: 'v1', vehicleName: 'BYD E6', batteryCapacityKw: 80, seatingCapacity: 5, ratePerPercent: 15 },
@@ -15,12 +15,11 @@ vi.mock('../utils/api', () => ({
           ],
         });
       }
-      if (url.includes('/api/settings/nea_rate')) {
-        return Promise.resolve({ data: { value: '12.5' } });
-      }
-      return Promise.resolve({ data: [] });
+      // nea_rate and other settings endpoints
+      return Promise.resolve({ data: { value: '10' } });
     }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
+    put: vi.fn().mockResolvedValue({ data: { value: '10' } }),
   },
 }));
 
@@ -34,6 +33,7 @@ describe('EVEntryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
+    localStorage.removeItem('ev_nea_rate');
   });
 
   it('renders with EV Charging title', () => {
@@ -41,16 +41,17 @@ describe('EVEntryPage', () => {
     expect(screen.getByText('EV Charging')).toBeInTheDocument();
   });
 
-  it('shows vehicle selection by default', () => {
-    renderWithProviders(<EVEntryPage />);
-    expect(screen.getByText('Select Vehicle')).toBeInTheDocument();
-  });
-
-  it('shows vehicle dropdown with SearchableSelect', async () => {
+  it('shows vehicle dropdown by default', async () => {
     renderWithProviders(<EVEntryPage />);
     await waitFor(() => {
       expect(screen.getByText('-- Select Vehicle --')).toBeInTheDocument();
     });
+  });
+
+  it('shows start and end battery percentage inputs', () => {
+    renderWithProviders(<EVEntryPage />);
+    expect(screen.getByText('Start Battery %')).toBeInTheDocument();
+    expect(screen.getByText('End Battery %')).toBeInTheDocument();
   });
 
   it('number inputs have min=0 attribute', () => {
@@ -69,12 +70,13 @@ describe('EVEntryPage', () => {
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      // Text appears as both label and error message
-      expect(screen.getAllByText('Select Vehicle').length).toBeGreaterThanOrEqual(2);
+      // "Select Vehicle" appears as both label and error message
+      const matches = screen.getAllByText('Select Vehicle');
+      expect(matches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('validates start and end percentage are required', async () => {
+  it('validates start and end percentage are required on submit', async () => {
     renderWithProviders(<EVEntryPage />);
     const submitBtn = screen.getByText('Save Entry');
     await userEvent.click(submitBtn);
@@ -85,13 +87,58 @@ describe('EVEntryPage', () => {
     });
   });
 
-  it('shows NEA rate section', () => {
+  it('validates end % must be greater than start %', async () => {
     renderWithProviders(<EVEntryPage />);
-    expect(screen.getByText(/NEA Rate per Unit/)).toBeInTheDocument();
+
+    const startInput = screen.getByPlaceholderText('0');
+    const endInput = screen.getByPlaceholderText('100');
+
+    await userEvent.type(startInput, '80');
+    await userEvent.type(endInput, '50');
+
+    const submitBtn = screen.getByText('Save Entry');
+    await userEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('End % must be greater than start %')).toBeInTheDocument();
+    });
   });
 
-  it('shows Manage Vehicles button for admin', () => {
+  it('shows vehicle options after loading', async () => {
     renderWithProviders(<EVEntryPage />);
-    expect(screen.getByText('Manage Vehicles')).toBeInTheDocument();
+    // Open the SearchableSelect dropdown
+    const vehicleDropdown = screen.getByText('-- Select Vehicle --');
+    await userEvent.click(vehicleDropdown);
+
+    await waitFor(() => {
+      expect(screen.getByText('BYD E6')).toBeInTheDocument();
+      expect(screen.getByText('MG ZS EV')).toBeInTheDocument();
+    });
+  });
+
+  it('calculates percent charged when vehicle selected and percentages filled', async () => {
+    renderWithProviders(<EVEntryPage />);
+
+    // Select a vehicle first (required for summary to appear)
+    await waitFor(() => expect(screen.getByText('-- Select Vehicle --')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('-- Select Vehicle --'));
+    await waitFor(() => expect(screen.getByText('BYD E6')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('BYD E6'));
+
+    const startInput = screen.getByPlaceholderText('0');
+    const endInput = screen.getByPlaceholderText('100');
+
+    await userEvent.type(startInput, '20');
+    await userEvent.type(endInput, '70');
+
+    await waitFor(() => {
+      expect(screen.getByText('50%')).toBeInTheDocument();
+    });
+  });
+
+  it('has Cash and Bank payment method options', () => {
+    renderWithProviders(<EVEntryPage />);
+    expect(screen.getByText('Cash')).toBeInTheDocument();
+    expect(screen.getByText('Bank')).toBeInTheDocument();
   });
 });

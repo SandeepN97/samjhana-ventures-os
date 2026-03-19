@@ -6,6 +6,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { resources } from '../i18n/index.js';
 
+// Full i18n instance for tests using production translations
 const testI18n = i18n.createInstance();
 testI18n.use(initReactI18next).init({
   lng: 'en',
