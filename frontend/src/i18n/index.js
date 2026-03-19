@@ -106,7 +106,7 @@ const resources = {
         welcome: 'Welcome!',
         todayCash: "Today's Cash",
         dailyReport: 'Daily Report',
-        dailyClose: 'Daily Close',
+        dailyClose: 'End of Day',
         staffManagement: 'Staff Management',
         analytics: 'Analytics',
         addNew: 'Add New',
@@ -447,7 +447,7 @@ const resources = {
 
       // Daily Close
       dailyClose: {
-        title: 'Daily Close',
+        title: 'End of Day',
         failedToLoad: 'Failed to load data',
         enterCashFirst: 'Please enter the cash amount',
         alreadyClosed: "This day's report has already been closed",
@@ -467,7 +467,7 @@ const resources = {
         totalSales: 'Total Sales',
         countCash: 'Count Your Cash',
         lastClose: 'Last close',
-        confirmTitle: 'Confirm Day Close',
+        confirmTitle: 'Confirm End of Day',
         confirmClose: 'Confirm & Close',
         enterCashAmount: 'Enter cash amount',
         cashMatches: 'Cash matches!',
@@ -478,7 +478,7 @@ const resources = {
         reasonForShort: 'Reason for Short (optional)',
         writeReason: 'Write reason...',
         closing: 'Closing...',
-        closeDay: 'Close Day',
+        closeDay: 'End of Day',
         totalCash: 'Total Cash',
         cashCounted: 'Cash Counted',
         matchLabel: 'Match',
@@ -881,7 +881,7 @@ const resources = {
         welcome: 'स्वागत छ, बुवा!',
         todayCash: 'आजको कुल नगद',
         dailyReport: 'दैनिक रिपोर्ट',
-        dailyClose: 'दैनिक बन्द',
+        dailyClose: 'दिन अन्त्य',
         staffManagement: 'कर्मचारी व्यवस्थापन',
         analytics: 'विश्लेषण',
         addNew: 'नयाँ थप्नुहोस्',
@@ -1222,7 +1222,7 @@ const resources = {
 
       // Daily Close
       dailyClose: {
-        title: 'दैनिक बन्द',
+        title: 'दिन अन्त्य',
         failedToLoad: 'डाटा लोड गर्न सकिएन',
         enterCashFirst: 'कृपया नगद रकम प्रविष्ट गर्नुहोस्',
         alreadyClosed: 'यो दिनको रिपोर्ट पहिले नै बन्द गरिएको छ',
@@ -1242,7 +1242,7 @@ const resources = {
         totalSales: 'कुल बिक्री',
         countCash: 'नगद गन्नुहोस्',
         lastClose: 'अन्तिम बन्द',
-        confirmTitle: 'दिन बन्द पुष्टि गर्नुहोस्',
+        confirmTitle: 'दिन अन्त्य पुष्टि गर्नुहोस्',
         confirmClose: 'पुष्टि गरी बन्द गर्नुहोस्',
         enterCashAmount: 'नगद रकम प्रविष्ट गर्नुहोस्',
         cashMatches: 'मिल्यो!',
@@ -1253,7 +1253,7 @@ const resources = {
         reasonForShort: 'घटीको कारण (ऐच्छिक)',
         writeReason: 'कारण लेख्नुहोस्...',
         closing: 'बन्द गर्दै...',
-        closeDay: 'दिन बन्द गर्नुहोस्',
+        closeDay: 'दिन अन्त्य गर्नुहोस्',
         totalCash: 'कुल नगद',
         cashCounted: 'गनिएको नगद',
         matchLabel: 'मिल्यो',
