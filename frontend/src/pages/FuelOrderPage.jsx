@@ -31,11 +31,28 @@ export default function FuelOrderPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const fetchOrders = async () => {
+    try {
+      const res = await api.get('/api/transactions?businessCode=petrol');
+      const purchases = res.data
+        .filter(tx => tx.transactionType === 'PURCHASE')
+        .map(tx => ({
+          ...tx,
+          customFields: tx.customFields ? (typeof tx.customFields === 'string' ? JSON.parse(tx.customFields) : tx.customFields) : null
+        }))
+        .sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate));
+      setOrders(purchases);
+    } catch (err) {
+      console.error('Failed to fetch orders', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchOrders();
+    if (isAdmin) fetchOrders();
   }, []);
 
-  // Redirect non-admins
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
@@ -57,25 +74,6 @@ export default function FuelOrderPage() {
       </div>
     );
   }
-
-  const fetchOrders = async () => {
-    try {
-      const res = await api.get('/api/transactions?businessCode=petrol');
-      // Filter only PURCHASE transactions and parse customFields
-      const purchases = res.data
-        .filter(t => t.transactionType === 'PURCHASE')
-        .map(t => ({
-          ...t,
-          customFields: t.customFields ? (typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields) : null
-        }))
-        .sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate));
-      setOrders(purchases);
-    } catch (err) {
-      console.error('Failed to fetch orders', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const calculatedAmount = values.liters && values.ratePerLiter
     ? (parseFloat(values.liters) * parseFloat(values.ratePerLiter)).toFixed(2)
