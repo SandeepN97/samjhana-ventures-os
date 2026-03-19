@@ -23,9 +23,9 @@ describe('LoanEntryPage', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
   });
 
-  it('renders with Bank Loans title', async () => {
+  it('renders with Bank Loan title', async () => {
     renderWithProviders(<LoanEntryPage />);
-    expect(screen.getByText('Bank Loans')).toBeInTheDocument();
+    expect(screen.getByText('Bank Loan')).toBeInTheDocument();
   });
 
   it('shows summary view by default', async () => {
@@ -53,7 +53,6 @@ describe('LoanEntryPage', () => {
     });
     await userEvent.click(screen.getByText('Add Loan'));
 
-    // Find and click the submit button (labeled "Add Loan" in the form)
     const submitButtons = screen.getAllByText('Add Loan');
     const formSubmitBtn = submitButtons[submitButtons.length - 1];
     await userEvent.click(formSubmitBtn);
@@ -70,7 +69,6 @@ describe('LoanEntryPage', () => {
     });
     await userEvent.click(screen.getByText('Add Loan'));
 
-    // Fill bank name but not amount
     const bankInput = screen.getByPlaceholderText(/Nepal Bank/);
     await userEvent.type(bankInput, 'Test Bank');
 
@@ -109,7 +107,7 @@ describe('LoanEntryPage', () => {
       expect(screen.getByText('Total Borrowed')).toBeInTheDocument();
       expect(screen.getByText('Principal Paid')).toBeInTheDocument();
       expect(screen.getByText('Interest Paid')).toBeInTheDocument();
-      expect(screen.getByText('Remaining')).toBeInTheDocument();
+      expect(screen.getByText('Remaining Balance')).toBeInTheDocument();
     });
   });
 

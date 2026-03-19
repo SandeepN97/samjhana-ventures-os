@@ -4,16 +4,13 @@ import { BrowserRouter } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { resources } from '../i18n/index.js';
 
-// Minimal i18n instance for tests
 const testI18n = i18n.createInstance();
 testI18n.use(initReactI18next).init({
   lng: 'en',
   fallbackLng: 'en',
-  resources: {
-    en: { translation: { common: { save: 'Save', saving: 'Saving...' } } },
-    ne: { translation: { common: { save: 'सेभ गर्नुहोस्', saving: 'सेभ हुँदैछ...' } } },
-  },
+  resources,
   interpolation: { escapeValue: false },
 });
 

@@ -55,10 +55,10 @@ describe('PetrolEntryPage', () => {
     expect(literInput).toHaveAttribute('min', '0');
   });
 
-  it('rate input has min=0 to prevent negative values', () => {
+  it('rate input is read-only (auto-filled from NOC price)', () => {
     renderWithProviders(<PetrolEntryPage />);
     const rateInput = screen.getByPlaceholderText('0.00');
-    expect(rateInput).toHaveAttribute('min', '0');
+    expect(rateInput).toHaveAttribute('readOnly');
   });
 
   it('shows validation error when liters is empty on submit', async () => {

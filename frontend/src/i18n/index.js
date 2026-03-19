@@ -13,7 +13,7 @@ import { initReactI18next } from 'react-i18next';
  * - Nepali numerals (१,२,३) option
  */
 
-const resources = {
+export const resources = {
   en: {
     translation: {
       // Common

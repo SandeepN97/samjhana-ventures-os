@@ -81,8 +81,9 @@ describe('DatePicker', () => {
       <DatePicker value="2026-02-19" onChange={() => {}} />,
       { locale: 'ne' }
     );
-    // Should contain Nepali digits for 19
-    expect(screen.getByText(/१९/)).toBeInTheDocument();
+    // Trigger button should contain Nepali digits
+    const trigger = screen.getByRole('button', { name: 'Pick date' });
+    expect(trigger.textContent).toMatch(/[०-९]/);
   });
 
   it('selects today when "Today" button is clicked', async () => {

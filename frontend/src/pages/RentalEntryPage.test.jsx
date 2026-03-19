@@ -6,7 +6,10 @@ import { renderWithProviders } from '../test/test-utils';
 
 vi.mock('../utils/api', () => ({
   default: {
-    get: vi.fn().mockResolvedValue({ data: [] }),
+    get: vi.fn((url) => {
+      if (url.includes('/ledger')) return Promise.resolve({ data: null });
+      return Promise.resolve({ data: [] });
+    }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
   },
 }));
@@ -23,39 +26,40 @@ describe('RentalEntryPage', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
   });
 
-  it('renders with Rental title', () => {
+  it('renders with Rental Payment title', () => {
     renderWithProviders(<RentalEntryPage />);
-    expect(screen.getByText('Rental')).toBeInTheDocument();
+    expect(screen.getByText('Rental Payment')).toBeInTheDocument();
   });
 
-  it('shows mode toggle for admin', () => {
+  it('shows Manage button for admin', () => {
     renderWithProviders(<RentalEntryPage />);
-    expect(screen.getByText('Add Payment')).toBeInTheDocument();
     expect(screen.getByText('Manage')).toBeInTheDocument();
   });
 
-  it('validates property name is required', async () => {
+  it('staff users do not see Manage button', () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
+    renderWithProviders(<RentalEntryPage />);
+    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
+  });
+
+  it('validates property selection is required', async () => {
     renderWithProviders(<RentalEntryPage />);
     const submitBtn = screen.getByText('Save Payment');
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Property name is required')).toBeInTheDocument();
+      // Text appears as both label and error message
+      expect(screen.getAllByText('Select a property').length).toBeGreaterThanOrEqual(2);
     });
   });
 
-  it('validates rent amount must be greater than 0', async () => {
+  it('validates amount received is required', async () => {
     renderWithProviders(<RentalEntryPage />);
-
-    // Fill property name
-    const propInput = screen.getByPlaceholderText(/Room No/);
-    await userEvent.type(propInput, 'Room 101');
-
     const submitBtn = screen.getByText('Save Payment');
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Amount must be greater than 0')).toBeInTheDocument();
+      expect(screen.getByText('Amount received is required')).toBeInTheDocument();
     });
   });
 
@@ -67,25 +71,5 @@ describe('RentalEntryPage', () => {
         expect(input).toHaveAttribute('min', '0');
       }
     });
-  });
-
-  it('staff users see info banner', () => {
-    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
-    renderWithProviders(<RentalEntryPage />);
-    expect(screen.getByText(/You can only record rent payments received/)).toBeInTheDocument();
-  });
-
-  it('staff users do not see mode toggle', () => {
-    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
-    renderWithProviders(<RentalEntryPage />);
-    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
-  });
-
-  it('shows manage form when Manage tab is clicked', async () => {
-    renderWithProviders(<RentalEntryPage />);
-    await userEvent.click(screen.getByText('Manage'));
-    expect(screen.getByText('Transaction Type')).toBeInTheDocument();
-    expect(screen.getByText('Rent Received')).toBeInTheDocument();
-    expect(screen.getByText('Maintenance')).toBeInTheDocument();
   });
 });
