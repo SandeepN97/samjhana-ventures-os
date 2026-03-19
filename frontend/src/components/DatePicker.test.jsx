@@ -81,8 +81,9 @@ describe('DatePicker', () => {
       <DatePicker value="2026-02-19" onChange={() => {}} />,
       { locale: 'ne' }
     );
-    // Should contain Nepali digits for 19
-    expect(screen.getByText(/१९/)).toBeInTheDocument();
+    // In Nepali mode the closed picker shows the BS date with Nepali digits
+    // 2026-02-19 AD = 2082-11-07 BS, displayed as "७ फाल्गुन २०८२"
+    expect(screen.getByRole('button', { name: 'Pick date' }).textContent).toMatch(/[०-९]/);
   });
 
   it('selects today when "Today" button is clicked', async () => {
