@@ -364,7 +364,7 @@ export default function FuelOrderPage() {
                         </p>
                         <p className="text-sm text-gray-500">{formatDate(order.transactionDate)}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          {order.customFields?.liters?.toFixed(2)} {t('fuelOrder.litersShort')} × रु {order.customFields?.ratePerLiter?.toFixed(2)}
+                          {parseFloat(order.customFields?.liters || 0).toFixed(2)} {t('fuelOrder.litersShort')} × रु {parseFloat(order.customFields?.ratePerLiter || 0).toFixed(2)}
                         </p>
                         {order.notes && (
                           <p className="text-sm text-gray-500 mt-1 italic">{order.notes}</p>
