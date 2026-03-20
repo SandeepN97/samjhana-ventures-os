@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft, ChevronLeft, ChevronRight,
+  ArrowLeft, ChevronLeft, ChevronRight, Calendar,
   Fuel, Zap, Sofa, Home, Banknote,
   TrendingUp, TrendingDown, BarChart3, Building2,
   Receipt, AlertCircle,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
-import { formatBsDate, adToBs, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../utils/nepaliDate';
+import { formatBsDate, adToBs, bsToAd, getBsMonthDays, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../utils/nepaliDate';
 
 const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-orange-500', text: 'text-orange-600', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -67,6 +67,13 @@ export default function AnalyticsPage() {
 
   const [period, setPeriod]           = useState(isStaff ? 'today' : 'week');
   const [offset, setOffset]           = useState(0);
+  const [showPicker, setShowPicker]   = useState(false);
+  // AD view (English mode calendar / month grid)
+  const [pickerYear, setPickerYear]   = useState(() => new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
+  // BS view (Nepali mode calendar / month grid)
+  const [pickerBsView, setPickerBsView] = useState(() => { const bs = adToBs(new Date()); return { year: bs.year, month: bs.month }; });
+  const pickerRef                     = useRef(null);
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
@@ -80,6 +87,53 @@ export default function AnalyticsPage() {
   const [peakDay, setPeakDay]                 = useState(null);
   const [pendingCount, setPendingCount]       = useState(0);
   const [outstandingBalance, setOutstanding]  = useState(null);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
+  // Sync picker view to the currently displayed period when picker opens
+  const openPicker = () => {
+    const { start } = getPeriodRange(period, offset);
+    setPickerYear(start.getFullYear());
+    setPickerMonth(start.getMonth());
+    const bs = adToBs(start);
+    setPickerBsView({ year: bs.year, month: bs.month });
+    setShowPicker(true);
+  };
+
+  // Compute offset from a selected AD date (days from today)
+  const selectDay = (adDate) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sel   = new Date(adDate); sel.setHours(0,0,0,0);
+    const diff  = Math.round((today - sel) / 86400000);
+    setOffset(Math.max(0, diff));
+    setShowPicker(false);
+  };
+  // Week offset: rolling 7-day windows from today
+  const selectWeek = (adDate) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sel   = new Date(adDate); sel.setHours(0,0,0,0);
+    const diff  = Math.round((today - sel) / 86400000);
+    setOffset(Math.max(0, Math.floor(diff / 7)));
+    setShowPicker(false);
+  };
+  // Month offset from an AD year/month
+  const selectMonth = (year, month) => {
+    const now = new Date();
+    const diff = (now.getFullYear() - year) * 12 + (now.getMonth() - month);
+    setOffset(Math.max(0, diff));
+    setShowPicker(false);
+  };
+  // Month offset from a BS year/month
+  const selectBsMonth = (bsYear, bsMonth) => {
+    const adStart = bsToAd(bsYear, bsMonth, 1);
+    selectMonth(adStart.getFullYear(), adStart.getMonth());
+  };
 
   useEffect(() => {
     fetchData();
@@ -290,7 +344,7 @@ export default function AnalyticsPage() {
           <>
             <div className="flex gap-2 px-4 pt-3 pb-2">
               {['today', 'week', 'month'].map(p => (
-                <button key={p} onClick={() => { setPeriod(p); setOffset(0); }}
+                <button key={p} onClick={() => { setPeriod(p); setOffset(0); setShowPicker(false); }}
                   className={`flex-1 py-2 rounded-xl font-bold text-sm transition-colors ${
                     period === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}>
@@ -298,22 +352,221 @@ export default function AnalyticsPage() {
                 </button>
               ))}
             </div>
-            {/* Period navigation arrows */}
-            <div className="flex items-center justify-between px-4 pb-3">
-              <button onClick={() => setOffset(o => o + 1)}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 active:text-indigo-700 transition-colors py-1 px-2 -mx-2 rounded-lg">
-                <ChevronLeft className="w-4 h-4" />
-                {isNepali ? 'अघिल्लो' : 'Prev'}
-              </button>
-              <span className="text-sm font-semibold text-gray-800">{periodLabel}</span>
-              <button onClick={() => setOffset(o => Math.max(0, o - 1))}
-                disabled={offset === 0}
-                className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
-                  offset === 0 ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
-                }`}>
-                {isNepali ? 'अर्को' : 'Next'}
-                <ChevronRight className="w-4 h-4" />
-              </button>
+
+            {/* Period navigation + picker trigger */}
+            <div className="relative" ref={pickerRef}>
+              <div className="flex items-center justify-between px-4 pb-3">
+                <button onClick={() => setOffset(o => o + 1)}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 active:text-indigo-700 transition-colors py-1 px-2 -mx-2 rounded-lg">
+                  <ChevronLeft className="w-4 h-4" />
+                  {isNepali ? 'अघिल्लो' : 'Prev'}
+                </button>
+
+                {/* Tappable period label — opens picker */}
+                <button onClick={openPicker}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:text-indigo-900 active:text-indigo-900 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {periodLabel}
+                </button>
+
+                <button onClick={() => setOffset(o => Math.max(0, o - 1))}
+                  disabled={offset === 0}
+                  className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
+                    offset === 0 ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
+                  }`}>
+                  {isNepali ? 'अर्को' : 'Next'}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* ── Period Picker Dropdown ── */}
+              {showPicker && (
+                <div className="absolute left-0 right-0 z-50 mx-4 mb-2 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+
+                  {/* ── MONTH PICKER ── */}
+                  {period === 'month' && (() => {
+                    const now = new Date();
+                    const todayBs = adToBs(now);
+                    if (isNepali) {
+                      // BS month grid
+                      const minBsYear = todayBs.year - 5;
+                      const maxBsYear = todayBs.year;
+                      const selStart = getPeriodRange('month', offset).start;
+                      const selBs = adToBs(selStart);
+                      return (
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <button onClick={() => setPickerBsView(v => ({ ...v, year: Math.max(minBsYear, v.year - 1) }))}
+                              disabled={pickerBsView.year <= minBsYear}
+                              className={`p-1.5 rounded-lg ${pickerBsView.year <= minBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="font-bold text-gray-800">{toNepaliDigits(pickerBsView.year)}</span>
+                            <button onClick={() => setPickerBsView(v => ({ ...v, year: Math.min(maxBsYear, v.year + 1) }))}
+                              disabled={pickerBsView.year >= maxBsYear}
+                              className={`p-1.5 rounded-lg ${pickerBsView.year >= maxBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {BS_MONTHS_NE.map((m, i) => {
+                              const isFuture = pickerBsView.year === todayBs.year && i > todayBs.month;
+                              const isSelected = selBs.year === pickerBsView.year && selBs.month === i;
+                              return (
+                                <button key={m} disabled={isFuture}
+                                  onClick={() => selectBsMonth(pickerBsView.year, i)}
+                                  className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                                    isSelected ? 'bg-indigo-600 text-white' :
+                                    isFuture   ? 'text-gray-300 cursor-default' :
+                                                 'bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'
+                                  }`}>
+                                  {m}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
+                    // AD month grid
+                    const minYear = now.getFullYear() - 5;
+                    const maxYear = now.getFullYear();
+                    const selStart = getPeriodRange('month', offset).start;
+                    return (
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <button onClick={() => setPickerYear(y => Math.max(minYear, y - 1))}
+                            disabled={pickerYear <= minYear}
+                            className={`p-1.5 rounded-lg ${pickerYear <= minYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="font-bold text-gray-800">{pickerYear}</span>
+                          <button onClick={() => setPickerYear(y => Math.min(maxYear, y + 1))}
+                            disabled={pickerYear >= maxYear}
+                            className={`p-1.5 rounded-lg ${pickerYear >= maxYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => {
+                            const isFuture = pickerYear === now.getFullYear() && i > now.getMonth();
+                            const isSelected = selStart.getFullYear() === pickerYear && selStart.getMonth() === i;
+                            return (
+                              <button key={m} disabled={isFuture}
+                                onClick={() => selectMonth(pickerYear, i)}
+                                className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                                  isSelected ? 'bg-indigo-600 text-white' :
+                                  isFuture   ? 'text-gray-300 cursor-default' :
+                                               'bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'
+                                }`}>
+                                {m}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── DAY / WEEK CALENDAR PICKER ── */}
+                  {(period === 'today' || period === 'week') && (() => {
+                    const now = new Date(); now.setHours(0,0,0,0);
+                    const selRange = getPeriodRange(period, offset);
+                    const onDayClick = (adDate) => period === 'today' ? selectDay(adDate) : selectWeek(adDate);
+
+                    if (isNepali) {
+                      // BS calendar — mirrors existing DatePicker BS logic
+                      const { year: bsY, month: bsM } = pickerBsView;
+                      const daysInMonth = getBsMonthDays(bsY, bsM);
+                      const firstAd = bsToAd(bsY, bsM, 1);
+                      const pad = Array(firstAd.getDay()).fill(null);
+                      const todayBs = adToBs(now);
+                      const atMax = (() => {
+                        const tb = adToBs(now);
+                        return bsY === tb.year && bsM === tb.month;
+                      })();
+                      const prevBs = () => setPickerBsView(v => v.month === 0 ? { year: v.year - 1, month: 11 } : { ...v, month: v.month - 1 });
+                      const nextBs = () => { if (!atMax) setPickerBsView(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 }); };
+                      const DAY_HEADERS_NE = ['आइत','सोम','मंग','बुध','बिही','शुक्र','शनि'];
+                      return (
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <button onClick={prevBs} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
+                            <span className="font-bold text-gray-800 text-sm">{BS_MONTHS_NE[bsM]} {toNepaliDigits(bsY)}</span>
+                            <button onClick={nextBs} disabled={atMax} className={`p-1.5 rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
+                          </div>
+                          <div className="grid grid-cols-7 mb-1">
+                            {DAY_HEADERS_NE.map((d, i) => <div key={i} className="text-center text-[10px] text-gray-400 font-medium py-0.5 truncate">{d}</div>)}
+                          </div>
+                          <div className="grid grid-cols-7 gap-0.5">
+                            {pad.map((_, i) => <div key={`p${i}`} />)}
+                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(bsDay => {
+                              const adDate = bsToAd(bsY, bsM, bsDay);
+                              const isFuture = adDate > now;
+                              const inSel = adDate >= selRange.start && adDate <= selRange.end;
+                              const isToday = adDate.getTime() === now.getTime();
+                              return (
+                                <button key={bsDay} disabled={isFuture} onClick={() => onDayClick(adDate)}
+                                  className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${
+                                    isFuture ? 'text-gray-300 cursor-default' :
+                                    inSel    ? 'bg-indigo-600 text-white' :
+                                    isToday  ? 'ring-1 ring-indigo-400 text-indigo-700 font-semibold' :
+                                               'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
+                                  }`}>
+                                  {toNepaliDigits(bsDay)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button onClick={() => onDayClick(now)} className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">आज</button>
+                        </div>
+                      );
+                    }
+
+                    // AD calendar — mirrors existing DatePicker AD logic
+                    const firstDay = new Date(pickerYear, pickerMonth, 1);
+                    const lastDay  = new Date(pickerYear, pickerMonth + 1, 0);
+                    const pad = Array(firstDay.getDay()).fill(null);
+                    const days = Array.from({ length: lastDay.getDate() }, (_, i) => new Date(pickerYear, pickerMonth, i + 1));
+                    const atMax = pickerYear === now.getFullYear() && pickerMonth === now.getMonth();
+                    const prevAd = () => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); } else setPickerMonth(m => m - 1); };
+                    const nextAd = () => { if (!atMax) { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); } else setPickerMonth(m => m + 1); } };
+                    const AD_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                    return (
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <button onClick={prevAd} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
+                          <span className="font-bold text-gray-800 text-sm">{AD_MONTHS[pickerMonth]} {pickerYear}</span>
+                          <button onClick={nextAd} disabled={atMax} className={`p-1.5 rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
+                        </div>
+                        <div className="grid grid-cols-7 mb-1">
+                          {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d, i) => <div key={i} className="text-center text-xs text-gray-400 font-medium py-0.5">{d}</div>)}
+                        </div>
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {pad.map((_, i) => <div key={`p${i}`} />)}
+                          {days.map(day => {
+                            const isFuture = day > now;
+                            const inSel = day >= selRange.start && day <= selRange.end;
+                            const isToday = day.getTime() === now.getTime();
+                            return (
+                              <button key={day.getDate()} disabled={isFuture} onClick={() => onDayClick(day)}
+                                className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${
+                                  isFuture ? 'text-gray-300 cursor-default' :
+                                  inSel    ? 'bg-indigo-600 text-white' :
+                                  isToday  ? 'ring-1 ring-indigo-400 text-indigo-700 font-semibold' :
+                                             'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
+                                }`}>
+                                {day.getDate()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button onClick={() => onDayClick(now)} className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">Today</button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </>
         )}
