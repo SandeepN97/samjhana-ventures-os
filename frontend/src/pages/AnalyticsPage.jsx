@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft, ChevronLeft, ChevronRight,
+  ArrowLeft, ChevronLeft, ChevronRight, Calendar,
   Fuel, Zap, Sofa, Home, Banknote,
   TrendingUp, TrendingDown, BarChart3, Building2,
   Receipt, AlertCircle,
@@ -67,6 +67,10 @@ export default function AnalyticsPage() {
 
   const [period, setPeriod]           = useState(isStaff ? 'today' : 'week');
   const [offset, setOffset]           = useState(0);
+  const [showPicker, setShowPicker]   = useState(false);
+  const [pickerYear, setPickerYear]   = useState(() => new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth()); // 0-indexed AD month for cal navigation
+  const pickerRef                     = useRef(null);
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
@@ -80,6 +84,47 @@ export default function AnalyticsPage() {
   const [peakDay, setPeakDay]                 = useState(null);
   const [pendingCount, setPendingCount]       = useState(0);
   const [outstandingBalance, setOutstanding]  = useState(null);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
+
+  // Sync pickerYear/pickerMonth to the currently displayed period when picker opens
+  const openPicker = () => {
+    const { start } = getPeriodRange(period, offset);
+    setPickerYear(start.getFullYear());
+    setPickerMonth(start.getMonth());
+    setShowPicker(true);
+  };
+
+  // Compute offset from a selected date
+  const selectDay = (date) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sel   = new Date(date); sel.setHours(0,0,0,0);
+    const diff  = Math.round((today - sel) / 86400000);
+    setOffset(Math.max(0, diff));
+    setShowPicker(false);
+  };
+  const selectWeek = (date) => {
+    // use Monday of the selected week's block vs Monday of current week
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sel   = new Date(date); sel.setHours(0,0,0,0);
+    const todayWeekStart = new Date(today.getTime() - (today.getDay() === 0 ? 6 : today.getDay() - 1) * 86400000);
+    const selWeekStart  = new Date(sel.getTime()   - (sel.getDay()   === 0 ? 6 : sel.getDay()   - 1) * 86400000);
+    const weeks = Math.round((todayWeekStart - selWeekStart) / (7 * 86400000));
+    setOffset(Math.max(0, weeks));
+    setShowPicker(false);
+  };
+  const selectMonth = (year, month) => {
+    const now = new Date();
+    const diff = (now.getFullYear() - year) * 12 + (now.getMonth() - month);
+    setOffset(Math.max(0, diff));
+    setShowPicker(false);
+  };
 
   useEffect(() => {
     fetchData();
@@ -290,7 +335,7 @@ export default function AnalyticsPage() {
           <>
             <div className="flex gap-2 px-4 pt-3 pb-2">
               {['today', 'week', 'month'].map(p => (
-                <button key={p} onClick={() => { setPeriod(p); setOffset(0); }}
+                <button key={p} onClick={() => { setPeriod(p); setOffset(0); setShowPicker(false); }}
                   className={`flex-1 py-2 rounded-xl font-bold text-sm transition-colors ${
                     period === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}>
@@ -298,22 +343,145 @@ export default function AnalyticsPage() {
                 </button>
               ))}
             </div>
-            {/* Period navigation arrows */}
-            <div className="flex items-center justify-between px-4 pb-3">
-              <button onClick={() => setOffset(o => o + 1)}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 active:text-indigo-700 transition-colors py-1 px-2 -mx-2 rounded-lg">
-                <ChevronLeft className="w-4 h-4" />
-                {isNepali ? 'अघिल्लो' : 'Prev'}
-              </button>
-              <span className="text-sm font-semibold text-gray-800">{periodLabel}</span>
-              <button onClick={() => setOffset(o => Math.max(0, o - 1))}
-                disabled={offset === 0}
-                className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
-                  offset === 0 ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
-                }`}>
-                {isNepali ? 'अर्को' : 'Next'}
-                <ChevronRight className="w-4 h-4" />
-              </button>
+
+            {/* Period navigation + picker trigger */}
+            <div className="relative" ref={pickerRef}>
+              <div className="flex items-center justify-between px-4 pb-3">
+                <button onClick={() => setOffset(o => o + 1)}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 active:text-indigo-700 transition-colors py-1 px-2 -mx-2 rounded-lg">
+                  <ChevronLeft className="w-4 h-4" />
+                  {isNepali ? 'अघिल्लो' : 'Prev'}
+                </button>
+
+                {/* Tappable period label — opens picker */}
+                <button onClick={openPicker}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:text-indigo-900 active:text-indigo-900 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {periodLabel}
+                </button>
+
+                <button onClick={() => setOffset(o => Math.max(0, o - 1))}
+                  disabled={offset === 0}
+                  className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
+                    offset === 0 ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
+                  }`}>
+                  {isNepali ? 'अर्को' : 'Next'}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* ── Period Picker Dropdown ── */}
+              {showPicker && (
+                <div className="absolute left-0 right-0 z-50 mx-4 mb-2 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                  {/* Month picker */}
+                  {period === 'month' && (() => {
+                    const now = new Date();
+                    const maxYear = now.getFullYear();
+                    const minYear = maxYear - 5;
+                    return (
+                      <div className="p-4">
+                        {/* Year navigation */}
+                        <div className="flex items-center justify-between mb-3">
+                          <button onClick={() => setPickerYear(y => Math.max(minYear, y - 1))}
+                            disabled={pickerYear <= minYear}
+                            className={`p-1.5 rounded-lg ${pickerYear <= minYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="font-bold text-gray-800">{pickerYear}</span>
+                          <button onClick={() => setPickerYear(y => Math.min(maxYear, y + 1))}
+                            disabled={pickerYear >= maxYear}
+                            className={`p-1.5 rounded-lg ${pickerYear >= maxYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* 12-month grid */}
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => {
+                            const isFuture = pickerYear === now.getFullYear() && i > now.getMonth();
+                            const isSelected = (() => { const r = getPeriodRange('month', offset); return r.start.getFullYear() === pickerYear && r.start.getMonth() === i; })();
+                            return (
+                              <button key={m} disabled={isFuture}
+                                onClick={() => selectMonth(pickerYear, i)}
+                                className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                                  isSelected ? 'bg-indigo-600 text-white' :
+                                  isFuture   ? 'text-gray-300 cursor-default' :
+                                               'bg-gray-100 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'
+                                }`}>
+                                {m}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Day/Week calendar picker */}
+                  {(period === 'today' || period === 'week') && (() => {
+                    const now = new Date(); now.setHours(0,0,0,0);
+                    // Build calendar grid for pickerYear / pickerMonth
+                    const firstDay = new Date(pickerYear, pickerMonth, 1);
+                    const lastDay  = new Date(pickerYear, pickerMonth + 1, 0);
+                    // Start on Monday
+                    const startOffset = (firstDay.getDay() + 6) % 7;
+                    const days = [];
+                    for (let i = 0; i < startOffset; i++) days.push(null);
+                    for (let d = 1; d <= lastDay.getDate(); d++) days.push(new Date(pickerYear, pickerMonth, d));
+                    // Current selection range for highlighting
+                    const selRange = getPeriodRange(period, offset);
+                    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                    const prevMonth = () => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y-1); } else setPickerMonth(m => m-1); };
+                    const nextMonth = () => {
+                      const isAtMax = pickerYear === now.getFullYear() && pickerMonth === now.getMonth();
+                      if (!isAtMax) { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y+1); } else setPickerMonth(m => m+1); }
+                    };
+                    const atMaxMonth = pickerYear === now.getFullYear() && pickerMonth === now.getMonth();
+
+                    return (
+                      <div className="p-3">
+                        {/* Month/year nav */}
+                        <div className="flex items-center justify-between mb-2">
+                          <button onClick={prevMonth} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100">
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="font-bold text-gray-800 text-sm">{monthNames[pickerMonth]} {pickerYear}</span>
+                          <button onClick={nextMonth} disabled={atMaxMonth}
+                            className={`p-1.5 rounded-lg ${atMaxMonth ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Day headers */}
+                        <div className="grid grid-cols-7 mb-1">
+                          {['M','T','W','T','F','S','S'].map((d,i) => (
+                            <div key={i} className="text-center text-xs text-gray-400 font-medium py-1">{d}</div>
+                          ))}
+                        </div>
+                        {/* Day cells */}
+                        <div className="grid grid-cols-7 gap-y-0.5">
+                          {days.map((day, i) => {
+                            if (!day) return <div key={`e-${i}`} />;
+                            const isFuture = day > now;
+                            const inSel = day >= selRange.start && day <= selRange.end;
+                            const isToday = day.getTime() === now.getTime();
+                            return (
+                              <button key={day.getDate()} disabled={isFuture}
+                                onClick={() => period === 'today' ? selectDay(day) : selectWeek(day)}
+                                className={`aspect-square flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${
+                                  isFuture ? 'text-gray-300 cursor-default' :
+                                  inSel    ? 'bg-indigo-600 text-white' :
+                                  isToday  ? 'border border-indigo-400 text-indigo-700' :
+                                             'text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'
+                                }`}>
+                                {day.getDate()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </>
         )}
