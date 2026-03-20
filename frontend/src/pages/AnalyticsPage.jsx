@@ -73,6 +73,8 @@ export default function AnalyticsPage() {
   const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
   // BS view (Nepali mode calendar / month grid)
   const [pickerBsView, setPickerBsView] = useState(() => { const bs = adToBs(new Date()); return { year: bs.year, month: bs.month }; });
+  // Week picker hover preview
+  const [hovDay, setHovDay]           = useState(null);
   const pickerRef                     = useRef(null);
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
@@ -133,6 +135,15 @@ export default function AnalyticsPage() {
   const selectBsMonth = (bsYear, bsMonth) => {
     const adStart = bsToAd(bsYear, bsMonth, 1);
     selectMonth(adStart.getFullYear(), adStart.getMonth());
+  };
+
+  // Compute the 7-day rolling window that contains a given day
+  const getWeekRange = (adDate) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sel   = new Date(adDate); sel.setHours(0,0,0,0);
+    const diff  = Math.round((today - sel) / 86400000);
+    const wOffset = Math.max(0, Math.floor(diff / 7));
+    return getPeriodRange('week', wOffset);
   };
 
   useEffect(() => {
@@ -472,58 +483,85 @@ export default function AnalyticsPage() {
                   {(period === 'today' || period === 'week') && (() => {
                     const now = new Date(); now.setHours(0,0,0,0);
                     const selRange = getPeriodRange(period, offset);
-                    const onDayClick = (adDate) => period === 'today' ? selectDay(adDate) : selectWeek(adDate);
+                    const isWeek = period === 'week';
+                    const hoverRange = (isWeek && hovDay) ? getWeekRange(hovDay) : null;
+                    const onDayClick = (adDate) => isWeek ? selectWeek(adDate) : selectDay(adDate);
+
+                    // Day cell style — week mode shows hover-range preview in indigo-100, selected in indigo-600
+                    const dayStyle = (adDate, isFuture) => {
+                      if (isFuture) return 'text-gray-300 cursor-default';
+                      const inSel   = adDate >= selRange.start && adDate <= selRange.end;
+                      const inHov   = hoverRange && adDate >= hoverRange.start && adDate <= hoverRange.end;
+                      const isToday = adDate.getTime() === now.getTime();
+                      if (inSel)   return 'bg-indigo-600 text-white';
+                      if (inHov)   return 'bg-indigo-100 text-indigo-800';
+                      if (isToday) return 'ring-1 ring-indigo-400 text-indigo-700 font-semibold';
+                      return 'text-gray-700';
+                    };
+
+                    // Range label shown at bottom of week picker
+                    const rangeLabel = (() => {
+                      if (!isWeek) return null;
+                      const r = hoverRange || selRange;
+                      const AD_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                      if (isNepali) {
+                        const MONTHS = BS_MONTHS_EN;
+                        const bs1 = adToBs(r.start), bs2 = adToBs(r.end);
+                        const s = `${bs1.day} ${MONTHS[bs1.month]}`;
+                        const e = `${bs2.day} ${MONTHS[bs2.month]} ${bs2.year}`;
+                        return toNepaliDigits(`${s} – ${e}`);
+                      }
+                      const s = `${r.start.getDate()} ${AD_SHORT[r.start.getMonth()]}`;
+                      const e = `${r.end.getDate()} ${AD_SHORT[r.end.getMonth()]} ${r.end.getFullYear()}`;
+                      return `${s} – ${e}`;
+                    })();
 
                     if (isNepali) {
-                      // BS calendar — mirrors existing DatePicker BS logic
+                      // BS calendar
                       const { year: bsY, month: bsM } = pickerBsView;
                       const daysInMonth = getBsMonthDays(bsY, bsM);
                       const firstAd = bsToAd(bsY, bsM, 1);
                       const pad = Array(firstAd.getDay()).fill(null);
-                      const todayBs = adToBs(now);
-                      const atMax = (() => {
-                        const tb = adToBs(now);
-                        return bsY === tb.year && bsM === tb.month;
-                      })();
+                      const atMax = (() => { const tb = adToBs(now); return bsY === tb.year && bsM === tb.month; })();
                       const prevBs = () => setPickerBsView(v => v.month === 0 ? { year: v.year - 1, month: 11 } : { ...v, month: v.month - 1 });
                       const nextBs = () => { if (!atMax) setPickerBsView(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 }); };
-                      const DAY_HEADERS_NE = ['आइत','सोम','मंग','बुध','बिही','शुक्र','शनि'];
                       return (
-                        <div className="p-3">
+                        <div className="p-3" onMouseLeave={() => setHovDay(null)}>
                           <div className="flex items-center justify-between mb-2">
                             <button onClick={prevBs} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
                             <span className="font-bold text-gray-800 text-sm">{BS_MONTHS_NE[bsM]} {toNepaliDigits(bsY)}</span>
                             <button onClick={nextBs} disabled={atMax} className={`p-1.5 rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
                           </div>
                           <div className="grid grid-cols-7 mb-1">
-                            {DAY_HEADERS_NE.map((d, i) => <div key={i} className="text-center text-[10px] text-gray-400 font-medium py-0.5 truncate">{d}</div>)}
+                            {['आइत','सोम','मंग','बुध','बिही','शुक्र','शनि'].map((d, i) => <div key={i} className="text-center text-[10px] text-gray-400 font-medium py-0.5 truncate">{d}</div>)}
                           </div>
                           <div className="grid grid-cols-7 gap-0.5">
                             {pad.map((_, i) => <div key={`p${i}`} />)}
                             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(bsDay => {
                               const adDate = bsToAd(bsY, bsM, bsDay);
                               const isFuture = adDate > now;
-                              const inSel = adDate >= selRange.start && adDate <= selRange.end;
-                              const isToday = adDate.getTime() === now.getTime();
                               return (
-                                <button key={bsDay} disabled={isFuture} onClick={() => onDayClick(adDate)}
-                                  className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${
-                                    isFuture ? 'text-gray-300 cursor-default' :
-                                    inSel    ? 'bg-indigo-600 text-white' :
-                                    isToday  ? 'ring-1 ring-indigo-400 text-indigo-700 font-semibold' :
-                                               'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
-                                  }`}>
+                                <button key={bsDay} disabled={isFuture}
+                                  onClick={() => onDayClick(adDate)}
+                                  onMouseEnter={() => isWeek && !isFuture && setHovDay(adDate)}
+                                  className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${dayStyle(adDate, isFuture)}`}>
                                   {toNepaliDigits(bsDay)}
                                 </button>
                               );
                             })}
                           </div>
-                          <button onClick={() => onDayClick(now)} className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">आज</button>
+                          {isWeek && rangeLabel && (
+                            <div className="mt-2 pt-2 border-t border-gray-100 text-center text-xs text-indigo-600 font-medium">{rangeLabel}</div>
+                          )}
+                          <div className="flex gap-2 mt-1.5 pt-1.5 border-t border-gray-100">
+                            <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">आज</button>
+                            {isWeek && <button onClick={() => { setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-indigo-500 hover:text-indigo-700 font-medium">यो हप्ता</button>}
+                          </div>
                         </div>
                       );
                     }
 
-                    // AD calendar — mirrors existing DatePicker AD logic
+                    // AD calendar
                     const firstDay = new Date(pickerYear, pickerMonth, 1);
                     const lastDay  = new Date(pickerYear, pickerMonth + 1, 0);
                     const pad = Array(firstDay.getDay()).fill(null);
@@ -533,7 +571,7 @@ export default function AnalyticsPage() {
                     const nextAd = () => { if (!atMax) { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); } else setPickerMonth(m => m + 1); } };
                     const AD_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
                     return (
-                      <div className="p-3">
+                      <div className="p-3" onMouseLeave={() => setHovDay(null)}>
                         <div className="flex items-center justify-between mb-2">
                           <button onClick={prevAd} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
                           <span className="font-bold text-gray-800 text-sm">{AD_MONTHS[pickerMonth]} {pickerYear}</span>
@@ -546,22 +584,23 @@ export default function AnalyticsPage() {
                           {pad.map((_, i) => <div key={`p${i}`} />)}
                           {days.map(day => {
                             const isFuture = day > now;
-                            const inSel = day >= selRange.start && day <= selRange.end;
-                            const isToday = day.getTime() === now.getTime();
                             return (
-                              <button key={day.getDate()} disabled={isFuture} onClick={() => onDayClick(day)}
-                                className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${
-                                  isFuture ? 'text-gray-300 cursor-default' :
-                                  inSel    ? 'bg-indigo-600 text-white' :
-                                  isToday  ? 'ring-1 ring-indigo-400 text-indigo-700 font-semibold' :
-                                             'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
-                                }`}>
+                              <button key={day.getDate()} disabled={isFuture}
+                                onClick={() => onDayClick(day)}
+                                onMouseEnter={() => isWeek && !isFuture && setHovDay(day)}
+                                className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${dayStyle(day, isFuture)}`}>
                                 {day.getDate()}
                               </button>
                             );
                           })}
                         </div>
-                        <button onClick={() => onDayClick(now)} className="w-full text-center text-xs text-gray-500 hover:text-gray-800 pt-1.5 mt-1 border-t border-gray-100">Today</button>
+                        {isWeek && rangeLabel && (
+                          <div className="mt-2 pt-2 border-t border-gray-100 text-center text-xs text-indigo-600 font-medium">{rangeLabel}</div>
+                        )}
+                        <div className="flex gap-2 mt-1.5 pt-1.5 border-t border-gray-100">
+                          <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">Today</button>
+                          {isWeek && <button onClick={() => { setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-indigo-500 hover:text-indigo-700 font-medium">This week</button>}
+                        </div>
                       </div>
                     );
                   })()}
