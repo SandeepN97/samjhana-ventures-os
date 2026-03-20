@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
+import BusinessDrillSheet from '../components/BusinessDrillSheet';
 import { formatBsDate, adToBs, bsToAd, getBsMonthDays, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../utils/nepaliDate';
 
 const BUSINESS_CONFIG = {
@@ -93,6 +94,8 @@ export default function AnalyticsPage() {
   const [peakDay, setPeakDay]                 = useState(null);
   const [pendingCount, setPendingCount]       = useState(0);
   const [outstandingBalance, setOutstanding]  = useState(null);
+  const [periodTxns, setPeriodTxns]           = useState([]);
+  const [selectedBiz, setSelectedBiz]         = useState(null);
 
   // Close picker on outside click
   useEffect(() => {
@@ -202,7 +205,11 @@ export default function AnalyticsPage() {
         ? (() => { const ms = weekEnd - weekStart + 86400000; return { start: new Date(weekStart - ms), end: new Date(weekEnd - ms) }; })()
         : getPeriodRange(period, offset + 1);
 
-      const sales    = all.filter(t => t.status !== 'REJECTED' && t.transactionType === 'SALE');
+      const notRejected = all.filter(t => t.status !== 'REJECTED');
+      const currPeriodTxns = notRejected.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
+      setPeriodTxns(currPeriodTxns);
+
+      const sales    = notRejected.filter(t => t.transactionType === 'SALE');
       const currSales = sales.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
       const prevSales = sales.filter(t => t.transactionDate && inRange(t.transactionDate, prevRange));
 
@@ -812,7 +819,8 @@ export default function AnalyticsPage() {
                   const Icon   = cfg.icon;
                   const revShare = totalRevenue > 0 ? Math.round((rev / totalRevenue) * 100) : 0;
                   return (
-                    <div key={code} className="px-4 py-3">
+                    <button key={code} onClick={() => setSelectedBiz(code)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors">
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2.5">
                           <div className={`${cfg.color} w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -825,25 +833,28 @@ export default function AnalyticsPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900 text-sm">{fmt(rev)}</p>
-                          {canViewProfit && code !== 'loan' && profit != null && (
-                            <p className={`text-xs font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                              {profit >= 0 ? '+' : ''}{fmt(profit)} {isNepali ? 'नाफा' : 'profit'}
-                            </p>
-                          )}
-                          {canViewProfit && code === 'loan' && (
-                            <p className="text-[10px] text-gray-400 italic">{isNepali ? 'पोर्टफोलियो हेर्नुहोस्' : 'see portfolio'}</p>
-                          )}
-                          {!canViewProfit && exp > 0 && (
-                            <p className="text-xs text-red-400">-{fmt(exp)}</p>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="font-bold text-gray-900 text-sm">{fmt(rev)}</p>
+                            {canViewProfit && code !== 'loan' && profit != null && (
+                              <p className={`text-xs font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                {profit >= 0 ? '+' : ''}{fmt(profit)} {isNepali ? 'नाफा' : 'profit'}
+                              </p>
+                            )}
+                            {canViewProfit && code === 'loan' && (
+                              <p className="text-[10px] text-gray-400 italic">{isNepali ? 'पोर्टफोलियो हेर्नुहोस्' : 'see portfolio'}</p>
+                            )}
+                            {!canViewProfit && exp > 0 && (
+                              <p className="text-xs text-red-400">-{fmt(exp)}</p>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
                         </div>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div className={`h-full ${cfg.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1014,6 +1025,17 @@ export default function AnalyticsPage() {
 
         </div>
       )}
+
+      {/* ── Business drill-down sheet ── */}
+      <BusinessDrillSheet
+        bizCode={selectedBiz}
+        bizConfig={BUSINESS_CONFIG}
+        txns={periodTxns}
+        onClose={() => setSelectedBiz(null)}
+        periodLabel={periodLabel}
+        isNepali={isNepali}
+        canViewProfit={canViewProfit}
+      />
     </div>
   );
 }
