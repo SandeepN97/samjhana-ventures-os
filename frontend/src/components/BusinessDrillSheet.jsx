@@ -358,26 +358,29 @@ export default function BusinessDrillSheet({ bizCode, bizConfig, txns, onClose, 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl flex flex-col"
         style={{ maxHeight: '82vh', animation: 'slideUp 0.25s ease-out' }}>
 
-        {/* Drag handle */}
-        <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
+        {/* Top bar: drag handle centred, X clearly on the right */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-2 flex-shrink-0">
+          <div className="w-8" />
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors">
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
         </div>
 
-        {/* Coloured header */}
-        <div className={`${cfg.color} px-4 py-3 flex items-center justify-between flex-shrink-0`}>
-          <div className="flex items-center gap-2.5">
-            <Icon className="w-5 h-5 text-white" />
+        {/* Coloured hero card — business name, period, total */}
+        <div className={`${cfg.color} mx-4 mb-1 rounded-2xl px-4 py-4 flex-shrink-0`}>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Icon className="w-5 h-5 text-white" />
+            </div>
             <div>
-              <p className="font-bold text-white leading-tight">{isNepali ? cfg.labelNe : cfg.labelEn}</p>
+              <p className="font-bold text-white text-base leading-tight">{isNepali ? cfg.labelNe : cfg.labelEn}</p>
               <p className="text-white/70 text-xs">{periodLabel}</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-white font-black text-lg leading-tight">{fmt(totalRev)}</p>
-            <button onClick={onClose} className="text-white/70 hover:text-white mt-0.5">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          <p className="text-white/70 text-xs font-medium uppercase tracking-wide">{isNepali ? 'कुल आम्दानी' : 'Total Revenue'}</p>
+          <p className="text-white font-black text-2xl mt-0.5">{fmt(totalRev)}</p>
         </div>
 
         {/* Scrollable content */}
