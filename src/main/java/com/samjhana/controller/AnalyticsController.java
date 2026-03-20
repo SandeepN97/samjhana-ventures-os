@@ -31,26 +31,34 @@ public class AnalyticsController {
     public ResponseEntity<?> summary(
             @RequestParam(defaultValue = "week") String period,
             @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @AuthenticationPrincipal User user) {
 
         LocalDate today = LocalDate.now();
         LocalDate dateFrom;
         LocalDate dateTo;
 
-        switch (period) {
-            case "today":
-                dateTo = today.minusDays(offset);
-                dateFrom = dateTo;
-                break;
-            case "month":
-                LocalDate monthBase = today.minusMonths(offset);
-                dateFrom = monthBase.with(TemporalAdjusters.firstDayOfMonth());
-                dateTo   = monthBase.with(TemporalAdjusters.lastDayOfMonth());
-                break;
-            default: // week
-                dateTo   = today.minusDays((long) offset * 7);
-                dateFrom = dateTo.minusDays(6);
-                break;
+        if (startDate != null && endDate != null) {
+            dateFrom = LocalDate.parse(startDate);
+            dateTo   = LocalDate.parse(endDate);
+            if (dateTo.isBefore(dateFrom)) { LocalDate tmp = dateFrom; dateFrom = dateTo; dateTo = tmp; }
+        } else {
+            switch (period) {
+                case "today":
+                    dateTo = today.minusDays(offset);
+                    dateFrom = dateTo;
+                    break;
+                case "month":
+                    LocalDate monthBase = today.minusMonths(offset);
+                    dateFrom = monthBase.with(TemporalAdjusters.firstDayOfMonth());
+                    dateTo   = monthBase.with(TemporalAdjusters.lastDayOfMonth());
+                    break;
+                default: // week
+                    dateTo   = today.minusDays((long) offset * 7);
+                    dateFrom = dateTo.minusDays(6);
+                    break;
+            }
         }
 
         List<Transaction> allTransactions = transactionRepository.findByDateRangeWithDetails(dateFrom, dateTo);
@@ -150,12 +158,12 @@ public class AnalyticsController {
                 // Accrued interest: principal * (rate/100/365) * daysSinceStart
                 BigDecimal rate = toBigDecimal(cf.get("interestRate"));
                 if (rate == null) rate = BigDecimal.ZERO;
-                String startDateStr = cf.get("startDate") != null ? cf.get("startDate").toString() : null;
-                LocalDate startDate = d.getTransactionDate();
-                if (startDateStr != null) {
-                    try { startDate = LocalDate.parse(startDateStr); } catch (Exception ignored) {}
+                String loanStartDateStr = cf.get("startDate") != null ? cf.get("startDate").toString() : null;
+                LocalDate loanStartDate = d.getTransactionDate();
+                if (loanStartDateStr != null) {
+                    try { loanStartDate = LocalDate.parse(loanStartDateStr); } catch (Exception ignored) {}
                 }
-                long days = Math.max(0, today.toEpochDay() - startDate.toEpochDay());
+                long days = Math.max(0, today.toEpochDay() - loanStartDate.toEpochDay());
                 if (rate.compareTo(BigDecimal.ZERO) > 0 && days > 0) {
                     BigDecimal interest = principal
                             .multiply(rate)
