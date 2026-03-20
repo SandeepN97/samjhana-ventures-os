@@ -67,6 +67,10 @@ export default function AnalyticsPage() {
 
   const [period, setPeriod]           = useState(isStaff ? 'today' : 'week');
   const [offset, setOffset]           = useState(0);
+  // Custom week range (null = use rolling 7-day offset)
+  const [weekStart, setWeekStart]     = useState(null);
+  const [weekEnd, setWeekEnd]         = useState(null);
+  const [weekPickStep, setWeekPickStep] = useState(0); // 0 = picking start, 1 = picking end
   const [showPicker, setShowPicker]   = useState(false);
   // AD view (English mode calendar / month grid)
   const [pickerYear, setPickerYear]   = useState(() => new Date().getFullYear());
@@ -100,11 +104,12 @@ export default function AnalyticsPage() {
 
   // Sync picker view to the currently displayed period when picker opens
   const openPicker = () => {
-    const { start } = getPeriodRange(period, offset);
-    setPickerYear(start.getFullYear());
-    setPickerMonth(start.getMonth());
-    const bs = adToBs(start);
+    const ref = (period === 'week' && weekStart) ? weekStart : getPeriodRange(period, offset).start;
+    setPickerYear(ref.getFullYear());
+    setPickerMonth(ref.getMonth());
+    const bs = adToBs(ref);
     setPickerBsView({ year: bs.year, month: bs.month });
+    if (period === 'week') setWeekPickStep(0); // always restart range selection
     setShowPicker(true);
   };
 
@@ -116,13 +121,22 @@ export default function AnalyticsPage() {
     setOffset(Math.max(0, diff));
     setShowPicker(false);
   };
-  // Week offset: rolling 7-day windows from today
-  const selectWeek = (adDate) => {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const sel   = new Date(adDate); sel.setHours(0,0,0,0);
-    const diff  = Math.round((today - sel) / 86400000);
-    setOffset(Math.max(0, Math.floor(diff / 7)));
-    setShowPicker(false);
+  // Week range picker: two-step (start → end)
+  const handleWeekDayClick = (adDate) => {
+    const d = new Date(adDate); d.setHours(0,0,0,0);
+    if (weekPickStep === 0) {
+      setWeekStart(d);
+      setWeekEnd(null);
+      setWeekPickStep(1);
+    } else {
+      // second click — swap if needed, then close
+      const start = weekStart;
+      const end   = d;
+      if (end < start) { setWeekStart(end); setWeekEnd(start); }
+      else             { setWeekStart(start); setWeekEnd(end); }
+      setWeekPickStep(0);
+      setShowPicker(false);
+    }
   };
   // Month offset from an AD year/month
   const selectMonth = (year, month) => {
@@ -151,13 +165,17 @@ export default function AnalyticsPage() {
     fetchInsights();
     fetchPending();
     fetchOutstanding();
-  }, [period, offset]);
+  }, [period, offset, weekStart, weekEnd]);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get(`/api/analytics/summary?period=${period}&offset=${offset}`);
+      const fmtDate = d => d.toISOString().split('T')[0];
+      const url = (period === 'week' && weekStart && weekEnd)
+        ? `/api/analytics/summary?period=week&startDate=${fmtDate(weekStart)}&endDate=${fmtDate(weekEnd)}`
+        : `/api/analytics/summary?period=${period}&offset=${offset}`;
+      const res = await api.get(url);
       setData(res.data);
     } catch {
       setError(isNepali ? 'डाटा लोड गर्न सकिएन' : 'Failed to load data');
@@ -177,8 +195,12 @@ export default function AnalyticsPage() {
           : null,
       }));
 
-      const currRange = getPeriodRange(period, offset);
-      const prevRange = getPeriodRange(period, offset + 1);
+      const currRange = (period === 'week' && weekStart && weekEnd)
+        ? { start: weekStart, end: weekEnd }
+        : getPeriodRange(period, offset);
+      const prevRange = (period === 'week' && weekStart && weekEnd)
+        ? (() => { const ms = weekEnd - weekStart + 86400000; return { start: new Date(weekStart - ms), end: new Date(weekEnd - ms) }; })()
+        : getPeriodRange(period, offset + 1);
 
       const sales    = all.filter(t => t.status !== 'REJECTED' && t.transactionType === 'SALE');
       const currSales = sales.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
@@ -263,19 +285,36 @@ export default function AnalyticsPage() {
     } catch { /* silent */ }
   };
 
-  // Compute the actual date range for current offset to show in nav
-  const currRange = getPeriodRange(period, offset);
+  // Effective date range (custom week range or period/offset)
+  const currRange = (period === 'week' && weekStart && weekEnd)
+    ? { start: weekStart, end: weekEnd }
+    : getPeriodRange(period, offset);
+
   const periodLabel = (() => {
-    if (offset === 0) {
-      return { today: isNepali ? 'आज' : 'Today', week: isNepali ? 'यो हप्ता' : 'This Week', month: isNepali ? 'यो महिना' : 'This Month' }[period];
-    }
-    const { start, end } = currRange;
     const MONTHS = isNepali ? BS_MONTHS_NE : BS_MONTHS_EN;
     const fmtBs = (d) => {
       const bs = adToBs(d);
       const str = `${bs.day} ${MONTHS[bs.month]}`;
       return isNepali ? toNepaliDigits(str) : str;
     };
+    const fmtRange = (start, end) => {
+      const bsStart = adToBs(start);
+      const bsEnd   = adToBs(end);
+      const sameYear = bsStart.year === bsEnd.year;
+      const startStr = sameYear ? fmtBs(start) : `${fmtBs(start)} ${bsStart.year}`;
+      const endStr   = `${fmtBs(end)} ${bsEnd.year}`;
+      return isNepali ? toNepaliDigits(`${startStr} – ${endStr}`) : `${startStr} – ${endStr}`;
+    };
+
+    if (period === 'week') {
+      if (weekStart && weekEnd) return fmtRange(weekStart, weekEnd);
+      if (offset === 0) return isNepali ? 'यो हप्ता' : 'This Week';
+      return fmtRange(currRange.start, currRange.end);
+    }
+    if (offset === 0) {
+      return { today: isNepali ? 'आज' : 'Today', month: isNepali ? 'यो महिना' : 'This Month' }[period];
+    }
+    const { start, end } = currRange;
     if (period === 'today') {
       const bs = adToBs(start);
       const str = `${bs.day} ${MONTHS[bs.month]} ${bs.year}`;
@@ -286,13 +325,7 @@ export default function AnalyticsPage() {
       const str = `${MONTHS[bs.month]} ${bs.year}`;
       return isNepali ? toNepaliDigits(str) : str;
     }
-    // week: show BS date range, include year only if it spans a year boundary
-    const bsStart = adToBs(start);
-    const bsEnd   = adToBs(end);
-    const sameYear = bsStart.year === bsEnd.year;
-    const startStr = sameYear ? fmtBs(start) : `${fmtBs(start)} ${bsStart.year}`;
-    const endStr   = `${fmtBs(end)} ${bsEnd.year}`;
-    return isNepali ? toNepaliDigits(`${startStr} – ${endStr}`) : `${startStr} – ${endStr}`;
+    return fmtRange(start, end);
   })();
 
   const prevPeriodLabel = {
@@ -355,7 +388,7 @@ export default function AnalyticsPage() {
           <>
             <div className="flex gap-2 px-4 pt-3 pb-2">
               {['today', 'week', 'month'].map(p => (
-                <button key={p} onClick={() => { setPeriod(p); setOffset(0); setShowPicker(false); }}
+                <button key={p} onClick={() => { setPeriod(p); setOffset(0); setShowPicker(false); if (p !== 'week') { setWeekStart(null); setWeekEnd(null); } }}
                   className={`flex-1 py-2 rounded-xl font-bold text-sm transition-colors ${
                     period === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}>
@@ -367,8 +400,14 @@ export default function AnalyticsPage() {
             {/* Period navigation + picker trigger */}
             <div className="relative" ref={pickerRef}>
               <div className="flex items-center justify-between px-4 pb-3">
-                <button onClick={() => setOffset(o => o + 1)}
-                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600 active:text-indigo-700 transition-colors py-1 px-2 -mx-2 rounded-lg">
+                <button
+                  disabled={period === 'week' && weekStart && weekEnd}
+                  onClick={() => setOffset(o => o + 1)}
+                  className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
+                    period === 'week' && weekStart && weekEnd
+                      ? 'text-gray-300 cursor-default'
+                      : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
+                  }`}>
                   <ChevronLeft className="w-4 h-4" />
                   {isNepali ? 'अघिल्लो' : 'Prev'}
                 </button>
@@ -381,9 +420,9 @@ export default function AnalyticsPage() {
                 </button>
 
                 <button onClick={() => setOffset(o => Math.max(0, o - 1))}
-                  disabled={offset === 0}
+                  disabled={offset === 0 || (period === 'week' && weekStart && weekEnd)}
                   className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
-                    offset === 0 ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
+                    offset === 0 || (period === 'week' && weekStart && weekEnd) ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-indigo-600 active:text-indigo-700'
                   }`}>
                   {isNepali ? 'अर्को' : 'Next'}
                   <ChevronRight className="w-4 h-4" />
@@ -482,38 +521,47 @@ export default function AnalyticsPage() {
                   {/* ── DAY / WEEK CALENDAR PICKER ── */}
                   {(period === 'today' || period === 'week') && (() => {
                     const now = new Date(); now.setHours(0,0,0,0);
-                    const selRange = getPeriodRange(period, offset);
                     const isWeek = period === 'week';
-                    const hoverRange = (isWeek && hovDay) ? getWeekRange(hovDay) : null;
-                    const onDayClick = (adDate) => isWeek ? selectWeek(adDate) : selectDay(adDate);
 
-                    // Day cell style — week mode shows hover-range preview in indigo-100, selected in indigo-600
+                    // For week: show selected range (weekStart..weekEnd) or partial (weekStart..hovDay)
+                    const selRange = isWeek
+                      ? (weekStart && weekEnd ? { start: weekStart, end: weekEnd } : null)
+                      : getPeriodRange('today', offset);
+
+                    // Hover range: for week step 1 (end selection), preview from weekStart to hovDay
+                    const hoverRange = isWeek && weekPickStep === 1 && weekStart && hovDay
+                      ? (hovDay >= weekStart ? { start: weekStart, end: hovDay } : { start: hovDay, end: weekStart })
+                      : null;
+
+                    const onDayClick = (adDate) => isWeek ? handleWeekDayClick(adDate) : selectDay(adDate);
+
+                    // Day cell style
                     const dayStyle = (adDate, isFuture) => {
                       if (isFuture) return 'text-gray-300 cursor-default';
-                      const inSel   = adDate >= selRange.start && adDate <= selRange.end;
+                      const inSel   = selRange && adDate >= selRange.start && adDate <= selRange.end;
                       const inHov   = hoverRange && adDate >= hoverRange.start && adDate <= hoverRange.end;
+                      const isStart = isWeek && weekStart && adDate.getTime() === weekStart.getTime();
                       const isToday = adDate.getTime() === now.getTime();
-                      if (inSel)   return 'bg-indigo-600 text-white';
-                      if (inHov)   return 'bg-indigo-100 text-indigo-800';
-                      if (isToday) return 'ring-1 ring-indigo-400 text-indigo-700 font-semibold';
+                      if (inSel || isStart) return 'bg-indigo-600 text-white';
+                      if (inHov)            return 'bg-indigo-100 text-indigo-800';
+                      if (isToday)          return 'ring-1 ring-indigo-400 text-indigo-700 font-semibold';
                       return 'text-gray-700';
                     };
 
-                    // Range label shown at bottom of week picker
-                    const rangeLabel = (() => {
+                    // Instruction / range label for week picker
+                    const AD_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    const fmtAdShort = d => `${d.getDate()} ${AD_SHORT[d.getMonth()]}`;
+                    const fmtBsShort = d => { const bs = adToBs(d); return toNepaliDigits(`${bs.day} ${BS_MONTHS_EN[bs.month]}`); };
+
+                    const weekHint = (() => {
                       if (!isWeek) return null;
-                      const r = hoverRange || selRange;
-                      const AD_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                      if (isNepali) {
-                        const MONTHS = BS_MONTHS_EN;
-                        const bs1 = adToBs(r.start), bs2 = adToBs(r.end);
-                        const s = `${bs1.day} ${MONTHS[bs1.month]}`;
-                        const e = `${bs2.day} ${MONTHS[bs2.month]} ${bs2.year}`;
-                        return toNepaliDigits(`${s} – ${e}`);
-                      }
-                      const s = `${r.start.getDate()} ${AD_SHORT[r.start.getMonth()]}`;
-                      const e = `${r.end.getDate()} ${AD_SHORT[r.end.getMonth()]} ${r.end.getFullYear()}`;
-                      return `${s} – ${e}`;
+                      if (weekPickStep === 0) return isNepali ? '📅 सुरु मिति छान्नुहोस्' : '📅 Select start date';
+                      if (!weekStart) return null;
+                      const startLabel = isNepali ? fmtBsShort(weekStart) : fmtAdShort(weekStart);
+                      const endLabel = hovDay
+                        ? (isNepali ? fmtBsShort(hovDay) : fmtAdShort(hovDay))
+                        : (isNepali ? 'अन्त्य मिति छान्नुहोस्' : 'Select end date');
+                      return `${startLabel} → ${endLabel}`;
                     })();
 
                     if (isNepali) {
@@ -527,6 +575,9 @@ export default function AnalyticsPage() {
                       const nextBs = () => { if (!atMax) setPickerBsView(v => v.month === 11 ? { year: v.year + 1, month: 0 } : { ...v, month: v.month + 1 }); };
                       return (
                         <div className="p-3" onMouseLeave={() => setHovDay(null)}>
+                          {isWeek && weekHint && (
+                            <div className={`text-center text-xs font-medium mb-2 px-2 py-1.5 rounded-lg ${weekPickStep === 1 ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500'}`}>{weekHint}</div>
+                          )}
                           <div className="flex items-center justify-between mb-2">
                             <button onClick={prevBs} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
                             <span className="font-bold text-gray-800 text-sm">{BS_MONTHS_NE[bsM]} {toNepaliDigits(bsY)}</span>
@@ -550,12 +601,14 @@ export default function AnalyticsPage() {
                               );
                             })}
                           </div>
-                          {isWeek && rangeLabel && (
-                            <div className="mt-2 pt-2 border-t border-gray-100 text-center text-xs text-indigo-600 font-medium">{rangeLabel}</div>
-                          )}
-                          <div className="flex gap-2 mt-1.5 pt-1.5 border-t border-gray-100">
-                            <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">आज</button>
-                            {isWeek && <button onClick={() => { setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-indigo-500 hover:text-indigo-700 font-medium">यो हप्ता</button>}
+                          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                            {isWeek
+                              ? <>
+                                  <button onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">यो हप्ता</button>
+                                  {weekPickStep === 1 && <button onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="flex-1 text-center text-xs text-red-400 hover:text-red-600">रद्द</button>}
+                                </>
+                              : <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">आज</button>
+                            }
                           </div>
                         </div>
                       );
@@ -572,6 +625,9 @@ export default function AnalyticsPage() {
                     const AD_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
                     return (
                       <div className="p-3" onMouseLeave={() => setHovDay(null)}>
+                        {isWeek && weekHint && (
+                          <div className={`text-center text-xs font-medium mb-2 px-2 py-1.5 rounded-lg ${weekPickStep === 1 ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500'}`}>{weekHint}</div>
+                        )}
                         <div className="flex items-center justify-between mb-2">
                           <button onClick={prevAd} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
                           <span className="font-bold text-gray-800 text-sm">{AD_MONTHS[pickerMonth]} {pickerYear}</span>
@@ -594,12 +650,14 @@ export default function AnalyticsPage() {
                             );
                           })}
                         </div>
-                        {isWeek && rangeLabel && (
-                          <div className="mt-2 pt-2 border-t border-gray-100 text-center text-xs text-indigo-600 font-medium">{rangeLabel}</div>
-                        )}
-                        <div className="flex gap-2 mt-1.5 pt-1.5 border-t border-gray-100">
-                          <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">Today</button>
-                          {isWeek && <button onClick={() => { setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-indigo-500 hover:text-indigo-700 font-medium">This week</button>}
+                        <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                          {isWeek
+                            ? <>
+                                <button onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">This week</button>
+                                {weekPickStep === 1 && <button onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="flex-1 text-center text-xs text-red-400 hover:text-red-600">Cancel</button>}
+                              </>
+                            : <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">Today</button>
+                          }
                         </div>
                       </div>
                     );
