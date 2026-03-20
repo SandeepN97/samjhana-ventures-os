@@ -158,12 +158,12 @@ public class AnalyticsController {
                 // Accrued interest: principal * (rate/100/365) * daysSinceStart
                 BigDecimal rate = toBigDecimal(cf.get("interestRate"));
                 if (rate == null) rate = BigDecimal.ZERO;
-                String startDateStr = cf.get("startDate") != null ? cf.get("startDate").toString() : null;
-                LocalDate startDate = d.getTransactionDate();
-                if (startDateStr != null) {
-                    try { startDate = LocalDate.parse(startDateStr); } catch (Exception ignored) {}
+                String loanStartDateStr = cf.get("startDate") != null ? cf.get("startDate").toString() : null;
+                LocalDate loanStartDate = d.getTransactionDate();
+                if (loanStartDateStr != null) {
+                    try { loanStartDate = LocalDate.parse(loanStartDateStr); } catch (Exception ignored) {}
                 }
-                long days = Math.max(0, today.toEpochDay() - startDate.toEpochDay());
+                long days = Math.max(0, today.toEpochDay() - loanStartDate.toEpochDay());
                 if (rate.compareTo(BigDecimal.ZERO) > 0 && days > 0) {
                     BigDecimal interest = principal
                             .multiply(rate)
