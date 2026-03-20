@@ -358,29 +358,37 @@ export default function BusinessDrillSheet({ bizCode, bizConfig, txns, onClose, 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl flex flex-col"
         style={{ maxHeight: '82vh', animation: 'slideUp 0.25s ease-out' }}>
 
-        {/* Top bar: drag handle centred, X clearly on the right */}
-        <div className="flex items-center justify-between px-3 pt-3 pb-2 flex-shrink-0">
-          <div className="w-8" />
+        {/* Drag handle */}
+        <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
-          <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors">
-            <X className="w-4 h-4 text-gray-600" />
-          </button>
         </div>
 
-        {/* Coloured hero card — business name, period, total */}
+        {/* Coloured hero card — two columns: left = identity, right = revenue */}
         <div className={`${cfg.color} mx-4 mb-1 rounded-2xl px-4 py-4 flex-shrink-0`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Icon className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: icon + name + period */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Icon className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-white text-base leading-tight truncate">{isNepali ? cfg.labelNe : cfg.labelEn}</p>
+                <p className="text-white/70 text-xs">{periodLabel}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-white text-base leading-tight">{isNepali ? cfg.labelNe : cfg.labelEn}</p>
-              <p className="text-white/70 text-xs">{periodLabel}</p>
+
+            {/* Right: revenue + close */}
+            <div className="flex items-start gap-2 flex-shrink-0">
+              <div className="text-right">
+                <p className="text-white/70 text-xs font-medium uppercase tracking-wide">{isNepali ? 'कुल आम्दानी' : 'Total Revenue'}</p>
+                <p className="text-white font-black text-xl leading-tight">{fmt(totalRev)}</p>
+              </div>
+              <button onClick={onClose}
+                className="mt-0.5 text-white/60 hover:text-white active:text-white/40 transition-colors p-0.5">
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <p className="text-white/70 text-xs font-medium uppercase tracking-wide">{isNepali ? 'कुल आम्दानी' : 'Total Revenue'}</p>
-          <p className="text-white font-black text-2xl mt-0.5">{fmt(totalRev)}</p>
         </div>
 
         {/* Scrollable content */}
