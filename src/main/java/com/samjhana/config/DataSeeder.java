@@ -1,9 +1,11 @@
 package com.samjhana.config;
 
 import com.samjhana.entity.BusinessUnit;
+import com.samjhana.entity.EcomProduct;
 import com.samjhana.entity.EvVehicle;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
+import com.samjhana.repository.EcomProductRepository;
 import com.samjhana.repository.EvVehicleRepository;
 import com.samjhana.repository.TransactionRepository;
 import com.samjhana.repository.UserRepository;
@@ -28,6 +30,7 @@ public class DataSeeder implements CommandLineRunner {
     private final EntityManager entityManager;
     private final EvVehicleRepository evVehicleRepository;
     private final TransactionRepository transactionRepository;
+    private final EcomProductRepository ecomProductRepository;
 
     @Override
     @Transactional
@@ -36,6 +39,7 @@ public class DataSeeder implements CommandLineRunner {
         seedBusinessUnits();
         seedEvVehicles();
         migratePendingTransactions();
+        seedEcomProducts();
     }
 
     private void seedUsers() {
@@ -155,6 +159,109 @@ public class DataSeeder implements CommandLineRunner {
                 .seatingCapacity(seats)
                 .ratePerPercent(new BigDecimal(ratePerPercent))
                 .isActive(true)
+                .build();
+    }
+
+    private void seedEcomProducts() {
+        // Drop stale H2 check constraint so new enum values (BEE_PRODUCTS etc.) can be inserted
+        try {
+            entityManager.createNativeQuery("ALTER TABLE ECOM_PRODUCTS DROP CONSTRAINT IF EXISTS CONSTRAINT_B").executeUpdate();
+        } catch (Exception ignored) {}
+
+        seedCategory(EcomProduct.ProductCategory.FURNITURE, List.of(
+            // Living Room
+            product("Wooden Sofa Set", "Premium 3-seater wooden sofa set with cushioned armrests and back", "45000", 5, EcomProduct.ProductCategory.FURNITURE),
+            product("L-Shaped Corner Sofa", "Large L-shaped corner sofa in durable premium fabric, seats 5–6", "62000", 3, EcomProduct.ProductCategory.FURNITURE),
+            product("Coffee Table", "Modern solid-wood coffee table with glass top and lower shelf", "12000", 10, EcomProduct.ProductCategory.FURNITURE),
+            product("TV Entertainment Unit", "Wide low-profile TV unit with open shelves and two storage cabinets", "15000", 7, EcomProduct.ProductCategory.FURNITURE),
+            product("Center Table Set", "Carved solid-wood center table with matching side tables", "9500", 6, EcomProduct.ProductCategory.FURNITURE),
+            product("Single Accent Chair", "Plush single accent chair with solid wood legs and cushioned seat", "7800", 9, EcomProduct.ProductCategory.FURNITURE),
+            // Bedroom
+            product("King Bed Frame", "Sturdy king-size bed frame with built-in storage drawers beneath", "32000", 4, EcomProduct.ProductCategory.FURNITURE),
+            product("Queen Bed Frame", "Elegant queen-size bed with tufted cushioned headboard", "28000", 5, EcomProduct.ProductCategory.FURNITURE),
+            product("Wardrobe 3-Door", "Spacious 3-door wardrobe with full-length mirror and hanging rod", "25000", 6, EcomProduct.ProductCategory.FURNITURE),
+            product("Almari 2-Door", "Traditional carved 2-door almari — built to last generations", "18000", 8, EcomProduct.ProductCategory.FURNITURE),
+            product("Dresser with Mirror", "6-drawer wooden dresser with attached vanity mirror", "14000", 9, EcomProduct.ProductCategory.FURNITURE),
+            product("Bedside Nightstand", "Compact 2-drawer nightstand with open lower shelf", "4500", 15, EcomProduct.ProductCategory.FURNITURE),
+            // Dining
+            product("Dining Table", "6-seater solid wood dining table — rectangle, hand-finished", "18000", 8, EcomProduct.ProductCategory.FURNITURE),
+            product("Dining Chair Set (4pcs)", "Set of 4 solid wood dining chairs with padded seat", "9600", 10, EcomProduct.ProductCategory.FURNITURE),
+            product("Kitchen Island Counter", "Freestanding kitchen island with butcher-block top and storage", "22000", 4, EcomProduct.ProductCategory.FURNITURE),
+            // Office
+            product("Office Chair", "Ergonomic adjustable office chair with lumbar support and armrests", "8500", 12, EcomProduct.ProductCategory.FURNITURE),
+            product("Study Desk", "Solid wood study desk with 3-drawer side unit and cable management", "11000", 10, EcomProduct.ProductCategory.FURNITURE),
+            product("Computer Table", "L-shaped computer workstation with CPU stand and keyboard tray", "14500", 6, EcomProduct.ProductCategory.FURNITURE),
+            product("Bookshelf 5-Tier", "Solid wood 5-tier open bookshelf, natural lacquer finish", "7500", 8, EcomProduct.ProductCategory.FURNITURE),
+            product("Floating Wall Shelf Set", "Set of 3 solid wood floating shelves with hidden brackets", "3200", 20, EcomProduct.ProductCategory.FURNITURE),
+            // Storage
+            product("Shoe Rack Cabinet", "4-shelf wooden shoe cabinet with hinged door and ventilation slats", "5500", 20, EcomProduct.ProductCategory.FURNITURE),
+            product("Storage Cabinet", "Multi-purpose 4-door storage cabinet with adjustable interior shelves", "9000", 10, EcomProduct.ProductCategory.FURNITURE),
+            product("Chest of Drawers", "5-drawer solid wood chest — ideal for bedroom or hallway", "13000", 7, EcomProduct.ProductCategory.FURNITURE)
+        ));
+        seedCategory(EcomProduct.ProductCategory.FUEL, List.of(
+            product("Petrol (5L)", "5 liters of petrol — pre-order for pump pickup", "775", 200, EcomProduct.ProductCategory.FUEL),
+            product("Diesel (5L)", "5 liters of diesel — pre-order for pump pickup", "730", 200, EcomProduct.ProductCategory.FUEL),
+            product("Petrol (10L)", "10 liters of petrol — pre-order for pump pickup", "1545", 200, EcomProduct.ProductCategory.FUEL),
+            product("Diesel (10L)", "10 liters of diesel — pre-order for pump pickup", "1455", 200, EcomProduct.ProductCategory.FUEL),
+            product("Petrol (20L)", "20 liters of petrol — pre-order for pump pickup", "3090", 100, EcomProduct.ProductCategory.FUEL),
+            product("Diesel (20L)", "20 liters of diesel — pre-order for pump pickup", "2910", 100, EcomProduct.ProductCategory.FUEL)
+        ));
+        seedCategory(EcomProduct.ProductCategory.BEE_PRODUCTS, List.of(
+            product("Pure Wild Honey (500g)", "Raw, unfiltered wild honey sourced from our Maurighar hives", "850", 50, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Pure Wild Honey (1kg)", "1kg raw wild honey — best value pack from our bee house", "1600", 30, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Beeswax Block (200g)", "Natural beeswax from our hives, ideal for candles & skincare", "400", 40, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Royal Jelly (30ml)", "Premium royal jelly for health and immunity", "1200", 20, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Bee Pollen (100g)", "Nutrient-rich bee pollen, collected fresh from our hives", "500", 35, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Honeycomb Pack", "Fresh natural honeycomb cut straight from the hive", "650", 25, EcomProduct.ProductCategory.BEE_PRODUCTS),
+            product("Gift Honey Set", "Curated gift box with 2 honey varieties and beeswax", "2200", 15, EcomProduct.ProductCategory.BEE_PRODUCTS)
+        ));
+        seedCategory(EcomProduct.ProductCategory.EV_CHARGING, List.of(
+            product("EV Fast Charge (1hr)", "High-speed DC fast charging — up to 50kW", "150", 999, EcomProduct.ProductCategory.EV_CHARGING),
+            product("EV Standard Charge (4hr)", "AC standard charging session — suitable for all EVs", "350", 999, EcomProduct.ProductCategory.EV_CHARGING),
+            product("EV Overnight Charge (8hr)", "Overnight slow charge — ideal for buses & heavy vehicles", "600", 999, EcomProduct.ProductCategory.EV_CHARGING),
+            product("EV Monthly Pass", "Unlimited standard charges for 30 days", "5000", 50, EcomProduct.ProductCategory.EV_CHARGING),
+            product("EV Top-Up (10%)", "Quick 10% battery top-up service", "80", 999, EcomProduct.ProductCategory.EV_CHARGING)
+        ));
+        seedCategory(EcomProduct.ProductCategory.HOTEL_BOOKING, List.of(
+            product("Standard Room (1 Night)", "Comfortable room with AC, TV & attached bathroom", "1500", 10, EcomProduct.ProductCategory.HOTEL_BOOKING),
+            product("Deluxe Room (1 Night)", "Spacious deluxe room with mountain view & premium bedding", "2500", 6, EcomProduct.ProductCategory.HOTEL_BOOKING),
+            product("Family Suite (1 Night)", "Large suite with 2 beds, sofa, and private bathroom", "4000", 3, EcomProduct.ProductCategory.HOTEL_BOOKING),
+            product("Breakfast Package", "Full Nepali breakfast for 2 people", "350", 999, EcomProduct.ProductCategory.HOTEL_BOOKING),
+            product("Lunch / Dinner Thali", "Traditional Nepali thali set meal", "250", 999, EcomProduct.ProductCategory.HOTEL_BOOKING),
+            product("Parking (Per Day)", "Secure vehicle parking within hotel premises", "100", 999, EcomProduct.ProductCategory.HOTEL_BOOKING)
+        ));
+        seedCategory(EcomProduct.ProductCategory.BIKE_REPAIR, List.of(
+            product("Basic Service", "Engine check, oil top-up, air filter clean, chain lube", "500", 999, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Full Service", "Complete bike service including engine tune, brakes & tyres", "1200", 999, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Oil Change", "Engine oil replacement with quality oil", "200", 999, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Tyre Replacement (Front)", "Replace front tyre with new tyre of your choice", "800", 30, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Tyre Replacement (Rear)", "Replace rear tyre with new tyre of your choice", "900", 30, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Brake Service", "Brake pad replacement and brake adjustment", "400", 50, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Chain & Sprocket Set", "Replace chain and sprocket set for smooth riding", "600", 20, EcomProduct.ProductCategory.BIKE_REPAIR),
+            product("Puncture Repair", "Quick tyre puncture fix while you wait", "150", 999, EcomProduct.ProductCategory.BIKE_REPAIR)
+        ));
+    }
+
+    private void seedCategory(EcomProduct.ProductCategory category, List<EcomProduct> products) {
+        List<String> existingNames = ecomProductRepository
+                .findByCategoryAndIsActiveTrueOrderByCreatedAtDesc(category)
+                .stream().map(EcomProduct::getName).toList();
+        List<EcomProduct> toAdd = products.stream()
+                .filter(p -> !existingNames.contains(p.getName()))
+                .toList();
+        if (toAdd.isEmpty()) {
+            log.info("{} products already up to date.", category);
+            return;
+        }
+        ecomProductRepository.saveAll(toAdd);
+        log.info("Seeded {} new {} products.", toAdd.size(), category);
+    }
+
+    private EcomProduct product(String name, String desc, String price, int stock, EcomProduct.ProductCategory category) {
+        return EcomProduct.builder()
+                .name(name).description(desc)
+                .price(new BigDecimal(price))
+                .stockQty(stock).category(category)
                 .build();
     }
 }
