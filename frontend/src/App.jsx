@@ -22,29 +22,30 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import PetrolEntryPage from './pages/PetrolEntryPage';
-import EVEntryPage from './pages/EVEntryPage';
-import FurnitureEntryPage from './pages/FurnitureEntryPage';
-import FurnitureDashboardPage from './pages/FurnitureDashboardPage';
-import FurnitureInventoryPage from './pages/FurnitureInventoryPage';
-import FurnitureCustomerPage from './pages/FurnitureCustomerPage';
-import FurnitureOrderPage from './pages/FurnitureOrderPage';
-import FurnitureOrderHistoryPage from './pages/FurnitureOrderHistoryPage';
-import RentalEntryPage from './pages/RentalEntryPage';
-import LoanEntryPage from './pages/LoanEntryPage';
-import RecordsPage from './pages/RecordsPage';
-import SettingsPage from './pages/SettingsPage';
-import PendingReviewPage from './pages/PendingReviewPage';
-import FuelPricePage from './pages/FuelPricePage';
-import FuelOrderPage from './pages/FuelOrderPage';
-import StaffManagementPage from './pages/StaffManagementPage';
-import DailyClosePage from './pages/DailyClosePage';
-import EvVehiclePage from './pages/EvVehiclePage';
-import RentalPropertyPage from './pages/RentalPropertyPage';
-import RentalTenantsPage from './pages/RentalTenantsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
+import LoginPage from './pages/shared/LoginPage';
+import DashboardPage from './pages/shared/DashboardPage';
+import DailyClosePage from './pages/shared/DailyClosePage';
+import RecordsPage from './pages/shared/RecordsPage';
+import ReportsPage from './pages/shared/ReportsPage';
+import PendingReviewPage from './pages/shared/PendingReviewPage';
+import AnalyticsPage from './pages/shared/AnalyticsPage';
+import PetrolEntryPage from './pages/petrol/PetrolEntryPage';
+import FuelPricePage from './pages/petrol/FuelPricePage';
+import FuelOrderPage from './pages/petrol/FuelOrderPage';
+import EVEntryPage from './pages/ev/EVEntryPage';
+import EvVehiclePage from './pages/ev/EvVehiclePage';
+import FurnitureEntryPage from './pages/furniture/FurnitureEntryPage';
+import FurnitureDashboardPage from './pages/furniture/FurnitureDashboardPage';
+import FurnitureInventoryPage from './pages/furniture/FurnitureInventoryPage';
+import FurnitureCustomerPage from './pages/furniture/FurnitureCustomerPage';
+import FurnitureOrderPage from './pages/furniture/FurnitureOrderPage';
+import FurnitureOrderHistoryPage from './pages/furniture/FurnitureOrderHistoryPage';
+import RentalEntryPage from './pages/rental/RentalEntryPage';
+import RentalPropertyPage from './pages/rental/RentalPropertyPage';
+import RentalTenantsPage from './pages/rental/RentalTenantsPage';
+import LoanEntryPage from './pages/loans/LoanEntryPage';
+import SettingsPage from './pages/admin/SettingsPage';
+import StaffManagementPage from './pages/admin/StaffManagementPage';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');

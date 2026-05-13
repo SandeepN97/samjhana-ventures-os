@@ -1,4 +1,4 @@
-package com.samjhana.config;
+package com.samjhana.seed;
 
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.EcomProduct;
@@ -12,6 +12,7 @@ import com.samjhana.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 @Slf4j
