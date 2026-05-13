@@ -42,8 +42,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
-                    "/api/fuel-prices/current",
-                    "/api/fuel-prices/current/**",
+                    "/api/public/**",           // samjhana-web — no auth, read-only
                     "/",
                     "/index.html",
                     "/assets/**",
@@ -53,7 +52,7 @@ public class SecurityConfig {
                     "/h2-console/**",
                     "/swagger-ui/**",
                     "/api-docs/**",
-                    // SPA frontend routes - served by index.html
+                    // SPA admin routes — served by index.html
                     "/login",
                     "/entry/**",
                     "/furniture/**",
@@ -70,13 +69,8 @@ public class SecurityConfig {
                     "/api/ecommerce/products",
                     "/api/ecommerce/products/**",
                     "/api/ecommerce/auth/**",
-                    // SPA ecommerce routes
                     "/shop",
-                    "/shop/**",
-                    // Maurighar public catalogue routes
-                    "/api/furniture/items",
-                    "/api/furniture/items/**",
-                    "/api/ev-vehicles"
+                    "/shop/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
