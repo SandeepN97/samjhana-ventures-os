@@ -1,7 +1,7 @@
 {
   "name": "samjhana-ventures-frontend",
   "version": "1.0.0",
-  "description": "Samjhana Ventures OS - Dynamic Multi-Business ERP Frontend",
+  "description": "Internal ERP — private, Tailscale only. Not for public internet.",
   "type": "module",
   "scripts": {
     "dev": "vite",

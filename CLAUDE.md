@@ -6,7 +6,7 @@ Five business units: petrol pump, EV charging, furniture shop, house rentals, ba
 **Stack:** Java 21 + Spring Boot 3.2.1 backend · React 18 + Vite + Tailwind frontend · H2 embedded DB · JWT auth · i18next (English/Nepali with Devanagari numerals)
 
 **Two frontends:**
-- `frontend/` — main ERP UI (served at localhost:5173 in dev, bundled into JAR in prod)
+- `samjhana-admin/` — internal ERP UI (served at localhost:5173 in dev, bundled into JAR in prod; Tailscale only in prod)
 - `samjhana-web/` — public-facing customer website (furniture, beekeeping, EV, fuel prices); dev at localhost:5175
 
 **Key conventions:**
