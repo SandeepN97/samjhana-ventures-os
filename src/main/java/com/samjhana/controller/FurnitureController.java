@@ -203,6 +203,13 @@ public class FurnitureController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/items/{id}")
+    public ResponseEntity<?> getItem(@PathVariable String id) {
+        FurnitureItem item = itemRepository.findById(UUID.fromString(id)).orElse(null);
+        if (item == null || !item.getIsActive()) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(itemToMap(item));
+    }
+
     @PostMapping("/items")
     public ResponseEntity<?> createItem(@RequestBody Map<String, Object> request) {
         String name = (String) request.get("name");

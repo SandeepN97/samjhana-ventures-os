@@ -65,7 +65,18 @@ public class SecurityConfig {
                     "/fuel-orders",
                     "/staff",
                     "/ev-vehicles",
-                    "/analytics"
+                    "/analytics",
+                    // Ecommerce public routes
+                    "/api/ecommerce/products",
+                    "/api/ecommerce/products/**",
+                    "/api/ecommerce/auth/**",
+                    // SPA ecommerce routes
+                    "/shop",
+                    "/shop/**",
+                    // Maurighar public catalogue routes
+                    "/api/furniture/items",
+                    "/api/furniture/items/**",
+                    "/api/ev-vehicles"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
