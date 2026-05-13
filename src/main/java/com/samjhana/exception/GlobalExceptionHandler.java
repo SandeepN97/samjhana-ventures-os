@@ -12,14 +12,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(BusinessUnitNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleBusinessUnitNotFound(BusinessUnitNotFoundException ex) {
+    @ExceptionHandler({BusinessUnitNotFoundException.class, TransactionNotFoundException.class, ResourceNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(404).body(new ErrorResponse("NOT_FOUND", ex.getMessage()));
     }
 
-    @ExceptionHandler(TransactionNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleTransactionNotFound(TransactionNotFoundException ex) {
-        return ResponseEntity.status(404).body(new ErrorResponse("NOT_FOUND", ex.getMessage()));
+    @ExceptionHandler(DayAlreadyClosedException.class)
+    public ResponseEntity<ErrorResponse> handleDayAlreadyClosed(DayAlreadyClosedException ex) {
+        return ResponseEntity.status(409).body(new ErrorResponse("ALREADY_CLOSED", ex.getMessage()));
     }
 
     @ExceptionHandler(FuelPriceScraperException.class)
