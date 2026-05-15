@@ -1,10 +1,10 @@
 const SERVICES = [
-  { icon: '🛞', name: 'Tyre Change',      price: 'Rs 300', time: '30 min',   color: '#fef3c7', accent: '#92400e' },
-  { icon: '⚙️', name: 'Engine Service',   price: 'Rs 800', time: '2–3 hr',   color: '#dbeafe', accent: '#1d4ed8' },
-  { icon: '⚡', name: 'Electrical Fix',   price: 'Rs 500', time: '1–2 hr',   color: '#ede9fe', accent: '#6d28d9' },
-  { icon: '🛑', name: 'Brake Service',    price: 'Rs 400', time: '45 min',   color: '#fee2e2', accent: '#b91c1c' },
-  { icon: '💡', name: 'Lighting Repair',  price: 'Rs 200', time: '20 min',   color: '#dcfce7', accent: '#15803d' },
-  { icon: '🔍', name: 'Free Diagnostics', price: 'Free',   time: 'Walk-in',  color: '#e8dfc8', accent: '#8B6914' },
+  { icon: '🛞', name: 'Tyre Change',      time: '30 min',   color: '#fef3c7', accent: '#92400e' },
+  { icon: '⚙️', name: 'Engine Service',   time: '2–3 hr',   color: '#dbeafe', accent: '#1d4ed8' },
+  { icon: '⚡', name: 'Electrical Fix',   time: '1–2 hr',   color: '#ede9fe', accent: '#6d28d9' },
+  { icon: '🛑', name: 'Brake Service',    time: '45 min',   color: '#fee2e2', accent: '#b91c1c' },
+  { icon: '💡', name: 'Lighting Repair',  time: '20 min',   color: '#dcfce7', accent: '#15803d' },
+  { icon: '🔍', name: 'Free Diagnostics', time: 'Walk-in',  color: '#e8dfc8', accent: '#8B6914' },
 ];
 
 const PILLS = ['All bikes', 'Motorcycles', 'Scooters', 'Electric'];
@@ -47,7 +47,6 @@ export default function BikeRepairSection() {
                 <span className="text-2xl">{s.icon}</span>
                 <div>
                   <p className="font-sans font-semibold text-dark text-sm leading-tight">{s.name}</p>
-                  <p className="font-serif text-lg text-dark mt-1">{s.price}</p>
                 </div>
                 <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/60"
                   style={{ color: s.accent }}>

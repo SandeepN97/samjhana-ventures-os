@@ -88,6 +88,7 @@ public class PublicApiService {
 
     private Map<String, Object> toPublicEvRate(EvVehicle v) {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", v.getId().toString());
         map.put("vehicleName", v.getVehicleName());
         map.put("batteryCapacityKw", v.getBatteryCapacityKw());
         map.put("seatingCapacity", v.getSeatingCapacity());

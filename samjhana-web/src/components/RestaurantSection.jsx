@@ -2,26 +2,26 @@ const VEG = <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-500 mr
 const NON = <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500  mr-2 shrink-0" />;
 
 const MAINS = [
-  { name: 'Dal Bhat Set',      price: 180, veg: true  },
-  { name: 'Khasi ko Masu',     price: 350, veg: false },
-  { name: 'Dhido Set',         price: 150, veg: true  },
-  { name: 'Kukhura ko Masu',   price: 280, veg: false },
+  { name: 'Dal Bhat Set',      veg: true  },
+  { name: 'Khasi ko Masu',     veg: false },
+  { name: 'Dhido Set',         veg: true  },
+  { name: 'Kukhura ko Masu',   veg: false },
 ];
 const SNACKS = [
-  { name: 'Buff Momo (8 pcs)', price: 220, veg: false },
-  { name: 'Sel Roti',          price: 80,  veg: true  },
-  { name: 'Mushroom Chyau',    price: 120, veg: true  },
+  { name: 'Buff Momo (8 pcs)', veg: false },
+  { name: 'Sel Roti',          veg: true  },
+  { name: 'Mushroom Chyau',    veg: true  },
 ];
 const DRINKS = [
-  { name: 'Masala Chiya',   price: 30,  veg: true },
-  { name: 'Plain Tea',      price: 20,  veg: true },
-  { name: 'Lassi',          price: 60,  veg: true },
-  { name: 'Fruit Juice',    price: 50,  veg: true },
+  { name: 'Masala Chiya',   veg: true },
+  { name: 'Plain Tea',      veg: true },
+  { name: 'Lassi',          veg: true },
+  { name: 'Fruit Juice',    veg: true },
 ];
 const BREAKFAST = [
-  { name: 'Sel Roti Set',   price: 100, veg: true },
-  { name: 'Chiura Dahi',    price: 80,  veg: true },
-  { name: 'Egg Roti',       price: 90,  veg: false },
+  { name: 'Sel Roti Set',   veg: true },
+  { name: 'Chiura Dahi',    veg: true },
+  { name: 'Egg Roti',       veg: false },
 ];
 const DISH_CELLS = [
   { emoji: '🍛', label: 'Dal Bhat',  bg: '#2d1a0a' },
@@ -33,17 +33,15 @@ const AMBIENCE = ['Mountain view', 'Open kitchen', 'Community table', 'No bookin
 const STATS = [
   { value: '10+', label: 'Years' },
   { value: '4.9★', label: 'Rating' },
-  { value: 'Rs 80', label: 'Cheapest dish' },
   { value: '6am–9pm', label: 'Daily' },
 ];
 
 function MenuItem({ item }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-white/10">
+    <div className="flex items-center py-2.5 border-b border-white/10">
       <span className="flex items-center text-sm text-white/80 font-sans">
         {item.veg ? VEG : NON}{item.name}
       </span>
-      <span className="font-serif text-white/90 text-sm shrink-0 ml-4">Rs {item.price}</span>
     </div>
   );
 }

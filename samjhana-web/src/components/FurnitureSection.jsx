@@ -80,7 +80,6 @@ export default function FurnitureSection() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All pieces');
-  const [showAll, setShowAll] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showCustomOrder, setShowCustomOrder] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
@@ -96,7 +95,6 @@ export default function FurnitureSection() {
   const handleFilter = (f) => {
     if (f === 'Custom order') { setShowCustomOrder(true); return; }
     setFilter(f);
-    setShowAll(false);
   };
 
   const cat = CATEGORY_MAP[filter];
@@ -104,8 +102,8 @@ export default function FurnitureSection() {
 
   const featured  = filtered[0] ?? null;
   const sidebar   = filtered.slice(1, 3);
-  const gridItems = showAll ? filtered.slice(3) : filtered.slice(3, 6);
-  const remaining = filtered.length - 3 - 6;
+  const gridItems = filtered.slice(3, 6);
+  const remaining = filtered.length - 9;
 
   const featuredPrice = Number(featured?.sellingPrice ?? 0);
 
@@ -197,8 +195,8 @@ export default function FurnitureSection() {
             {gridItems.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {gridItems.map((p) => <ProductCard key={p.id} product={p} onView={setSelectedProduct} />)}
-                {!showAll && remaining > 0 && (
-                  <button onClick={() => setShowAll(true)}
+                {remaining > 0 && (
+                  <button onClick={() => navigate('/furniture')}
                     className="rounded-2xl border border-gold/20 bg-gold/5 p-5 flex flex-col items-center justify-center gap-2 text-center hover:bg-gold/10 transition-colors cursor-pointer min-h-[180px]">
                     <p className="font-serif text-3xl text-gold">+{remaining}</p>
                     <p className="text-sm text-dark/60 font-sans">more pieces</p>

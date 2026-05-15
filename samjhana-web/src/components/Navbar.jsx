@@ -1,15 +1,34 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 
 const NAV_LINKS = [
-  { label: 'Furniture',   href: '/furniture',   isLink: true },
-  { label: 'Mauri Ghar',  href: '/beekeeping',  isLink: true },
-  { label: 'Fuel & EV',   href: '/#fuel-ev' },
-  { label: 'Bike repair', href: '/#bike-repair' },
-  { label: 'Restaurant',  href: '/#restaurant' },
+  { label: 'Furniture',   href: '/furniture',    isLink: true },
+  { label: 'Mauri Ghar',  href: '/beekeeping',   isLink: true },
+  { label: 'Fuel & EV',   href: '/#fuel-ev',     isHash: true },
+  { label: 'Bike repair', href: '/#bike-repair',  isHash: true },
+  { label: 'Restaurant',  href: '/#restaurant',   isHash: true },
 ];
+
+function HashLink({ href, children, className, onClick }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hash = href.replace('/#', '');
+
+  function handleClick(e) {
+    e.preventDefault();
+    if (location.pathname === '/') {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      navigate('/');
+      setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }), 120);
+    }
+    onClick?.();
+  }
+
+  return <a href={href} onClick={handleClick} className={className}>{children}</a>;
+}
 
 function GridMark() {
   return (
@@ -48,10 +67,10 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ) : (
-              <a key={l.href} href={l.href}
+              <HashLink key={l.href} href={l.href}
                 className="px-3.5 py-2 text-sm font-medium text-dark/70 hover:text-dark rounded transition-colors hover:bg-warm-soft">
                 {l.label}
-              </a>
+              </HashLink>
             )
           )}
         </nav>
@@ -66,7 +85,7 @@ export default function Navbar() {
               </span>
             )}
           </button>
-          <a href="#restaurant" className="btn-dark text-sm">View menu</a>
+          <HashLink href="/#restaurant" className="btn-dark text-sm">View menu</HashLink>
         </div>
 
         {/* Mobile toggle */}
@@ -85,13 +104,13 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ) : (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)}
+              <HashLink key={l.href} href={l.href} onClick={() => setOpen(false)}
                 className="block py-2.5 text-sm font-medium text-dark/80 hover:text-dark border-b border-warm-border/50">
                 {l.label}
-              </a>
+              </HashLink>
             )
           )}
-          <a href="#restaurant" onClick={() => setOpen(false)} className="btn-dark mt-3 w-full justify-center">View menu</a>
+          <HashLink href="/#restaurant" onClick={() => setOpen(false)} className="btn-dark mt-3 w-full justify-center">View menu</HashLink>
         </div>
       )}
     </header>

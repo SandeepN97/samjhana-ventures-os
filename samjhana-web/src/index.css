@@ -31,3 +31,8 @@
     @apply bg-white text-dark border-warm-border hover:border-dark;
   }
 }
+
+.ev-scroll::-webkit-scrollbar        { width: 4px; }
+.ev-scroll::-webkit-scrollbar-track  { background: transparent; }
+.ev-scroll::-webkit-scrollbar-thumb  { background: #e0d5c5; border-radius: 9999px; }
+.ev-scroll                           { scrollbar-width: thin; scrollbar-color: #e0d5c5 transparent; }
