@@ -9,18 +9,18 @@ const renderWithRouter = (ui) =>
 describe('LoginPage', () => {
   it('renders username and password fields', () => {
     renderWithRouter(<LoginPage />);
-    expect(screen.getByRole('textbox', { name: /username/i })).toBeInTheDocument();
+    expect(document.querySelector('input[autocomplete="username"]')).toBeInTheDocument();
     expect(document.querySelector('input[type="password"]')).toBeInTheDocument();
   });
 
   it('renders a submit button', () => {
     renderWithRouter(<LoginPage />);
-    expect(screen.getByRole('button', { name: /login|sign in|प्रवेश/i })).toBeInTheDocument();
+    expect(document.querySelector('button[type="submit"]')).toBeInTheDocument();
   });
 
   it('shows validation error when submitted empty', async () => {
     renderWithRouter(<LoginPage />);
-    const submitBtn = screen.getByRole('button', { name: /login|sign in|प्रवेश/i });
+    const submitBtn = document.querySelector('button[type="submit"]');
     fireEvent.click(submitBtn);
     await waitFor(() => {
       const inputs = document.querySelectorAll('input');

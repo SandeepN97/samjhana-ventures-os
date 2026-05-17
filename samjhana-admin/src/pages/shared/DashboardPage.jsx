@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import QuickActionButtons from '../components/QuickActionButtons';
-import LanguageToggle from '../components/LanguageToggle';
+import QuickActionButtons from '../../components/QuickActionButtons';
+import LanguageToggle from '../../components/LanguageToggle';
 
 export default function DashboardPage() {
   const navigate = useNavigate();

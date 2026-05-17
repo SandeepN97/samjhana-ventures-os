@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
-import DatePicker from '../components/DatePicker';
-import SearchableSelect from '../components/SearchableSelect';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
+import LanguageToggle from '../../components/LanguageToggle';
+import DatePicker from '../../components/DatePicker';
+import SearchableSelect from '../../components/SearchableSelect';
+import { ToastContainer } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();

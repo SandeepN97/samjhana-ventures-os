@@ -21,10 +21,10 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
-import SearchableSelect from '../components/SearchableSelect';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
+import LanguageToggle from '../../components/LanguageToggle';
+import SearchableSelect from '../../components/SearchableSelect';
+import { ToastContainer } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 
 export default function SettingsPage() {
   const navigate = useNavigate();

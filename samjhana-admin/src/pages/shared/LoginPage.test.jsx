@@ -10,7 +10,7 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../utils/api', () => ({
+vi.mock('../../utils/api', () => ({
   default: {
     post: vi.fn(),
   },

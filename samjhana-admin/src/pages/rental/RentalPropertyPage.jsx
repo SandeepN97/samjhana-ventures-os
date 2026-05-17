@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Home, Plus, Edit2, Trash2, X, Check, User, ShieldOff, Calendar, BookOpen, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
-import DatePicker from '../components/DatePicker';
-import { formatBsDate } from '../utils/nepaliDate';
+import LanguageToggle from '../../components/LanguageToggle';
+import DatePicker from '../../components/DatePicker';
+import { formatBsDate } from '../../utils/nepaliDate';
 
 export default function RentalPropertyPage() {
   const navigate = useNavigate();

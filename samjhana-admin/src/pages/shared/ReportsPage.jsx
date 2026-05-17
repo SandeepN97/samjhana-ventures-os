@@ -6,10 +6,10 @@ import {
   ClipboardCheck, Droplet, Banknote as Cash, Building2,
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
-import { formatBsDate } from '../utils/nepaliDate';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
+import LanguageToggle from '../../components/LanguageToggle';
+import { formatBsDate } from '../../utils/nepaliDate';
+import { ToastContainer } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 
 const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-orange-500', label: 'Petrol',    labelNe: 'पेट्रोल' },

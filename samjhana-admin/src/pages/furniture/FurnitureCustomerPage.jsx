@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Users, UserPlus, Edit2, Trash2, X, Check, Search, Phone, MapPin } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
+import LanguageToggle from '../../components/LanguageToggle';
 
 export default function FurnitureCustomerPage() {
   const navigate = useNavigate();

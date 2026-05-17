@@ -15,7 +15,7 @@ import {
   ShieldOff
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
+import LanguageToggle from '../../components/LanguageToggle';
 
 export default function EvVehiclePage() {
   const navigate = useNavigate();

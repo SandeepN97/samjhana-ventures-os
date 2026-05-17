@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ClipboardList, Search, X, Truck, Check } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
+import LanguageToggle from '../../components/LanguageToggle';
 
 const STATUS_TABS = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },

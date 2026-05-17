@@ -2,11 +2,15 @@ package com.samjhana.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.dto.LoginRequest;
+import com.samjhana.entity.User;
+import com.samjhana.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,6 +24,22 @@ class AuthControllerIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
+    @Autowired UserRepository userRepository;
+    @Autowired PasswordEncoder passwordEncoder;
+
+    @BeforeEach
+    void seedTestUser() {
+        if (userRepository.findByUsername("admin").isEmpty()) {
+            userRepository.save(User.builder()
+                .username("admin")
+                .passwordHash(passwordEncoder.encode("admin"))
+                .fullName("Test Admin")
+                .fullNameNepali("परीक्षण प्रशासक")
+                .role(User.UserRole.ADMIN)
+                .locale("en")
+                .build());
+        }
+    }
 
     @Test
     void shouldReturnToken_whenValidCredentials() throws Exception {

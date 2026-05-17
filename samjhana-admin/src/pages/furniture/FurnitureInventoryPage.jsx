@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../components/LanguageToggle';
+import LanguageToggle from '../../components/LanguageToggle';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
