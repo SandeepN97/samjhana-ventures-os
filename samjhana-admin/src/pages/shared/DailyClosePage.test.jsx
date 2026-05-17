@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DailyClosePage from './DailyClosePage';
-import { renderWithProviders } from '../test/test-utils';
+import { renderWithProviders } from '../../test/test-utils';
 
 const BUSINESS_DATE = '2026-03-19';
 

@@ -20,7 +20,7 @@ import {
   RefreshCw,
   AlertTriangle
 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import SearchableSelect from '../components/SearchableSelect';
 import { ToastContainer } from '../components/Toast';

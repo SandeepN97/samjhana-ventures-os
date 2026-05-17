@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PetrolEntryPage from './PetrolEntryPage';
-import { renderWithProviders } from '../test/test-utils';
+import { renderWithProviders } from '../../test/test-utils';
 
 // Mock api module — different endpoints return different shapes
 vi.mock('../utils/api', () => ({

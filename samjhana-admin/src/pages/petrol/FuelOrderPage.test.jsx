@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FuelOrderPage from './FuelOrderPage';
-import { renderWithProviders } from '../test/test-utils';
+import { renderWithProviders } from '../../test/test-utils';
 
 vi.mock('../utils/api', () => ({
   default: {
