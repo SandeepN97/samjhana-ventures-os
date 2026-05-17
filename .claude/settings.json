@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn spring-boot:run*)",
+      "Bash(mvn clean*)",
+      "Bash(mvn test*)",
+      "Bash(mvn compile*)",
+      "Bash(mvn package*)",
+      "Bash(npm run dev*)",
+      "Bash(npm run build*)",
+      "Bash(npm install*)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(graphify *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/nishabhattarai/IdeaProjects/samjhana-ventures-os && /Users/nishabhattarai/.local/bin/graphify update . 2>/dev/null || true",
+            "timeout": 60,
+            "statusMessage": "Updating knowledge graph...",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
