@@ -5,7 +5,7 @@ import {
   ArrowLeft, Home, User, TrendingDown, TrendingUp, Check,
   ChevronDown, ChevronUp, Calendar, Banknote, Building2,
 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import { formatBsDate } from '../utils/nepaliDate';
 

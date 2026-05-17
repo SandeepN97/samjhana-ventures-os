@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   Droplet,
 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';

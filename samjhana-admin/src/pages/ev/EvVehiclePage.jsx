@@ -14,7 +14,7 @@ import {
   Users,
   ShieldOff
 } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 
 export default function EvVehiclePage() {

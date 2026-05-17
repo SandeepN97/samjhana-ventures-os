@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import LanguageToggle from '../components/LanguageToggle';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';

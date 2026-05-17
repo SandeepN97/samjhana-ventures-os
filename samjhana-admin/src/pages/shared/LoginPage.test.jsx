@@ -16,7 +16,7 @@ vi.mock('../utils/api', () => ({
   },
 }));
 
-import api from '../utils/api';
+import api from '../../utils/api';
 
 describe('LoginPage', () => {
   beforeEach(() => {

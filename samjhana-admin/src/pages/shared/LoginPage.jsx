@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Globe, ArrowLeft, Check } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
