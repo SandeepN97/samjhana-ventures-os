@@ -5,7 +5,7 @@ import PetrolEntryPage from './PetrolEntryPage';
 import { renderWithProviders } from '../../test/test-utils';
 
 // Mock api module — different endpoints return different shapes
-vi.mock('../utils/api', () => ({
+vi.mock('../../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
       if (url && url.includes('/api/transactions')) {

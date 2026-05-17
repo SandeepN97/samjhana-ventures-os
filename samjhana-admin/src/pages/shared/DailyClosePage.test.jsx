@@ -6,7 +6,7 @@ import { renderWithProviders } from '../../test/test-utils';
 
 const BUSINESS_DATE = '2026-03-19';
 
-vi.mock('../utils/api', () => ({
+vi.mock('../../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
       if (url.includes('/api/daily-reports/business-date')) {
@@ -92,7 +92,7 @@ describe('DailyClosePage', () => {
   });
 
   it('shows Day Closed title when day is already closed', async () => {
-    const { default: api } = await import('../utils/api');
+    const { default: api } = await import('../../utils/api');
     api.get.mockImplementation((url) => {
       if (url.includes('/api/daily-reports/business-date')) {
         return Promise.resolve({ data: { date: BUSINESS_DATE } });

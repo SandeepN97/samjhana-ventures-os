@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import FuelPricePage from './FuelPricePage';
 import { renderWithProviders } from '../../test/test-utils';
 
-vi.mock('../utils/api', () => ({
+vi.mock('../../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
       if (url.includes('/api/fuel-prices/current')) {

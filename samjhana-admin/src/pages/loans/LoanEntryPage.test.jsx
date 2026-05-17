@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import LoanEntryPage from './LoanEntryPage';
 import { renderWithProviders } from '../../test/test-utils';
 
-vi.mock('../utils/api', () => ({
+vi.mock('../../utils/api', () => ({
   default: {
     get: vi.fn().mockResolvedValue({ data: [] }),
     post: vi.fn().mockResolvedValue({ data: { id: 1 } }),
