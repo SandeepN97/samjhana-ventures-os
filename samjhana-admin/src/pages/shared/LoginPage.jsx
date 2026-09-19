@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, ArrowLeft, Check } from 'lucide-react';
+import { Globe, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 
 export default function LoginPage() {
@@ -15,6 +15,7 @@ export default function LoginPage() {
   // Login form state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Change password form state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -34,6 +35,7 @@ export default function LoginPage() {
   const resetForm = () => {
     setUsername('');
     setPassword('');
+    setShowPassword(false);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -52,7 +54,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await api.post('/api/auth/login', { username, password });
+      // A 401 here means wrong credentials, not an expired session — don't let the
+      // interceptor reload /login and wipe the error message and the typed fields.
+      const res = await api.post(
+        '/api/auth/login',
+        { username, password },
+        { skipAuthRedirect: true }
+      );
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/', { replace: true });
@@ -188,15 +196,27 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('login.password')}
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
-                placeholder={t('login.passwordPlaceholder')}
-                autoComplete="current-password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-4 pr-14 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                  placeholder={t('login.passwordPlaceholder')}
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  aria-pressed={showPassword}
+                  title={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  className="absolute right-0 top-0 h-full w-12 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-r-xl"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <button
