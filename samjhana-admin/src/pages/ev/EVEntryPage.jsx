@@ -9,10 +9,13 @@ import SearchableSelect from '../../components/SearchableSelect';
 import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { toNepaliNumerals } from '../../utils/formatters';
 
 export default function EVEntryPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isNepali = i18n.language === 'ne';
+  const fmtNum = (n) => (isNepali ? toNepaliNumerals(n) : String(n));
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
@@ -22,6 +25,9 @@ export default function EVEntryPage() {
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
+  const [chargePoints, setChargePoints] = useState([]);
+  const [chargePointLoadError, setChargePointLoadError] = useState(false);
+  const [chargePointsLoaded, setChargePointsLoaded] = useState(false);
 
   const [neaRate, setNeaRate] = useState('');
   const [editingRate, setEditingRate] = useState(false);
@@ -30,6 +36,7 @@ export default function EVEntryPage() {
 
   const [values, setValues] = useState({
     transactionDate: new Date().toISOString().split('T')[0],
+    chargePointId: '',
     vehicleId: '',
     startPercent: '',
     endPercent: '',
@@ -49,6 +56,12 @@ export default function EVEntryPage() {
     api.get('/api/ev-vehicles')
       .then(res => setVehicles(res.data))
       .catch(() => setVehicleLoadError(true));
+    api.get('/api/charge-points')
+      .then(res => {
+        setChargePoints(Array.isArray(res.data) ? res.data : []);
+        setChargePointsLoaded(true);
+      })
+      .catch(() => setChargePointLoadError(true));
     // Load NEA rate from backend; fall back to localStorage if backend fails
     const cachedRate = localStorage.getItem('ev_nea_rate') || '';
     api.get('/api/settings/nea_rate', { skipAuthRedirect: true })
@@ -74,6 +87,7 @@ export default function EVEntryPage() {
   }, []);
 
   const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
+  const selectedChargePoint = chargePoints.find(c => c.id === values.chargePointId);
 
   const startPct = values.startPercent !== '' ? parseFloat(values.startPercent) : NaN;
   const endPct = values.endPercent !== '' ? parseFloat(values.endPercent) : NaN;
@@ -124,6 +138,7 @@ export default function EVEntryPage() {
   const validate = () => {
     const newErrors = {};
     if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
+    if (!values.chargePointId) newErrors.chargePointId = t('ev.chargerRequired');
     if (!values.vehicleId) newErrors.vehicleId = t('ev.selectVehicle');
     if (!values.startPercent && values.startPercent !== '0') {
       newErrors.startPercent = t('ev.startPctRequired');
@@ -154,6 +169,9 @@ export default function EVEntryPage() {
     try {
       const customFields = {
         chargingMode: 'PERCENTAGE',
+        chargePointId: selectedChargePoint?.id,
+        chargePointCode: selectedChargePoint?.code,
+        chargerModel: selectedChargePoint?.model,
         vehicleId: values.vehicleId,
         vehicleName: selectedVehicle?.vehicleName,
         batteryCapacityKw: batteryKw,
@@ -185,6 +203,7 @@ export default function EVEntryPage() {
 
       setValues({
         transactionDate: businessDate,
+        chargePointId: '',
         vehicleId: '',
         startPercent: '',
         endPercent: '',
@@ -310,6 +329,56 @@ export default function EVEntryPage() {
             error={errors.transactionDate}
             accentColor="green"
           />
+        </div>
+
+        {/* Charger Selection */}
+        <div>
+          <label id="charger-label" className="block text-lg font-medium text-gray-700 mb-2">
+            {t('ev.selectCharger')} <span className="text-red-500">*</span>
+          </label>
+          {chargePointLoadError && (
+            <p className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+              {t('ev.failedToLoadChargers')}
+            </p>
+          )}
+          {chargePointsLoaded && chargePoints.length === 0 && (
+            <p className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
+              {t('ev.noChargers')}
+            </p>
+          )}
+          {chargePoints.length > 0 && (
+            <div role="radiogroup" aria-labelledby="charger-label" className="grid grid-cols-1 gap-3">
+              {chargePoints.map(cp => {
+                const selected = values.chargePointId === cp.id;
+                return (
+                  <button
+                    key={cp.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => handleChange('chargePointId', cp.id)}
+                    className={`min-h-[64px] w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
+                      selected
+                        ? 'bg-green-500 text-white border-green-500'
+                        : `bg-white text-gray-700 hover:border-green-400 ${errors.chargePointId ? 'border-red-500' : 'border-gray-300'}`
+                    }`}
+                  >
+                    <Zap className="w-6 h-6 shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-lg font-bold">
+                        {t('ev.chargerNumber', { n: fmtNum(cp.displayOrder) })}
+                      </span>
+                      <span className="block text-sm opacity-80 break-words">{cp.model}</span>
+                    </span>
+                    <span className="text-lg font-bold whitespace-nowrap">
+                      {fmtNum(parseFloat(cp.maxPowerKw))} kW
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {errors.chargePointId && <p className="text-red-500 text-sm mt-1">{errors.chargePointId}</p>}
         </div>
 
         {/* Vehicle Dropdown */}

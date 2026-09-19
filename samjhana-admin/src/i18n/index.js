@@ -174,6 +174,11 @@ export const resources = {
         endPctRequired: 'End % is required',
         mustBe0to100: 'Must be between 0-100',
         endMustBeGreater: 'End % must be greater than start %',
+        selectCharger: 'Select Charger',
+        chargerNumber: 'Charger {{n}}',
+        chargerRequired: 'Please select a charger',
+        failedToLoadChargers: 'Failed to load chargers. Please refresh the page.',
+        noChargers: 'No chargers are set up yet. Contact admin.',
       },
 
       // Rental
@@ -948,6 +953,11 @@ export const resources = {
         endPctRequired: 'अन्तिम % आवश्यक छ',
         mustBe0to100: '0-100 बीचमा हुनुपर्छ',
         endMustBeGreater: 'अन्तिम % सुरुको भन्दा ठूलो हुनुपर्छ',
+        selectCharger: 'चार्जर छान्नुहोस्',
+        chargerNumber: 'चार्जर {{n}}',
+        chargerRequired: 'कृपया चार्जर छान्नुहोस्',
+        failedToLoadChargers: 'चार्जरहरू लोड गर्न सकिएन। पृष्ठ रिफ्रेश गर्नुहोस्।',
+        noChargers: 'अहिलेसम्म कुनै चार्जर सेटअप गरिएको छैन। एडमिनलाई सम्पर्क गर्नुहोस्।',
       },
 
       // Rental
