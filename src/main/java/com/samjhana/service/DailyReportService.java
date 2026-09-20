@@ -72,6 +72,8 @@ public class DailyReportService {
                 String chargingMode = fields.get("chargingMode") != null ? fields.get("chargingMode").toString() : "METER";
                 if ("PERCENTAGE".equals(chargingMode)) {
                     evUnits = evUnits.add(toBigDecimal(fields.get("estimatedKwh")));
+                } else if ("OCPP_SESSION".equals(chargingMode)) {
+                    evUnits = evUnits.add(toBigDecimal(fields.get("energyDeliveredKwh")));
                 } else {
                     BigDecimal opening = toBigDecimal(fields.get("openingMeter"));
                     BigDecimal closing = toBigDecimal(fields.get("closingMeter"));

@@ -34,6 +34,8 @@ import FuelPricePage from './pages/petrol/FuelPricePage';
 import FuelOrderPage from './pages/petrol/FuelOrderPage';
 import EVEntryPage from './pages/ev/EVEntryPage';
 import EvVehiclePage from './pages/ev/EvVehiclePage';
+import EvElectricityPage from './pages/ev/EvElectricityPage';
+import EVManualEntryPage from './pages/ev/EVManualEntryPage';
 import FurnitureEntryPage from './pages/furniture/FurnitureEntryPage';
 import FurnitureDashboardPage from './pages/furniture/FurnitureDashboardPage';
 import FurnitureInventoryPage from './pages/furniture/FurnitureInventoryPage';
@@ -201,6 +203,22 @@ export default function App() {
           element={
             <PrivateRoute>
               <EvVehiclePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ev-manual"
+          element={
+            <PrivateRoute>
+              <EVManualEntryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ev-electricity"
+          element={
+            <PrivateRoute>
+              <EvElectricityPage />
             </PrivateRoute>
           }
         />

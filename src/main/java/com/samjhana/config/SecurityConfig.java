@@ -44,6 +44,10 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/**",
                     "/api/public/**",           // samjhana-web — no auth, read-only
+                    // WebSocket handshakes authenticate themselves (charger: Basic auth with its secret;
+                    // kiosk: JWT), so they cannot go through the servlet filter chain.
+                    "/ocpp/**",
+                    "/ws/ev/**",
                     "/",
                     "/index.html",
                     "/assets/**",
@@ -65,6 +69,8 @@ public class SecurityConfig {
                     "/fuel-orders",
                     "/staff",
                     "/ev-vehicles",
+                    "/ev-electricity",
+                    "/ev-manual",
                     "/analytics",
                     // Ecommerce public routes
                     "/api/ecommerce/products",

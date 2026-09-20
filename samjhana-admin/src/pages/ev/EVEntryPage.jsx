@@ -1,247 +1,252 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Camera, RefreshCw, Settings, Zap } from 'lucide-react';
 import api from '../../utils/api';
 import LanguageToggle from '../../components/LanguageToggle';
-import DatePicker from '../../components/DatePicker';
-import SearchableSelect from '../../components/SearchableSelect';
-import useBusinessDate from '../../hooks/useBusinessDate';
+import BottomNav from '../../components/BottomNav';
+import ChargerCard from '../../components/ev/ChargerCard';
+import ChargeTargetCard from '../../components/ev/ChargeTargetCard';
+import VehiclePicker from '../../components/ev/VehiclePicker';
+import RateBanner from '../../components/ev/RateBanner';
+import ActiveSessionCard from '../../components/ev/ActiveSessionCard';
+import PaymentCard from '../../components/ev/PaymentCard';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
-import { toNepaliNumerals } from '../../utils/formatters';
+import useBusinessDate from '../../hooks/useBusinessDate';
+import useEvLiveUpdates from '../../hooks/useEvLiveUpdates';
+import useLocaleFormat from '../../hooks/useLocaleFormat';
+import {
+  ACTIVE_STATUSES, PAYMENT_STATUSES, OPEN_STATUSES, byRequestedAt, chargerState,
+} from '../../utils/evSession';
 
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const POLL_MS = 10000;
+const EMPTY_FORM = { chargePointId: '', vehicleCatalogId: '', plateNumber: '', platePhotoDataUrl: '', targetPercent: '80' };
+
+/**
+ * EV Charging — live control flow for the staff kiosk: Start Session → Active → Payment.
+ * Payment confirmation is the only thing that releases the connector after a stop.
+ */
 export default function EVEntryPage() {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
-  const fmtNum = (n) => (isNepali ? toNepaliNumerals(n) : String(n));
+  const { t } = useTranslation();
+  const { num } = useLocaleFormat();
+  const { toasts, showToast, removeToast } = useToast();
+  const { businessDate } = useBusinessDate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
-  const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
-  const { businessDate } = useBusinessDate();
-  const { toasts, showToast, removeToast } = useToast();
 
+  const [tab, setTab] = useState('start');
+  const [chargers, setChargers] = useState([]);
+  const [chargersLoaded, setChargersLoaded] = useState(false);
+  const [chargersFailed, setChargersFailed] = useState(false);
   const [vehicles, setVehicles] = useState([]);
-  const [vehicleLoadError, setVehicleLoadError] = useState(false);
-  const [chargePoints, setChargePoints] = useState([]);
-  const [chargePointLoadError, setChargePointLoadError] = useState(false);
-  const [chargePointsLoaded, setChargePointsLoaded] = useState(false);
-
-  const [neaRate, setNeaRate] = useState('');
-  const [editingRate, setEditingRate] = useState(false);
-  const [rateInput, setRateInput] = useState('');
-  const [rateSaving, setRateSaving] = useState(false);
-
-  const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
-    chargePointId: '',
-    vehicleId: '',
-    startPercent: '',
-    endPercent: '',
-    paymentMethod: 'CASH',
-    notes: '',
-  });
+  const [sessions, setSessions] = useState([]);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [date, setDate] = useState(businessDate);
+  const [photoName, setPhotoName] = useState('');
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [busyId, setBusyId] = useState('');
+  const [now, setNow] = useState(Date.now());
+  const knownStatus = useRef(new Map());
+  // Bumped on every live event, so a REST fetch can tell whether it was overtaken (see refresh).
+  const eventSeq = useRef(0);
+
+  useEffect(() => { setDate(businessDate); }, [businessDate]);
+
+  // ---- sessions: merge one update, and tell staff about transitions they care about ----
+  const notifyTransition = useCallback((previous, next) => {
+    if (previous === undefined || previous === next.status) return;
+    if (next.status === 'FAILED') {
+      showToast(t('evLive.sessionFailed', { message: next.statusMessage || '' }), 'error');
+    } else if (next.status === 'AWAITING_PAYMENT') {
+      showToast(t('evLive.stoppedAwaitingPayment', { plate: next.plateNumber }), 'info');
+      setTab((current) => (current === 'active' ? 'pay' : current));
+    } else if (next.status === 'CLOSED') {
+      showToast(t('evLive.unlocked', { plate: next.plateNumber }), 'success');
+    }
+  }, [showToast, t]);
+
+  const mergeSession = useCallback((next) => {
+    const previous = knownStatus.current.get(next.id);
+    knownStatus.current.set(next.id, next.status);
+    setSessions((current) => {
+      const rest = current.filter((item) => item.id !== next.id);
+      return OPEN_STATUSES.has(next.status) ? [...rest, next].sort(byRequestedAt) : rest;
+    });
+    notifyTransition(previous, next);
+  }, [notifyTransition]);
+
+  const handleLiveEvent = useCallback((event) => {
+    eventSeq.current += 1;
+    if (event.type === 'CHARGE_SESSION_UPDATED' && event.payload) mergeSession(event.payload);
+    if (event.type === 'CHARGE_POINT_UPDATED' && event.payload) {
+      setChargers((current) => current.map((item) => (item.id === event.payload.id ? event.payload : item)));
+    }
+  }, [mergeSession]);
+  const liveConnected = useEvLiveUpdates(handleLiveEvent);
+
+  // ---- loading (and a slow poll while the live socket is down) ----
+  const refresh = useCallback(async ({ initial = false } = {}) => {
+    let results;
+    let overtaken = false;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const seqAtStart = eventSeq.current;
+      results = await Promise.allSettled([
+        api.get('/api/charge-points'),
+        initial ? api.get('/api/ev-vehicles') : Promise.resolve(null),
+        api.get('/api/ev/sessions/active'),
+      ]);
+      overtaken = eventSeq.current !== seqAtStart;
+      // A live event that landed mid-fetch is newer than this snapshot. Applying the snapshot
+      // would roll the screen back (a charger stuck on "Charging"), so fetch again instead.
+      if (!overtaken) break;
+    }
+    // Still being overtaken after retries: the live events already carry the truth, so keep
+    // what's on screen. (The very first load has nothing on screen yet, so it always applies.)
+    if (overtaken && !initial) return;
+    const [chargerResult, vehicleResult, sessionResult] = results;
+    if (chargerResult.status === 'fulfilled') {
+      setChargers(Array.isArray(chargerResult.value.data) ? chargerResult.value.data : []);
+      setChargersFailed(false);
+    } else if (initial) {
+      setChargersFailed(true);
+    }
+    if (initial) setChargersLoaded(true);
+    if (vehicleResult.status === 'fulfilled' && vehicleResult.value && Array.isArray(vehicleResult.value.data)) {
+      setVehicles(vehicleResult.value.data);
+    }
+    if (sessionResult.status === 'fulfilled' && Array.isArray(sessionResult.value.data)) {
+      knownStatus.current = new Map(sessionResult.value.data.map((item) => [item.id, item.status]));
+      setSessions([...sessionResult.value.data].sort(byRequestedAt));
+    } else if (initial) {
+      showToast(t('evLive.loadFailed'), 'error');
+    }
+  }, [showToast, t]);
+
+  useEffect(() => { refresh({ initial: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (businessDate) {
-      setValues(prev => ({ ...prev, transactionDate: businessDate }));
-    }
-  }, [businessDate]);
+    if (liveConnected) return undefined;
+    const id = setInterval(() => refresh(), POLL_MS);
+    return () => clearInterval(id);
+  }, [liveConnected, refresh]);
 
+  // Live events are not replayed: anything that happened between the first load and the socket
+  // connecting, or while it was down, is gone for good. Re-sync from REST on every (re)connect.
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  useEffect(() => { if (liveConnected) refreshRef.current(); }, [liveConnected]);
+
+  const hasRunning = sessions.some((item) => item.status === 'ACTIVE');
   useEffect(() => {
-    api.get('/api/ev-vehicles')
-      .then(res => setVehicles(res.data))
-      .catch(() => setVehicleLoadError(true));
-    api.get('/api/charge-points')
-      .then(res => {
-        setChargePoints(Array.isArray(res.data) ? res.data : []);
-        setChargePointsLoaded(true);
-      })
-      .catch(() => setChargePointLoadError(true));
-    // Load NEA rate from backend; fall back to localStorage if backend fails
-    const cachedRate = localStorage.getItem('ev_nea_rate') || '';
-    api.get('/api/settings/nea_rate', { skipAuthRedirect: true })
-      .then(res => {
-        const val = res.data.value || cachedRate;
-        if (val) {
-          setNeaRate(val);
-          setRateInput(val);
-          localStorage.setItem('ev_nea_rate', val);
-        } else {
-          setEditingRate(canEditNeaRate);
-        }
-      })
-      .catch(() => {
-        // Backend unavailable — use cached value from localStorage
-        if (cachedRate) {
-          setNeaRate(cachedRate);
-          setRateInput(cachedRate);
-        } else {
-          setEditingRate(canEditNeaRate);
-        }
-      });
-  }, []);
+    if (!hasRunning) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasRunning]);
 
-  const selectedVehicle = vehicles.find(v => v.id === values.vehicleId);
-  const selectedChargePoint = chargePoints.find(c => c.id === values.chargePointId);
+  // ---- derived ----
+  const activeSessions = useMemo(() => sessions.filter((item) => ACTIVE_STATUSES.includes(item.status)), [sessions]);
+  const paymentSessions = useMemo(() => sessions.filter((item) => PAYMENT_STATUSES.includes(item.status)), [sessions]);
+  const awaitingCount = paymentSessions.filter((item) => item.status === 'AWAITING_PAYMENT').length;
+  const openChargerIds = useMemo(() => new Set(sessions.map((item) => item.chargePointId)), [sessions]);
+  const anyOnline = chargers.some((item) => item.connectionStatus === 'ONLINE');
+  const chargerName = (charger) => t('evConsole.charger', { number: num(charger.displayOrder) });
 
-  const startPct = values.startPercent !== '' ? parseFloat(values.startPercent) : NaN;
-  const endPct = values.endPercent !== '' ? parseFloat(values.endPercent) : NaN;
-  const percentCharged = (!isNaN(startPct) && !isNaN(endPct)) ? Math.max(0, endPct - startPct) : 0;
-  const percentRate = selectedVehicle ? parseFloat(selectedVehicle.ratePerPercent) : 0;
-  const calculatedAmount = (percentCharged * percentRate).toFixed(2);
+  const setField = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (errors[key]) setErrors((current) => ({ ...current, [key]: false }));
+  };
 
-  // Profit calculation using battery capacity from vehicle
-  const batteryKw = selectedVehicle ? parseFloat(selectedVehicle.batteryCapacityKw) : 0;
-  const estimatedKwh = batteryKw > 0 ? (percentCharged / 100) * batteryKw : 0;
-  const neaRateVal = neaRate !== '' ? parseFloat(neaRate) : NaN;
-  const hasProfit = !isNaN(neaRateVal) && neaRateVal > 0 && estimatedKwh > 0;
-  const neaCost = hasProfit ? estimatedKwh * neaRateVal : 0;
-  const profit = hasProfit ? parseFloat(calculatedAmount) - neaCost : 0;
-  const profitMargin = hasProfit && parseFloat(calculatedAmount) > 0
-    ? ((profit / parseFloat(calculatedAmount)) * 100).toFixed(1) : '0.0';
+  // ---- actions ----
+  const readPhoto = (file) => {
+    if (!file) return;
+    if (!PHOTO_TYPES.includes(file.type)) { showToast(t('evLive.photoBadType'), 'error'); return; }
+    if (file.size > MAX_PHOTO_BYTES) { showToast(t('evLive.photoTooLarge'), 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setField('platePhotoDataUrl', reader.result); setPhotoName(file.name); };
+    reader.readAsDataURL(file);
+  };
 
-  const saveNeaRate = async () => {
-    const val = rateInput.trim();
-    if (!val || parseFloat(val) <= 0) return;
-    // Always save to localStorage immediately so the rate is never lost
-    localStorage.setItem('ev_nea_rate', val);
-    setNeaRate(val);
-    setEditingRate(false);
-    // Also persist to backend (best-effort, never causes logout)
-    setRateSaving(true);
+  const startSession = async () => {
+    const plate = form.plateNumber.trim();
+    const target = Number(form.targetPercent);
+    if (!form.chargePointId) { setErrors({ chargePointId: true }); showToast(t('evLive.selectChargerFirst'), 'error'); return; }
+    if (!plate) { setErrors({ plateNumber: true }); showToast(t('evLive.enterPlate'), 'error'); return; }
+    if (!(target >= 1 && target <= 100)) { showToast(t('evLive.targetRange'), 'error'); return; }
+
+    setSubmitting(true);
     try {
-      await api.put('/api/settings/nea_rate', { value: val }, { skipAuthRedirect: true });
-    } catch (err) {
-      // Backend save failed — rate is still saved in localStorage
-    } finally {
-      setRateSaving(false);
-    }
-  };
-
-  const cancelEditRate = () => {
-    setRateInput(neaRate);
-    setEditingRate(false);
-  };
-
-  const handleChange = (fieldKey, value) => {
-    setValues(prev => ({ ...prev, [fieldKey]: value }));
-    if (errors[fieldKey]) {
-      setErrors(prev => ({ ...prev, [fieldKey]: null }));
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-    if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
-    if (!values.chargePointId) newErrors.chargePointId = t('ev.chargerRequired');
-    if (!values.vehicleId) newErrors.vehicleId = t('ev.selectVehicle');
-    if (!values.startPercent && values.startPercent !== '0') {
-      newErrors.startPercent = t('ev.startPctRequired');
-    }
-    if (!values.endPercent) {
-      newErrors.endPercent = t('ev.endPctRequired');
-    }
-    const start = parseFloat(values.startPercent);
-    const end = parseFloat(values.endPercent);
-    if (!isNaN(start) && (start < 0 || start > 100)) {
-      newErrors.startPercent = t('ev.mustBe0to100');
-    }
-    if (!isNaN(end) && (end < 0 || end > 100)) {
-      newErrors.endPercent = t('ev.mustBe0to100');
-    }
-    if (!isNaN(start) && !isNaN(end) && end <= start) {
-      newErrors.endPercent = t('ev.endMustBeGreater');
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setIsLoading(true);
-    try {
-      const customFields = {
-        chargingMode: 'PERCENTAGE',
-        chargePointId: selectedChargePoint?.id,
-        chargePointCode: selectedChargePoint?.code,
-        chargerModel: selectedChargePoint?.model,
-        vehicleId: values.vehicleId,
-        vehicleName: selectedVehicle?.vehicleName,
-        batteryCapacityKw: batteryKw,
-        startPercent: parseFloat(values.startPercent),
-        endPercent: parseFloat(values.endPercent),
-        ratePerPercent: percentRate,
-        percentCharged,
-        estimatedKwh: parseFloat(estimatedKwh.toFixed(3)),
-        paymentMethod: values.paymentMethod,
-        ...(hasProfit && {
-          neaRatePerUnit: neaRateVal,
-          neaCost: parseFloat(neaCost.toFixed(2)),
-          profit: parseFloat(profit.toFixed(2)),
-          profitMargin: parseFloat(profitMargin),
-        }),
-      };
-
-      const payload = {
-        businessCode: 'ev',
-        transactionType: 'SALE',
-        transactionDate: values.transactionDate,
-        amount: parseFloat(calculatedAmount),
-        notes: values.notes,
-        customFields,
-      };
-
-      await api.post('/api/transactions', payload);
-      showToast(t('ev.savedSuccess'), 'success');
-
-      setValues({
-        transactionDate: businessDate,
-        chargePointId: '',
-        vehicleId: '',
-        startPercent: '',
-        endPercent: '',
-        paymentMethod: 'CASH',
-        notes: '',
+      const response = await api.post('/api/ev/sessions/start', {
+        chargePointId: form.chargePointId,
+        plateNumber: plate,
+        vehicleCatalogId: form.vehicleCatalogId || null,
+        platePhotoDataUrl: form.platePhotoDataUrl || null,
+        targetPercent: target,
       });
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to save. Please try again.', 'error');
+      const charger = chargers.find((item) => item.id === form.chargePointId);
+      mergeSession(response.data);
+      showToast(t('evLive.started', { charger: charger ? chargerName(charger) : '' }), 'success');
+      setForm(EMPTY_FORM);
+      setPhotoName('');
+      setErrors({});
+      setTab('active');
+    } catch (error) {
+      showToast(error.response?.data?.message || t('evLive.startFailed'), 'error');
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
+
+  const perform = async (id, action, payload, successKey, successValues) => {
+    setBusyId(id);
+    try {
+      const response = await api.post(`/api/ev/sessions/${id}/${action}`, payload);
+      mergeSession(response.data);
+      showToast(t(successKey, successValues), 'success');
+    } catch (error) {
+      showToast(error.response?.data?.message || t('evLive.actionFailed'), 'error');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const tabs = [
+    { key: 'start', label: t('evLive.startTab') },
+    { key: 'active', label: t('evLive.activeTab'), count: activeSessions.length },
+    { key: 'pay', label: t('evLive.paymentTab'), count: awaitingCount },
+  ];
+  const headerTitle = { start: t('evLive.title'), active: t('evLive.activeTitle'), pay: t('evLive.paymentTitle') }[tab];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-green-500 text-white px-4 py-4 shadow-lg">
+    <div className="min-h-screen bg-gray-100 pb-24">
+      <header className="bg-green-500 px-4 py-4 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button
+              type="button"
               onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-green-600 transition-colors"
+              aria-label={t('common.goBack')}
+              className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-green-600"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="h-6 w-6" />
             </button>
-            <Zap className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('ev.title')}
-            </h1>
+            <Zap className="ml-2 h-8 w-8" />
+            <h1 className="ml-3 text-xl font-bold">{headerTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
               <button
+                type="button"
                 onClick={() => navigate('/ev-vehicles')}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-green-600 transition-colors"
+                className="flex min-h-[44px] flex-col items-center gap-0.5 rounded-lg px-2 py-1 transition-colors hover:bg-green-600"
               >
-                <Settings className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-none">{t('ev.manageVehicles')}</span>
+                <Settings className="h-5 w-5" />
+                <span className="text-[10px] font-medium leading-none">{t('evLive.vehicles')}</span>
               </button>
             )}
             <LanguageToggle />
@@ -249,311 +254,178 @@ export default function EVEntryPage() {
         </div>
       </header>
 
-      {/* NEA Rate Banner */}
-      <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-green-600 font-semibold">⚡ {t('ev.neaRatePerUnit')}</p>
-            {editingRate ? (
-              <div className="flex items-center gap-2 mt-1">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">रु</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    autoFocus
-                    value={rateInput}
-                    onChange={(e) => setRateInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') saveNeaRate(); if (e.key === 'Escape') cancelEditRate(); }}
-                    placeholder="0.00"
-                    className="pl-8 pr-12 py-2 text-xl font-bold border-2 border-green-400 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-green-500"
+      <div role="tablist" className="flex overflow-x-auto border-b border-gray-200 bg-white">
+        {tabs.map(({ key, label, count }) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`min-h-[44px] min-w-[92px] flex-1 border-b-2 px-2 py-2.5 text-xs font-bold ${
+              tab === key ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500'
+            }`}
+          >
+            {label}
+            {count > 0 && (
+              <span className="ml-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">{num(count)}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {!liveConnected && (
+        <p role="status" className="bg-amber-50 px-4 py-1.5 text-center text-xs text-amber-700">
+          {t('evLive.liveReconnecting')}
+        </p>
+      )}
+
+      {tab === 'start' && (
+        <div role="tabpanel">
+          {/* What the station pays NEA is business-sensitive: admins and managers only. */}
+          {isAdmin && <RateBanner showToast={showToast} onOpenBills={() => navigate('/ev-electricity')} />}
+
+          <div className="p-4 pb-0">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('evLive.selectCharger')}</p>
+            {chargersFailed && (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{t('evLive.chargersLoadFailed')}</p>
+            )}
+            {!chargersLoaded && !chargersFailed && (
+              <div className="flex justify-center py-8"><RefreshCw className="h-6 w-6 animate-spin text-green-500" aria-label={t('common.loading')} /></div>
+            )}
+            {chargersLoaded && !chargersFailed && chargers.length === 0 && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{t('evLive.noChargersSetup')}</p>
+            )}
+            {chargers.length > 0 && (
+              <div role="radiogroup" aria-label={t('evLive.chargersLabel')} className="grid grid-cols-3 gap-2">
+                {chargers.map((charger) => (
+                  <ChargerCard
+                    key={charger.id}
+                    charger={charger}
+                    state={chargerState(charger, openChargerIds.has(charger.id))}
+                    selected={form.chargePointId === charger.id}
+                    invalid={errors.chargePointId}
+                    onSelect={(id) => setField('chargePointId', id)}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kWh</span>
-                </div>
-                <button onClick={saveNeaRate} disabled={rateSaving} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
-                  <Check className="w-4 h-4" />
-                </button>
-                {neaRate && (
-                  <button onClick={cancelEditRate} className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300">
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+                ))}
               </div>
-            ) : (
-              <p className="text-2xl font-black text-gray-900">
-                रु {parseFloat(neaRate).toFixed(2)} <span className="text-sm font-normal text-gray-400">/kWh</span>
-              </p>
+            )}
+            {chargers.length > 0 && !anyOnline && (
+              <p className="mt-2 text-sm font-medium text-amber-700">{t('evLive.noChargersOnline')}</p>
             )}
           </div>
-          {!editingRate && canEditNeaRate && (
-            <button
-              onClick={() => { setRateInput(neaRate); setEditingRate(true); }}
-              className="flex items-center gap-1 text-sm text-green-600 font-medium px-3 py-2 rounded-lg hover:bg-green-50"
-            >
-              <Pencil className="w-4 h-4" />
-              {t('common.update')}
-            </button>
-          )}
-        </div>
-        {!neaRate && !editingRate && (
-          <p className="text-xs text-amber-500 mt-1">{t('ev.enterRateForProfit')}</p>
-        )}
-      </div>
 
-      {/* Vehicle load error */}
-      {vehicleLoadError && (
-        <div className="mx-4 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-          {t('ev.failedToLoadVehicles')}
+          <div className="space-y-4 p-4">
+            <div>
+              <label htmlFor="ev-date" className="mb-2 block text-lg font-medium text-gray-700">
+                {t('common.date')} <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="ev-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            <div>
+              <label id="ev-vehicle-label" htmlFor="ev-vehicle" className="mb-2 block text-lg font-medium text-gray-700">
+                {t('evLive.vehicle')} <span className="text-sm text-gray-400">{t('evLive.vehicleHint')}</span>
+              </label>
+              <VehiclePicker
+                id="ev-vehicle"
+                labelledBy="ev-vehicle-label"
+                vehicles={vehicles}
+                value={form.vehicleCatalogId}
+                onChange={(next) => setField('vehicleCatalogId', next)}
+              />
+            </div>
+
+            <div className="rounded-xl bg-white p-4 shadow-md">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t('evLive.plateSection')}</p>
+              <input
+                id="ev-plate-photo"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => { readPhoto(e.target.files?.[0]); e.target.value = ''; }}
+              />
+              <label
+                htmlFor="ev-plate-photo"
+                className="mb-3 flex min-h-[44px] w-full cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-green-300 py-5 text-center text-sm text-gray-500"
+              >
+                <Camera className="mx-auto mb-1 h-6 w-6 text-green-600" aria-hidden="true" />
+                {photoName ? t('evLive.platePhotoDone', { name: photoName }) : t('evLive.platePhotoCta')}
+              </label>
+              <label htmlFor="ev-plate" className="mb-1 block text-sm font-medium text-gray-700">
+                {t('evLive.plateNumber')} <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="ev-plate"
+                type="text"
+                value={form.plateNumber}
+                onChange={(e) => setField('plateNumber', e.target.value.toUpperCase())}
+                placeholder={t('evLive.platePlaceholder')}
+                aria-invalid={errors.plateNumber ? 'true' : 'false'}
+                autoCapitalize="characters"
+                className={`w-full rounded-xl border-2 px-4 py-3 font-mono font-bold uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                  errors.plateNumber ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              <p className="mt-1 text-xs text-gray-400">{t('evLive.plateHelp')}</p>
+            </div>
+
+            <ChargeTargetCard value={form.targetPercent} onChange={(value) => setField('targetPercent', value)} />
+
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={startSession}
+              className="w-full rounded-xl bg-green-600 py-5 text-xl font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-60"
+            >
+              {submitting ? t('evLive.sending') : t('evLive.startCharging')}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* No vehicles warning */}
-      {!vehicleLoadError && vehicles.length === 0 && (
-        <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
-          {isAdmin ? t('ev.noVehiclesAdmin') : t('ev.noVehiclesStaff')}
+      {tab === 'active' && (
+        <div role="tabpanel" className="space-y-3 p-4">
+          {activeSessions.map((item) => (
+            <ActiveSessionCard
+              key={item.id}
+              session={item}
+              now={now}
+              busy={busyId === item.id}
+              onStop={(id) => perform(id, 'stop', undefined, 'evLive.stopSent')}
+            />
+          ))}
+          {activeSessions.length === 0 && (
+            <p className="mt-6 px-8 text-center text-sm text-gray-400">{t('evLive.noActive')}</p>
+          )}
         </div>
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="p-4 space-y-5">
-        {/* Date */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('common.date')} <span className="text-red-500">*</span>
-          </label>
-          <DatePicker
-            value={values.transactionDate}
-            onChange={(val) => handleChange('transactionDate', val)}
-            error={errors.transactionDate}
-            accentColor="green"
-          />
-        </div>
-
-        {/* Charger Selection */}
-        <div>
-          <label id="charger-label" className="block text-lg font-medium text-gray-700 mb-2">
-            {t('ev.selectCharger')} <span className="text-red-500">*</span>
-          </label>
-          {chargePointLoadError && (
-            <p className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-              {t('ev.failedToLoadChargers')}
-            </p>
-          )}
-          {chargePointsLoaded && chargePoints.length === 0 && (
-            <p className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
-              {t('ev.noChargers')}
-            </p>
-          )}
-          {chargePoints.length > 0 && (
-            <div role="radiogroup" aria-labelledby="charger-label" className="grid grid-cols-1 gap-3">
-              {chargePoints.map(cp => {
-                const selected = values.chargePointId === cp.id;
-                return (
-                  <button
-                    key={cp.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => handleChange('chargePointId', cp.id)}
-                    className={`min-h-[64px] w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
-                      selected
-                        ? 'bg-green-500 text-white border-green-500'
-                        : `bg-white text-gray-700 hover:border-green-400 ${errors.chargePointId ? 'border-red-500' : 'border-gray-300'}`
-                    }`}
-                  >
-                    <Zap className="w-6 h-6 shrink-0" />
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-lg font-bold">
-                        {t('ev.chargerNumber', { n: fmtNum(cp.displayOrder) })}
-                      </span>
-                      <span className="block text-sm opacity-80 break-words">{cp.model}</span>
-                    </span>
-                    <span className="text-lg font-bold whitespace-nowrap">
-                      {fmtNum(parseFloat(cp.maxPowerKw))} kW
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {errors.chargePointId && <p className="text-red-500 text-sm mt-1">{errors.chargePointId}</p>}
-        </div>
-
-        {/* Vehicle Dropdown */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('ev.selectVehicle')} <span className="text-red-500">*</span>
-          </label>
-          <SearchableSelect
-            value={values.vehicleId}
-            onChange={(val) => handleChange('vehicleId', val)}
-            options={vehicles.map(v => ({
-              value: v.id,
-              label: v.vehicleName,
-              subtitle: `${v.batteryCapacityKw}KW, ${v.seatingCapacity} ${t('ev.seats')} - रु ${v.ratePerPercent}/%`,
-            }))}
-            placeholder={t('ev.selectVehiclePlaceholder')}
-            error={errors.vehicleId}
-            accentColor="green"
-          />
-          {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId}</p>}
-        </div>
-
-        {/* Selected Vehicle Info */}
-        {selectedVehicle && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-            <Car className="w-8 h-8 text-green-600" />
-            <div>
-              <p className="font-bold text-green-800">{selectedVehicle.vehicleName}</p>
-              <p className="text-sm text-green-600">
-                {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {t('ev.seats')} | रु {selectedVehicle.ratePerPercent}/{t('ev.perPercent')}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Start Percent */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('ev.startBatteryPct')} <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              inputMode="numeric"
-              value={values.startPercent}
-              onChange={(e) => handleChange('startPercent', e.target.value)}
-              placeholder="0"
-              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.startPercent ? 'border-red-500' : 'border-gray-300'}`}
+      {tab === 'pay' && (
+        <div role="tabpanel" className="p-4">
+          {paymentSessions.map((item) => (
+            <PaymentCard
+              key={item.id}
+              session={item}
+              busy={busyId === item.id}
+              onConfirm={(id, method, amount) =>
+                perform(id, 'mark-paid', { method, amount }, 'evLive.paymentConfirmed', { plate: item.plateNumber })}
+              onRetryUnlock={(id) => perform(id, 'unlock', undefined, 'evLive.unlocking')}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
-          </div>
-          {errors.startPercent && <p className="text-red-500 text-sm mt-1">{errors.startPercent}</p>}
-        </div>
-
-        {/* End Percent */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('ev.endBatteryPct')} <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              inputMode="numeric"
-              value={values.endPercent}
-              onChange={(e) => handleChange('endPercent', e.target.value)}
-              placeholder="100"
-              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.endPercent ? 'border-red-500' : 'border-gray-300'}`}
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
-          </div>
-          {errors.endPercent && <p className="text-red-500 text-sm mt-1">{errors.endPercent}</p>}
-        </div>
-
-        {/* Charging Summary - Calculated */}
-        {(values.startPercent !== '' && values.endPercent !== '' && selectedVehicle) && (
-          <div className="bg-gray-100 rounded-xl p-4 grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-gray-500">{t('ev.percentCharged')}</p>
-              <p className="text-xl font-bold text-gray-800">{percentCharged}%</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">{t('ev.estimatedKwh')}</p>
-              <p className="text-xl font-bold text-gray-800">{estimatedKwh.toFixed(2)} kWh</p>
-            </div>
-            <div className="col-span-2 text-xs text-gray-400 -mt-1">
-              {percentCharged}% of {batteryKw} kWh battery = {estimatedKwh.toFixed(2)} kWh
-            </div>
-          </div>
-        )}
-
-        {/* Total Amount */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-          <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
-          <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
-        </div>
-
-        {/* Payment Method */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('common.paymentMethod')} <span className="text-red-500">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => handleChange('paymentMethod', 'CASH')}
-              className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                values.paymentMethod === 'CASH'
-                  ? 'bg-green-500 text-white border-green-500'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
-              }`}
-            >
-              <Banknote className="w-5 h-5" />
-              {t('common.cash')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleChange('paymentMethod', 'BANK')}
-              className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                values.paymentMethod === 'BANK'
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-              }`}
-            >
-              <Building2 className="w-5 h-5" />
-              {t('common.bank')}
-            </button>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
-          </label>
-          <textarea
-            value={values.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
-            rows={2}
-            placeholder={t('common.additionalNotes')}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-          />
-        </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`w-full py-5 text-xl font-bold rounded-xl transition-all transform ${
-            isLoading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 active:scale-95 shadow-lg'
-          } text-white`}
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-              </svg>
-              {t('common.savingEllipsis')}
-            </span>
-          ) : (
-            <span className="flex items-center justify-center">
-              <Check className="w-6 h-6 mr-2" />
-              {t('common.saveEntry')}
-            </span>
+          ))}
+          {paymentSessions.length === 0 && (
+            <p className="mt-10 px-8 text-center text-sm text-gray-400">{t('evLive.noPayment')}</p>
           )}
-        </button>
-      </form>
+        </div>
+      )}
+
+      <BottomNav active="home" />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
