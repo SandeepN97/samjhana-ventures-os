@@ -4,16 +4,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.dto.TransactionRequest;
 import com.samjhana.dto.TransactionResponse;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.FurnitureItem;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
 import com.samjhana.exception.BusinessUnitNotFoundException;
 import com.samjhana.exception.TransactionNotFoundException;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.strategy.BusinessCalculationStrategy.ValidationResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +28,29 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final BusinessUnitRepository businessUnitRepository;
     private final FurnitureItemRepository furnitureItemRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final CalculationEngine calculationEngine;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public TransactionResponse create(TransactionRequest request, User user) {
         BusinessUnit business = businessUnitRepository.findByCode(request.getBusinessCode())
                 .orElseThrow(() -> new BusinessUnitNotFoundException(request.getBusinessCode()));
+
+        // Server-side validation via the strategy
+        if (request.getCustomFields() != null) {
+            ValidationResult validation = calculationEngine.validate(
+                    request.getBusinessCode(), request.getCustomFields());
+            if (!validation.isValid()) {
+                throw new IllegalArgumentException("Validation failed: " + validation.errors());
+            }
+        }
 
         String customFieldsJson;
         try {
@@ -56,6 +72,9 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
+
+        auditLogRepository.save(AuditLog.createEvent(user, AuditLog.EntityType.TRANSACTION,
+                saved.getId(), customFieldsJson));
 
         if ("furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
             adjustFurnitureStock(request.getCustomFields(), request.getTransactionType());
@@ -85,6 +104,17 @@ public class TransactionService {
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id.toString()));
 
+        String oldValues = t.getCustomFields();
+
+        // Server-side validation on updated custom fields
+        if (request.getCustomFields() != null) {
+            ValidationResult validation = calculationEngine.validate(
+                    t.getBusiness().getCode(), request.getCustomFields());
+            if (!validation.isValid()) {
+                throw new IllegalArgumentException("Validation failed: " + validation.errors());
+            }
+        }
+
         if (request.getAmount() != null) t.setAmount(request.getAmount());
         if (request.getTransactionType() != null) {
             t.setTransactionType(Transaction.TransactionType.valueOf(request.getTransactionType()));
@@ -100,15 +130,26 @@ public class TransactionService {
         t.setReviewedBy(user);
         t.setReviewedAt(LocalDateTime.now());
 
-        return TransactionResponse.from(transactionRepository.save(t));
+        Transaction saved = transactionRepository.save(t);
+
+        auditLogRepository.save(AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION,
+                saved.getId(), oldValues, saved.getCustomFields()));
+
+        return TransactionResponse.from(saved);
     }
 
     @Transactional
-    public TransactionResponse approve(UUID id) {
+    public TransactionResponse approve(UUID id, User user) {
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id.toString()));
         t.setStatus(Transaction.TransactionStatus.APPROVED);
-        return TransactionResponse.from(transactionRepository.save(t));
+        t.setReviewedBy(user);
+        t.setReviewedAt(LocalDateTime.now());
+        Transaction saved = transactionRepository.save(t);
+
+        auditLogRepository.save(AuditLog.approvalEvent(user, saved.getId(), "APPROVED"));
+
+        return TransactionResponse.from(saved);
     }
 
     @Transactional
@@ -121,7 +162,11 @@ public class TransactionService {
             t.setReviewedBy(user);
             t.setReviewedAt(LocalDateTime.now());
         }
-        return TransactionResponse.from(transactionRepository.save(t));
+        Transaction saved = transactionRepository.save(t);
+
+        auditLogRepository.save(AuditLog.approvalEvent(user, saved.getId(), "REJECTED"));
+
+        return TransactionResponse.from(saved);
     }
 
     @SuppressWarnings("unchecked")

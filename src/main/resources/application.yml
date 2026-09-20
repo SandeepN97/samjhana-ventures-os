@@ -10,12 +10,15 @@ spring:
     name: Samjhana Ventures OS
 
   # =============================================================================
-  # Database Configuration (H2 File-based for persistence)
+  # Database Configuration (H2 File-based for local dev — prod uses PostgreSQL)
+  # Set DB_PASSWORD env var. The absence of a fallback default is intentional:
+  # running without DB_PASSWORD in dev uses an empty string for the embedded H2,
+  # which is acceptable for local-only data. Never run prod without DATABASE_PASSWORD.
   # =============================================================================
   datasource:
     url: jdbc:h2:file:./data/samjhana-db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
     username: sa
-    password: ${DB_PASSWORD:samjhana2024}
+    password: ${DB_PASSWORD:}
 
   h2:
     console:
@@ -79,15 +82,10 @@ samjhana:
 
   security:
     jwt:
-      secret: ${JWT_SECRET:samjhana-ventures-jwt-secret-key-2024-dev-only}
+      # REQUIRED in production — set JWT_SECRET env var to a random 32+ byte value.
+      # The dev fallback below is only for local development; it must never reach prod.
+      secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-CHANGE-IN-PRODUCTION}
       expiration-hours: 168  # 7 days for Dad's convenience
-
-  ocpp:
-    default-lock-behavior: ${OCPP_LOCK_BEHAVIOR:EXPLICIT_UNLOCK}
-    station-secrets:
-      HD-D180-CC-01: ${OCPP_SECRET_HD_D180_CC_01:dev-HD-D180-CC-01-change-me}
-      HQC23-80-01: ${OCPP_SECRET_HQC23_80_01:dev-HQC23-80-01-change-me}
-      HD-D140-E-01: ${OCPP_SECRET_HD_D140_E_01:dev-HD-D140-E-01-change-me}
 
   storage:
     images:
@@ -107,6 +105,13 @@ samjhana:
     enabled: true
     depot: Bhalbari
     url: https://noc.org.np
+
+  ocpp:
+    default-lock-behavior: ${OCPP_LOCK_BEHAVIOR:EXPLICIT_UNLOCK}
+    station-secrets:
+      HD-D180-CC-01: ${OCPP_SECRET_HD_D180_CC_01:dev-HD-D180-CC-01-change-me}
+      HQC23-80-01: ${OCPP_SECRET_HQC23_80_01:dev-HQC23-80-01-change-me}
+      HD-D140-E-01: ${OCPP_SECRET_HD_D140_E_01:dev-HD-D140-E-01-change-me}
 
 # =============================================================================
 # Logging Configuration

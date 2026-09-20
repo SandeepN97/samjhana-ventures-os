@@ -5,6 +5,7 @@ import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.User;
 import com.samjhana.service.TransactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +26,12 @@ public class TransactionController {
             @RequestBody TransactionRequest request,
             @AuthenticationPrincipal User user) {
 
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Authentication required"));
+        }
         if ("loan".equalsIgnoreCase(request.getBusinessCode()) && user.getRole() == User.UserRole.STAFF) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Staff members do not have access to loan management"));
         }
 
@@ -51,24 +56,41 @@ public class TransactionController {
             @RequestBody TransactionRequest request,
             @AuthenticationPrincipal User user) {
 
-        if (!user.canManage()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+        if (user == null || !user.canManage()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required"));
         }
         return ResponseEntity.ok(transactionService.update(UUID.fromString(id), request, user));
     }
 
+    /**
+     * Approve a pending transaction. Requires MANAGER or ADMIN role.
+     */
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<?> approve(@PathVariable String id) {
-        return ResponseEntity.ok(transactionService.approve(UUID.fromString(id)));
+    public ResponseEntity<?> approve(
+            @PathVariable String id,
+            @AuthenticationPrincipal User user) {
+
+        if (user == null || !user.canManage()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin or manager access required to approve transactions"));
+        }
+        return ResponseEntity.ok(transactionService.approve(UUID.fromString(id), user));
     }
 
+    /**
+     * Reject a pending transaction. Requires MANAGER or ADMIN role.
+     */
     @PatchMapping("/{id}/reject")
     public ResponseEntity<?> reject(
             @PathVariable String id,
             @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal User user) {
 
+        if (user == null || !user.canManage()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin or manager access required to reject transactions"));
+        }
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(transactionService.reject(UUID.fromString(id), reason, user));
     }

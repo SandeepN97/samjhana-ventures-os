@@ -7,8 +7,9 @@ import com.samjhana.dto.UserDto;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.JwtUtil;
-import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -54,7 +55,8 @@ public class AuthController {
             @AuthenticationPrincipal User user) {
 
         if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Not authenticated"));
         }
 
         String fullName = body.get("fullName");
@@ -76,32 +78,55 @@ public class AuthController {
         ));
     }
 
+    /**
+     * Change the authenticated user's own password.
+     *
+     * Requires a valid JWT — the endpoint is NOT in permitAll.
+     * Admins may change any user's password by providing the target username;
+     * non-admins may only change their own.
+     *
+     * Minimum password length: 8 characters.
+     */
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
-        // Find user by username
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElse(null);
+    public ResponseEntity<?> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal User currentUser) {
 
-        if (user == null) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "User not found"));
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Authentication required"));
         }
 
-        // Verify current password
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+        // Determine the target user (admin may change others; everyone else changes themselves)
+        User targetUser;
+        if (request.getUsername() != null
+                && !request.getUsername().trim().equalsIgnoreCase(currentUser.getUsername())
+                && currentUser.isAdmin()) {
+            targetUser = userRepository.findByUsername(request.getUsername().trim())
+                    .orElse(null);
+            if (targetUser == null) {
+                // Return the same message for not-found and wrong-password to prevent enumeration
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Invalid request"));
+            }
+        } else {
+            targetUser = currentUser;
+        }
+
+        // Verify the current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), targetUser.getPassword())) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Current password is incorrect"));
         }
 
-        // Validate new password
-        if (request.getNewPassword() == null || request.getNewPassword().length() < 3) {
+        // Validate new password strength
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message", "New password must be at least 3 characters"));
+                    .body(Map.of("message", "New password must be at least 8 characters"));
         }
 
-        // Update password
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
+        targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(targetUser);
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
     }

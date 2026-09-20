@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -35,6 +36,8 @@ public class NocPriceScraperService {
 
     @Value("${samjhana.fuel-price-scraper.url:https://noc.org.np}")
     private String nocUrl;
+
+    private static final String ALLOWED_HOST = "noc.org.np";
 
     // Matches "Rs 154.5 /Ltr" or "NRs 154.5/L" or "Rs154.5 /Ltr" etc.
     private static final Pattern PRICE_PATTERN = Pattern.compile("N?Rs\\.?\\s*([\\d.]+)\\s*/\\s*L(?:tr)?");
@@ -68,6 +71,14 @@ public class NocPriceScraperService {
 
     public void fetchAndSavePrices() {
         try {
+            // SSRF guard: only ever connect to the official NOC domain
+            URI uri = URI.create(nocUrl);
+            String host = uri.getHost();
+            if (host == null || !host.equals(ALLOWED_HOST) && !host.endsWith("." + ALLOWED_HOST)) {
+                log.error("Blocked scrape request to disallowed host '{}' — must be {}", host, ALLOWED_HOST);
+                return;
+            }
+
             Document doc = Jsoup.connect(nocUrl)
                     .timeout(15_000)
                     .userAgent("SamjhanaVenturesOS/1.0")
