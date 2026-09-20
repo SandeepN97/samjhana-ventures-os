@@ -1,6 +1,41 @@
-# Samjhana Ventures OS
+# Samjhana Ventures OS — Bilingual Multi-Business ERP
 
-A multi-business ERP system for a Nepal-USA family business operation. Manages five business units under one roof: a petrol pump, EV charging station, furniture shop, house rental properties, and bank loans — with bilingual UI (English/Nepali), automated NOC fuel price scraping, and role-based access.
+> **A Spring Boot + React operating system for a real Nepal–USA family-business environment spanning retail, fuel, EV charging, rentals, and loans.**
+
+Samjhana Ventures OS is a multi-business ERP built with **Java 21, Spring Boot, React, JWT, H2, OpenAPI, and bilingual English/Nepali UI support**. The project models several very different business workflows under one application while keeping the interface practical for non-technical users.
+
+**Useful for:** engineers interested in full-stack ERP design, domain modeling, Spring Boot business applications, internationalization, role-based access, inventory/financial workflows, or software designed for real-world operational users.
+
+### Business domains in one system
+
+| Domain | What the application manages |
+| --- | --- |
+| **Furniture retail** | Products, inventory, sales, and operational records |
+| **Petrol pump** | Fuel operations and NOC price-data workflows |
+| **EV charging** | Charging-station operational records |
+| **House rentals** | Property and rental-management workflows |
+| **Finance** | Bank loans and cross-business financial visibility |
+| **Localization** | English/Nepali UI with Devanagari numeral support |
+
+### Engineering highlights
+
+- Java 21 + Spring Boot 3.2.1 backend with Spring Security and Spring Data JPA.
+- React 18 + Vite + Tailwind frontend with Zustand and Recharts.
+- JWT-based role-aware access.
+- Automated Nepal Oil Corporation fuel-price scraping with Jsoup.
+- OpenAPI / Swagger API documentation.
+- Bilingual English/Nepali experience designed around the actual end user.
+- Dedicated architecture, feature, and simplified setup documentation.
+
+---
+
+## Why this project exists
+
+A family business rarely looks like a clean textbook domain. Samjhana Ventures spans businesses with completely different operational models, users, and data needs. The engineering challenge is therefore not just CRUD; it is creating one understandable system that can represent multiple domains without making the user learn enterprise software terminology.
+
+The project emphasizes **practical domain modeling, localization, operational simplicity, and maintainable full-stack structure**.
+
+---
 
 ## Tech Stack
 
@@ -39,7 +74,7 @@ export JWT_SECRET=your-secret-key-here
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/SandeepN97/samjhana-ventures-os.git
 cd samjhana-ventures-os
 ```
 
@@ -63,11 +98,13 @@ Frontend runs at `http://localhost:5173` with API proxy to the backend.
 
 ### 4. Log in
 
-Open `http://localhost:5173` and use the default credentials:
+Open `http://localhost:5173` and use the local demo credentials documented by the project:
 
 | Username | Password |
 |----------|----------|
 | `admin` | `admin` |
+
+> The default login is for local/demo use. Change credentials and secrets before any real deployment.
 
 ## Production Build
 
