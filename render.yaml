@@ -21,3 +21,11 @@ services:
         sync: false
       - key: SAMJHANA_CORS_ALLOWED_ORIGINS
         sync: false        # set to your Vercel URL after deploy
+      - key: OCPP_SECRET_HD_D180_CC_01
+        sync: false
+      - key: OCPP_SECRET_HQC23_80_01
+        sync: false
+      - key: OCPP_SECRET_HD_D140_E_01
+        sync: false
+      - key: OCPP_LOCK_BEHAVIOR
+        value: EXPLICIT_UNLOCK

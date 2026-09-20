@@ -2,6 +2,7 @@ package com.samjhana.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +25,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(new ErrorResponse("ALREADY_CLOSED", ex.getMessage()));
     }
 
+    @ExceptionHandler(EvSessionStateException.class)
+    public ResponseEntity<ErrorResponse> handleEvSessionConflict(EvSessionStateException ex) {
+        return ResponseEntity.status(409).body(new ErrorResponse("EV_SESSION_CONFLICT", ex.getMessage()));
+    }
+
     @ExceptionHandler(FuelPriceScraperException.class)
     public ResponseEntity<ErrorResponse> handleScraperError(FuelPriceScraperException ex) {
         log.warn("Fuel price scraper error: {}", ex.getMessage());
@@ -36,6 +42,19 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return ResponseEntity.status(400).body(new ErrorResponse("VALIDATION_FAILED", message));
+    }
+
+    /**
+     * Malformed JSON, or a value that isn't valid for its type (e.g. a payment method
+     * that isn't in the enum). That's the caller's mistake, not a server fault, so answer
+     * 400 instead of letting it fall through to the generic 500 handler. The parser's own
+     * message is deliberately not echoed back.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        log.debug("Unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.status(400)
+                .body(new ErrorResponse("INVALID_REQUEST", "Request body is missing or contains an invalid value."));
     }
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})

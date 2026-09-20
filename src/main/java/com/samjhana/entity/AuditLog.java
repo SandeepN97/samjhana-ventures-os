@@ -79,7 +79,11 @@ public class AuditLog {
         BUSINESS_UNIT,
         FIELD_TEMPLATE,
         USER,
-        IMAGE_ATTACHMENT
+        IMAGE_ATTACHMENT,
+        CHARGE_SESSION,
+        CHARGE_POINT,
+        EV_CUSTOMER_VEHICLE,
+        ELECTRICITY_BILL
     }
 
     /**

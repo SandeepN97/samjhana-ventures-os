@@ -20,6 +20,10 @@ public class EVStrategy implements BusinessCalculationStrategy {
 
     @Override
     public BigDecimal calculateAmount(Map<String, Object> customFields) {
+        if (isOcppSession(customFields)) {
+            BigDecimal paid = getBigDecimal(customFields, "amountPaid");
+            return paid != null ? paid.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        }
         if (isPercentageMode(customFields)) {
             BigDecimal startPercent = getBigDecimal(customFields, "startPercent");
             BigDecimal endPercent = getBigDecimal(customFields, "endPercent");
@@ -37,6 +41,11 @@ public class EVStrategy implements BusinessCalculationStrategy {
 
     @Override
     public BigDecimal calculateProfit(Map<String, Object> customFields) {
+        if (isOcppSession(customFields)) {
+            // OCPP session profit is calculated against the billing-period NEA bill,
+            // not an estimated per-session unit cost.
+            return null;
+        }
         if (isPercentageMode(customFields)) {
             // No NEA cost tracking for percentage mode
             return null;
@@ -52,7 +61,19 @@ public class EVStrategy implements BusinessCalculationStrategy {
     public ValidationResult validate(Map<String, Object> customFields) {
         Map<String, String> errors = new HashMap<>();
 
-        if (isPercentageMode(customFields)) {
+        if (isOcppSession(customFields)) {
+            if (customFields.get("chargeSessionId") == null) {
+                errors.put("chargeSessionId", "Charge session ID is required");
+            }
+            BigDecimal energy = getBigDecimal(customFields, "energyDeliveredKwh");
+            if (energy == null || energy.compareTo(BigDecimal.ZERO) < 0) {
+                errors.put("energyDeliveredKwh", "Delivered energy must be zero or greater");
+            }
+            BigDecimal amountPaid = getBigDecimal(customFields, "amountPaid");
+            if (amountPaid == null || amountPaid.compareTo(BigDecimal.ZERO) <= 0) {
+                errors.put("amountPaid", "Paid amount must be greater than zero");
+            }
+        } else if (isPercentageMode(customFields)) {
             BigDecimal startPercent = getBigDecimal(customFields, "startPercent");
             BigDecimal endPercent = getBigDecimal(customFields, "endPercent");
             if (startPercent == null) errors.put("startPercent", "Start percentage is required");
@@ -89,6 +110,16 @@ public class EVStrategy implements BusinessCalculationStrategy {
 
     @Override
     public String getSummary(Transaction transaction, Map<String, Object> customFields) {
+        if (isOcppSession(customFields)) {
+            BigDecimal energy = getBigDecimal(customFields, "energyDeliveredKwh");
+            String plate = (String) customFields.get("plateNumber");
+            String charger = (String) customFields.get("chargePointCode");
+            return String.format("%s · %s: %.3f kWh = रु %.2f",
+                    plate != null ? plate : "EV",
+                    charger != null ? charger : "चार्जर",
+                    energy != null ? energy : BigDecimal.ZERO,
+                    transaction.getAmount() != null ? transaction.getAmount() : BigDecimal.ZERO);
+        }
         if (isPercentageMode(customFields)) {
             BigDecimal startPercent = getBigDecimal(customFields, "startPercent");
             BigDecimal endPercent = getBigDecimal(customFields, "endPercent");
@@ -118,7 +149,7 @@ public class EVStrategy implements BusinessCalculationStrategy {
 
     @Override
     public ReconciliationResult reconcile(Map<String, Object> customFields, Map<String, Object> previousState) {
-        if (isPercentageMode(customFields)) {
+        if (isPercentageMode(customFields) || isOcppSession(customFields)) {
             return ReconciliationResult.notApplicable();
         }
         BigDecimal totalUnitsCharged = getBigDecimal(customFields, "totalUnitsCharged");
@@ -134,6 +165,10 @@ public class EVStrategy implements BusinessCalculationStrategy {
 
     private boolean isPercentageMode(Map<String, Object> customFields) {
         return "PERCENTAGE".equals(customFields.get("chargingMode"));
+    }
+
+    private boolean isOcppSession(Map<String, Object> customFields) {
+        return "OCPP_SESSION".equals(customFields.get("chargingMode"));
     }
 
     private BigDecimal calculateUnits(Map<String, Object> customFields) {
