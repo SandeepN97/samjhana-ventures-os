@@ -61,9 +61,9 @@ public class AdminController {
         }
 
         // Validate password
-        if (request.getPassword() == null || request.getPassword().length() < 3) {
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Password must be at least 3 characters"));
+                    .body(Map.of("message", "Password must be at least 8 characters"));
         }
 
         // Validate role
@@ -133,7 +133,7 @@ public class AdminController {
         }
         try {
             demoDataSeederService.resetAndSeed();
-            return ResponseEntity.ok(Map.of("message", "Demo data reset successfully. Login: admin/admin, ram_mgr/pass123, sita_staff/pass123"));
+            return ResponseEntity.ok(Map.of("message", "Demo data reset successfully. Use the credentials from your initial setup or environment configuration."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Reset failed: " + e.getMessage()));

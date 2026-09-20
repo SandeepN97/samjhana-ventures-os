@@ -129,11 +129,12 @@ public class AuditLog {
     }
 
     public static AuditLog approvalEvent(User user, UUID transactionId, String status) {
+        AuditAction action = "REJECTED".equalsIgnoreCase(status) ? AuditAction.REJECT : AuditAction.APPROVE;
         return AuditLog.builder()
                 .user(user)
                 .entityType(EntityType.TRANSACTION)
                 .entityId(transactionId)
-                .action(AuditAction.APPROVE)
+                .action(action)
                 .description("Transaction " + status.toLowerCase())
                 .build();
     }
