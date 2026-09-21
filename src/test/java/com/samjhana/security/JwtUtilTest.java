@@ -1,20 +1,16 @@
 package com.samjhana.security;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import io.jsonwebtoken.security.WeakKeyException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.env.MockEnvironment;
 
-import java.util.List;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,26 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** The production JWT-secret guard: a prod boot must never sign tokens with the published dev fallback. */
+/**
+ * The JWT-secret guard. The published development fallback must be refused because of the secret's
+ * value, whatever Spring profile happens to be active: an internet-reachable staging, preview or
+ * unlabeled deployment must not be able to sign sessions with a secret that is public in the repo.
+ */
 class JwtUtilTest {
 
     private static final String DEV_FALLBACK_SECRET = "dev-only-insecure-jwt-secret-CHANGE-IN-PRODUCTION";
     private static final String STRONG_SECRET = "0123456789-a-real-production-secret-value-abcdef";
     private static final String OTHER_STRONG_SECRET = "zyxwvutsrq-a-different-production-secret-value";
-
-    private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
-    private final Logger jwtLogger = (Logger) LoggerFactory.getLogger(JwtUtil.class);
-
-    @BeforeEach
-    void captureLogs() {
-        logs.start();
-        jwtLogger.addAppender(logs);
-    }
-
-    @AfterEach
-    void releaseLogs() {
-        jwtLogger.detachAppender(logs);
-    }
 
     private static MockEnvironment profiles(String... active) {
         MockEnvironment environment = new MockEnvironment();
@@ -49,46 +35,67 @@ class JwtUtilTest {
         return environment;
     }
 
-    private boolean warned(String fragment) {
-        return logs.list.stream().anyMatch(e -> e.getLevel() == Level.WARN && e.getFormattedMessage().contains(fragment));
+    /** "none" stands for no explicit profile (Spring's default profile); a comma separates several. */
+    private static MockEnvironment profilesFrom(String csv) {
+        return "none".equals(csv) ? profiles() : profiles(csv.split(","));
     }
 
-    @Test
-    void shouldRefuseToStart_whenProdProfileUsesTheDevFallbackSecret() {
+    // ---- the fix: value-based, in every profile ----------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "dev", "test", "staging", "preview", "render", "prod", "render,prod"})
+    void shouldRefuseTheDevFallbackSecret_whateverProfileIsActive(String activeProfiles) {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> new JwtUtil(DEV_FALLBACK_SECRET, 1, profiles("prod")));
+                () -> new JwtUtil(DEV_FALLBACK_SECRET, 1, profilesFrom(activeProfiles)),
+                "the dev fallback secret must never be accepted, profile(s): " + activeProfiles);
 
         assertTrue(failure.getMessage().contains("JWT_SECRET"), "the error must tell the operator which variable to set");
     }
 
     @Test
-    void shouldRefuseToStart_whenProdIsOneOfSeveralActiveProfiles() {
-        assertThrows(IllegalStateException.class,
-                () -> new JwtUtil(DEV_FALLBACK_SECRET, 1, profiles("render", "prod")));
+    void shouldNameTheActiveProfilesInTheError_soTheOperatorCanSeeWhatWasDeployed() {
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> new JwtUtil(DEV_FALLBACK_SECRET, 1, profiles("staging")));
+
+        assertTrue(failure.getMessage().contains("staging"), failure.getMessage());
     }
 
     @Test
-    void shouldStartAndSignTokens_whenProdProfileUsesARealSecret() {
-        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+    void shouldRefuseTheDefaultThatApplicationYmlShips_inANonProdProfile() {
+        // The shipped default is the value an operator gets when JWT_SECRET is simply not set.
+        String shippedDefault = shippedJwtSecretDefault();
+
+        assertThrows(IllegalStateException.class, () -> new JwtUtil(shippedDefault, 1, profiles("staging")));
+        assertThrows(IllegalStateException.class, () -> new JwtUtil(shippedDefault, 1, profiles()));
+    }
+
+    @Test
+    void shouldRefuseAnyVariantOfTheDevFallback_notOnlyTheExactPublishedString() {
+        assertThrows(IllegalStateException.class,
+                () -> new JwtUtil("dev-only-insecure-" + "x".repeat(40), 1, profiles("staging")));
+    }
+
+    // ---- no over-blocking ---------------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"none", "dev", "test", "staging", "prod"})
+    void shouldAcceptARealSecret_inEveryProfile(String activeProfiles) {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profilesFrom(activeProfiles));
 
         String token = jwt.generateToken("admin");
 
         assertTrue(jwt.isTokenValid(token));
         assertEquals("admin", jwt.extractUsername(token));
-        assertFalse(warned("dev fallback"), "a real secret must not trigger the dev-fallback warning");
     }
 
     @Test
-    void shouldStartWithAWarning_whenTheDevFallbackIsUsedOutsideProd() {
-        for (String[] active : List.of(new String[] {}, new String[] {"dev"}, new String[] {"test"})) {
-            logs.list.clear();
+    void shouldOnlyRejectASecretThatStartsWithTheFallbackPrefix_notOneThatMerelyContainsIt() {
+        JwtUtil jwt = new JwtUtil("abcdefghijklmnopqrstuvwxyz-dev-only-insecure-0123456789", 1, profiles("staging"));
 
-            JwtUtil jwt = new JwtUtil(DEV_FALLBACK_SECRET, 1, profiles(active));
-
-            assertTrue(jwt.isTokenValid(jwt.generateToken("admin")));
-            assertTrue(warned("dev fallback"), "expected a dev-fallback warning for profiles " + List.of(active));
-        }
+        assertTrue(jwt.isTokenValid(jwt.generateToken("admin")));
     }
+
+    // ---- unchanged behaviour ------------------------------------------------------------------------
 
     @Test
     void shouldFailFast_whenTheSecretIsShorterThan32Bytes() {
@@ -111,17 +118,18 @@ class JwtUtilTest {
         assertFalse(jwt.isTokenValid("not-a-jwt"));
     }
 
-    @Test
-    void shouldShipADevFallbackDefaultThatTheProdGuardRecognises() {
-        // If someone edits the default in application.yml, the guard would silently stop matching it.
+    // ---- helpers ------------------------------------------------------------------------------------
+
+    private static String shippedJwtSecretDefault() {
         YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
         yaml.setResources(new ClassPathResource("application.yml"));
         Properties properties = yaml.getObject();
-
         assertNotNull(properties);
         String configured = properties.getProperty("samjhana.security.jwt.secret");
         assertNotNull(configured, "samjhana.security.jwt.secret must be defined in application.yml");
-        assertTrue(configured.contains(":dev-only-insecure"),
-                "the JWT_SECRET fallback must start with the prefix JwtUtil refuses in prod, was: " + configured);
+
+        Matcher placeholder = Pattern.compile("^\\$\\{JWT_SECRET:(.+)}$").matcher(configured);
+        assertTrue(placeholder.matches(), "expected a ${JWT_SECRET:<default>} placeholder, was: " + configured);
+        return placeholder.group(1);
     }
 }

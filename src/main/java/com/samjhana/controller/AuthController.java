@@ -7,6 +7,7 @@ import com.samjhana.dto.UserDto;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.JwtUtil;
+import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,6 +31,20 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    /** What an admin sees when the named user is unknown or the current password is wrong: one answer for both. */
+    private static final String INVALID_TARGET_OR_PASSWORD = "Invalid username or current password";
+
+    /**
+     * A real BCrypt hash, made with the application's own encoder so it has the same cost as real user hashes.
+     * It is compared against when the named user does not exist, so that case does the same amount of work.
+     */
+    private String standInHash;
+
+    @PostConstruct
+    void createStandInHash() {
+        this.standInHash = passwordEncoder.encode(UUID.randomUUID().toString());
+    }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -98,25 +114,23 @@ public class AuthController {
         }
 
         // Determine the target user (admin may change others; everyone else changes themselves)
-        User targetUser;
-        if (request.getUsername() != null
+        boolean targetsAnotherUser = request.getUsername() != null
                 && !request.getUsername().trim().equalsIgnoreCase(currentUser.getUsername())
-                && currentUser.isAdmin()) {
-            targetUser = userRepository.findByUsername(request.getUsername().trim())
-                    .orElse(null);
-            if (targetUser == null) {
-                // Return the same message for not-found and wrong-password to prevent enumeration
-                return ResponseEntity.badRequest()
-                        .body(Map.of("message", "Invalid request"));
-            }
-        } else {
-            targetUser = currentUser;
-        }
+                && currentUser.isAdmin();
+        User targetUser = targetsAnotherUser
+                ? userRepository.findByUsername(request.getUsername().trim()).orElse(null)
+                : currentUser;
 
-        // Verify the current password
-        if (!passwordEncoder.matches(request.getCurrentPassword(), targetUser.getPassword())) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Current password is incorrect"));
+        // Always do exactly one BCrypt comparison, against the target's hash or a stand-in, so neither the
+        // response time nor the message tells an admin whether the named user exists.
+        String hashToCheck = targetUser != null ? targetUser.getPassword() : standInHash;
+        boolean currentPasswordMatches = passwordEncoder.matches(request.getCurrentPassword(), hashToCheck);
+
+        if (targetUser == null || !currentPasswordMatches) {
+            // Naming another user: one answer for "no such user" and "wrong password".
+            // Changing your own password: you already know you exist, so the specific message is fine.
+            String message = targetsAnotherUser ? INVALID_TARGET_OR_PASSWORD : "Current password is incorrect";
+            return ResponseEntity.badRequest().body(Map.of("message", message));
         }
 
         // Validate new password strength
