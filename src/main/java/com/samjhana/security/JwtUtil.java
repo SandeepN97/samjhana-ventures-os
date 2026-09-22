@@ -19,6 +19,10 @@ public class JwtUtil {
 
     private static final String DEV_FALLBACK_PREFIX = "dev-only-insecure";
 
+    // .env.example ships this literally so an operator who copies it without editing it — rather
+    // than one who never sets JWT_SECRET at all — must also be refused, not just warned.
+    private static final String ENV_EXAMPLE_PLACEHOLDER = "change-me-to-a-random-string-of-at-least-32-characters";
+
     private final SecretKey key;
     private final long expirationMs;
 
@@ -27,12 +31,13 @@ public class JwtUtil {
             @Value("${samjhana.security.jwt.expiration-hours}") long expirationHours,
             Environment environment) {
 
-        // Refuse the published development fallback because of its value, not because of a profile name:
-        // a staging, preview or unlabeled deployment that is reachable from the internet must not be able
-        // to sign sessions with a secret that is public in this repository.
-        if (secret.startsWith(DEV_FALLBACK_PREFIX)) {
+        // Refuse a published placeholder because of its value, not because of a profile name: a
+        // staging, preview or unlabeled deployment that is reachable from the internet must not be
+        // able to sign sessions with a secret that is public in this repository — whether that's
+        // the application.yml dev fallback, or .env.example's placeholder copied in unedited.
+        if (secret.startsWith(DEV_FALLBACK_PREFIX) || secret.equals(ENV_EXAMPLE_PLACEHOLDER)) {
             throw new IllegalStateException(
-                "JWT_SECRET is the published development fallback value (active profiles: " +
+                "JWT_SECRET is still a published placeholder value (active profiles: " +
                 Arrays.toString(environment.getActiveProfiles()) + "). " +
                 "Set JWT_SECRET to a random string of at least 32 bytes, e.g. `openssl rand -base64 48`.");
         }

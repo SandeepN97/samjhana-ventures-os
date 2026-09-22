@@ -8,6 +8,10 @@ import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.env.MockEnvironment;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -75,6 +79,16 @@ class JwtUtilTest {
                 () -> new JwtUtil("dev-only-insecure-" + "x".repeat(40), 1, profiles("staging")));
     }
 
+    @Test
+    void shouldRefuseTheEnvExamplePlaceholder_whenSomeoneShipsItUnedited() {
+        // .env.example is a template to copy and fill in; someone who copies it without editing it
+        // must be refused too, not just someone who never sets JWT_SECRET at all.
+        String placeholder = envExamplePlaceholderValue();
+
+        assertThrows(IllegalStateException.class, () -> new JwtUtil(placeholder, 1, profiles("staging")));
+        assertThrows(IllegalStateException.class, () -> new JwtUtil(placeholder, 1, profiles()));
+    }
+
     // ---- no over-blocking ---------------------------------------------------------------------------
 
     @ParameterizedTest
@@ -131,5 +145,23 @@ class JwtUtilTest {
         Matcher placeholder = Pattern.compile("^\\$\\{JWT_SECRET:(.+)}$").matcher(configured);
         assertTrue(placeholder.matches(), "expected a ${JWT_SECRET:<default>} placeholder, was: " + configured);
         return placeholder.group(1);
+    }
+
+    /** .env.example lives at the repo root, not on the classpath — Maven's test working directory. */
+    private static String envExamplePlaceholderValue() {
+        Path envExample = Path.of(".env.example");
+        assertTrue(Files.isRegularFile(envExample),
+                ".env.example must exist at the repo root (looked in " + envExample.toAbsolutePath() + ")");
+
+        String jwtLine;
+        try {
+            jwtLine = Files.readAllLines(envExample).stream()
+                    .filter(line -> line.startsWith("JWT_SECRET="))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError(".env.example has no JWT_SECRET= line"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return jwtLine.substring("JWT_SECRET=".length());
     }
 }
