@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from './LoginPage';
-import { renderWithProviders } from '../../test/test-utils';
+import { renderWithProviders, testI18n } from '../../test/test-utils';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -91,14 +91,150 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByText('Change Password'));
 
     await userEvent.type(screen.getByPlaceholderText('Enter username'), 'admin');
-    await userEvent.type(screen.getByPlaceholderText('Current password'), 'oldpass');
-    await userEvent.type(screen.getByPlaceholderText('New password'), 'newpass');
-    await userEvent.type(screen.getByPlaceholderText('Confirm password'), 'different');
+    await userEvent.type(screen.getByPlaceholderText('Current password'), 'oldpass123');
+    await userEvent.type(screen.getByPlaceholderText('New password'), 'newpass456');
+    await userEvent.type(screen.getByPlaceholderText('Confirm password'), 'different789');
 
     await userEvent.click(screen.getByRole('button', { name: 'Change Password' }));
 
     await waitFor(() => {
       expect(screen.getByText('New passwords do not match')).toBeInTheDocument();
+    });
+  });
+
+  // /api/auth/change-password requires a JWT, but on this screen nobody is signed in yet. The page
+  // proves who the user is by logging in with the current password first, and uses that token once.
+  describe('change password from the login screen', () => {
+    const LOGIN = '/api/auth/login';
+    const CHANGE = '/api/auth/change-password';
+
+    function serverAccepts() {
+      api.post.mockImplementation(async (url) =>
+        url === LOGIN
+          ? { data: { token: 'token-from-login', user: { username: 'staff', role: 'STAFF' } } }
+          : { data: { message: 'Password changed successfully' } }
+      );
+    }
+
+    async function openChangeForm(options) {
+      renderWithProviders(<LoginPage />, options);
+      await userEvent.click(screen.getByText(testI18n.t('login.changePasswordLink')));
+    }
+
+    async function fillForm({ username = 'staff', current = 'oldpass123', next = 'newpass456', confirm = next } = {}) {
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('login.usernamePlaceholder')), username);
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('login.currentPasswordPlaceholder')), current);
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('login.newPasswordPlaceholder')), next);
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('login.confirmPlaceholder')), confirm);
+    }
+
+    const submit = () =>
+      userEvent.click(screen.getByRole('button', { name: testI18n.t('login.changePasswordBtn') }));
+
+    it('authenticates first, then changes the password with that token', async () => {
+      serverAccepts();
+      await openChangeForm();
+      await fillForm();
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('Password changed successfully!')).toBeInTheDocument();
+      });
+      expect(api.post).toHaveBeenCalledTimes(2);
+      expect(api.post).toHaveBeenNthCalledWith(
+        1,
+        LOGIN,
+        { username: 'staff', password: 'oldpass123' },
+        { skipAuthRedirect: true }
+      );
+      expect(api.post).toHaveBeenNthCalledWith(
+        2,
+        CHANGE,
+        { currentPassword: 'oldpass123', newPassword: 'newpass456' },
+        { skipAuthRedirect: true, headers: { Authorization: 'Bearer token-from-login' } }
+      );
+    });
+
+    it('does not sign the user in: the token is used once and never stored', async () => {
+      serverAccepts();
+      await openChangeForm();
+      await fillForm();
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('Password changed successfully!')).toBeInTheDocument();
+      });
+      expect(localStorage.getItem('token')).toBeNull();
+      expect(localStorage.getItem('user')).toBeNull();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('returns to the login form after a successful change', async () => {
+      serverAccepts();
+      await openChangeForm();
+      await fillForm();
+      await submit();
+
+      expect(await screen.findByRole('button', { name: 'Login' }, { timeout: 3500 })).toBeInTheDocument();
+    });
+
+    it('reports wrong credentials and changes nothing when the current password is wrong', async () => {
+      api.post.mockRejectedValue({ response: { status: 401 } });
+      await openChangeForm();
+      await fillForm({ current: 'not-my-password' });
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('Invalid username or password')).toBeInTheDocument();
+      });
+      expect(api.post).toHaveBeenCalledTimes(1);
+      expect(api.post).toHaveBeenCalledWith(LOGIN, expect.anything(), { skipAuthRedirect: true });
+    });
+
+    it('shows the way the server refuses the change itself', async () => {
+      api.post
+        .mockResolvedValueOnce({ data: { token: 'token-from-login', user: {} } })
+        .mockRejectedValueOnce({ response: { status: 400, data: { message: 'Current password is incorrect' } } });
+      await openChangeForm();
+      await fillForm();
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('Current password is incorrect')).toBeInTheDocument();
+      });
+    });
+
+    it('refuses a new password shorter than 8 characters without calling the server', async () => {
+      await openChangeForm();
+      await fillForm({ next: '1234567' });
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('New password must be at least 8 characters')).toBeInTheDocument();
+      });
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('accepts a new password of exactly 8 characters', async () => {
+      serverAccepts();
+      await openChangeForm();
+      await fillForm({ next: '12345678' });
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('Password changed successfully!')).toBeInTheDocument();
+      });
+    });
+
+    it('states the 8-character rule in Nepali with a Devanagari numeral', async () => {
+      await openChangeForm({ locale: 'ne' });
+      await fillForm({ next: '1234567' });
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText('नयाँ पासवर्ड कम्तिमा ८ अक्षर हुनुपर्छ')).toBeInTheDocument();
+      });
+      expect(api.post).not.toHaveBeenCalled();
     });
   });
 

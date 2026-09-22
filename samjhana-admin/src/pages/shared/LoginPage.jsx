@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Globe, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
+import { changePasswordFromLogin } from '../../utils/changePasswordFromLogin';
+import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -89,8 +91,8 @@ export default function LoginPage() {
       setError(t('login.currentPasswordRequired'));
       return;
     }
-    if (!newPassword || newPassword.length < 3) {
-      setError(t('login.newPasswordMin3'));
+    if (!isAcceptableNewPassword(newPassword)) {
+      setError(t('login.newPasswordMin8'));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -100,11 +102,9 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await api.post('/api/auth/change-password', {
-        username: username.trim(),
-        currentPassword,
-        newPassword,
-      });
+      // Nobody is signed in on this screen, and the endpoint needs a JWT: log in with the current
+      // password first, then change the password with that one-off token (see changePasswordFromLogin).
+      await changePasswordFromLogin({ username: username.trim(), currentPassword, newPassword });
       setSuccess(t('login.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
@@ -117,8 +117,9 @@ export default function LoginPage() {
       }, 2000);
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        t('login.changeFailed')
+        err.response?.status === 401
+          ? t('login.invalidCredentials')
+          : err.response?.data?.message || t('login.changeFailed')
       );
     } finally {
       setLoading(false);
