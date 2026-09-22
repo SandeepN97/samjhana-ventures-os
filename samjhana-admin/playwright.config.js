@@ -49,6 +49,10 @@ export default defineConfig({
       env: {
         ...process.env,
         PORT: String(BACKEND_PORT),
+        // Once this branch merges main, JwtUtil refuses the published dev-fallback secret in
+        // every profile — so this disposable backend needs its own real one, or the webServer
+        // never boots. Overridable, but ...process.env above already covers that case.
+        JWT_SECRET: process.env.JWT_SECRET || 'playwright-e2e-disposable-secret-not-for-real-use-32bytes+',
         SPRING_DATASOURCE_URL: 'jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1',
         SPRING_DATASOURCE_PASSWORD: '',
         SAMJHANA_FUEL_PRICE_SCRAPER_ENABLED: 'false',
