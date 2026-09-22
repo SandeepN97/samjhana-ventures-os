@@ -88,6 +88,9 @@ cd samjhana-ventures-os
 export JWT_SECRET=$(openssl rand -base64 48)
 ```
 
+This is required in every profile, including local development: the backend refuses to start with the
+built-in development secret, whichever Spring profile is active.
+
 ### 3. Start the backend (dev mode)
 
 ```bash
