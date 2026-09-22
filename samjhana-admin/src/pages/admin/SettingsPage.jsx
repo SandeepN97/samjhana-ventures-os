@@ -21,6 +21,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import api from '../../utils/api';
+import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
 import LanguageToggle from '../../components/LanguageToggle';
 import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
@@ -111,8 +112,8 @@ export default function SettingsPage() {
       showToast(t('settings.usernameRequired'), 'error');
       return;
     }
-    if (!newUser.password || newUser.password.length < 3) {
-      showToast(t('settings.passwordMin3'), 'error');
+    if (!isAcceptableNewPassword(newUser.password)) {
+      showToast(t('settings.passwordMin8'), 'error');
       return;
     }
     if (newUser.password !== newUserPasswordConfirm) {
@@ -178,8 +179,8 @@ export default function SettingsPage() {
       showToast(t('settings.currentPasswordRequired'), 'error');
       return;
     }
-    if (!newPassword || newPassword.length < 3) {
-      showToast(t('settings.newPasswordMin3'), 'error');
+    if (!isAcceptableNewPassword(newPassword)) {
+      showToast(t('settings.newPasswordMin8'), 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
