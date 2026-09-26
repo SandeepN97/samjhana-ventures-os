@@ -147,6 +147,15 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Systematically exercises Lombok @Data's generated equals/hashCode/canEqual
+             branches (many per field) far more thoroughly and reliably than hand-written
+             assertions would, for the ~10 entities that use @Data. -->
+        <dependency>
+            <groupId>nl.jqno.equalsverifier</groupId>
+            <artifactId>equalsverifier</artifactId>
+            <version>3.17.5</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     
     <build>
