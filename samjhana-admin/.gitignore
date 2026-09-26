@@ -1,0 +1,7 @@
+# Dependencies and build output (the root .gitignore only covers the old frontend/ path)
+node_modules/
+dist/
+
+# Playwright output
+test-results/
+playwright-report/
