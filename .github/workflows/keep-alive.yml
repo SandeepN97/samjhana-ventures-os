@@ -1,0 +1,42 @@
+name: Keep-Alive Ping
+
+# Render's free tier spins down a service after ~15 minutes of no inbound traffic; the next
+# request then pays a cold-start penalty. This workflow pings staging and prod on a schedule
+# so real users rarely hit that cold start. It cannot, and does not try to, prevent restarts
+# from an actual deploy or Render maintenance — only idle-timeout spin-down is preventable
+# this way. See samjhana-three-env-plan-v2.docx section 4.1.
+#
+# Configure the two repository variables before this does anything useful:
+#   Settings → Secrets and variables → Actions → Variables
+#     STAGING_HEALTH_URL   e.g. https://samjhana-staging.onrender.com/actuator/health
+#     PROD_HEALTH_URL      e.g. https://samjhana.onrender.com/actuator/health
+# Until both are set, each ping step below is skipped (not failed) — a missing URL is a setup
+# gap, not a broken pipeline.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # every 10 minutes, comfortably inside the ~15 min idle window
+  workflow_dispatch: {}       # allow manual "run now" from the Actions tab
+
+jobs:
+  ping-staging:
+    name: Ping staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping staging health endpoint
+        if: vars.STAGING_HEALTH_URL != ''
+        run: |
+          curl -fsS --max-time 20 "${{ vars.STAGING_HEALTH_URL }}" \
+            && echo "staging: awake" \
+            || echo "::warning::staging keep-alive ping failed (may be a real outage or a cold-start timeout — not retried here)"
+
+  ping-prod:
+    name: Ping prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping prod health endpoint
+        if: vars.PROD_HEALTH_URL != ''
+        run: |
+          curl -fsS --max-time 20 "${{ vars.PROD_HEALTH_URL }}" \
+            && echo "prod: awake" \
+            || echo "::warning::prod keep-alive ping failed (may be a real outage or a cold-start timeout — not retried here)"
