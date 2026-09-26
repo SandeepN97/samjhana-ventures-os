@@ -215,7 +215,10 @@ spring:
       on-profile: staging
 
   datasource:
-    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}
+    # sslmode=require: without it, pgjdbc's default (prefer) silently falls back to an
+    # unencrypted connection if TLS negotiation fails — unacceptable for a DB reachable over
+    # the public internet (Render -> Supabase, not localhost).
+    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=require
     username: ${SUPABASE_STAGING_USER}
     password: ${SUPABASE_STAGING_PASSWORD}
 
