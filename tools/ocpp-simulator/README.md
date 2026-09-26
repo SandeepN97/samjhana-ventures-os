@@ -1,8 +1,7 @@
-# OCPP simulator (planned)
+# OCPP simulator
 
-Scaffold only — the actual simulator is not implemented yet. This directory is deliberately
-isolated from the Maven build (`src/`) and both frontends (`samjhana-admin/`, `samjhana-web/`),
-so it never affects the application build.
+Scaffold isolated from the Maven build (`src/`) and both frontends (`samjhana-admin/`,
+`samjhana-web/`), so it never affects the application build.
 
 ## What this is for
 
@@ -16,32 +15,49 @@ the `ChargerSessionFlowIntegrationTest` for the protocol this must speak.
 | Use case | CI regression testing | Manual/exploratory testing on staging, demos, load-testing reconnect behavior |
 | Lifetime | Duration of one test method | Long-running, can simulate hours-long sessions |
 
-## Planned tool
+## Usage
 
-The MobilityHouse open-source `ocpp` Python library (Apache-2.0), because it implements the
-OCPP 2.0.1 charge-point role specifically — matching both the real hardware and this backend's
-protocol version exactly.
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-## Planned shape
+# Full test transaction (BootNotification -> StatusNotification -> Started/Updated/Ended)
+python simulate_charger.py --secret <staging-charger-secret>
 
-A `simulate_charger.py` script accepting:
-- `--url` — the CSMS WebSocket URL to connect to (see the safety guardrail below)
-- `--charge-point-id` — which charger identity to present
-- `--secret` — that charger's OCPP Basic-auth secret
-- `--scenario` — at minimum: a normal charge (BootNotification, Heartbeat, Start/Stop
-  transaction, configurable SoC/energy ramp-up), a rejected-start scenario, and a forced
-  mid-session drop-and-reconnect (to exercise the backend's resync path when a Render restart
-  or deploy interrupts an active session).
+# Just connect + boot, no transaction
+python simulate_charger.py --secret <staging-charger-secret> --charge-point-id HQC23-80-01 --scenario boot
+```
+
+`--secret` must be the charger's **actual current secret as stored in that environment's
+database** — see "A secret nuance" below, since this is not always the same as today's
+`OCPP_SECRET_*` Render env var value.
+
+## A secret nuance
+
+The charge point's auth secret is only synced from the `OCPP_SECRET_*` env var **once**, the
+first time `ChargePointSeeder` runs against an empty `charge_points` table — after that, the
+stored hash is never overwritten by a later env var change. So the secret this tool needs is
+whatever was live in staging's `OCPP_SECRET_*` variables the first time staging booted
+successfully, not necessarily whatever's in Render right now. If those have diverged, clear the
+`ocpp_auth_secret_hash` column for the charge point in question and let the seeder resync it on
+next boot.
 
 ## Safety guardrail
 
-**This tool's default example configuration must point only at staging charge-point IDs and
-staging secrets.** It must never be pointed at production charger IDs or production secrets,
-accidentally or otherwise. Whatever config file or `.env.example` ships with the eventual
-implementation should make the staging default obvious and require a deliberate, explicit
-override to target anything else.
+`--url` defaults to staging. Anything else (in particular, anything that isn't staging or
+localhost) requires typing an explicit confirmation phrase before the tool will proceed — see
+`check_target_is_safe()` in `simulate_charger.py`. This tool must never be pointed at production
+charge point IDs or production secrets.
 
-## Status
+## What's implemented vs. still planned
 
-Not implemented. This README exists so the directory has a place-holder and a documented
-intent; the Python script, its dependencies, and its tests are a separate piece of work.
+Implemented: connect + authenticate (Basic auth over the WebSocket handshake, `ocpp2.0.1`
+subprotocol), `BootNotification`, `StatusNotification`, and a 3-event `TransactionEvent`
+sequence (Started/Updated/Ended) with SoC + energy meter values — verified end-to-end against a
+throwaway local fake CSMS during development (exact message shapes match
+`ChargerSessionFlowIntegrationTest`, and schema-validated correctly by the `ocpp` library itself).
+
+Still planned, not built: `Heartbeat`, a rejected-start scenario, and a forced mid-session
+drop-and-reconnect (to exercise the backend's resync path when a Render restart or deploy
+interrupts an active session) — see `docs/EV-CHARGING-ARCHITECTURE.md` for why that resync path
+matters.
