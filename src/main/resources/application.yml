@@ -207,3 +207,48 @@ logging:
   level:
     root: WARN
     com.samjhana: INFO
+
+---
+# =============================================================================
+# Staging Profile
+# =============================================================================
+# Shaped identically to prod, pointed at its own Supabase project. JWT_SECRET and the
+# OCPP_SECRET_* charger secrets are intentionally NOT overridden here: they use the same
+# property paths and env var names as every other profile (see the base block above), and
+# get their own values from the staging Render service's own environment variables — the
+# same mechanism that already keeps prod's secrets separate from dev's.
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+  datasource:
+    # sslmode=verify-full, not just require: require only encrypts, it accepts ANY certificate
+    # (including a forged one from a MITM), since it never checks who signed it or whether the
+    # hostname matches. verify-full checks both, which is what actually stops a MITM. Supabase
+    # uses a publicly-trusted CA cert, so this needs no extra CA configuration to work.
+    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=verify-full
+    username: ${SUPABASE_STAGING_USER}
+    password: ${SUPABASE_STAGING_PASSWORD}
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    hibernate:
+      # validate, not update: schema drift must be caught, not silently patched at boot
+      # (audit F34). The staging Supabase project starts empty, so its schema must be put
+      # in place by some other means before the first boot under this profile — this file
+      # does not address that bootstrap step.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: public
+
+logging:
+  level:
+    root: WARN
+    com.samjhana: INFO
