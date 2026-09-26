@@ -215,10 +215,11 @@ spring:
       on-profile: staging
 
   datasource:
-    # sslmode=require: without it, pgjdbc's default (prefer) silently falls back to an
-    # unencrypted connection if TLS negotiation fails — unacceptable for a DB reachable over
-    # the public internet (Render -> Supabase, not localhost).
-    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=require
+    # sslmode=verify-full, not just require: require only encrypts, it accepts ANY certificate
+    # (including a forged one from a MITM), since it never checks who signed it or whether the
+    # hostname matches. verify-full checks both, which is what actually stops a MITM. Supabase
+    # uses a publicly-trusted CA cert, so this needs no extra CA configuration to work.
+    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=verify-full
     username: ${SUPABASE_STAGING_USER}
     password: ${SUPABASE_STAGING_PASSWORD}
 

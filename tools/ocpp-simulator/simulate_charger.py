@@ -22,6 +22,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import urllib.parse
 from datetime import datetime, timezone
 
 import websockets
@@ -40,7 +41,8 @@ from ocpp.v201.enums import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("ocpp-simulator")
 
-DEFAULT_URL = "wss://samjhana-ventures-os-staging.onrender.com/ocpp/"
+STAGING_HOSTNAME = "samjhana-ventures-os-staging.onrender.com"
+DEFAULT_URL = f"wss://{STAGING_HOSTNAME}/ocpp/"
 KNOWN_CHARGE_POINT_IDS = ["HD-D180-CC-01", "HQC23-80-01", "HD-D140-E-01"]
 
 
@@ -117,12 +119,20 @@ class SimulatedCharger(OcppChargePoint):
         logger.info("Test transaction complete.")
 
 
+SAFE_HOSTNAMES = {STAGING_HOSTNAME, "localhost", "127.0.0.1"}
+
+
 def check_target_is_safe(url: str) -> None:
     """Refuse to run against anything that doesn't look like staging or a local
     dev backend, unless the operator explicitly confirms. This is the one guardrail
-    standing between a typo and accidentally hitting production hardware secrets."""
-    looks_safe = "staging" in url or "localhost" in url or "127.0.0.1" in url
-    if looks_safe:
+    standing between a typo and accidentally hitting production hardware secrets.
+
+    Checks the parsed hostname exactly, not a substring match against the raw URL:
+    a substring check would wave through something like wss://evil.com/localhost or
+    wss://staging.attacker.example.com, since both contain the "safe" word without
+    actually being staging or localhost."""
+    hostname = (urllib.parse.urlparse(url).hostname or "").lower()
+    if hostname in SAFE_HOSTNAMES:
         return
     print(
         f"\n /!\\  --url ({url}) does not look like staging or localhost.\n"
