@@ -128,7 +128,10 @@ jobs:
   backend-unit-tests:
     name: Backend Unit Tests
     runs-on: ubuntu-latest
-    needs: [lint-admin, lint-web, audit-admin, audit-web]
+    # Deliberately NOT gated on audit-admin/audit-web: those are allowed to fail on known,
+    # pre-existing dependency debt (see PR description) without blocking every other check
+    # behind them. They still run and show red on the PR — just don't skip everything else.
+    needs: [lint-admin, lint-web]
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
@@ -209,7 +212,10 @@ jobs:
   frontend-admin-tests:
     name: Admin Frontend Tests (samjhana-admin)
     runs-on: ubuntu-latest
-    needs: [lint-admin, lint-web, audit-admin, audit-web]
+    # Deliberately NOT gated on audit-admin/audit-web: those are allowed to fail on known,
+    # pre-existing dependency debt (see PR description) without blocking every other check
+    # behind them. They still run and show red on the PR — just don't skip everything else.
+    needs: [lint-admin, lint-web]
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
@@ -227,7 +233,10 @@ jobs:
   frontend-web-tests:
     name: Public Frontend Tests (samjhana-web)
     runs-on: ubuntu-latest
-    needs: [lint-admin, lint-web, audit-admin, audit-web]
+    # Deliberately NOT gated on audit-admin/audit-web: those are allowed to fail on known,
+    # pre-existing dependency debt (see PR description) without blocking every other check
+    # behind them. They still run and show red on the PR — just don't skip everything else.
+    needs: [lint-admin, lint-web]
     if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
