@@ -178,7 +178,11 @@ spring:
       on-profile: prod
 
   datasource:
-    url: jdbc:postgresql://${SUPABASE_PROD_HOST}/${SUPABASE_PROD_DB}
+    # sslmode=verify-full, not just require: require only encrypts, it accepts ANY certificate
+    # (including a forged one from a MITM), since it never checks who signed it or whether the
+    # hostname matches. verify-full checks both, which is what actually stops a MITM. Supabase
+    # uses a publicly-trusted CA cert, so this needs no extra CA configuration to work.
+    url: jdbc:postgresql://${SUPABASE_PROD_HOST}/${SUPABASE_PROD_DB}?sslmode=verify-full
     username: ${SUPABASE_PROD_USER}
     password: ${SUPABASE_PROD_PASSWORD}
 
