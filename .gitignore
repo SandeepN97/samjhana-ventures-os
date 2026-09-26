@@ -10,8 +10,11 @@ target/
 .vscode/
 *.swp
 
-# H2 Database files
-data/
+# H2 Database files (backend runtime data dir, repo root only — NOT samjhana-web/src/data
+# or any other directory that happens to be named "data"; a bare "data/" pattern matches
+# a directory of that name anywhere in the tree, which is what broke the public frontend
+# build: samjhana-web/src/data/beekeepingProducts.js was silently never tracked)
+/data/
 
 # Frontend dependencies, build output and test artifacts (samjhana-admin)
 samjhana-admin/node_modules/
@@ -35,3 +38,8 @@ graphify-out/
 
 # Locally installed agent skills (restorable from skills-lock.json)
 .agents/
+
+# Python (tools/ocpp-simulator)
+__pycache__/
+*.pyc
+.venv/

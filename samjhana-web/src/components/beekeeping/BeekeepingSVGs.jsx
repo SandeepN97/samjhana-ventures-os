@@ -748,7 +748,7 @@ export function HoneyJarSVG({ shade = 'light' }) {
       {[[130,98],[144,98],[158,98],[172,98],[130,110],[144,110],[158,110],[172,110]].map(([x,y]) => (
         <polygon key={`${x}${y}`}
           points={`${x},${y-5} ${x+4},${y-2.5} ${x+4},${y+2.5} ${x},${y+5} ${x-4},${y+2.5} ${x-4},${y-2.5}`}
-          fill={honeyColor} opacity="0.20" stroke={honeyColor} strokeWidth="0.4" opacity2="0.30"/>
+          fill={honeyColor} opacity="0.20" stroke={honeyColor} strokeWidth="0.4"/>
       ))}
       <text x="160" y="108" textAnchor="middle" fontFamily="sans-serif" fontSize="8" fill="#8B5E00" fontWeight="700">RAW HONEY</text>
       <text x="160" y="120" textAnchor="middle" fontFamily="sans-serif" fontSize="6" fill="#A07828">Gulmi, Nepal</text>
