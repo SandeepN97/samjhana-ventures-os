@@ -35,3 +35,8 @@ graphify-out/
 
 # Locally installed agent skills (restorable from skills-lock.json)
 .agents/
+
+# Python (tools/ocpp-simulator)
+__pycache__/
+*.pyc
+.venv/
