@@ -10,6 +10,7 @@ import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { toNepaliNumerals } from '../../utils/formatters';
 import { PageHeader, HeaderAction } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function EVManualEntryPage() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function EVManualEntryPage() {
   const [rateSaving, setRateSaving] = useState(false);
 
   const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: nepalToday(),
     chargePointId: '',
     vehicleId: '',
     startPercent: '',

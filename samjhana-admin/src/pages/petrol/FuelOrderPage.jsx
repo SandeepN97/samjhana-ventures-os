@@ -7,6 +7,7 @@ import DatePicker from '../../components/DatePicker';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function FuelOrderPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function FuelOrderPage() {
 
   // Form state
   const [values, setValues] = useState({
-    orderDate: new Date().toISOString().split('T')[0],
+    orderDate: nepalToday(),
     fuelType: 'petrol',
     liters: '',
     ratePerLiter: '',
@@ -127,7 +128,7 @@ export default function FuelOrderPage() {
 
       // Reset form and refresh orders
       setValues(prev => ({
-        orderDate: new Date().toISOString().split('T')[0],
+        orderDate: nepalToday(),
         fuelType: prev.fuelType,
         liters: '',
         ratePerLiter: '',

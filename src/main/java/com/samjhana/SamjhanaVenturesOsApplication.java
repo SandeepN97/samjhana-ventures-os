@@ -4,6 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.TimeZone;
+
 /**
  * Samjhana Ventures OS - Dynamic Multi-Business ERP
  * 
@@ -24,6 +26,18 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class SamjhanaVenturesOsApplication {
+
+    /**
+     * The business runs on Nepal time. Servers (Render, CI) default to UTC, which is 5h45m behind:
+     * for part of every day "today" on the server would be yesterday in Nepal, so sales filed under
+     * Nepal's date went missing from "today" in Analytics and closing reports. Setting it here, in
+     * a static block, covers every LocalDate.now()/LocalDateTime.now() before any bean reads the clock.
+     */
+    public static final String BUSINESS_TIME_ZONE = "Asia/Kathmandu";
+
+    static {
+        TimeZone.setDefault(TimeZone.getTimeZone(BUSINESS_TIME_ZONE));
+    }
 
     public static void main(String[] args) {
         // ASCII Art Banner will be shown from banner.txt

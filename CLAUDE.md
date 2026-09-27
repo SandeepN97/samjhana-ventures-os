@@ -97,11 +97,16 @@ No hard deletes — always use soft delete with a `deletedAt` timestamp.
 Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth token is stored in `localStorage` under `token`; the private route check in `App.jsx` reads this directly.
 
 ### Data seeding
-`DataSeeder` (`@Profile("dev")`) runs on startup in dev only and seeds users, business units, and EV vehicles. On an empty dev database, the seeded credentials are `admin/admin`, `manager/manager123`, and `staff/staff123`.
+- Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the five business units), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
+- `DataSeeder` (`@Profile("dev")`) seeds dev logins only: on an empty dev database they are `admin/admin`, `manager/manager123`, `staff/staff123`.
+- `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log.
+- The Settings page "Reset demo data" exists in dev and staging only, never prod.
 
 ### Profiles
-- **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console enabled, verbose SQL logging, `DataSeeder` runs
-- **prod**: PostgreSQL via `DATABASE_URL` env var, H2 console off, `DataSeeder` disabled
+- **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console (localhost only), verbose SQL logging, `DataSeeder` runs
+- **staging**: Supabase PostgreSQL via `SUPABASE_STAGING_*`, `ddl-auto: validate` (schema changes need SQL run on Supabase first), deployed from the `staging` branch
+- **prod**: Supabase PostgreSQL via `SUPABASE_PROD_*`, deployed from the `main` branch
+- staging and prod both need the Supabase CA certificate (Render Secret File `supabase-ca.crt`), a real `JWT_SECRET` and real `OCPP_SECRET_*` values — the app refuses to start with the published dev placeholders
 
 ### Fuel price scraper
 `NocPriceScraperService` scrapes NOC (Nepal Oil Corporation) using Jsoup. Configured via `samjhana.fuel-price-scraper.*` in `application.yml`. The depot is set to `Bhalbari` by default.
@@ -147,6 +152,14 @@ feat: add petrol pump daily sales entry form with Nepali labels
 fix: correct Lakhs formatting on Nepal dashboard summary card
 i18n: add Nepali translations for loan approval screen
 ```
+
+### Branches and releases
+```
+feature branch ──PR──► staging (test site) ──release PR, only when asked──► main (prod, the real site)
+```
+- Every change is a PR into **`staging`**. Merging it updates the test site only.
+- **Never open, approve or merge a `staging` → `main` PR on your own initiative** — not after merging into staging, not because GitHub shows a "Compare & pull request" banner, not to "keep branches in sync". Releasing to prod happens only when the owner explicitly asks for a release in that conversation.
+- Before a release, check prod's Render environment is complete (see Profiles); an incomplete one makes the prod deploy fail.
 
 ### PR rule
 Every PR requires at least 1 approval before merging to `main`. No self-merges.

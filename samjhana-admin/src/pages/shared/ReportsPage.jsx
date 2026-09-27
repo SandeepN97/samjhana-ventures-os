@@ -10,6 +10,7 @@ import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-petrol-500', label: 'Petrol',    labelNe: 'पेट्रोल' },
@@ -81,7 +82,7 @@ export default function ReportsPage() {
   };
 
   // Always today
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = nepalToday();
   const todayTxns = transactions.filter(t => t.transactionDate === todayStr);
 
   const totalIncome  = todayTxns.filter(t => t.transactionType === 'SALE').reduce((s, t) => s + parseFloat(t.amount), 0);

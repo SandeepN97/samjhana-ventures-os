@@ -8,6 +8,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function FurnitureOrderPage() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function FurnitureOrderPage() {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState('PENDING');
   const [notes, setNotes] = useState('');
-  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transactionDate, setTransactionDate] = useState(nepalToday());
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 

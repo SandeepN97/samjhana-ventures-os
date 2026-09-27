@@ -1,39 +1,83 @@
-# Weekly PRs for dependency updates, including security fixes. They target staging, like every other
-# change, and go through the full CI run before anyone merges them.
+# Dependency update PRs, kept small on purpose: one grouped PR per area, once a month, with only
+# minor and patch versions. Major upgrades (Spring Boot 4, React 19, a new Java version...) change
+# behaviour and are planned as their own piece of work, so they are ignored here.
+#
+# Security fixes are separate: Dependabot *security* updates (Settings -> Code security) open a PR
+# as soon as an advisory is published, whatever this schedule says, including for major versions
+# when that is the only fixed release.
+#
+# Docker base images are not included: their tags carry the Java version (e.g. -temurin-21), which
+# must only change on purpose. Update them by hand, keeping the digest pin in the Dockerfile.
+#
+# All PRs target staging, like every other change, and run the full CI before anyone merges them.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      spring-boot:
-        patterns: ["org.springframework*"]
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: /samjhana-admin
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: /samjhana-web
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: pip
     directory: /tools/ocpp-simulator
     target-branch: staging
-    schedule: { interval: weekly }
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: /
     target-branch: staging
-    schedule: { interval: weekly }
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: staging
-    schedule: { interval: weekly }
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

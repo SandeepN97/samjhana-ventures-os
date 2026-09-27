@@ -7,6 +7,7 @@ import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function FurnitureEntryPage() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function FurnitureEntryPage() {
   const { toasts, showToast, removeToast } = useToast();
 
   const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: nepalToday(),
     transactionType: 'SALE',
     itemName: '',
     quantity: '1',

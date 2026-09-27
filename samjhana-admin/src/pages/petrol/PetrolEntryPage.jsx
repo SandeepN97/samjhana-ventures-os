@@ -8,6 +8,7 @@ import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function PetrolEntryPage() {
   const { toasts, showToast, removeToast } = useToast();
 
   const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: nepalToday(),
     fuelType: 'petrol',
     liters: '',
     ratePerLiter: '',

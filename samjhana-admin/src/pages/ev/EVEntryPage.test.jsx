@@ -624,6 +624,50 @@ describe('EVEntryPage', () => {
       expect(screen.queryByRole('button', { name: 'Confirm Payment & Unlock' })).toBeNull();
     });
 
+    it('shows one message, not two, when the unlock arrives right after the payment', async () => {
+      mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+      api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
+      await renderPage();
+      await userEvent.click(tab('Payment'));
+      await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
+      expect(await screen.findByText('Payment confirmed for BA1PA4521 — unlocking')).toBeInTheDocument();
+
+      fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+
+      expect(await screen.findByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
+      expect(screen.queryByText('Payment confirmed for BA1PA4521 — unlocking')).toBeNull();
+    });
+
+    it('does not bring back the "unlocking" message when the unlock beat the payment reply', async () => {
+      mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+      let reply;
+      api.post.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
+      await renderPage();
+      await userEvent.click(tab('Payment'));
+      await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
+
+      fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+      expect(await screen.findByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
+      await act(async () => reply({ data: session({ status: 'CLOSED' }) }));
+
+      expect(screen.getByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
+      expect(screen.queryByText('Payment confirmed for BA1PA4521 — unlocking')).toBeNull();
+    });
+
+    it('shows one message in Nepali too', async () => {
+      mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+      api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
+      await renderPage('ne');
+      await userEvent.click(screen.getAllByRole('tab')[2]);
+      await userEvent.click(await screen.findByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' }));
+      expect(await screen.findByText('BA1PA4521 को भुक्तानी पुष्टि भयो — अनलक हुँदै')).toBeInTheDocument();
+
+      fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+
+      expect(await screen.findByText('BA1PA4521 को कनेक्टर अनलक भयो')).toBeInTheDocument();
+      expect(screen.queryByText('BA1PA4521 को भुक्तानी पुष्टि भयो — अनलक हुँदै')).toBeNull();
+    });
+
     it('removes the card and confirms when the connector is finally unlocked', async () => {
       mock.sessions = [session({ status: 'UNLOCK_REQUESTED' })];
       await renderPage();

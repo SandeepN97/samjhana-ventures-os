@@ -25,6 +25,7 @@ import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { formatBsDate } from '../../utils/nepaliDate';
 import { PageHeader } from '../../components/brand';
+import { addDays, nepalToday } from '../../utils/businessDay';
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-petrol-500' },
@@ -248,14 +249,9 @@ export default function DailyClosePage() {
   };
 
   const formatDateLabel = (dateStr) => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const todayStr = nepalToday();
+    const yesterdayStr = addDays(todayStr, -1);
+    const tomorrowStr = addDays(todayStr, 1);
 
     if (dateStr === todayStr) return t('common.today');
     if (dateStr === tomorrowStr) return t('dailyClose.tomorrow');
