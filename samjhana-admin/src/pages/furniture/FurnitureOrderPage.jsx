@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ShoppingCart, Plus, Trash2, Check, Search, X } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, Check, Search, X } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function FurnitureOrderPage() {
   const navigate = useNavigate();
@@ -140,7 +140,7 @@ export default function FurnitureOrderPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-furniture-600"></div>
       </div>
     );
   }
@@ -148,18 +148,7 @@ export default function FurnitureOrderPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-purple-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/furniture')} className="p-2 -ml-2 rounded-full hover:bg-purple-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <ShoppingCart className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{t('furnitureOrd.newSaleTitle')}</h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="furniture" icon={ShoppingCart} title={t('furnitureOrd.newSaleTitle')} backTo="/entry/furniture" />
 
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}
@@ -170,7 +159,7 @@ export default function FurnitureOrderPage() {
           <DatePicker
             value={transactionDate}
             onChange={(val) => setTransactionDate(val)}
-            accentColor="purple"
+            accentColor="furniture"
           />
         </div>
 
@@ -182,11 +171,11 @@ export default function FurnitureOrderPage() {
 
           <div className="flex gap-2 mb-3">
             <button type="button" onClick={() => { setIsWalkIn(false); setSelectedCustomerId(''); }}
-              className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${!isWalkIn ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}>
+              className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${!isWalkIn ? 'bg-furniture-600 text-white border-furniture-600' : 'bg-white text-gray-700 border-gray-300'}`}>
               {t('furnitureOrd.selectCustomer')}
             </button>
             <button type="button" onClick={() => { setIsWalkIn(true); setSelectedCustomerId(''); }}
-              className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${isWalkIn ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}>
+              className={`flex-1 py-2 rounded-lg font-medium border-2 transition-colors ${isWalkIn ? 'bg-furniture-600 text-white border-furniture-600' : 'bg-white text-gray-700 border-gray-300'}`}>
               {t('furnitureOrd.walkIn')}
             </button>
           </div>
@@ -194,7 +183,7 @@ export default function FurnitureOrderPage() {
           {isWalkIn ? (
             <input type="text" value={walkInName} onChange={(e) => setWalkInName(e.target.value)}
               placeholder={t('furnitureOrd.customerNameOptional')}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500" />
           ) : (
             <div className="relative">
               <div className="relative">
@@ -203,17 +192,17 @@ export default function FurnitureOrderPage() {
                   onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); }}
                   onFocus={() => setShowCustomerDropdown(true)}
                   placeholder={t('furnitureOrd.searchCustomer')}
-                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                  className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500" />
               </div>
 
               {selectedCustomer && (
-                <div className="mt-2 bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center justify-between">
+                <div className="mt-2 bg-furniture-50 border border-furniture-200 rounded-lg p-3 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-purple-800">{selectedCustomer.name}</p>
-                    {selectedCustomer.phone && <p className="text-sm text-purple-600">{selectedCustomer.phone}</p>}
+                    <p className="font-medium text-furniture-800">{selectedCustomer.name}</p>
+                    {selectedCustomer.phone && <p className="text-sm text-furniture-600">{selectedCustomer.phone}</p>}
                   </div>
                   <button type="button" onClick={() => { setSelectedCustomerId(''); setCustomerSearch(''); }}
-                    className="p-1 text-purple-500 hover:text-purple-700">
+                    className="p-1 text-furniture-500 hover:text-furniture-700">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -229,7 +218,7 @@ export default function FurnitureOrderPage() {
                         setShowCustomerDropdown(false);
                         if (c.address) setDeliveryAddress(c.address);
                       }}
-                      className="w-full text-left px-4 py-3 hover:bg-purple-50 border-b last:border-b-0">
+                      className="w-full text-left px-4 py-3 hover:bg-furniture-50 border-b last:border-b-0">
                       <p className="font-medium text-gray-800">{c.name}</p>
                       {c.phone && <p className="text-sm text-gray-500">{c.phone}</p>}
                     </button>
@@ -245,14 +234,14 @@ export default function FurnitureOrderPage() {
           <div className="flex items-center justify-between mb-2">
             <label className="text-lg font-medium text-gray-700">{t('furnitureOrd.items')} <span className="text-red-500">*</span></label>
             <button type="button" onClick={addLineItem}
-              className="flex items-center gap-1 text-purple-600 font-medium hover:text-purple-700">
+              className="flex items-center gap-1 text-furniture-600 font-medium hover:text-furniture-700">
               <Plus className="w-5 h-5" /> {t('furnitureOrd.add')}
             </button>
           </div>
 
           {lineItems.length === 0 && (
             <button type="button" onClick={addLineItem}
-              className="w-full py-8 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors">
+              className="w-full py-8 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 hover:border-furniture-400 hover:text-furniture-500 transition-colors">
               <Plus className="w-8 h-8 mx-auto mb-2" />
               <p>{t('furnitureOrd.addItems')}</p>
             </button>
@@ -279,7 +268,7 @@ export default function FurnitureOrderPage() {
                       subtitle: `${t('furnitureOrd.stock')}: ${item.stockQty}`,
                     }))}
                     placeholder={t('furnitureOrd.selectItem')}
-                    accentColor="purple"
+                    accentColor="furniture"
                     className="py-2 text-base"
                   />
                 </div>
@@ -289,13 +278,13 @@ export default function FurnitureOrderPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.qty')}</label>
                     <input type="number" min="1" value={li.quantity}
                       onChange={(e) => updateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-center font-bold" />
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500 text-center font-bold" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.unitPrice')}</label>
                     <input type="number" step="0.01" min="0" value={li.unitPrice}
                       onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-center font-bold" />
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500 text-center font-bold" />
                   </div>
                 </div>
 
@@ -309,7 +298,7 @@ export default function FurnitureOrderPage() {
 
         {/* Order Total */}
         {lineItems.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+          <div className="bg-gradient-to-r from-furniture-500 to-furniture-600 rounded-xl p-4 text-white">
             <p className="text-sm opacity-80">{t('furnitureOrd.orderTotal')}</p>
             <p className="text-3xl font-bold">{formatCurrency(orderTotal)}</p>
           </div>
@@ -325,7 +314,7 @@ export default function FurnitureOrderPage() {
             ].map(pm => (
               <button key={pm.value} type="button" onClick={() => setPaymentMethod(pm.value)}
                 className={`py-3 text-lg font-bold rounded-xl border-2 transition-all ${
-                  paymentMethod === pm.value ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'
+                  paymentMethod === pm.value ? 'bg-furniture-600 text-white border-furniture-600' : 'bg-white text-gray-700 border-gray-300 hover:border-furniture-400'
                 }`}>
                 {t(pm.tKey)}
               </button>
@@ -342,14 +331,14 @@ export default function FurnitureOrderPage() {
             <DatePicker
               value={deliveryDate}
               onChange={(val) => setDeliveryDate(val)}
-              accentColor="purple"
+              accentColor="furniture"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureOrd.deliveryAddress')}</label>
             <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500" />
           </div>
 
           <div>
@@ -381,13 +370,13 @@ export default function FurnitureOrderPage() {
             {t('common.notes')} <span className="text-gray-400 text-sm">({t('common.optional')})</span>
           </label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
+            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 resize-none" />
         </div>
 
         {/* Submit */}
         <button type="submit" disabled={isSubmitting}
           className={`w-full py-5 text-xl font-bold rounded-xl transition-all transform ${
-            isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-lg'
+            isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-furniture-600 hover:bg-furniture-700 active:scale-95 shadow-lg'
           } text-white`}>
           {isSubmitting ? (
             <span className="flex items-center justify-center">

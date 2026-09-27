@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft, Home, User, TrendingDown, TrendingUp, Check,
+  Home, User, TrendingDown, TrendingUp, Check,
   ChevronDown, ChevronUp, Calendar, Banknote, Building2,
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import { formatBsDate } from '../../utils/nepaliDate';
+import { PageHeader } from '../../components/brand';
 
 const fmt = (n) => parseFloat(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
@@ -60,19 +60,7 @@ export default function RentalTenantsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <header className="bg-blue-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/rental')}
-              className="p-2 -ml-2 rounded-full hover:bg-blue-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <User className="w-6 h-6 ml-2" />
-            <h1 className="text-xl font-bold ml-2">{t('rental.tenants')}</h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="rental" icon={User} title={t('rental.tenants')} backTo="/entry/rental" />
 
       {/* Summary bar */}
       {!loading && properties.length > 0 && (
@@ -90,7 +78,7 @@ export default function RentalTenantsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-rental-600" />
         </div>
       ) : properties.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
@@ -117,14 +105,14 @@ export default function RentalTenantsPage() {
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     {/* Avatar */}
-                    <div className="bg-blue-100 rounded-full p-2 flex-shrink-0">
-                      <User className="w-5 h-5 text-blue-600" />
+                    <div className="bg-rental-100 rounded-full p-2 flex-shrink-0">
+                      <User className="w-5 h-5 text-rental-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-800 truncate">{property.tenantName || t('rental.noTenant')}</p>
                       <p className="text-sm text-gray-500 truncate">{property.propertyName}</p>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <span className="text-sm font-semibold text-blue-700">
+                        <span className="text-sm font-semibold text-rental-700">
                           रु {fmt(property.monthlyRent)}/{t('rental.month')}
                         </span>
                         {property.leaseStartDate && (
@@ -168,7 +156,7 @@ export default function RentalTenantsPage() {
                   <div className="border-t border-gray-100">
                     {isLoadingLedger ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rental-600" />
                       </div>
                     ) : ledger?.error ? (
                       <p className="text-center text-red-500 text-sm py-6">{t('rentalProp.failedLoadHistory')}</p>
@@ -214,7 +202,7 @@ export default function RentalTenantsPage() {
                                 <div className="text-right">
                                   <p className="text-sm font-semibold text-gray-800">रु {fmt(p.amountReceived)}</p>
                                   <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium
-                                    ${isPartial ? 'bg-amber-100 text-amber-700' : isOver ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                    ${isPartial ? 'bg-amber-100 text-amber-700' : isOver ? 'bg-rental-100 text-rental-700' : 'bg-green-100 text-green-700'}`}>
                                     {isPartial ? t('rentalProp.partial') : isOver ? t('rentalProp.over') : t('rentalProp.full')}
                                   </span>
                                 </div>

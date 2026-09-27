@@ -20,7 +20,7 @@ describe('ChargerCard', () => {
     renderCard();
     expect(screen.getByText('HD-D180-CC')).toBeInTheDocument();
     expect(screen.getByText('80kW')).toBeInTheDocument();
-    expect(screen.getByText('● Online')).toHaveClass('bg-green-100', 'text-green-700');
+    expect(screen.getByText('● Online')).toHaveClass('bg-ev-100', 'text-ev-700');
   });
 
   it('calls onSelect with the charger id when a ready card is tapped', async () => {
@@ -33,7 +33,7 @@ describe('ChargerCard', () => {
     const { container } = renderCard({ selected: true });
     const card = screen.getByRole('radio');
     expect(card).toHaveAttribute('aria-checked', 'true');
-    expect(card).toHaveClass('border-green-500', 'bg-green-50');
+    expect(card).toHaveClass('border-ev-500', 'bg-ev-50');
     expect(container.querySelector('svg.lucide-check')).not.toBeNull();
   });
 

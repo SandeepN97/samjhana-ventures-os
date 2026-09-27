@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Sofa, Check } from 'lucide-react';
+import { Sofa, Check } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function FurnitureEntryPage() {
   const navigate = useNavigate();
@@ -103,23 +103,7 @@ export default function FurnitureEntryPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-amber-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-amber-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Sofa className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('furniture.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="furniture" icon={Sofa} title={t('furniture.title')} />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
@@ -132,7 +116,7 @@ export default function FurnitureEntryPage() {
             type="date"
             value={values.transactionDate}
             onChange={(e) => handleChange('transactionDate', e.target.value)}
-            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.transactionDate ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 ${errors.transactionDate ? 'border-red-500' : 'border-gray-300'}`}
           />
         </div>
 
@@ -152,8 +136,8 @@ export default function FurnitureEntryPage() {
                 onClick={() => handleChange('transactionType', type.value)}
                 className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                   values.transactionType === type.value
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'
+                    ? 'bg-furniture-600 text-white border-furniture-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-furniture-400'
                 }`}
               >
                 <span>{type.icon}</span>
@@ -173,7 +157,7 @@ export default function FurnitureEntryPage() {
             value={values.itemName}
             onChange={(e) => handleChange('itemName', e.target.value)}
             placeholder={t('furnitureInv.itemNamePlaceholder')}
-            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.itemName ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 ${errors.itemName ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.itemName && <p className="text-red-500 text-sm mt-1">{errors.itemName}</p>}
         </div>
@@ -189,7 +173,7 @@ export default function FurnitureEntryPage() {
             inputMode="numeric"
             value={values.quantity}
             onChange={(e) => handleChange('quantity', e.target.value)}
-            className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.quantity ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 ${errors.quantity ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.quantity && <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>}
         </div>
@@ -209,14 +193,14 @@ export default function FurnitureEntryPage() {
               value={values.unitPrice}
               onChange={(e) => handleChange('unitPrice', e.target.value)}
               placeholder="0.00"
-              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 ${errors.unitPrice ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 ${errors.unitPrice ? 'border-red-500' : 'border-gray-300'}`}
             />
           </div>
           {errors.unitPrice && <p className="text-red-500 text-sm mt-1">{errors.unitPrice}</p>}
         </div>
 
         {/* Calculated Amount */}
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl p-4 text-white">
+        <div className="bg-gradient-to-r from-furniture-500 to-furniture-600 rounded-xl p-4 text-white">
           <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
           <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
         </div>
@@ -231,7 +215,7 @@ export default function FurnitureEntryPage() {
             value={values.customerName}
             onChange={(e) => handleChange('customerName', e.target.value)}
             placeholder={t('common.name')}
-            className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500"
           />
         </div>
 
@@ -245,7 +229,7 @@ export default function FurnitureEntryPage() {
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
             placeholder={t('common.additionalNotes')}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-furniture-500 resize-none"
           />
         </div>
 
@@ -256,7 +240,7 @@ export default function FurnitureEntryPage() {
           className={`w-full py-5 text-xl font-bold rounded-xl transition-all transform ${
             isLoading
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-lg'
+              : 'bg-furniture-600 hover:bg-furniture-700 active:scale-95 shadow-lg'
           } text-white`}
         >
           {isLoading ? (

@@ -71,7 +71,7 @@ export default function RateBanner({ canEdit = true, showToast, onOpenBills }) {
     <div className="mx-4 mt-4 space-y-2 rounded-xl bg-white p-4 shadow-md">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-green-600">⚡ {label}</p>
+          <p className="text-sm font-semibold text-ev-600">⚡ {label}</p>
           {editing ? (
             <div className="mt-1 flex items-center gap-2">
               <div className="relative">
@@ -86,7 +86,7 @@ export default function RateBanner({ canEdit = true, showToast, onOpenBills }) {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }}
-                  className="w-32 rounded-lg border-2 border-green-400 py-2 pl-10 pr-3 text-xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-32 rounded-lg border-2 border-ev-400 py-2 pl-10 pr-3 text-xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
                 />
               </div>
               <button
@@ -94,7 +94,7 @@ export default function RateBanner({ canEdit = true, showToast, onOpenBills }) {
                 aria-label={t('evLive.saveRate')}
                 disabled={saving}
                 onClick={commit}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-500 text-white disabled:opacity-50"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-ev-500 text-white disabled:opacity-50"
               >
                 <Check className="h-5 w-5" />
               </button>
@@ -110,7 +110,7 @@ export default function RateBanner({ canEdit = true, showToast, onOpenBills }) {
           <button
             type="button"
             onClick={startEditing}
-            className="flex min-h-[44px] items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50"
+            className="flex min-h-[44px] items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-ev-600 hover:bg-ev-50"
           >
             <Pencil className="h-4 w-4" />
             {t('common.update')}
@@ -121,7 +121,7 @@ export default function RateBanner({ canEdit = true, showToast, onOpenBills }) {
         <button
           type="button"
           onClick={onOpenBills}
-          className="min-h-[44px] text-sm font-medium text-green-600 underline-offset-2 hover:underline"
+          className="min-h-[44px] text-sm font-medium text-ev-600 underline-offset-2 hover:underline"
         >
           {t('evLive.neaBills')} →
         </button>

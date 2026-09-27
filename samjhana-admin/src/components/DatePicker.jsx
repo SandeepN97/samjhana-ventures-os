@@ -25,12 +25,12 @@ function formatAdDisplay(dateStr) {
 }
 
 const ACCENT_MAP = {
-  green:  { ring: 'focus-within:ring-green-500',  bg: 'bg-green-600 text-white',  },
-  orange: { ring: 'focus-within:ring-orange-500', bg: 'bg-orange-600 text-white', },
-  blue:   { ring: 'focus-within:ring-blue-500',   bg: 'bg-blue-600 text-white',   },
-  red:    { ring: 'focus-within:ring-red-500',    bg: 'bg-red-600 text-white',    },
-  purple: { ring: 'focus-within:ring-purple-500', bg: 'bg-purple-600 text-white', },
-  indigo: { ring: 'focus-within:ring-indigo-500', bg: 'bg-indigo-600 text-white', },
+  core:      { ring: 'focus-within:ring-core-500',      bg: 'bg-core-700 text-white' },
+  petrol:    { ring: 'focus-within:ring-petrol-500',    bg: 'bg-petrol-600 text-white' },
+  ev:        { ring: 'focus-within:ring-ev-500',        bg: 'bg-ev-600 text-white' },
+  furniture: { ring: 'focus-within:ring-furniture-500', bg: 'bg-furniture-600 text-white' },
+  rental:    { ring: 'focus-within:ring-rental-500',    bg: 'bg-rental-600 text-white' },
+  loans:     { ring: 'focus-within:ring-loans-500',     bg: 'bg-loans-600 text-white' },
 };
 
 function bsViewFromAd(adDate) {
@@ -44,7 +44,7 @@ function bsViewNext({ year, month }) {
   return month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
 }
 
-export default function DatePicker({ value, onChange, error, className = '', accentColor = 'green' }) {
+export default function DatePicker({ value, onChange, error, className = '', accentColor = 'core' }) {
   const { t, i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
   const [open, setOpen] = useState(false);
@@ -57,7 +57,7 @@ export default function DatePicker({ value, onChange, error, className = '', acc
   });
   const [bsView, setBsView] = useState(() => bsViewFromAd(viewDate));
   const ref = useRef(null);
-  const accent = ACCENT_MAP[accentColor] || ACCENT_MAP.green;
+  const accent = ACCENT_MAP[accentColor] || ACCENT_MAP.core;
 
   useEffect(() => {
     function handleClick(e) {

@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Camera, RefreshCw, Settings, Zap } from 'lucide-react';
+import { Camera, RefreshCw, Settings, Zap } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import BottomNav from '../../components/BottomNav';
 import ChargerCard from '../../components/ev/ChargerCard';
 import ChargeTargetCard from '../../components/ev/ChargeTargetCard';
@@ -19,6 +18,7 @@ import useLocaleFormat from '../../hooks/useLocaleFormat';
 import {
   ACTIVE_STATUSES, PAYMENT_STATUSES, OPEN_STATUSES, byRequestedAt, chargerState,
 } from '../../utils/evSession';
+import { PageHeader, HeaderAction } from '../../components/brand';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -242,35 +242,14 @@ export default function EVEntryPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-24">
-      <header className="bg-green-500 px-4 py-4 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              aria-label={t('common.goBack')}
-              className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-green-600"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <Zap className="ml-2 h-8 w-8" />
-            <h1 className="ml-3 text-xl font-bold">{headerTitle}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => navigate('/ev-vehicles')}
-                className="flex min-h-[44px] flex-col items-center gap-0.5 rounded-lg px-2 py-1 transition-colors hover:bg-green-600"
-              >
-                <Settings className="h-5 w-5" />
-                <span className="text-[10px] font-medium leading-none">{t('evLive.vehicles')}</span>
-              </button>
-            )}
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        unit="ev"
+        icon={Zap}
+        title={headerTitle}
+        actions={isAdmin && (
+          <HeaderAction unit="ev" icon={Settings} label={t('evLive.vehicles')} onClick={() => navigate('/ev-vehicles')} />
+        )}
+      />
 
       <div role="tablist" className="flex overflow-x-auto border-b border-gray-200 bg-white">
         {tabs.map(({ key, label, count }) => (
@@ -281,12 +260,12 @@ export default function EVEntryPage() {
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`min-h-[44px] min-w-[92px] flex-1 border-b-2 px-2 py-2.5 text-xs font-bold ${
-              tab === key ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500'
+              tab === key ? 'border-ev-600 text-ev-600' : 'border-transparent text-gray-500'
             }`}
           >
             {label}
             {count > 0 && (
-              <span className="ml-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">{num(count)}</span>
+              <span className="ml-1.5 rounded-full bg-ev-100 px-1.5 py-0.5 text-[10px] text-ev-700">{num(count)}</span>
             )}
           </button>
         ))}
@@ -308,7 +287,7 @@ export default function EVEntryPage() {
               <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{t('evLive.chargersLoadFailed')}</p>
             )}
             {!chargersLoaded && !chargersFailed && (
-              <div className="flex justify-center py-8"><RefreshCw className="h-6 w-6 animate-spin text-green-500" aria-label={t('common.loading')} /></div>
+              <div className="flex justify-center py-8"><RefreshCw className="h-6 w-6 animate-spin text-ev-500" aria-label={t('common.loading')} /></div>
             )}
             {chargersLoaded && !chargersFailed && chargers.length === 0 && (
               <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{t('evLive.noChargersSetup')}</p>
@@ -341,7 +320,7 @@ export default function EVEntryPage() {
               value={form.connectorId}
               onChange={(event) => setField('connectorId', event.target.value)}
               disabled={!form.chargePointId}
-              className="min-h-[44px] w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
+              className="min-h-[44px] w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-ev-500 disabled:bg-gray-100"
             >
               {[1, 2].map((connectorId) => {
                 const occupied = occupiedConnectorIds.has(connectorId);
@@ -368,7 +347,7 @@ export default function EVEntryPage() {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-ev-500"
               />
             </div>
 
@@ -397,9 +376,9 @@ export default function EVEntryPage() {
               />
               <label
                 htmlFor="ev-plate-photo"
-                className="mb-3 flex min-h-[44px] w-full cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-green-300 py-5 text-center text-sm text-gray-500"
+                className="mb-3 flex min-h-[44px] w-full cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-ev-300 py-5 text-center text-sm text-gray-500"
               >
-                <Camera className="mx-auto mb-1 h-6 w-6 text-green-600" aria-hidden="true" />
+                <Camera className="mx-auto mb-1 h-6 w-6 text-ev-600" aria-hidden="true" />
                 {photoName ? t('evLive.platePhotoDone', { name: photoName }) : t('evLive.platePhotoCta')}
               </label>
               <label htmlFor="ev-plate" className="mb-1 block text-sm font-medium text-gray-700">
@@ -413,7 +392,7 @@ export default function EVEntryPage() {
                 placeholder={t('evLive.platePlaceholder')}
                 aria-invalid={errors.plateNumber ? 'true' : 'false'}
                 autoCapitalize="characters"
-                className={`w-full rounded-xl border-2 px-4 py-3 font-mono font-bold uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                className={`w-full rounded-xl border-2 px-4 py-3 font-mono font-bold uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-ev-500 ${
                   errors.plateNumber ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -426,7 +405,7 @@ export default function EVEntryPage() {
               type="button"
               disabled={submitting}
               onClick={startSession}
-              className="w-full rounded-xl bg-green-600 py-5 text-xl font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-60"
+              className="w-full rounded-xl bg-ev-600 py-5 text-xl font-bold text-white shadow-lg hover:bg-ev-700 disabled:opacity-60"
             >
               {submitting ? t('evLive.sending') : t('evLive.startCharging')}
             </button>

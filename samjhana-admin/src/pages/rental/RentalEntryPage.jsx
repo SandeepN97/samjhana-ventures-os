@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Home, Check, Banknote, Building2, Settings, User, TrendingUp, TrendingDown, CheckCircle2, Calendar } from 'lucide-react';
+import { Home, Check, Banknote, Building2, Settings, User, TrendingUp, TrendingDown, CheckCircle2, Calendar } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
 import useBusinessDate from '../../hooks/useBusinessDate';
 import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader, HeaderAction } from '../../components/brand';
 
 export default function RentalEntryPage() {
   const navigate = useNavigate();
@@ -121,36 +121,19 @@ export default function RentalEntryPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-blue-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-blue-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Home className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{t('rental.title')}</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/rental-tenants')}
-              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <User className="w-5 h-5" />
-              <span className="text-[10px] font-medium leading-none">{t('rental.tenants')}</span>
-            </button>
+      <PageHeader
+        unit="rental"
+        icon={Home}
+        title={t('rental.title')}
+        actions={(
+          <>
+            <HeaderAction unit="rental" icon={User} label={t('rental.tenants')} onClick={() => navigate('/rental-tenants')} />
             {isAdmin && (
-              <button
-                onClick={() => navigate('/rental-properties')}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-none">{t('rental.manage')}</span>
-              </button>
+              <HeaderAction unit="rental" icon={Settings} label={t('rental.manage')} onClick={() => navigate('/rental-properties')} />
             )}
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
+          </>
+        )}
+      />
 
       {properties.length === 0 && (
         <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
@@ -164,7 +147,7 @@ export default function RentalEntryPage() {
           <label className="block text-lg font-medium text-gray-700 mb-2">
             {t('common.date')} <span className="text-red-500">*</span>
           </label>
-          <DatePicker value={values.transactionDate} onChange={(val) => handleChange('transactionDate', val)} error={errors.transactionDate} accentColor="blue" />
+          <DatePicker value={values.transactionDate} onChange={(val) => handleChange('transactionDate', val)} error={errors.transactionDate} accentColor="rental" />
         </div>
 
         {/* Property Select */}
@@ -182,27 +165,27 @@ export default function RentalEntryPage() {
             }))}
             placeholder={t('rental.selectPropertyPlaceholder')}
             error={errors.propertyId}
-            accentColor="blue"
+            accentColor="rental"
           />
           {errors.propertyId && <p className="text-red-500 text-sm mt-1">{errors.propertyId}</p>}
         </div>
 
         {/* Selected Property Info Card */}
         {selectedProperty && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+          <div className="bg-rental-50 border border-rental-200 rounded-xl p-4 space-y-2">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-500 p-2 rounded-lg">
+              <div className="bg-rental-500 p-2 rounded-lg">
                 <Home className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="font-bold text-blue-800">{selectedProperty.propertyName}</p>
+                <p className="font-bold text-rental-800">{selectedProperty.propertyName}</p>
                 {selectedProperty.tenantName && (
-                  <p className="text-sm text-blue-600 flex items-center gap-1">
+                  <p className="text-sm text-rental-600 flex items-center gap-1">
                     <User className="w-3 h-3" /> {selectedProperty.tenantName}
                   </p>
                 )}
                 {selectedProperty.leaseStartDate && (
-                  <p className="text-xs text-blue-500 flex items-center gap-1 mt-0.5">
+                  <p className="text-xs text-rental-500 flex items-center gap-1 mt-0.5">
                     <Calendar className="w-3 h-3" />
                     {isNepali
                       ? formatBsDate(selectedProperty.leaseStartDate, true)
@@ -211,9 +194,9 @@ export default function RentalEntryPage() {
                 )}
               </div>
             </div>
-            <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
-              <span className="text-sm text-blue-600">{t('rental.agreedRent')}</span>
-              <span className="text-xl font-black text-blue-800">रु {monthlyRent.toLocaleString('en-IN')}</span>
+            <div className="border-t border-rental-200 pt-2 flex justify-between items-center">
+              <span className="text-sm text-rental-600">{t('rental.agreedRent')}</span>
+              <span className="text-xl font-black text-rental-800">रु {monthlyRent.toLocaleString('en-IN')}</span>
             </div>
             {ledger && parseFloat(ledger.outstandingBalance) < -0.99 && (
               <div className="border-t border-red-200 pt-2 flex justify-between items-center bg-red-50 -mx-4 px-4 pb-1 rounded-b-xl mt-1">
@@ -246,7 +229,7 @@ export default function RentalEntryPage() {
             value={values.rentalMonth}
             onChange={(val) => handleChange('rentalMonth', val)}
             error={errors.rentalMonth}
-            accentColor="blue"
+            accentColor="rental"
           />
           {errors.rentalMonth && <p className="text-red-500 text-sm mt-1">{errors.rentalMonth}</p>}
         </div>
@@ -266,7 +249,7 @@ export default function RentalEntryPage() {
               value={values.amountReceived}
               onChange={(e) => handleChange('amountReceived', e.target.value)}
               placeholder="0.00"
-              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amountReceived ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-rental-500 ${errors.amountReceived ? 'border-red-500' : 'border-gray-300'}`}
             />
           </div>
           {errors.amountReceived && <p className="text-red-500 text-sm mt-1">{errors.amountReceived}</p>}
@@ -274,9 +257,9 @@ export default function RentalEntryPage() {
 
         {/* Payment Status Card */}
         {hasComparison && (
-          <div className={`rounded-xl overflow-hidden border ${isFullPayment ? 'border-green-200' : isPartial ? 'border-amber-200' : 'border-blue-200'}`}>
+          <div className={`rounded-xl overflow-hidden border ${isFullPayment ? 'border-green-200' : isPartial ? 'border-amber-200' : 'border-rental-200'}`}>
             {/* Total received */}
-            <div className={`p-4 text-white flex justify-between items-center ${isFullPayment ? 'bg-gradient-to-r from-green-500 to-green-600' : isPartial ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`}>
+            <div className={`p-4 text-white flex justify-between items-center ${isFullPayment ? 'bg-gradient-to-r from-green-500 to-green-600' : isPartial ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-rental-500 to-rental-600'}`}>
               <div>
                 <p className="text-sm opacity-80">{t('rental.amountReceived')}</p>
                 <p className="text-3xl font-bold">रु {received.toLocaleString('en-IN')}</p>
@@ -288,21 +271,21 @@ export default function RentalEntryPage() {
                   : <TrendingUp className="w-10 h-10 opacity-70" />}
             </div>
             {/* Balance row */}
-            <div className={`px-4 py-3 flex justify-between items-center ${isFullPayment ? 'bg-green-50' : isPartial ? 'bg-amber-50' : 'bg-blue-50'}`}>
+            <div className={`px-4 py-3 flex justify-between items-center ${isFullPayment ? 'bg-green-50' : isPartial ? 'bg-amber-50' : 'bg-rental-50'}`}>
               <div>
-                <p className={`font-bold text-sm ${isFullPayment ? 'text-green-700' : isPartial ? 'text-amber-700' : 'text-blue-700'}`}>
+                <p className={`font-bold text-sm ${isFullPayment ? 'text-green-700' : isPartial ? 'text-amber-700' : 'text-rental-700'}`}>
                   {isFullPayment
                     ? t('rental.fullPayment')
                     : isPartial
                       ? t('rental.partialPayment')
                       : t('rental.overpaid')}
                 </p>
-                <p className={`text-xs ${isFullPayment ? 'text-green-500' : isPartial ? 'text-amber-500' : 'text-blue-400'}`}>
+                <p className={`text-xs ${isFullPayment ? 'text-green-500' : isPartial ? 'text-amber-500' : 'text-rental-400'}`}>
                   {t('rental.agreedRentShort')}: रु {monthlyRent.toLocaleString('en-IN')}
                 </p>
               </div>
               {!isFullPayment && (
-                <p className={`text-xl font-bold ${isPartial ? 'text-amber-600' : 'text-blue-600'}`}>
+                <p className={`text-xl font-bold ${isPartial ? 'text-amber-600' : 'text-rental-600'}`}>
                   {isPartial ? '−' : '+'} रु {Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                 </p>
               )}
@@ -322,7 +305,7 @@ export default function RentalEntryPage() {
               {t('common.cash')}
             </button>
             <button type="button" onClick={() => handleChange('paymentMethod', 'BANK')}
-              className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${values.paymentMethod === 'BANK' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'}`}>
+              className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${values.paymentMethod === 'BANK' ? 'bg-rental-500 text-white border-rental-500' : 'bg-white text-gray-700 border-gray-300 hover:border-rental-400'}`}>
               <Building2 className="w-5 h-5" />
               {t('common.bank')}
             </button>
@@ -336,7 +319,7 @@ export default function RentalEntryPage() {
           </label>
           <textarea value={values.notes} onChange={(e) => handleChange('notes', e.target.value)} rows={2}
             placeholder={t('common.additionalNotes')}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rental-500 resize-none" />
         </div>
 
         {/* Submit */}

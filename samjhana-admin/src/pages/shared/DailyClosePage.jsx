@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft,
   Fuel,
   Zap,
   Package,
@@ -22,25 +21,25 @@ import {
   Droplet,
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { formatBsDate } from '../../utils/nepaliDate';
+import { PageHeader } from '../../components/brand';
 
 const BUSINESS_ICONS = {
-  petrol: { icon: Fuel, color: 'bg-orange-500' },
-  ev: { icon: Zap, color: 'bg-green-500' },
-  furniture: { icon: Sofa, color: 'bg-purple-500' },
-  rental: { icon: Home, color: 'bg-blue-500' },
-  loan: { icon: Banknote, color: 'bg-red-500' },
+  petrol: { icon: Fuel, color: 'bg-petrol-500' },
+  ev: { icon: Zap, color: 'bg-ev-500' },
+  furniture: { icon: Sofa, color: 'bg-furniture-500' },
+  rental: { icon: Home, color: 'bg-rental-500' },
+  loan: { icon: Banknote, color: 'bg-loans-500' },
 };
 
 const BUSINESS_CONFIG = {
-  petrol:    { icon: Fuel,     color: 'bg-orange-500', label: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
-  ev:        { icon: Zap,      color: 'bg-green-500',  label: 'EV',          labelNe: 'EV' },
-  furniture: { icon: Sofa,     color: 'bg-purple-500', label: 'Furniture',   labelNe: 'फर्निचर' },
-  rental:    { icon: Home,     color: 'bg-blue-500',   label: 'Rental',      labelNe: 'भाडा' },
-  loan:      { icon: Banknote, color: 'bg-red-500',    label: 'Loan',        labelNe: 'ऋण' },
+  petrol:    { icon: Fuel,     color: 'bg-petrol-500', label: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
+  ev:        { icon: Zap,      color: 'bg-ev-500',  label: 'EV',          labelNe: 'EV' },
+  furniture: { icon: Sofa,     color: 'bg-furniture-500', label: 'Furniture',   labelNe: 'फर्निचर' },
+  rental:    { icon: Home,     color: 'bg-rental-500',   label: 'Rental',      labelNe: 'भाडा' },
+  loan:      { icon: Banknote, color: 'bg-loans-500',    label: 'Loan',        labelNe: 'ऋण' },
 };
 
 const fmt = (n) => `रु ${Math.abs(Number(n)).toLocaleString('en-IN')}`;
@@ -335,7 +334,7 @@ export default function DailyClosePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-core-600"></div>
       </div>
     );
   }
@@ -598,21 +597,13 @@ export default function DailyClosePage() {
   if (isClosed && report) {
     return (
       <div className="min-h-screen bg-gray-100 pb-20">
-        <header className="bg-green-600 text-white px-4 py-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-green-700 transition-colors">
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              <div className="ml-3">
-                <h1 className="text-xl font-bold">{t('dailyClose.dayClosed')}</h1>
-                <p className="text-green-100 text-sm">{formatDateLabel(businessDate)}, {businessDate}</p>
-              </div>
-            </div>
-            <LanguageToggle />
-          </div>
+        <PageHeader
+          unit="core"
+          title={t('dailyClose.dayClosed')}
+          subtitle={`${formatDateLabel(businessDate)}, ${businessDate}`}
+        >
           {renderTabBar(t('dailyClose.summary'))}
-        </header>
+        </PageHeader>
 
         {activeTab === 'report' ? renderReportTab() : (
           <div className="p-4 space-y-4">
@@ -674,21 +665,13 @@ export default function DailyClosePage() {
   // =========================================================================
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <header className="bg-indigo-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-indigo-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div className="ml-3">
-              <h1 className="text-xl font-bold">{t('dailyClose.closeDay')}</h1>
-              <p className="text-indigo-200 text-sm">{formatDateLabel(businessDate)}, {businessDate}</p>
-            </div>
-          </div>
-          <LanguageToggle />
-        </div>
+      <PageHeader
+        unit="core"
+        title={t('dailyClose.closeDay')}
+        subtitle={`${formatDateLabel(businessDate)}, ${businessDate}`}
+      >
         {renderTabBar(t('dailyClose.closeDay'))}
-      </header>
+      </PageHeader>
 
       {activeTab === 'report' ? renderReportTab() : (
         <div className="p-4 space-y-4">
@@ -697,7 +680,7 @@ export default function DailyClosePage() {
             <SalesBreakdown report={summary} formatAmount={formatAmount} formatLiters={formatLiters} formatUnits={formatUnits} />
           )}
 
-          <div className="bg-indigo-600 text-white rounded-xl p-4 shadow-sm">
+          <div className="bg-core-600 text-white rounded-xl p-4 shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <div>
                 <p className="text-sm opacity-80">{t('dailyClose.totalSales')}</p>
@@ -708,7 +691,7 @@ export default function DailyClosePage() {
                 <p className="text-2xl font-bold">{summary?.transactionCount || 0}</p>
               </div>
             </div>
-            <div className="border-t border-indigo-400 pt-3 flex gap-4">
+            <div className="border-t border-core-400 pt-3 flex gap-4">
               <div className="flex items-center gap-2 flex-1">
                 <Banknote className="w-5 h-5 opacity-80" />
                 <div>
@@ -729,7 +712,7 @@ export default function DailyClosePage() {
               const diff = systemTotal - lastTotal;
               const pct = lastTotal > 0 ? ((diff / lastTotal) * 100).toFixed(1) : null;
               return (
-                <div className="border-t border-indigo-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-80">
+                <div className="border-t border-core-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-80">
                   <span>{t('dailyClose.lastClose')} · {formatBsDate(lastReport.reportDate, isNepali)}</span>
                   <span className="flex items-center gap-1 font-bold">
                     {formatAmount(lastTotal)}
@@ -751,7 +734,7 @@ export default function DailyClosePage() {
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
               >
                 <span className="flex items-center gap-2 font-bold text-gray-700">
-                  <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+                  <CheckCircle2 className="w-5 h-5 text-core-500" />
                   {t('reports.reviewTransactions')}
                   <span className="text-sm font-normal text-gray-400">({transactions.length})</span>
                 </span>
@@ -779,7 +762,7 @@ export default function DailyClosePage() {
               </label>
               {cashSalesTotal > 0 && (
                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg font-medium">
-                  {t('common.cash')}: <span className="text-indigo-700 font-bold">{formatAmount(cashSalesTotal)}</span>
+                  {t('common.cash')}: <span className="text-core-700 font-bold">{formatAmount(cashSalesTotal)}</span>
                 </span>
               )}
             </div>
@@ -791,7 +774,7 @@ export default function DailyClosePage() {
                 value={cashCounted}
                 onChange={(e) => setCashCounted(e.target.value)}
                 placeholder={t('dailyClose.enterCashAmount')}
-                className="w-full pl-12 pr-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-colors"
+                className="w-full pl-12 pr-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-200 outline-none transition-colors"
               />
             </div>
           </div>
@@ -846,7 +829,7 @@ export default function DailyClosePage() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={t('dailyClose.writeReason')}
                 rows={3}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-colors text-lg"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-200 outline-none transition-colors text-lg"
               />
             </div>
           )}
@@ -906,10 +889,10 @@ export default function DailyClosePage() {
 function SalesBreakdown({ report, formatAmount, formatLiters, formatUnits }) {
   const { t } = useTranslation();
   const items = [
-    { icon: Fuel, color: 'bg-orange-500', label: t('dailyClose.petrolShort'), amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
+    { icon: Fuel, color: 'bg-petrol-500', label: t('dailyClose.petrolShort'), amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
     { icon: Fuel, color: 'bg-gray-700', label: t('dailyClose.dieselShort'), amount: report.dieselSales, detail: formatLiters(report.dieselLiters) },
-    { icon: Zap, color: 'bg-green-500', label: t('dailyClose.evShort'), amount: report.evSales, detail: formatUnits(report.evUnits) },
-    { icon: Home, color: 'bg-blue-500', label: t('dailyClose.rent'), amount: report.rentalSales, detail: null },
+    { icon: Zap, color: 'bg-ev-500', label: t('dailyClose.evShort'), amount: report.evSales, detail: formatUnits(report.evUnits) },
+    { icon: Home, color: 'bg-rental-500', label: t('dailyClose.rent'), amount: report.rentalSales, detail: null },
     { icon: Package, color: 'bg-purple-500', label: t('dailyClose.other'), amount: report.otherSales, detail: null },
   ];
 
@@ -1053,7 +1036,7 @@ function TransactionList({ transactions, isAdmin, formatAmount, parseCustomField
                 {isAdmin && (
                   <button
                     onClick={() => onEdit(txn)}
-                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    className="p-2 text-gray-400 hover:text-core-600 hover:bg-core-50 rounded-lg transition-colors"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -1088,13 +1071,13 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.amountLabel')}</label>
             <input type="number" inputMode="decimal" value={editForm.amount} onChange={(e) => updateField('amount', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.typeLabel')}</label>
             <select value={editForm.transactionType} onChange={(e) => updateField('transactionType', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
               <option value="SALE">Sale</option>
               <option value="PURCHASE">Purchase</option>
               <option value="EXPENSE">Expense</option>
@@ -1109,7 +1092,7 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.fuelType')}</label>
                 <select value={editForm.fuelType || 'petrol'} onChange={(e) => updateField('fuelType', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
                   <option value="petrol">Petrol</option>
                   <option value="diesel">Diesel</option>
                 </select>
@@ -1118,18 +1101,18 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.litersLabel')}</label>
                   <input type="number" inputMode="decimal" value={editForm.liters || ''} onChange={(e) => updateField('liters', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.rateLabel')}</label>
                   <input type="number" inputMode="decimal" value={editForm.ratePerLiter || ''} onChange={(e) => updateField('ratePerLiter', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.paymentLabel')}</label>
                 <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
                   <option value="CASH">{t('common.cash')}</option>
                   <option value="BANK">{t('common.bank')}</option>
                 </select>
@@ -1148,23 +1131,23 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.startPercent')}</label>
                   <input type="number" value={editForm.startPercent ?? ''} onChange={(e) => updateField('startPercent', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.endPercent')}</label>
                   <input type="number" value={editForm.endPercent ?? ''} onChange={(e) => updateField('endPercent', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.ratePercent')}</label>
                 <input type="number" value={editForm.ratePerPercent ?? ''} onChange={(e) => updateField('ratePerPercent', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.paymentLabel')}</label>
                 <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none">
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
                   <option value="CASH">{t('common.cash')}</option>
                   <option value="BANK">{t('common.bank')}</option>
                 </select>
@@ -1175,13 +1158,13 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.notesLabel')}</label>
             <textarea value={editForm.notes || ''} onChange={(e) => updateField('notes', e.target.value)} rows={2}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none resize-none" />
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none resize-none" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.refNo')}</label>
             <input type="text" value={editForm.referenceNumber || ''} onChange={(e) => updateField('referenceNumber', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none" />
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
           </div>
         </div>
 
@@ -1195,8 +1178,8 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
             {t('dailyClose.cancelLabel')}
           </button>
           <button onClick={onSave} disabled={saving}
-            className="flex-1 py-4 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
-            {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div> : t('dailyClose.saveLabel')}
+            className="flex-1 py-4 text-core-600 font-bold hover:bg-core-50 transition-colors flex items-center justify-center gap-2">
+            {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-core-600"></div> : t('dailyClose.saveLabel')}
           </button>
         </div>
       </div>
@@ -1238,14 +1221,14 @@ function VerificationSection({ report, isAdmin, verifyNotes, setVerifyNotes, ver
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
       <h3 className="font-bold text-gray-800 flex items-center gap-2">
-        <ShieldCheck className="w-5 h-5 text-indigo-600" />
+        <ShieldCheck className="w-5 h-5 text-core-600" />
         {t('dailyClose.verifyReport')}
       </h3>
       <textarea value={verifyNotes} onChange={(e) => setVerifyNotes(e.target.value)}
         placeholder={t('dailyClose.notesOptional')} rows={2}
-        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 outline-none resize-none" />
+        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none resize-none" />
       <button onClick={onVerify} disabled={verifying}
-        className={`w-full py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+        className={`w-full py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-core-600 hover:bg-core-700'}`}>
         {verifying ? t('dailyClose.verifying') : t('dailyClose.verifyReport')}
       </button>
     </div>

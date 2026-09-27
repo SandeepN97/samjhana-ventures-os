@@ -103,7 +103,7 @@ describe('EVEntryPage', () => {
     it('renders the green header with the back arrow, bolt and title', async () => {
       await renderPage();
       const header = screen.getByRole('banner');
-      expect(header).toHaveClass('bg-green-500', 'text-white');
+      expect(header).toHaveClass('bg-ev-600', 'text-white');
       expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent('EV Charging');
       await userEvent.click(within(header).getByRole('button', { name: 'Go Back' }));
       expect(mockNavigate).toHaveBeenCalledWith('/');
@@ -137,7 +137,7 @@ describe('EVEntryPage', () => {
       await renderPage();
       expect(screen.getAllByRole('tab').map((t) => t.textContent.replace(/\d+$/, ''))).toEqual(['Start Session', 'Active', 'Payment']);
       expect(tab('Start Session')).toHaveAttribute('aria-selected', 'true');
-      expect(tab('Start Session')).toHaveClass('border-green-600', 'text-green-600');
+      expect(tab('Start Session')).toHaveClass('border-ev-600', 'text-ev-600');
       expect(tab('Active')).toHaveAttribute('aria-selected', 'false');
     });
 
@@ -163,7 +163,7 @@ describe('EVEntryPage', () => {
       await renderPage();
       const nav = screen.getByRole('navigation');
       ['Home', 'Records', 'Analytics', 'Settings'].forEach((label) => expect(within(nav).getByText(label)).toBeInTheDocument());
-      expect(within(nav).getByRole('button', { name: 'Home' })).toHaveClass('text-blue-600');
+      expect(within(nav).getByRole('button', { name: 'Home' })).toHaveClass('text-core-800');
       expect(within(nav).getByRole('button', { name: 'Records' })).toHaveClass('text-gray-400');
       await userEvent.click(within(nav).getByRole('button', { name: 'Records' }));
       expect(mockNavigate).toHaveBeenCalledWith('/records');
@@ -172,7 +172,7 @@ describe('EVEntryPage', () => {
     it('makes the tabs and the start button comfortable touch targets', async () => {
       await renderPage();
       screen.getAllByRole('tab').forEach((t) => expect(t).toHaveClass('min-h-[44px]'));
-      expect(screen.getByRole('button', { name: 'Start Charging →' })).toHaveClass('py-5', 'text-xl', 'bg-green-600');
+      expect(screen.getByRole('button', { name: 'Start Charging →' })).toHaveClass('py-5', 'text-xl', 'bg-ev-600');
     });
   });
 

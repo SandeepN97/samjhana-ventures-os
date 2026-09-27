@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Home, Plus, Edit2, Trash2, X, Check, User, ShieldOff, Calendar, BookOpen, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Home, Plus, Edit2, Trash2, X, Check, User, ShieldOff, Calendar, BookOpen, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import { formatBsDate } from '../../utils/nepaliDate';
+import { PageHeader } from '../../components/brand';
 
 export default function RentalPropertyPage() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function RentalPropertyPage() {
           <h1 className="text-xl font-bold text-gray-800 mb-2">
             {t('common.accessDenied')}
           </h1>
-          <button onClick={() => navigate('/')} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">
+          <button onClick={() => navigate('/')} className="bg-rental-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-rental-700">
             {t('common.goBack')}
           </button>
         </div>
@@ -146,25 +146,12 @@ export default function RentalPropertyPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <header className="bg-blue-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/rental')} className="p-2 -ml-2 rounded-full hover:bg-blue-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Home className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('rentalProp.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="rental" icon={Home} title={t('rentalProp.title')} backTo="/entry/rental" />
 
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700"
+          className="flex items-center gap-2 bg-rental-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-rental-700"
         >
           <Plus className="w-5 h-5" />
           {t('rentalProp.addProperty')}
@@ -201,7 +188,7 @@ export default function RentalPropertyPage() {
                 </label>
                 <input type="text" value={formData.propertyName}
                   onChange={(e) => setFormData({ ...formData, propertyName: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-rental-500"
                   placeholder={t('rentalProp.propertyNamePlaceholder')} />
               </div>
 
@@ -211,7 +198,7 @@ export default function RentalPropertyPage() {
                 </label>
                 <input type="text" value={formData.tenantName}
                   onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-rental-500"
                   placeholder={t('rentalProp.tenantNamePlaceholder')} />
               </div>
 
@@ -223,7 +210,7 @@ export default function RentalPropertyPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">रु</span>
                   <input type="number" step="0.01" value={formData.monthlyRent}
                     onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-rental-500"
                     placeholder="15000" />
                 </div>
               </div>
@@ -235,7 +222,7 @@ export default function RentalPropertyPage() {
                 <DatePicker
                   value={formData.leaseStartDate}
                   onChange={(v) => setFormData({ ...formData, leaseStartDate: v })}
-                  accentColor="blue"
+                  accentColor="rental"
                 />
               </div>
 
@@ -245,12 +232,12 @@ export default function RentalPropertyPage() {
                 </label>
                 <input type="text" value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-rental-500"
                   placeholder={t('common.additionalNotes')} />
               </div>
 
               <button type="submit" disabled={submitting}
-                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-rental-600 hover:bg-rental-700'}`}>
                 {submitting
                   ? t('common.savingEllipsis')
                   : editing
@@ -265,7 +252,7 @@ export default function RentalPropertyPage() {
       {/* Property List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-rental-600"></div>
         </div>
       ) : properties.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
@@ -289,11 +276,11 @@ export default function RentalPropertyPage() {
                   <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                     {property.tenantName && (
                       <div className="flex items-center gap-1">
-                        <User className="w-4 h-4 text-blue-500" />
+                        <User className="w-4 h-4 text-rental-500" />
                         {property.tenantName}
                       </div>
                     )}
-                    <div className="flex items-center gap-1 font-bold text-blue-700">
+                    <div className="flex items-center gap-1 font-bold text-rental-700">
                       <Home className="w-4 h-4" />
                       रु {parseFloat(property.monthlyRent).toLocaleString('en-IN')}/month
                     </div>
@@ -308,13 +295,13 @@ export default function RentalPropertyPage() {
                 </div>
                 <div className="flex gap-1 ml-2">
                   <button onClick={() => openLedger(property)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title={t('rentalProp.paymentHistory')}>
+                    className="p-2 text-rental-600 hover:bg-rental-50 rounded-lg" title={t('rentalProp.paymentHistory')}>
                     <BookOpen className="w-5 h-5" />
                   </button>
                   {property.isActive && (
                     <>
                       <button onClick={() => openEdit(property)} disabled={deletingId === property.id}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-40">
+                        className="p-2 text-rental-600 hover:bg-rental-50 rounded-lg disabled:opacity-40">
                         <Edit2 className="w-5 h-5" />
                       </button>
                       <button onClick={() => handleDelete(property)} disabled={deletingId === property.id}
@@ -352,7 +339,7 @@ export default function RentalPropertyPage() {
 
             {ledgerLoading ? (
               <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rental-600" />
               </div>
             ) : ledgerModal.data?.error ? (
               <div className="p-6 text-center text-red-500">
@@ -412,7 +399,7 @@ export default function RentalPropertyPage() {
                             <div className="text-right">
                               <p className="font-bold text-gray-800">रु {parseFloat(p.amountReceived).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
                               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium
-                                ${isPartial ? 'bg-amber-100 text-amber-700' : isOver ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                ${isPartial ? 'bg-amber-100 text-amber-700' : isOver ? 'bg-rental-100 text-rental-700' : 'bg-green-100 text-green-700'}`}>
                                 {isPartial ? t('rentalProp.partial') : isOver ? t('rentalProp.over') : t('rentalProp.full')}
                               </span>
                             </div>
@@ -420,7 +407,7 @@ export default function RentalPropertyPage() {
                           {/* Balance row */}
                           <div className="flex justify-between items-center text-xs text-gray-500 border-t border-gray-50 pt-1 mt-1">
                             <span>{t('rentalProp.agreed')}: रु {parseFloat(p.monthlyRent).toLocaleString('en-IN')}</span>
-                            <span className={`font-medium ${isPartial ? 'text-red-500' : isOver ? 'text-blue-500' : 'text-gray-400'}`}>
+                            <span className={`font-medium ${isPartial ? 'text-red-500' : isOver ? 'text-rental-500' : 'text-gray-400'}`}>
                               {isPartial ? `−रु ${Math.abs(bal).toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${t('rentalProp.short')}` : isOver ? `+रु ${bal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '✓'}
                             </span>
                             <span className={`font-medium ${runBal < -0.99 ? 'text-red-500' : runBal > 0.99 ? 'text-green-600' : 'text-gray-400'}`}>

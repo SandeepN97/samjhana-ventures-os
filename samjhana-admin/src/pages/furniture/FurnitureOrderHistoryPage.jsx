@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ClipboardList, Search, X, Truck, Check } from 'lucide-react';
+import { ClipboardList, Search, X, Truck, Check } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
+import { PageHeader } from '../../components/brand';
 
 const STATUS_TABS = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -92,18 +92,7 @@ export default function FurnitureOrderHistoryPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-amber-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/furniture')} className="p-2 -ml-2 rounded-full hover:bg-amber-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <ClipboardList className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{t('furnitureOrd.historyTitle')}</h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="furniture" icon={ClipboardList} title={t('furnitureOrd.historyTitle')} backTo="/entry/furniture" />
 
       {/* Status Filter Tabs */}
       <div className="px-4 py-2 bg-white border-b overflow-x-auto">
@@ -111,7 +100,7 @@ export default function FurnitureOrderHistoryPage() {
           {STATUS_TABS.map(tab => (
             <button key={tab.value} onClick={() => setSelectedTab(tab.value)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedTab === tab.value ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                selectedTab === tab.value ? 'bg-furniture-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
               {t(tab.tKey)}
             </button>
@@ -125,7 +114,7 @@ export default function FurnitureOrderHistoryPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('furnitureOrd.searchByCustomer')}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-amber-500" />
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-furniture-500" />
         </div>
       </div>
 
@@ -172,9 +161,9 @@ export default function FurnitureOrderHistoryPage() {
               )}
 
               {/* Total */}
-              <div className="bg-purple-50 rounded-lg p-3 flex justify-between items-center">
-                <p className="font-bold text-purple-800">{t('furnitureOrd.total')}</p>
-                <p className="text-xl font-bold text-purple-800">{formatCurrency(selectedOrder.amount)}</p>
+              <div className="bg-furniture-50 rounded-lg p-3 flex justify-between items-center">
+                <p className="font-bold text-furniture-800">{t('furnitureOrd.total')}</p>
+                <p className="text-xl font-bold text-furniture-800">{formatCurrency(selectedOrder.amount)}</p>
               </div>
 
               {/* Payment & Delivery */}
@@ -238,14 +227,14 @@ export default function FurnitureOrderHistoryPage() {
       {/* Order List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-furniture-600"></div>
         </div>
       ) : filteredOrders.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <ClipboardList className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">{t('furnitureOrd.noOrdersFound')}</p>
           <button onClick={() => navigate('/furniture/orders/new')}
-            className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700">
+            className="mt-4 bg-furniture-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-furniture-700">
             {t('furnitureOrd.createFirstOrder')}
           </button>
         </div>
