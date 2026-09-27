@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Sofa, Package, TrendingUp, AlertTriangle, Truck, ShoppingCart, Users, ClipboardList, Clock } from 'lucide-react';
+import { Sofa, Package, TrendingUp, AlertTriangle, Truck, ShoppingCart, Users, ClipboardList, Clock } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
+import { PageHeader } from '../../components/brand';
 
 export default function FurnitureDashboardPage() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function FurnitureDashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-furniture-600"></div>
       </div>
     );
   }
@@ -45,35 +45,19 @@ export default function FurnitureDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-purple-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-purple-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Sofa className="w-8 h-8 ml-2" />
-            <div className="ml-3">
-              <h1 className="text-xl font-bold">
-                {t('furnitureDash.title')}
-              </h1>
-              <p className="text-purple-200 text-xs">
-                {t('furnitureDash.dashboardLabel')}
-              </p>
-            </div>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader
+        unit="furniture"
+        icon={Sofa}
+        title={t('furnitureDash.title')}
+        subtitle={t('furnitureDash.dashboardLabel')}
+      />
 
       {/* Summary Cards */}
       <div className="px-4 py-4 grid grid-cols-2 gap-3">
         {/* Total Stock Value */}
-        <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-purple-500">
+        <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-furniture-500">
           <div className="flex items-center gap-2 mb-1">
-            <Package className="w-5 h-5 text-purple-500" />
+            <Package className="w-5 h-5 text-furniture-500" />
             <span className="text-xs text-gray-500">
               {t('furnitureDash.stockValue')}
             </span>
@@ -131,7 +115,7 @@ export default function FurnitureDashboardPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => navigate('/furniture/orders/new')}
-            className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
+            className="bg-gradient-to-r from-furniture-500 to-furniture-600 text-white rounded-xl p-4 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
           >
             <ShoppingCart className="w-8 h-8" />
             <span className="text-sm font-bold">{t('furnitureDash.newSale')}</span>

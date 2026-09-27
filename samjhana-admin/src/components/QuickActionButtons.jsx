@@ -13,6 +13,8 @@ import {
   Users,
   BarChart3,
 } from 'lucide-react';
+import { Wordmark } from './brand';
+import { unitTheme } from '../brand/theme';
 
 /**
  * QuickActionButtons - The "Dad-Proof" mobile home screen.
@@ -29,48 +31,42 @@ const BUSINESS_BUTTONS = [
     code: 'petrol',
     icon: Fuel,
     tKey: 'business.petrol',
-    color: 'bg-orange-500',
-    hoverColor: 'hover:bg-orange-600',
+    unit: 'petrol',
     path: '/entry/petrol',
   },
   {
     code: 'ev',
     icon: Zap,
     tKey: 'business.ev',
-    color: 'bg-green-500',
-    hoverColor: 'hover:bg-green-600',
+    unit: 'ev',
     path: '/entry/ev',
   },
   {
     code: 'furniture',
     icon: Sofa,
     tKey: 'business.furniture',
-    color: 'bg-purple-500',
-    hoverColor: 'hover:bg-purple-600',
+    unit: 'furniture',
     path: '/entry/furniture',
   },
   {
     code: 'rental',
     icon: Home,
     tKey: 'business.rental',
-    color: 'bg-blue-500',
-    hoverColor: 'hover:bg-blue-600',
+    unit: 'rental',
     path: '/entry/rental',
   },
   {
     code: 'loan',
     icon: Landmark,
     tKey: 'business.loan',
-    color: 'bg-red-500',
-    hoverColor: 'hover:bg-red-600',
+    unit: 'loans',
     path: '/entry/loan',
   },
   {
     code: 'add',
     icon: Plus,
     tKey: 'home.addNew',
-    color: 'bg-yellow-500',
-    hoverColor: 'hover:bg-yellow-600',
+    unit: 'core',
     path: '/add',
   },
 ];
@@ -91,11 +87,11 @@ export default function QuickActionButtons() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 pt-14 pb-6 shadow-lg">
-        <h1 className="text-2xl font-bold text-center">
-          🏢 {t('home.title')}
+      <header className="bg-core-800 text-white px-4 pt-14 pb-6 shadow-lg">
+        <h1 className="text-center">
+          <Wordmark />
         </h1>
-        <p className="text-center text-blue-100 mt-1">
+        <p className="text-center text-core-300 mt-1">
           {t('home.welcome')}
         </p>
       </header>
@@ -185,7 +181,7 @@ function QuickButton({ button, onClick }) {
     <button
       onClick={onClick}
       className={`
-        ${button.color} ${button.hoverColor}
+        ${unitTheme(button.unit).tile}
         flex flex-col items-center justify-center
         h-32 rounded-2xl shadow-lg
         transform transition-all duration-150
@@ -226,8 +222,8 @@ function NavButton({ icon: Icon, label, active, onClick }) {
       onClick={onClick}
       className={`
         flex flex-col items-center py-1 px-3
-        ${active ? 'text-blue-600' : 'text-gray-400'}
-        hover:text-blue-500 transition-colors
+        ${active ? 'text-core-800' : 'text-gray-400'}
+        hover:text-core-600 transition-colors
       `}
     >
       <Icon className="w-6 h-6" />

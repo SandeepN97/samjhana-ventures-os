@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
+import { Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
 import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { toNepaliNumerals } from '../../utils/formatters';
+import { PageHeader, HeaderAction } from '../../components/brand';
 
 export default function EVManualEntryPage() {
   const navigate = useNavigate();
@@ -223,41 +223,21 @@ export default function EVManualEntryPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-green-500 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-green-600 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Zap className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('ev.title')}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/ev-vehicles')}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-green-600 transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-none">{t('ev.manageVehicles')}</span>
-              </button>
-            )}
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        unit="ev"
+        icon={Zap}
+        title={t('ev.title')}
+        actions={isAdmin && (
+          <HeaderAction unit="ev" icon={Settings} label={t('ev.manageVehicles')} onClick={() => navigate('/ev-vehicles')} />
+        )}
+      />
 
       {/* NEA Rate Banner — admins and managers only */}
       {canEditNeaRate && (
         <div className="mx-4 mt-4 bg-white rounded-xl shadow-md p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-green-600 font-semibold">⚡ {t('ev.neaRatePerUnit')}</p>
+              <p className="text-sm text-ev-600 font-semibold">⚡ {t('ev.neaRatePerUnit')}</p>
               {editingRate ? (
                 <div className="flex items-center gap-2 mt-1">
                   <div className="relative">
@@ -272,11 +252,11 @@ export default function EVManualEntryPage() {
                       onChange={(e) => setRateInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveNeaRate(); if (e.key === 'Escape') cancelEditRate(); }}
                       placeholder="0.00"
-                      className="pl-8 pr-12 py-2 text-xl font-bold border-2 border-green-400 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="pl-8 pr-12 py-2 text-xl font-bold border-2 border-ev-400 rounded-lg w-40 focus:outline-none focus:ring-2 focus:ring-ev-500"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kWh</span>
                   </div>
-                  <button onClick={saveNeaRate} disabled={rateSaving} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50">
+                  <button onClick={saveNeaRate} disabled={rateSaving} className="p-2 bg-ev-500 text-white rounded-lg hover:bg-ev-600 disabled:opacity-50">
                     <Check className="w-4 h-4" />
                   </button>
                   {neaRate && (
@@ -294,7 +274,7 @@ export default function EVManualEntryPage() {
             {!editingRate && canEditNeaRate && (
               <button
                 onClick={() => { setRateInput(neaRate); setEditingRate(true); }}
-                className="flex items-center gap-1 text-sm text-green-600 font-medium px-3 py-2 rounded-lg hover:bg-green-50"
+                className="flex items-center gap-1 text-sm text-ev-600 font-medium px-3 py-2 rounded-lg hover:bg-ev-50"
               >
                 <Pencil className="w-4 h-4" />
                 {t('common.update')}
@@ -332,7 +312,7 @@ export default function EVManualEntryPage() {
             value={values.transactionDate}
             onChange={(val) => handleChange('transactionDate', val)}
             error={errors.transactionDate}
-            accentColor="green"
+            accentColor="ev"
           />
         </div>
 
@@ -364,8 +344,8 @@ export default function EVManualEntryPage() {
                     onClick={() => handleChange('chargePointId', cp.id)}
                     className={`min-h-[64px] w-full px-4 py-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
                       selected
-                        ? 'bg-green-500 text-white border-green-500'
-                        : `bg-white text-gray-700 hover:border-green-400 ${errors.chargePointId ? 'border-red-500' : 'border-gray-300'}`
+                        ? 'bg-ev-500 text-white border-ev-500'
+                        : `bg-white text-gray-700 hover:border-ev-400 ${errors.chargePointId ? 'border-red-500' : 'border-gray-300'}`
                     }`}
                   >
                     <Zap className="w-6 h-6 shrink-0" />
@@ -401,18 +381,18 @@ export default function EVManualEntryPage() {
             }))}
             placeholder={t('ev.selectVehiclePlaceholder')}
             error={errors.vehicleId}
-            accentColor="green"
+            accentColor="ev"
           />
           {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId}</p>}
         </div>
 
         {/* Selected Vehicle Info */}
         {selectedVehicle && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-            <Car className="w-8 h-8 text-green-600" />
+          <div className="bg-ev-50 border border-ev-200 rounded-xl p-3 flex items-center gap-3">
+            <Car className="w-8 h-8 text-ev-600" />
             <div>
-              <p className="font-bold text-green-800">{selectedVehicle.vehicleName}</p>
-              <p className="text-sm text-green-600">
+              <p className="font-bold text-ev-800">{selectedVehicle.vehicleName}</p>
+              <p className="text-sm text-ev-600">
                 {selectedVehicle.batteryCapacityKw} KW | {selectedVehicle.seatingCapacity} {t('ev.seats')} | रु {selectedVehicle.ratePerPercent}/{t('ev.perPercent')}
               </p>
             </div>
@@ -434,7 +414,7 @@ export default function EVManualEntryPage() {
               value={values.startPercent}
               onChange={(e) => handleChange('startPercent', e.target.value)}
               placeholder="0"
-              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.startPercent ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-ev-500 ${errors.startPercent ? 'border-red-500' : 'border-gray-300'}`}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
           </div>
@@ -456,7 +436,7 @@ export default function EVManualEntryPage() {
               value={values.endPercent}
               onChange={(e) => handleChange('endPercent', e.target.value)}
               placeholder="100"
-              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.endPercent ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-ev-500 ${errors.endPercent ? 'border-red-500' : 'border-gray-300'}`}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-xl">%</span>
           </div>
@@ -481,7 +461,7 @@ export default function EVManualEntryPage() {
         )}
 
         {/* Total Amount */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
+        <div className="bg-gradient-to-r from-ev-500 to-ev-600 rounded-xl p-4 text-white">
           <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
           <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
         </div>
@@ -497,8 +477,8 @@ export default function EVManualEntryPage() {
               onClick={() => handleChange('paymentMethod', 'CASH')}
               className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                 values.paymentMethod === 'CASH'
-                  ? 'bg-green-500 text-white border-green-500'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
+                  ? 'bg-ev-500 text-white border-ev-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-ev-400'
               }`}
             >
               <Banknote className="w-5 h-5" />
@@ -529,7 +509,7 @@ export default function EVManualEntryPage() {
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
             placeholder={t('common.additionalNotes')}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-ev-500 resize-none"
           />
         </div>
 
@@ -540,7 +520,7 @@ export default function EVManualEntryPage() {
           className={`w-full py-5 text-xl font-bold rounded-xl transition-all transform ${
             isLoading
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 active:scale-95 shadow-lg'
+              : 'bg-ev-600 hover:bg-ev-700 active:scale-95 shadow-lg'
           } text-white`}
         >
           {isLoading ? (

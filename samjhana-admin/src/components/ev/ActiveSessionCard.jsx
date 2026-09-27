@@ -19,7 +19,7 @@ export default function ActiveSessionCard({ session, now, busy, onStop }) {
   return (
     <div className="rounded-xl bg-white p-4 shadow-md" data-testid="active-session">
       <div className="mb-2 flex items-center justify-between">
-        <span className="rounded-lg bg-gray-900 px-2.5 py-1 font-mono text-sm font-bold text-green-400">
+        <span className="rounded-lg bg-gray-900 px-2.5 py-1 font-mono text-sm font-bold text-ev-400">
           {session.plateNumber}
         </span>
         <span
@@ -38,7 +38,7 @@ export default function ActiveSessionCard({ session, now, busy, onStop }) {
         aria-valuenow={progress}
         className="mb-1 h-2 overflow-hidden rounded-full bg-gray-200"
       >
-        <div className="h-full bg-gradient-to-r from-green-400 to-green-600" style={{ width: `${progress}%` }} />
+        <div className="h-full bg-gradient-to-r from-ev-400 to-ev-600" style={{ width: `${progress}%` }} />
       </div>
       <div className="mb-3 flex justify-between text-xs text-gray-500">
         <span>{soc == null ? '—' : `${num(soc)}%`}</span>

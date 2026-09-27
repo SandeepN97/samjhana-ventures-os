@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft, TrendingUp, TrendingDown, Fuel, Zap, Sofa, Home, Banknote,
+  TrendingUp, TrendingDown, Fuel, Zap, Sofa, Home, Banknote,
   ClipboardCheck, Droplet, Banknote as Cash, Building2,
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 const BUSINESS_CONFIG = {
-  petrol:    { icon: Fuel,     color: 'bg-orange-500', label: 'Petrol',    labelNe: 'पेट्रोल' },
-  ev:        { icon: Zap,      color: 'bg-green-500',  label: 'EV',        labelNe: 'EV' },
-  furniture: { icon: Sofa,     color: 'bg-purple-500', label: 'Furniture', labelNe: 'फर्निचर' },
-  rental:    { icon: Home,     color: 'bg-blue-500',   label: 'Rental',    labelNe: 'भाडा' },
-  loan:      { icon: Banknote, color: 'bg-red-500',    label: 'Loan',      labelNe: 'ऋण' },
+  petrol:    { icon: Fuel,     color: 'bg-petrol-500', label: 'Petrol',    labelNe: 'पेट्रोल' },
+  ev:        { icon: Zap,      color: 'bg-ev-500',  label: 'EV',        labelNe: 'EV' },
+  furniture: { icon: Sofa,     color: 'bg-furniture-500', label: 'Furniture', labelNe: 'फर्निचर' },
+  rental:    { icon: Home,     color: 'bg-rental-500',   label: 'Rental',    labelNe: 'भाडा' },
+  loan:      { icon: Banknote, color: 'bg-loans-500',    label: 'Loan',      labelNe: 'ऋण' },
 };
 
 const fmt = (n) => `रु ${Math.abs(Number(n)).toLocaleString('en-IN')}`;
@@ -144,20 +144,7 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-indigo-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-indigo-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div className="ml-3">
-              <h1 className="text-xl font-bold leading-tight">{t('reports.title')}</h1>
-              <p className="text-xs text-indigo-200 mt-0.5">{dateLabel}</p>
-            </div>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="core" title={t('reports.title')} subtitle={dateLabel} />
 
       {/* Close Today */}
       <div className="px-4 pt-3">
@@ -172,7 +159,7 @@ export default function ReportsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-core-600" />
         </div>
       ) : (
         <div className="p-4 space-y-4">

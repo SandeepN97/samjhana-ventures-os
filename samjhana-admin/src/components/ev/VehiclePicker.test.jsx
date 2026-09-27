@@ -78,7 +78,7 @@ describe('VehiclePicker (open)', () => {
     renderWithProviders(<Harness />);
     await openPicker();
     const foton = screen.getByRole('option', { name: /Foton/ });
-    expect(within(foton).getByText('Rs 9')).toHaveClass('bg-green-100', 'text-green-700');
+    expect(within(foton).getByText('Rs 9')).toHaveClass('bg-ev-100', 'text-ev-700');
     expect(foton.textContent).not.toContain('/%');
     expect(within(foton).getByText('50.23 kW')).toBeInTheDocument();
     expect(within(foton).getByText(/16 seats/)).toBeInTheDocument();

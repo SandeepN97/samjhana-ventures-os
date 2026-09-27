@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, UserPlus, Edit2, Trash2, X, Check, Search, Phone, MapPin } from 'lucide-react';
+import { Users, UserPlus, Edit2, Trash2, X, Check, Search, Phone, MapPin } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
+import { PageHeader } from '../../components/brand';
 
 export default function FurnitureCustomerPage() {
   const navigate = useNavigate();
@@ -124,24 +124,13 @@ export default function FurnitureCustomerPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-green-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/furniture')} className="p-2 -ml-2 rounded-full hover:bg-green-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Users className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{t('furnitureCust.title')}</h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="furniture" icon={Users} title={t('furnitureCust.title')} backTo="/entry/furniture" />
 
       {/* Actions */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700"
+          className="flex items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
         >
           <UserPlus className="w-5 h-5" />
           {t('furnitureCust.addCustomer')}
@@ -154,7 +143,7 @@ export default function FurnitureCustomerPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('furnitureCust.searchNamePhone')}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500" />
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-furniture-500" />
         </div>
       </div>
 
@@ -195,7 +184,7 @@ export default function FurnitureCustomerPage() {
                         <span className="font-bold">{formatCurrency(order.amount)}</span>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        order.deliveryStatus === 'DELIVERED' ? 'bg-green-100 text-green-700' :
+                        order.deliveryStatus === 'DELIVERED' ? 'bg-furniture-100 text-furniture-700' :
                         order.deliveryStatus === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
@@ -229,42 +218,42 @@ export default function FurnitureCustomerPage() {
 
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               {formError && <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-sm">{formError}</div>}
-              {formSuccess && <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
+              {formSuccess && <div className="bg-furniture-100 border border-furniture-400 text-furniture-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.name')} *</label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500"
                   placeholder={t('furnitureCust.customerName')} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.nameNepali')}</label>
                 <input type="text" value={formData.nameNepali} onChange={(e) => setFormData({ ...formData, nameNepali: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.phone')}</label>
                 <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500"
                   placeholder={t('common.phone')} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.address')}</label>
                 <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.notes')}</label>
                 <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 resize-none" />
+                  rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500 resize-none" />
               </div>
 
               <button type="submit" disabled={submitting}
-                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}>
+                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-furniture-600 hover:bg-furniture-700'}`}>
                 {submitting ? t('common.saving') :
                   editingCustomer ? t('furnitureCust.updateCustomer') : t('furnitureCust.addCustomer')}
               </button>
@@ -276,14 +265,14 @@ export default function FurnitureCustomerPage() {
       {/* Customer List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-furniture-600"></div>
         </div>
       ) : filteredCustomers.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">{t('furnitureCust.noCustomers')}</p>
           <button onClick={() => { resetForm(); setShowForm(true); }}
-            className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">
+            className="mt-4 bg-furniture-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-furniture-700">
             {t('furnitureCust.addFirstCustomer')}
           </button>
         </div>

@@ -22,7 +22,7 @@ function renderCard(overrides = {}, props = {}) {
 describe('ActiveSessionCard', () => {
   it('shows the plate chip, elapsed time, charger and vehicle', () => {
     renderCard();
-    expect(screen.getByText('GA3KHA1187')).toHaveClass('bg-gray-900', 'text-green-400', 'font-mono');
+    expect(screen.getByText('GA3KHA1187')).toHaveClass('bg-gray-900', 'text-ev-400', 'font-mono');
     expect(screen.getByLabelText('Elapsed time')).toHaveTextContent('03:05');
     expect(screen.getByText('HD-D140-E · EVSE 1 · Connector 2 · Foton')).toBeInTheDocument();
   });

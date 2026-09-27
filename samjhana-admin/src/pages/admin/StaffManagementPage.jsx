@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft,
   Users,
   UserPlus,
   Phone,
@@ -19,9 +18,9 @@ import {
   ShieldOff
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
+import { PageHeader } from '../../components/brand';
 
 const BUSINESS_UNITS = [
   { value: 'PETROL', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -59,7 +58,7 @@ export default function StaffManagementPage() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700"
+            className="bg-core-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-core-700"
           >
             {t('common.goBack')}
           </button>
@@ -214,10 +213,10 @@ export default function StaffManagementPage() {
 
   const getUnitColor = (unit) => {
     const colors = {
-      PETROL: 'bg-orange-100 text-orange-700',
-      FURNITURE: 'bg-purple-100 text-purple-700',
-      EV: 'bg-green-100 text-green-700',
-      RENTAL: 'bg-blue-100 text-blue-700',
+      PETROL: 'bg-petrol-100 text-petrol-700',
+      FURNITURE: 'bg-furniture-100 text-furniture-700',
+      EV: 'bg-ev-100 text-ev-700',
+      RENTAL: 'bg-rental-100 text-rental-700',
       ALL: 'bg-gray-100 text-gray-700',
     };
     return colors[unit] || 'bg-gray-100 text-gray-700';
@@ -251,29 +250,13 @@ export default function StaffManagementPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-indigo-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-indigo-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Users className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('staff.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="core" icon={Users} title={t('staff.title')} />
 
       {/* Actions Bar */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between gap-3">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700"
+          className="flex items-center gap-2 bg-core-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-core-700"
         >
           <UserPlus className="w-5 h-5" />
           {t('staff.addStaff')}
@@ -287,7 +270,7 @@ export default function StaffManagementPage() {
             label: isNepali ? unit.labelNe : unit.labelEn,
           }))}
           placeholder={t('staff.allUnits')}
-          accentColor="indigo"
+          accentColor="core"
           className="py-2 text-base"
         />
       </div>
@@ -301,7 +284,7 @@ export default function StaffManagementPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('staff.searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-core-500"
           />
         </div>
       </div>
@@ -346,7 +329,7 @@ export default function StaffManagementPage() {
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                   placeholder={t('staff.fullNamePlaceholder')}
                 />
               </div>
@@ -360,7 +343,7 @@ export default function StaffManagementPage() {
                   type="text"
                   value={formData.fullNameNepali}
                   onChange={(e) => setFormData({ ...formData, fullNameNepali: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                   placeholder="नेपालीमा नाम"
                 />
               </div>
@@ -374,7 +357,7 @@ export default function StaffManagementPage() {
                   type="tel"
                   value={formData.phoneNumber}
                   onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                   placeholder="98XXXXXXXX"
                 />
               </div>
@@ -392,7 +375,7 @@ export default function StaffManagementPage() {
                       value: unit.value,
                       label: isNepali ? unit.labelNe : unit.labelEn,
                     }))}
-                    accentColor="indigo"
+                    accentColor="core"
                     className="py-2 text-base"
                   />
                 </div>
@@ -407,7 +390,7 @@ export default function StaffManagementPage() {
                       value: role.value,
                       label: isNepali ? role.labelNe : role.labelEn,
                     }))}
-                    accentColor="indigo"
+                    accentColor="core"
                     className="py-2 text-base"
                   />
                 </div>
@@ -425,7 +408,7 @@ export default function StaffManagementPage() {
                       type="number"
                       value={formData.monthlySalary}
                       onChange={(e) => setFormData({ ...formData, monthlySalary: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                      className="w-full pl-10 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                       placeholder="0"
                     />
                   </div>
@@ -437,7 +420,7 @@ export default function StaffManagementPage() {
                   <DatePicker
                     value={formData.joinDate}
                     onChange={(val) => setFormData({ ...formData, joinDate: val })}
-                    accentColor="indigo"
+                    accentColor="core"
                   />
                 </div>
               </div>
@@ -451,7 +434,7 @@ export default function StaffManagementPage() {
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                   placeholder={t('staff.address')}
                 />
               </div>
@@ -465,7 +448,7 @@ export default function StaffManagementPage() {
                   type="text"
                   value={formData.citizenshipNumber}
                   onChange={(e) => setFormData({ ...formData, citizenshipNumber: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                   placeholder={t('staff.citizenshipPlaceholder')}
                 />
               </div>
@@ -480,7 +463,7 @@ export default function StaffManagementPage() {
                     type="tel"
                     value={formData.emergencyContact}
                     onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                     placeholder="98XXXXXXXX"
                   />
                 </div>
@@ -492,7 +475,7 @@ export default function StaffManagementPage() {
                     type="text"
                     value={formData.emergencyContactName}
                     onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                     placeholder={t('common.name')}
                   />
                 </div>
@@ -507,7 +490,7 @@ export default function StaffManagementPage() {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500 resize-none"
                   placeholder={t('common.additionalNotes')}
                 />
               </div>
@@ -517,7 +500,7 @@ export default function StaffManagementPage() {
                 type="submit"
                 disabled={submitting}
                 className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${
-                  submitting ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
+                  submitting ? 'bg-gray-400' : 'bg-core-600 hover:bg-core-700'
                 }`}
               >
                 {submitting
@@ -534,7 +517,7 @@ export default function StaffManagementPage() {
       {/* Staff List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-core-600"></div>
         </div>
       ) : filteredStaff.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
@@ -598,7 +581,7 @@ export default function StaffManagementPage() {
                 <div className="flex gap-1">
                   <button
                     onClick={() => openEditForm(staff)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                    className="p-2 text-core-600 hover:bg-core-50 rounded-lg"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>

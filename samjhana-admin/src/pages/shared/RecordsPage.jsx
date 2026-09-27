@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
+import { Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 const today = () => new Date().toISOString().split('T')[0];
 const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
@@ -18,12 +18,12 @@ const startOfWeek = () => {
 const startOfMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; };
 
 const BUSINESS_ICONS = {
-  petrol: { icon: Fuel, color: 'bg-red-500', label: 'Petrol', labelNe: 'पेट्रोल' },
+  petrol: { icon: Fuel, color: 'bg-petrol-500', label: 'Petrol', labelNe: 'पेट्रोल' },
   diesel: { icon: Droplet, color: 'bg-yellow-600', label: 'Diesel', labelNe: 'डिजेल' },
-  ev: { icon: Zap, color: 'bg-green-500', label: 'EV', labelNe: 'EV' },
-  furniture: { icon: Sofa, color: 'bg-purple-500', label: 'Furniture', labelNe: 'फर्निचर' },
-  rental: { icon: Home, color: 'bg-blue-500', label: 'Rental', labelNe: 'भाडा' },
-  loan: { icon: Banknote, color: 'bg-red-500', label: 'Loan', labelNe: 'ऋण' },
+  ev: { icon: Zap, color: 'bg-ev-500', label: 'EV', labelNe: 'EV' },
+  furniture: { icon: Sofa, color: 'bg-furniture-500', label: 'Furniture', labelNe: 'फर्निचर' },
+  rental: { icon: Home, color: 'bg-rental-500', label: 'Rental', labelNe: 'भाडा' },
+  loan: { icon: Banknote, color: 'bg-loans-500', label: 'Loan', labelNe: 'ऋण' },
 };
 
 export default function RecordsPage() {
@@ -139,22 +139,7 @@ export default function RecordsPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-blue-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-blue-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-xl font-bold ml-3">
-              {t('records.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="core" title={t('records.title')} />
 
       {/* Search Bar */}
       <div className="px-4 py-3 bg-white border-b">
@@ -165,7 +150,7 @@ export default function RecordsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('common.search')}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-core-500"
           />
         </div>
       </div>
@@ -185,7 +170,7 @@ export default function RecordsPage() {
               onClick={() => applyDatePreset(key)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeDatePreset() === key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-core-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -200,14 +185,14 @@ export default function RecordsPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-core-500"
           />
           <span className="text-gray-400 text-sm">→</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-core-500"
           />
           {(dateFrom || dateTo) && (
             <button onClick={clearDates} className="p-1 text-gray-400 hover:text-gray-600">
@@ -239,7 +224,7 @@ export default function RecordsPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-core-600"></div>
         </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
@@ -344,7 +329,7 @@ function FilterButton({ active, onClick, label }) {
       onClick={onClick}
       className={`px-4 py-2 rounded-full font-medium transition-colors whitespace-nowrap ${
         active
-          ? 'bg-blue-600 text-white'
+          ? 'bg-core-600 text-white'
           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
       }`}
     >

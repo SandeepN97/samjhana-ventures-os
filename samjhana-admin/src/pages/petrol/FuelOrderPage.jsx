@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Truck, Check, Fuel, Droplet, ShieldOff } from 'lucide-react';
+import { Truck, Check, Fuel, Droplet, ShieldOff } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function FuelOrderPage() {
   const navigate = useNavigate();
@@ -66,7 +66,7 @@ export default function FuelOrderPage() {
           </p>
           <button
             onClick={() => navigate('/entry/petrol')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700"
+            className="bg-petrol-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-petrol-700 min-h-[44px]"
           >
             {t('common.goBack')}
           </button>
@@ -157,23 +157,7 @@ export default function FuelOrderPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-orange-500 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/entry/petrol')}
-              className="p-2 -ml-2 rounded-full hover:bg-orange-600 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Truck className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('fuelOrder.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="petrol" icon={Truck} title={t('fuelOrder.title')} backTo="/entry/petrol" />
 
       {/* New Order Form */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-4">
@@ -191,7 +175,7 @@ export default function FuelOrderPage() {
               value={values.orderDate}
               onChange={(val) => handleChange('orderDate', val)}
               error={errors.orderDate}
-              accentColor="orange"
+              accentColor="petrol"
             />
           </div>
 
@@ -241,7 +225,7 @@ export default function FuelOrderPage() {
               value={values.liters}
               onChange={(e) => handleChange('liters', e.target.value)}
               placeholder={t('fuelOrder.enterLiters')}
-              className={`w-full px-4 py-3 text-xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 text-xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
             />
             {errors.liters && <p className="text-red-500 text-sm mt-1">{errors.liters}</p>}
           </div>
@@ -261,7 +245,7 @@ export default function FuelOrderPage() {
                 value={values.ratePerLiter}
                 onChange={(e) => handleChange('ratePerLiter', e.target.value)}
                 placeholder="0.00"
-                className={`w-full pl-12 pr-4 py-3 text-xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.ratePerLiter ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full pl-12 pr-4 py-3 text-xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500 ${errors.ratePerLiter ? 'border-red-500' : 'border-gray-300'}`}
               />
             </div>
             {errors.ratePerLiter && <p className="text-red-500 text-sm mt-1">{errors.ratePerLiter}</p>}
@@ -277,7 +261,7 @@ export default function FuelOrderPage() {
               value={values.supplierName}
               onChange={(e) => handleChange('supplierName', e.target.value)}
               placeholder={t('fuelOrder.supplierName')}
-              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500"
             />
           </div>
 
@@ -291,7 +275,7 @@ export default function FuelOrderPage() {
               onChange={(e) => handleChange('notes', e.target.value)}
               rows={2}
               placeholder={t('fuelOrder.additionalNotes')}
-              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500 resize-none"
             />
           </div>
 
@@ -337,7 +321,7 @@ export default function FuelOrderPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-petrol-600"></div>
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-10 text-gray-500">

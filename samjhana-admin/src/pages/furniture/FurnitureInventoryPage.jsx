@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
+import { PageHeader } from '../../components/brand';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -157,24 +157,13 @@ export default function FurnitureInventoryPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-blue-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate('/entry/furniture')} className="p-2 -ml-2 rounded-full hover:bg-blue-700 transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Package className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">{t('furnitureInv.title')}</h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="furniture" icon={Package} title={t('furnitureInv.title')} backTo="/entry/furniture" />
 
       {/* Actions */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700"
+          className="flex items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
         >
           <Plus className="w-5 h-5" />
           {t('furnitureInv.addItem')}
@@ -190,7 +179,7 @@ export default function FurnitureInventoryPage() {
               onClick={() => setSelectedCategory(cat.value)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === cat.value
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-furniture-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -209,7 +198,7 @@ export default function FurnitureInventoryPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('furnitureInv.searchNameSku')}
-            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-furniture-500"
           />
         </div>
       </div>
@@ -234,14 +223,14 @@ export default function FurnitureInventoryPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.itemName')} *</label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500"
                   placeholder={t('furnitureInv.itemNamePlaceholder')} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.nameNepali')}</label>
                 <input type="text" value={formData.nameNepali} onChange={(e) => setFormData({ ...formData, nameNepali: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -249,12 +238,12 @@ export default function FurnitureInventoryPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
                   <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     placeholder={t('furnitureInv.skuPlaceholder')}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.category')}</label>
                   <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500">
                     {CATEGORIES.filter(c => c.value !== 'ALL').map(cat => (
                       <option key={cat.value} value={cat.value}>{t(cat.tKey)}</option>
                     ))}
@@ -266,12 +255,12 @@ export default function FurnitureInventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.purchasePrice')}</label>
                   <input type="number" step="0.01" min="0" value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
-                    placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                    placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.sellingPrice')}</label>
                   <input type="number" step="0.01" min="0" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-                    placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                    placeholder="0.00" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
                 </div>
               </div>
 
@@ -279,23 +268,23 @@ export default function FurnitureInventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.stockQty')}</label>
                   <input type="number" min="0" value={formData.stockQty} onChange={(e) => setFormData({ ...formData, stockQty: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.reorderLevel')}</label>
                   <input type="number" min="0" value={formData.reorderLevel} onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.description')}</label>
                 <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none" />
+                  rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500 resize-none" />
               </div>
 
               <button type="submit" disabled={submitting}
-                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-furniture-600 hover:bg-furniture-700'}`}>
                 {submitting ? t('furnitureInv.saving') :
                   editingItem ? t('furnitureInv.updateItem') : t('furnitureInv.addItem')}
               </button>
@@ -307,14 +296,14 @@ export default function FurnitureInventoryPage() {
       {/* Item List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-furniture-600"></div>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">{t('furnitureInv.noItems')}</p>
           <button onClick={() => { resetForm(); setShowForm(true); }}
-            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+            className="mt-4 bg-furniture-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-furniture-700">
             {t('furnitureInv.addFirstItem')}
           </button>
         </div>
@@ -346,7 +335,7 @@ export default function FurnitureInventoryPage() {
 
                   <div className="flex flex-col items-end gap-2">
                     <div className="flex gap-1">
-                      <button onClick={() => openEditForm(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                      <button onClick={() => openEditForm(item)} className="p-1.5 text-furniture-600 hover:bg-furniture-50 rounded-lg">
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleDelete(item)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
