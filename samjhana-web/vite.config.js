@@ -1,5 +1,9 @@
+/* eslint-env node */
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const apiTarget = process.env.VITE_PROXY_TARGET || 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [react()],
@@ -11,7 +15,7 @@ export default defineConfig({
   server: {
     port: 5175,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true, secure: false },
+      '/api': { target: apiTarget, changeOrigin: true, secure: false },
     },
   },
 });

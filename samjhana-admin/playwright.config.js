@@ -53,12 +53,13 @@ export default defineConfig({
         // every profile — so this disposable backend needs its own real one, or the webServer
         // never boots. Overridable, but ...process.env above already covers that case.
         JWT_SECRET: process.env.JWT_SECRET || 'playwright-e2e-disposable-secret-not-for-real-use-32bytes+',
+        VITE_API_URL: '',
         SPRING_DATASOURCE_URL: 'jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1',
         SPRING_DATASOURCE_PASSWORD: '',
         SAMJHANA_FUEL_PRICE_SCRAPER_ENABLED: 'false',
         // The browser's Origin is the Vite port; the backend's CORS list (REST and WebSocket)
         // must include it or every login is answered 403.
-        SAMJHANA_CORS_ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
+        SAMJHANA_CORS_ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT},http://localhost:5185`,
         SAMJHANA_STORAGE_IMAGES_PATH: path.join(os.tmpdir(), 'samjhana-e2e-images'),
       },
     },
@@ -66,6 +67,14 @@ export default defineConfig({
       command: `npm run dev -- --port ${FRONTEND_PORT} --strictPort`,
       cwd: here,
       url: `http://localhost:${FRONTEND_PORT}`,
+      timeout: 60_000,
+      reuseExistingServer: false,
+      env: { ...process.env, VITE_PROXY_TARGET: `http://localhost:${BACKEND_PORT}` },
+    },
+    {
+      command: 'npm run dev -- --port 5185 --strictPort',
+      cwd: path.join(repoRoot, 'samjhana-web'),
+      url: 'http://localhost:5185',
       timeout: 60_000,
       reuseExistingServer: false,
       env: { ...process.env, VITE_PROXY_TARGET: `http://localhost:${BACKEND_PORT}` },

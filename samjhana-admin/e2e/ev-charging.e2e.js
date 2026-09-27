@@ -58,9 +58,17 @@ function watchPage(page) {
   page.on('console', (message) => { if (message.type() === 'error') stamp(`console.error ${message.text().slice(0, 140)}`); });
   page.on('pageerror', (error) => stamp(`pageerror ${error.message.slice(0, 140)}`));
   page.on('response', (response) => {
-    if (/\/api\/(charge-points|ev\/sessions)/.test(response.url())) stamp(`http ${response.status()} ${response.url().split('5183')[1]}`);
+    if (/\/api\//.test(response.url())) stamp(`http ${response.status()} ${response.url().split('5183')[1]}`);
   });
   return { log, stamp };
+}
+
+async function failIfAppErrored(page, phase) {
+  const errorHeading = page.getByRole('heading', { name: 'Page Error' });
+  if (await errorHeading.isVisible().catch(() => false)) {
+    const details = await page.locator('pre').innerText();
+    throw new Error(`${phase}: the admin app rendered its ErrorBoundary:\n${details}`);
+  }
 }
 
 async function login(page, { username, password }) {
@@ -79,6 +87,8 @@ async function openEvPage(page, user = ADMIN) {
   diagnostics.set(page, watchPage(page));
   await login(page, user);
   await page.goto('/entry/ev');
+  await failIfAppErrored(page, 'Opening the EV page');
+  await expect(page).toHaveURL(/\/entry\/ev$/);
   await expect(page.getByRole('tab', { name: /Start Session/ })).toHaveAttribute('aria-selected', 'true');
 }
 
@@ -353,6 +363,7 @@ test('fits a phone screen on every tab and keeps touch targets at least 44px', a
 
   for (const name of ['Start Session', 'Active', 'Payment']) {
     await tab(page, name).click();
+    await failIfAppErrored(page, `Opening the ${name} tab`);
     const noHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
     expect(noHorizontalScroll, `${name} tab scrolls horizontally`).toBe(true);
 
