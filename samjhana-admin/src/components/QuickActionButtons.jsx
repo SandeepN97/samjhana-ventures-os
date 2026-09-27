@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,7 +7,6 @@ import {
   Sofa,
   Home,
   Landmark,
-  Plus,
   FileText,
   Settings,
   Users,
@@ -15,12 +14,14 @@ import {
 } from 'lucide-react';
 import { Wordmark } from './brand';
 import { unitTheme } from '../brand/theme';
+import api from '../utils/api';
+import useLocaleFormat from '../hooks/useLocaleFormat';
 
 /**
  * QuickActionButtons - The "Dad-Proof" mobile home screen.
  *
  * Features:
- * - 6 large buttons (2x3 grid) for common actions
+ * - One large button per business (2-column grid) for common actions
  * - Each button ~120px with clear icon and bilingual label
  * - High contrast colors for easy visibility
  * - Touch-friendly with visual feedback
@@ -62,14 +63,32 @@ const BUSINESS_BUTTONS = [
     unit: 'loans',
     path: '/entry/loan',
   },
-  {
-    code: 'add',
-    icon: Plus,
-    tKey: 'home.addNew',
-    unit: 'core',
-    path: '/add',
-  },
 ];
+
+/**
+ * Cash taken so far on the current business date (the same figure the End of Day page
+ * starts from). Returns null while loading or if the server can't be reached, so the
+ * card shows a dash rather than a made-up number.
+ */
+function useTodayCash() {
+  const [cash, setCash] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/daily-reports/business-date')
+      .then((res) => api.get(`/api/daily-reports/today-summary?date=${res.data.date}`))
+      .then((res) => {
+        const value = parseFloat(res.data?.totalCashSales);
+        if (!cancelled) setCash(Number.isFinite(value) ? value : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setCash(null);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  return cash;
+}
 
 export default function QuickActionButtons() {
   const navigate = useNavigate();
@@ -79,6 +98,8 @@ export default function QuickActionButtons() {
   const isStaff = user.role === 'STAFF';
   const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canViewAnalytics = canManage;
+  const todayCash = useTodayCash();
+  const { money } = useLocaleFormat();
 
   const visibleButtons = isStaff
     ? BUSINESS_BUTTONS.filter((b) => b.code !== 'loan')
@@ -101,17 +122,22 @@ export default function QuickActionButtons() {
         <p className="text-gray-500 text-sm text-center">
           {t('home.todayCash')}
         </p>
-        <p className="text-3xl font-bold text-center text-green-600 mt-1">
-          रु 1,23,456
+        <p
+          className="text-3xl font-bold text-center text-green-600 mt-1"
+          data-testid="today-cash"
+        >
+          {todayCash === null ? '—' : money(todayCash)}
         </p>
       </div>
 
-      {/* Main Action Buttons - 2x3 Grid */}
+      {/* Main Action Buttons - 2-column grid */}
       <div className="grid grid-cols-2 gap-4 p-4 mt-4">
-        {visibleButtons.map((button) => (
+        {visibleButtons.map((button, i) => (
           <QuickButton
             key={button.code}
             button={button}
+            // An odd tile out fills the last row instead of sitting alone in half of it
+            wide={visibleButtons.length % 2 === 1 && i === visibleButtons.length - 1}
             onClick={() => navigate(button.path)}
           />
         ))}
@@ -172,16 +198,18 @@ export default function QuickActionButtons() {
 // Sub-components
 // =============================================================================
 
-function QuickButton({ button, onClick }) {
+function QuickButton({ button, wide = false, onClick }) {
   const { t } = useTranslation();
   const Icon = button.icon;
   const label = t(button.tKey);
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
         ${unitTheme(button.unit).tile}
+        ${wide ? 'col-span-2' : ''}
         flex flex-col items-center justify-center
         h-32 rounded-2xl shadow-lg
         transform transition-all duration-150
