@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import QuickActionButtons from '../../components/QuickActionButtons';
 import LanguageToggle from '../../components/LanguageToggle';
+import { clearSignIn } from '../../utils/session';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -10,8 +11,7 @@ export default function DashboardPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSignIn();
     navigate('/login', { replace: true });
   };
 

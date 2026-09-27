@@ -63,7 +63,7 @@ class AuthChangePasswordIntegrationTest {
     }
 
     private String bearer(User user) {
-        return "Bearer " + jwtUtil.generateToken(user.getUsername());
+        return "Bearer " + jwtUtil.generateToken(user);
     }
 
     private ResultActions changePassword(String authorization, String username, String current, String next) throws Exception {

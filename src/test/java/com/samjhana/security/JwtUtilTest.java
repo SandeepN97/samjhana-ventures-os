@@ -96,7 +96,7 @@ class JwtUtilTest {
     void shouldAcceptARealSecret_inEveryProfile(String activeProfiles) {
         JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profilesFrom(activeProfiles));
 
-        String token = jwt.generateToken("admin");
+        String token = jwt.generateToken(user("admin"));
 
         assertTrue(jwt.isTokenValid(token));
         assertEquals("admin", jwt.extractUsername(token));
@@ -106,7 +106,7 @@ class JwtUtilTest {
     void shouldOnlyRejectASecretThatStartsWithTheFallbackPrefix_notOneThatMerelyContainsIt() {
         JwtUtil jwt = new JwtUtil("abcdefghijklmnopqrstuvwxyz-dev-only-insecure-0123456789", 1, profiles("staging"));
 
-        assertTrue(jwt.isTokenValid(jwt.generateToken("admin")));
+        assertTrue(jwt.isTokenValid(jwt.generateToken(user("admin"))));
     }
 
     // ---- unchanged behaviour ------------------------------------------------------------------------
@@ -122,7 +122,7 @@ class JwtUtilTest {
         JwtUtil issuer = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
         JwtUtil verifier = new JwtUtil(OTHER_STRONG_SECRET, 1, profiles("prod"));
 
-        assertFalse(verifier.isTokenValid(issuer.generateToken("admin")));
+        assertFalse(verifier.isTokenValid(issuer.generateToken(user("admin"))));
     }
 
     @Test
@@ -163,5 +163,51 @@ class JwtUtilTest {
             throw new UncheckedIOException(e);
         }
         return jwtLine.substring("JWT_SECRET=".length());
+    }
+
+    // ---- revocation ---------------------------------------------------------------------------------
+
+    @Test
+    void shouldAcceptTheTokenForItsOwnActiveUser() {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+        com.samjhana.entity.User admin = user("admin");
+        assertTrue(jwt.isTokenValidFor(jwt.parse(jwt.generateToken(admin)).orElseThrow(), admin));
+    }
+
+    @Test
+    void shouldRefuseTheToken_whenThePasswordHashHasChanged() {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+        com.samjhana.entity.User admin = user("admin");
+        var claims = jwt.parse(jwt.generateToken(admin)).orElseThrow();
+        admin.setPasswordHash("$2a$10$a-different-hash");
+        assertFalse(jwt.isTokenValidFor(claims, admin));
+    }
+
+    @Test
+    void shouldRefuseTheToken_whenTheAccountIsDeactivated() {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+        com.samjhana.entity.User admin = user("admin");
+        var claims = jwt.parse(jwt.generateToken(admin)).orElseThrow();
+        admin.setIsActive(false);
+        assertFalse(jwt.isTokenValidFor(claims, admin));
+    }
+
+    @Test
+    void shouldRefuseTheToken_whenPresentedForADifferentUser() {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+        var claims = jwt.parse(jwt.generateToken(user("admin"))).orElseThrow();
+        assertFalse(jwt.isTokenValidFor(claims, user("someone-else")));
+    }
+
+    @Test
+    void shouldNotPutThePasswordHashInTheToken() {
+        JwtUtil jwt = new JwtUtil(STRONG_SECRET, 1, profiles("prod"));
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(jwt.generateToken(user("admin")).split("\\.")[1]));
+        assertFalse(payload.contains("$2a$10$hash-admin"));
+    }
+
+    private static com.samjhana.entity.User user(String username) {
+        return com.samjhana.entity.User.builder().username(username).passwordHash("$2a$10$hash-" + username)
+                .role(com.samjhana.entity.User.UserRole.ADMIN).isActive(true).build();
     }
 }

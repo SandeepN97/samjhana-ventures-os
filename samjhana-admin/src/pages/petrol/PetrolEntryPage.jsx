@@ -32,8 +32,6 @@ export default function PetrolEntryPage() {
   // Current fuel prices from database (selling price)
   const [fuelPrices, setFuelPrices] = useState({ petrol: null, diesel: null });
   const [pricesLoaded, setPricesLoaded] = useState(false);
-  // Latest purchase/cost price per fuel type (from fuel orders)
-  const [purchaseRates, setPurchaseRates] = useState({ petrol: null, diesel: null });
 
   // Set business date when loaded
   useEffect(() => {
@@ -59,36 +57,13 @@ export default function PetrolEntryPage() {
 
   const fetchCurrentPrices = useCallback(async () => {
     try {
-      const [priceRes, txnRes] = await Promise.all([
-        api.get(`/api/fuel-prices/current?_t=${Date.now()}`),
-        api.get('/api/transactions?businessCode=petrol'),
-      ]);
+      // The pump's purchase (cost) rate is looked up by the server when the sale is saved,
+      // so staff devices never need to read fuel purchase records.
+      const priceRes = await api.get(`/api/fuel-prices/current?_t=${Date.now()}`);
 
       setFuelPrices({
         petrol: priceRes.data.petrol?.pricePerLiter || null,
         diesel: priceRes.data.diesel?.pricePerLiter || null,
-      });
-
-      // Find the most recent PURCHASE transaction for each fuel type
-      const purchases = txnRes.data.filter(t =>
-        t.transactionType === 'PURCHASE' && t.customFields
-      ).map(t => ({
-        ...t,
-        customFields: typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields,
-      }));
-
-      const latest = { petrol: null, diesel: null };
-      for (const p of purchases) {
-        const ft = p.customFields?.fuelType;
-        if ((ft === 'petrol' || ft === 'diesel') && p.customFields?.ratePerLiter) {
-          if (!latest[ft] || p.transactionDate > latest[ft].transactionDate) {
-            latest[ft] = p;
-          }
-        }
-      }
-      setPurchaseRates({
-        petrol: latest.petrol ? parseFloat(latest.petrol.customFields.ratePerLiter) : null,
-        diesel: latest.diesel ? parseFloat(latest.diesel.customFields.ratePerLiter) : null,
       });
 
       setPricesLoaded(true);
@@ -149,7 +124,6 @@ export default function PetrolEntryPage() {
           fuelType: values.fuelType,
           liters: parseFloat(values.liters),
           ratePerLiter: parseFloat(values.ratePerLiter),
-          purchaseRate: purchaseRates[values.fuelType] || null,
           paymentMethod: values.paymentMethod,
         },
       };

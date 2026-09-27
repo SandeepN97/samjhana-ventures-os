@@ -31,7 +31,8 @@ public class FurnitureService {
 
     // ===================== DASHBOARD =====================
 
-    public Map<String, Object> getDashboard() {
+    /** @param includeCost whether the caller may see purchase (cost) prices: admins and managers only. */
+    public Map<String, Object> getDashboard(boolean includeCost) {
         List<FurnitureItem> allItems = itemRepository.findByIsActiveTrueOrderByNameAsc();
 
         BigDecimal totalStockValue = allItems.stream()
@@ -72,7 +73,7 @@ public class FurnitureService {
         dashboard.put("totalItems", allItems.size());
         dashboard.put("totalStockValue", totalStockValue);
         dashboard.put("lowStockCount", lowStockItems.size());
-        dashboard.put("lowStockItems", lowStockItems.stream().map(this::itemToMap).collect(Collectors.toList()));
+        dashboard.put("lowStockItems", lowStockItems.stream().map(i -> itemToMap(i, includeCost)).collect(Collectors.toList()));
         dashboard.put("todaySalesCount", todayTransactions.size());
         dashboard.put("todayRevenue", todayRevenue);
         dashboard.put("pendingDeliveries", pendingDeliveries);
@@ -151,7 +152,7 @@ public class FurnitureService {
 
     // ===================== INVENTORY =====================
 
-    public List<Map<String, Object>> listItems(String category, String search) {
+    public List<Map<String, Object>> listItems(String category, String search, boolean includeCost) {
         List<FurnitureItem> items;
         if (category != null && !category.isBlank() && !category.equalsIgnoreCase("ALL")) {
             try {
@@ -170,14 +171,14 @@ public class FurnitureService {
                             || (i.getSku() != null && i.getSku().toLowerCase().contains(s)))
                     .collect(Collectors.toList());
         }
-        return items.stream().map(this::itemToMap).collect(Collectors.toList());
+        return items.stream().map(i -> itemToMap(i, includeCost)).collect(Collectors.toList());
     }
 
-    public Map<String, Object> getItem(UUID id) {
+    public Map<String, Object> getItem(UUID id, boolean includeCost) {
         FurnitureItem item = itemRepository.findById(id)
                 .filter(FurnitureItem::getIsActive)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
-        return itemToMap(item);
+        return itemToMap(item, includeCost);
     }
 
     @Transactional
@@ -304,14 +305,21 @@ public class FurnitureService {
         return map;
     }
 
+    /** Full view, cost included: for callers already limited to admins/managers (create, update, stock). */
     public Map<String, Object> itemToMap(FurnitureItem i) {
+        return itemToMap(i, true);
+    }
+
+    public Map<String, Object> itemToMap(FurnitureItem i, boolean includeCost) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", i.getId().toString());
         map.put("name", i.getName());
         map.put("nameNepali", i.getNameNepali());
         map.put("sku", i.getSku());
         map.put("category", i.getCategory().name());
-        map.put("purchasePrice", i.getPurchasePrice());
+        if (includeCost) {
+            map.put("purchasePrice", i.getPurchasePrice());
+        }
         map.put("sellingPrice", i.getSellingPrice());
         map.put("stockQty", i.getStockQty());
         map.put("reorderLevel", i.getReorderLevel());

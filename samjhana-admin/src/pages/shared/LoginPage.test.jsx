@@ -66,6 +66,55 @@ describe('LoginPage', () => {
     });
   });
 
+  it('drops a cached manager-only NEA rate when staff sign in on the same device', async () => {
+    localStorage.setItem('ev_nea_rate', '12.5');
+    api.post.mockResolvedValue({ data: { token: 'staff-token', user: { username: 'sita', role: 'STAFF' } } });
+
+    renderWithProviders(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText('Enter username'), 'sita');
+    await userEvent.type(screen.getByPlaceholderText('Enter password'), 'secret-pass');
+    await userEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await waitFor(() => expect(localStorage.getItem('token')).toBe('staff-token'));
+    expect(localStorage.getItem('ev_nea_rate')).toBeNull();
+  });
+
+  it('keeps the cached NEA rate for a manager', async () => {
+    localStorage.setItem('ev_nea_rate', '12.5');
+    api.post.mockResolvedValue({ data: { token: 'mgr-token', user: { username: 'ram', role: 'MANAGER' } } });
+
+    renderWithProviders(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText('Enter username'), 'ram');
+    await userEvent.type(screen.getByPlaceholderText('Enter password'), 'secret-pass');
+    await userEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await waitFor(() => expect(localStorage.getItem('token')).toBe('mgr-token'));
+    expect(localStorage.getItem('ev_nea_rate')).toBe('12.5');
+  });
+
+  it('explains the 15-minute lockout after too many wrong passwords (429)', async () => {
+    api.post.mockRejectedValue({ response: { status: 429 } });
+
+    renderWithProviders(<LoginPage />);
+    await userEvent.type(screen.getByPlaceholderText('Enter username'), 'admin');
+    await userEvent.type(screen.getByPlaceholderText('Enter password'), 'guess');
+    await userEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    expect(await screen.findByText('Too many wrong passwords. Wait 15 minutes, then try again.')).toBeInTheDocument();
+  });
+
+  it('explains the lockout in Nepali', async () => {
+    api.post.mockRejectedValue({ response: { status: 429 } });
+
+    renderWithProviders(<LoginPage />, { locale: 'ne' });
+    const [userInput, passInput] = screen.getAllByRole('textbox').concat(Array.from(document.querySelectorAll('input[type="password"]')));
+    await userEvent.type(userInput, 'admin');
+    await userEvent.type(passInput, 'guess');
+    await userEvent.click(document.querySelector('form button[type="submit"]'));
+
+    expect(await screen.findByText('धेरै पटक गलत पासवर्ड। १५ मिनेट पर्खेर फेरि प्रयास गर्नुहोस्।')).toBeInTheDocument();
+  });
+
   it('shows generic error on non-401 failure', async () => {
     api.post.mockRejectedValue({ response: { status: 500 } });
 

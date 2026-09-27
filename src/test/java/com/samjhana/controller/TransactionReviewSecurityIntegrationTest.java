@@ -37,11 +37,10 @@ class TransactionReviewSecurityIntegrationTest {
     private final String unknownId = UUID.randomUUID().toString();
 
     private String bearerFor(String username, User.UserRole role) {
-        if (userRepository.findByUsername(username).isEmpty()) {
+        User user = userRepository.findByUsername(username).orElseGet(() ->
             userRepository.save(User.builder().username(username).passwordHash(passwordEncoder.encode("x"))
-                    .fullName(username).fullNameNepali(username).role(role).build());
-        }
-        return "Bearer " + jwtUtil.generateToken(username);
+                    .fullName(username).fullNameNepali(username).role(role).build()));
+        return "Bearer " + jwtUtil.generateToken(user);
     }
 
     @Test

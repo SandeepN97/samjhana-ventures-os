@@ -20,6 +20,11 @@ const CATEGORIES = [
 export default function FurnitureInventoryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  // Mirrors the server's rules: only admins set prices (add/edit/remove items);
+  // admins and managers adjust stock and see cost prices.
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'ADMIN';
+  const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +165,7 @@ export default function FurnitureInventoryPage() {
       <PageHeader unit="furniture" icon={Package} title={t('furnitureInv.title')} backTo="/entry/furniture" />
 
       {/* Actions */}
+      {isAdmin && (
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
@@ -169,6 +175,7 @@ export default function FurnitureInventoryPage() {
           {t('furnitureInv.addItem')}
         </button>
       </div>
+      )}
 
       {/* Category Filter Tabs */}
       <div className="px-4 py-2 bg-white border-b overflow-x-auto">
@@ -302,16 +309,18 @@ export default function FurnitureInventoryPage() {
         <div className="text-center py-20 text-gray-500">
           <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">{t('furnitureInv.noItems')}</p>
-          <button onClick={() => { resetForm(); setShowForm(true); }}
-            className="mt-4 bg-furniture-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-furniture-700">
-            {t('furnitureInv.addFirstItem')}
-          </button>
+          {isAdmin && (
+            <button onClick={() => { resetForm(); setShowForm(true); }}
+              className="mt-4 bg-furniture-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-furniture-700">
+              {t('furnitureInv.addFirstItem')}
+            </button>
+          )}
         </div>
       ) : (
         <div className="px-4 py-4 space-y-3">
           {filteredItems.map((item) => {
             const isLowStock = item.stockQty <= item.reorderLevel;
-            const profitMargin = item.purchasePrice && item.sellingPrice
+            const profitMargin = item.purchasePrice != null && item.sellingPrice
               ? (((item.sellingPrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(0)
               : null;
 
@@ -327,35 +336,45 @@ export default function FurnitureInventoryPage() {
                     <p className="text-xs text-gray-400 mb-2">SKU: {item.sku}</p>
 
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{t('furnitureInv.buy')}: {formatCurrency(item.purchasePrice)}</span>
+                      {item.purchasePrice != null && (
+                        <span className="text-gray-500">{t('furnitureInv.buy')}: {formatCurrency(item.purchasePrice)}</span>
+                      )}
                       <span className="text-gray-800 font-medium">{t('furnitureInv.sell')}: {formatCurrency(item.sellingPrice)}</span>
                       {profitMargin && <span className="text-green-600 text-xs">+{profitMargin}%</span>}
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2">
-                    <div className="flex gap-1">
-                      <button onClick={() => openEditForm(item)} className="p-1.5 text-furniture-600 hover:bg-furniture-50 rounded-lg">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(item)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <button onClick={() => openEditForm(item)} aria-label={t('furnitureInv.editItem')}
+                          className="flex h-11 w-11 items-center justify-center text-furniture-600 hover:bg-furniture-50 rounded-lg">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(item)} aria-label={t('common.delete')}
+                          className="flex h-11 w-11 items-center justify-center text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Stock with +/- buttons */}
                     <div className="flex items-center gap-1">
+                      {canManage && (
                       <button onClick={() => handleStockAdjust(item, -1)}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200">
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200">
                         <Minus className="w-3 h-3" />
                       </button>
+                      )}
                       <span className={`text-lg font-bold px-2 min-w-[2rem] text-center ${isLowStock ? 'text-red-600' : 'text-gray-800'}`}>
                         {item.stockQty}
                       </span>
+                      {canManage && (
                       <button onClick={() => handleStockAdjust(item, 1)}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200">
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200">
                         <Plus className="w-3 h-3" />
                       </button>
+                      )}
                     </div>
                     {isLowStock && <span className="text-xs text-red-500 font-medium">{t('furnitureInv.lowStockBadge')}</span>}
                   </div>

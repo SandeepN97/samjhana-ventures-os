@@ -100,7 +100,7 @@ class ChargerSessionFlowIntegrationTest {
                     .role(User.UserRole.ADMIN)
                     .build());
         }
-        token = jwtUtil.generateToken("ev-flow-admin");
+        token = jwtUtil.generateToken(userRepository.findByUsername("ev-flow-admin").orElseThrow());
 
         if (businessUnitRepository.findByCode(BusinessUnit.CODE_EV).isEmpty()) {
             businessUnitRepository.save(BusinessUnit.builder()
@@ -427,9 +427,28 @@ class ChargerSessionFlowIntegrationTest {
     }
 
     @Test
-    void shouldRefuseKioskConnection_whenTokenIsMissingOrInvalid() {
-        assertThatThrownBy(() -> connectKiosk("not-a-jwt")).isInstanceOf(ExecutionException.class);
-        assertThatThrownBy(() -> connectKiosk("")).isInstanceOf(ExecutionException.class);
+    void shouldRefuseKioskConnection_whenTicketIsMissingOrInvalid() {
+        assertThatThrownBy(() -> connectKioskWithTicket("not-a-ticket")).isInstanceOf(ExecutionException.class);
+        assertThatThrownBy(() -> connectKioskWithTicket("")).isInstanceOf(ExecutionException.class);
+    }
+
+    @Test
+    void shouldRefuseKioskConnection_whenGivenTheLoginTokenInsteadOfATicket() {
+        assertThatThrownBy(() -> connectKiosk(token, "token")).isInstanceOf(ExecutionException.class);
+    }
+
+    @Test
+    void shouldRefuseKioskConnection_whenATicketIsUsedTwice() throws Exception {
+        String ticket = post("/api/ev/live-ticket", Map.of()).getBody().get("ticket").asText();
+        connectKioskWithTicket(ticket);
+        assertThatThrownBy(() -> connectKioskWithTicket(ticket)).isInstanceOf(ExecutionException.class);
+    }
+
+    @Test
+    void shouldRefuseToIssueATicket_withoutALogin() {
+        ResponseEntity<JsonNode> response = rest.exchange("/api/ev/live-ticket", HttpMethod.POST,
+                new HttpEntity<>(new HttpHeaders()), JsonNode.class);
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 
     // ------------------------------------------------------------------ protocol + live push
@@ -604,10 +623,23 @@ class ChargerSessionFlowIntegrationTest {
         return charger;
     }
 
+    /** Connects the way the app does: swap the login token for a one-time ticket, then open the socket. */
     private KioskListener connectKiosk(String jwt) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwt);
+        String ticket = rest.exchange("/api/ev/live-ticket", HttpMethod.POST, new HttpEntity<>(headers), JsonNode.class)
+                .getBody().get("ticket").asText();
+        return connectKioskWithTicket(ticket);
+    }
+
+    private KioskListener connectKioskWithTicket(String ticket) throws Exception {
+        return connectKiosk(ticket, "ticket");
+    }
+
+    private KioskListener connectKiosk(String credential, String param) throws Exception {
         KioskListener kiosk = new KioskListener();
         WebSocketSession socket = new StandardWebSocketClient()
-                .execute(kiosk, new WebSocketHttpHeaders(), URI.create("ws://localhost:" + port + "/ws/ev?token=" + jwt))
+                .execute(kiosk, new WebSocketHttpHeaders(), URI.create("ws://localhost:" + port + "/ws/ev?" + param + "=" + credential))
                 .get(5, TimeUnit.SECONDS);
         handlers.add(kiosk);
         sockets.add(socket);
