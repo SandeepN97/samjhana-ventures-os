@@ -1,6 +1,6 @@
 # Base images are pinned by digest so a rebuild can't silently pull a different image;
 # Dependabot (docker ecosystem) proposes digest updates as PRs.
-FROM maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb AS build
+FROM maven:3.9.15-eclipse-temurin-26@sha256:029a8e2838ae68238ffb8be407cddbb3f07d4d839c60c6f26c619a69fd184531 AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn -B dependency:go-offline -q
