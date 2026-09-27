@@ -2,7 +2,7 @@
 
 **Revision 2 — decisions applied and checked against the repository on September 26, 2026**
 
-This document covers six tools: NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Playwright is being used for local admin E2E tests and CI; Context7 is an optional documentation aid; SkillSpector and Ponytail remain candidates pending review; Strix and Supabase MCP are deferred.
+This document covers six tools: NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Playwright is being used for local admin and public-site E2E tests and CI; Context7 is an optional documentation aid; SkillSpector and Ponytail remain candidates pending review; Strix and Supabase MCP are deferred.
 
 ## 1. Decisions and safety boundaries
 
@@ -30,14 +30,15 @@ The pinned source is a Python CLI (Python `>=3.12,<3.15`) with static checks and
 
 No standing hook, plugin, CI integration, or self-update is approved. If later adopted, start with an explicit, manually invoked scan; consider a hook only after reviewing its effects and failure behavior.
 
-## 3. Playwright — populated local admin E2E and CI
+## 3. Playwright — local admin and public-site E2E and CI
 
-Playwright was already in `samjhana-admin`'s development dependencies, scripts, and `playwright.config.js`; the E2E suite now includes:
+Playwright is in `samjhana-admin`'s development dependencies, scripts, and `playwright.config.js`; the E2E suite includes:
 
 - `samjhana-admin/e2e/ev-charging.e2e.js` with the simulated OCPP charger and multi-step staff charging, payment, and unlock flows.
 - `samjhana-admin/e2e/login.e2e.js` covering protected-route redirection, invalid credentials, successful disposable-admin login, logout, and local credential clearing.
+- `samjhana-admin/e2e/public-site.e2e.js` covering the public home page, API-backed fuel/EV content, and furniture catalogue search.
 
-The configuration starts Spring Boot on `localhost:8181` with the `dev` profile and in-memory H2, plus the Vite admin app on `localhost:5183`. The backend seeds only disposable test accounts; the charger is simulated. Run locally with Java 21, Maven, Node.js 20, and the Playwright Chromium browser installed:
+The suite covers the admin workflows and public home/furniture pages. Its configuration starts Spring Boot on `localhost:8181` with the `dev` profile and in-memory H2, the admin Vite app on `localhost:5183`, and the public Vite app on `localhost:5185`. Both frontends proxy public API calls to that disposable backend. It seeds only disposable test accounts; the charger is simulated. Run locally with Java 21, Maven, Node.js 20, and the Playwright Chromium browser installed:
 
 ```bash
 cd samjhana-admin

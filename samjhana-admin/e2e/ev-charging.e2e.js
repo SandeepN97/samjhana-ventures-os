@@ -63,6 +63,14 @@ function watchPage(page) {
   return { log, stamp };
 }
 
+async function failIfAppErrored(page, phase) {
+  const errorHeading = page.getByRole('heading', { name: 'Page Error' });
+  if (await errorHeading.isVisible().catch(() => false)) {
+    const details = await page.locator('pre').innerText();
+    throw new Error(`${phase}: the admin app rendered its ErrorBoundary:\n${details}`);
+  }
+}
+
 async function login(page, { username, password }) {
   // The app defaults to Nepali; these tests assert English labels (Nepali has its own test).
   await page.addInitScript(() => localStorage.setItem('preferredLanguage', 'en'));
@@ -79,10 +87,7 @@ async function openEvPage(page, user = ADMIN) {
   diagnostics.set(page, watchPage(page));
   await login(page, user);
   await page.goto('/entry/ev');
-  if (await page.getByRole('heading', { name: 'Page Error' }).isVisible()) {
-    const details = await page.locator('pre').innerText();
-    throw new Error(`The app rendered its ErrorBoundary on the EV page:\n${details}`);
-  }
+  await failIfAppErrored(page, 'Opening the EV page');
   await expect(page).toHaveURL(/\/entry\/ev$/);
   await expect(page.getByRole('tab', { name: /Start Session/ })).toHaveAttribute('aria-selected', 'true');
 }
@@ -358,6 +363,7 @@ test('fits a phone screen on every tab and keeps touch targets at least 44px', a
 
   for (const name of ['Start Session', 'Active', 'Payment']) {
     await tab(page, name).click();
+    await failIfAppErrored(page, `Opening the ${name} tab`);
     const noHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
     expect(noHorizontalScroll, `${name} tab scrolls horizontally`).toBe(true);
 

@@ -75,7 +75,7 @@ npm run lint
 npm run build
 ```
 
-Admin browser tests use a disposable local Spring Boot/H2 backend and simulated charger:
+Admin and public website browser tests use a disposable local Spring Boot/H2 backend; EV flows use a simulated charger:
 
 ```bash
 cd samjhana-admin
