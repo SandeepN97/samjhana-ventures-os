@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -28,14 +29,22 @@ public class OcppProperties {
         this.environment = environment;
     }
 
+    /**
+     * Refuses the charger secrets published in this repository (the {@code dev-*} defaults) anywhere
+     * except a developer's machine or the test suite. Staging is reachable from the internet just like
+     * prod, so a forgotten OCPP_SECRET_* there would let anyone connect as a charger and feed it fake
+     * readings. Decided by the secret's value, not by the profile being "prod".
+     */
     @PostConstruct
     void validate() {
-        boolean prod = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        List<String> profiles = Arrays.asList(environment.getActiveProfiles());
+        boolean local = profiles.isEmpty() || profiles.contains("dev") || profiles.contains("test");
         boolean insecure = stationSecrets.isEmpty() || stationSecrets.values().stream()
                 .anyMatch(secret -> secret == null || secret.isBlank() || secret.startsWith("dev-"));
-        if (prod && insecure) {
+        if (insecure && !local) {
             throw new IllegalStateException(
-                    "All OCPP station secrets must be configured with secure non-dev values in production.");
+                    "OCPP charger secrets are missing or still the published dev defaults (active profiles: "
+                    + profiles + "). Set every OCPP_SECRET_* to a random value, e.g. `openssl rand -base64 32`.");
         }
         if (insecure) {
             log.warn("OCPP is using development charger secrets. Configure OCPP_SECRET_* before provisioning hardware.");

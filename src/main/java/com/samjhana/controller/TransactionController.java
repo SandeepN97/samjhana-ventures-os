@@ -41,13 +41,14 @@ public class TransactionController {
 
     @GetMapping
     public ResponseEntity<List<TransactionResponse>> list(
-            @RequestParam(required = false) String businessCode) {
-        return ResponseEntity.ok(transactionService.list(businessCode));
+            @RequestParam(required = false) String businessCode,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(transactionService.list(businessCode, user));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> get(@PathVariable String id) {
-        return ResponseEntity.ok(transactionService.get(UUID.fromString(id)));
+    public ResponseEntity<?> get(@PathVariable String id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(transactionService.get(UUID.fromString(id), user));
     }
 
     @PutMapping("/{id}")

@@ -13,7 +13,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,11 +23,26 @@ import java.util.Map;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+/**
+ * Wipes and re-seeds the business data behind the admin "Reset demo data" button.
+ *
+ * <p>Only exists in dev and staging: in prod this bean is never created, so the endpoint that calls
+ * it answers 404 and real data can't be wiped by a stray tap or a stolen admin token. Even where it
+ * does run, it never touches login accounts (the person pressing the button stays logged in with
+ * their own password) or the audit log, and it never creates an account anyone could log in to:
+ * the demo "people" who appear as having entered transactions are inactive accounts with random
+ * passwords.
+ */
 @Service
+@Profile({"dev", "staging"})
 @RequiredArgsConstructor
 @Slf4j
 public class DemoDataSeederService {
+
+    /** Demo accounts older versions of this reset created with published passwords (demo/demo, pass123). */
+    static final List<String> LEGACY_DEMO_USERNAMES = List.of("demo", "ram_mgr", "sita_staff", "hari_staff");
 
     private final UserRepository userRepository;
     private final BusinessUnitRepository businessUnitRepository;
@@ -42,27 +57,28 @@ public class DemoDataSeederService {
     private final SystemSettingRepository systemSettingRepository;
     private final EntityManager entityManager;
     private final PasswordEncoder passwordEncoder;
-    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
-    public void resetAndSeed() {
-        log.info("=== Demo data reset started ===");
-        clearAll();
+    public void resetAndSeed(User requestedBy) {
+        log.info("=== Demo data reset started by {} ===", requestedBy.getUsername());
+        disableLegacyDemoLogins();
+        clearBusinessData();
 
-        // ── Users ──────────────────────────────────────────────────────────
-        User demo    = userRepository.save(user("demo",       "demo",    "Demo Admin",     "डेमो प्रशासक",    UserRole.ADMIN,   "en"));
-        User admin   = userRepository.save(user("admin",      "admin",   "System Admin",   "प्रणाली प्रशासक", UserRole.ADMIN,   "en"));
-        User manager = userRepository.save(user("ram_mgr",    "pass123", "Ram Sharma",     "राम शर्मा",        UserRole.MANAGER, "ne"));
-        User sita    = userRepository.save(user("sita_staff", "pass123", "Sita Tamang",    "सिता तामाङ",       UserRole.STAFF,   "ne"));
-        User hari    = userRepository.save(user("hari_staff", "pass123", "Hari Thapa",     "हरि थापा",         UserRole.STAFF,   "ne"));
+        // ── People shown as having entered the demo data ───────────────────
+        // Inactive, random password: they appear in records but nobody can log in as them.
+        User admin   = requestedBy;
+        User demo    = requestedBy;
+        User manager = demoActor("demo_manager", "Ram Sharma",  "राम शर्मा",  UserRole.MANAGER);
+        User sita    = demoActor("demo_staff_1", "Sita Tamang", "सिता तामाङ", UserRole.STAFF);
+        User hari    = demoActor("demo_staff_2", "Hari Thapa",  "हरि थापा",   UserRole.STAFF);
         entityManager.flush();
 
-        // ── Business Units ─────────────────────────────────────────────────
-        BusinessUnit petrol    = businessUnitRepository.save(bu("petrol",    "Shringeshwor Petrol Pump", "श्रृंगेश्वर पेट्रोल पम्प", "🛢️", "PetrolStrategy",   1));
-        BusinessUnit ev        = businessUnitRepository.save(bu("ev",        "EV Charging Station",      "EV चार्जिंग स्टेशन",       "⚡",  "EVStrategy",        2));
-        BusinessUnit furniture = businessUnitRepository.save(bu("furniture", "Furniture Shop",            "फर्निचर पसल",              "🪑", "FurnitureStrategy", 3));
-        BusinessUnit rental    = businessUnitRepository.save(bu("rental",    "House Rental",              "घर भाडा",                  "🏠", "RentalStrategy",    4));
-        BusinessUnit loan      = businessUnitRepository.save(bu("loan",      "Bank Loan Management",      "बैंक ऋण व्यवस्थापन",       "🏦", "LoanStrategy",      5));
+        // ── Business Units (reference data: reused, never deleted) ─────────
+        BusinessUnit petrol    = businessUnit("petrol",    "Shringeshwor Petrol Pump", "श्रृंगेश्वर पेट्रोल पम्प", "🛢️", "PetrolStrategy",   1);
+        BusinessUnit ev        = businessUnit("ev",        "EV Charging Station",      "EV चार्जिंग स्टेशन",       "⚡",  "EVStrategy",        2);
+        BusinessUnit furniture = businessUnit("furniture", "Furniture Shop",            "फर्निचर पसल",              "🪑", "FurnitureStrategy", 3);
+        BusinessUnit rental    = businessUnit("rental",    "House Rental",              "घर भाडा",                  "🏠", "RentalStrategy",    4);
+        BusinessUnit loan      = businessUnit("loan",      "Bank Loan Management",      "बैंक ऋण व्यवस्थापन",       "🏦", "LoanStrategy",      5);
         entityManager.flush();
 
         // ── Fuel Prices (2 price changes in history) ───────────────────────
@@ -90,8 +106,8 @@ public class DemoDataSeederService {
                 .monthlySalary(bd("14000")).joinDate(LocalDate.now().minusMonths(30)).isActive(true).build()
         ));
 
-        // ── EV Vehicles ────────────────────────────────────────────────────
-        evVehicleRepository.saveAll(List.of(
+        // ── EV Vehicles (catalogue is kept; only filled in if empty) ──────
+        if (evVehicleRepository.count() == 0) evVehicleRepository.saveAll(List.of(
             evv("Higer (100KW)", "100",   16, "16"), evv("Higer (53KW)",  "53.58", 16, "16"),
             evv("Higer (70KW)",  "70.47", 16, "10"), evv("Keytone",       "53.58", 14, "9"),
             evv("Foton",         "50.23", 16, "9"),  evv("Kinglong",      "50.23", 16, "9"),
@@ -188,7 +204,7 @@ public class DemoDataSeederService {
             seedReport(today.minusDays(daysAgo), daysAgo, manager, admin);
         }
 
-        log.info("=== Demo seed complete. Login: demo/demo (admin/admin, ram_mgr/pass123, sita_staff/pass123) ===");
+        log.info("=== Demo seed complete. Logins were not changed. ===");
     }
 
     // ── Day transaction seeding ────────────────────────────────────────────
@@ -359,60 +375,55 @@ public class DemoDataSeederService {
 
     // ── Clear all data ─────────────────────────────────────────────────────
 
-    /** Drop all CHECK constraints to avoid stale enum-value constraint violations.
-     *  Works with both H2 (schema=PUBLIC) and PostgreSQL (schema=public).
-     *  With ddl-auto=update, Hibernate never updates old constraints, so a constraint
-     *  created before a new enum value was added will block inserts. */
-    private void dropAllCheckConstraints() {
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT TABLE_NAME, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS " +
-                "WHERE CONSTRAINT_TYPE = 'CHECK' AND UPPER(TABLE_SCHEMA) = 'PUBLIC'"
-            );
-            for (Map<String, Object> row : rows) {
-                try {
-                    String table = String.valueOf(row.get("TABLE_NAME"));
-                    String constraint = String.valueOf(row.get("CONSTRAINT_NAME"));
-                    jdbcTemplate.execute("ALTER TABLE \"" + table +
-                        "\" DROP CONSTRAINT IF EXISTS \"" + constraint + "\"");
-                    log.debug("Dropped check constraint {} on {}", row.get("CONSTRAINT_NAME"), row.get("TABLE_NAME"));
-                } catch (Exception e) {
-                    log.warn("Could not drop constraint {} on {}: {}", row.get("CONSTRAINT_NAME"), row.get("TABLE_NAME"), e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Could not drop check constraints: {}", e.getMessage());
+    /**
+     * Older versions of this reset created demo/demo and three pass123 accounts. If any are still
+     * around, make sure nobody can log in with those published passwords.
+     */
+    private void disableLegacyDemoLogins() {
+        for (String username : LEGACY_DEMO_USERNAMES) {
+            userRepository.findByUsername(username).ifPresent(u -> {
+                u.setIsActive(false);
+                u.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+                userRepository.save(u);
+                log.info("Disabled legacy demo login '{}'", username);
+            });
         }
     }
 
-    private void clearAll() {
-        log.info("Clearing all existing data...");
-        dropAllCheckConstraints();
+    /**
+     * Removes business data only. Users, the audit log, business units and chargers are kept.
+     * Order matters: charge sessions point at transactions, so they go first.
+     */
+    private void clearBusinessData() {
+        log.info("Clearing demo business data...");
+        entityManager.createQuery("DELETE FROM ChargeSession c").executeUpdate();
+        entityManager.createQuery("DELETE FROM ElectricityBill b").executeUpdate();
         entityManager.createQuery("DELETE FROM Transaction t").executeUpdate();
         entityManager.createQuery("DELETE FROM DailyReport d").executeUpdate();
         entityManager.createQuery("DELETE FROM FuelPrice f").executeUpdate();
-        entityManager.createQuery("DELETE FROM EvVehicle e").executeUpdate();
         entityManager.createQuery("DELETE FROM RentalProperty r").executeUpdate();
         entityManager.createQuery("DELETE FROM FurnitureItem f").executeUpdate();
         entityManager.createQuery("DELETE FROM FurnitureCustomer f").executeUpdate();
         entityManager.createQuery("DELETE FROM Staff s").executeUpdate();
         entityManager.createQuery("DELETE FROM SystemSetting s").executeUpdate();
-        try { entityManager.createQuery("DELETE FROM AuditLog a").executeUpdate(); }        catch (Exception e) { log.warn("AuditLog clear: {}", e.getMessage()); }
-        try { entityManager.createQuery("DELETE FROM FieldTemplate f").executeUpdate(); }   catch (Exception e) { log.warn("FieldTemplate clear skipped"); }
-        try { entityManager.createQuery("DELETE FROM ImageAttachment i").executeUpdate(); } catch (Exception e) { log.warn("ImageAttachment clear skipped"); }
-        try { entityManager.createQuery("DELETE FROM Resource r").executeUpdate(); }        catch (Exception e) { log.warn("Resource clear skipped"); }
-        entityManager.createQuery("DELETE FROM BusinessUnit b").executeUpdate();
-        entityManager.createQuery("DELETE FROM User u").executeUpdate();
         entityManager.flush();
-        log.info("All data cleared.");
+        log.info("Demo business data cleared.");
+    }
+
+    private User demoActor(String username, String name, String nameNe, UserRole role) {
+        User user = userRepository.findByUsername(username).orElseGet(() -> User.builder()
+                .username(username).fullName(name).fullNameNepali(nameNe).role(role).locale("ne").build());
+        user.setIsActive(false);
+        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        return userRepository.save(user);
+    }
+
+    private BusinessUnit businessUnit(String code, String name, String nameNe, String icon, String strategy, int order) {
+        return businessUnitRepository.findByCode(code)
+                .orElseGet(() -> businessUnitRepository.save(bu(code, name, nameNe, icon, strategy, order)));
     }
 
     // ── Builder helpers ────────────────────────────────────────────────────
-
-    private User user(String username, String password, String name, String nameNe, UserRole role, String locale) {
-        return User.builder().username(username).passwordHash(passwordEncoder.encode(password))
-            .fullName(name).fullNameNepali(nameNe).role(role).locale(locale).isActive(true).build();
-    }
 
     private BusinessUnit bu(String code, String name, String nameNe, String icon, String strategy, int order) {
         return BusinessUnit.builder().code(code).name(name).nameNepali(nameNe)

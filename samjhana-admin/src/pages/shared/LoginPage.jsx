@@ -66,11 +66,14 @@ export default function LoginPage() {
       );
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
+      // A previous manager's cached electricity cost must not linger for staff on a shared device.
+      if (res.data.user?.role === 'STAFF') localStorage.removeItem('ev_nea_rate');
       navigate('/', { replace: true });
     } catch (err) {
+      const status = err.response?.status;
       setError(
-        err.response?.status === 401
-          ? t('login.invalidCredentials')
+        status === 401 ? t('login.invalidCredentials')
+          : status === 429 ? t('login.tooManyAttempts')
           : t('login.loginFailed')
       );
     } finally {

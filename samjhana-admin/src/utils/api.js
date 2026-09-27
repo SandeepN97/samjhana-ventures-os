@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearSignIn } from './session';
 
 // In dev, Vite proxies /api → localhost:8080 (no baseURL needed).
 // In production (Vercel), set VITE_API_URL to the Railway backend URL.
@@ -22,8 +23,7 @@ api.interceptors.response.use(
     if (!error.config?.skipAuthRedirect) {
       if (error.response?.status === 401 ||
           (error.response?.status === 403 && !error.response?.data?.message)) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearSignIn();
         window.location.href = '/login';
       }
     }

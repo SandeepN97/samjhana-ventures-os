@@ -1,2 +1,4 @@
-ocpp>=2.1.0
-websockets>=13
+# Exact versions: this tool holds real charger secrets, so an upstream release must not change it
+# unnoticed. Dependabot proposes upgrades as PRs.
+ocpp==2.1.0
+websockets==17.1

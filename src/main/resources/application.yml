@@ -152,7 +152,9 @@ spring:
     console:
       enabled: true
       settings:
-        web-allow-others: true
+        # Local machine only: the console runs any SQL (and, through CREATE ALIAS, Java), so it
+        # must not be reachable from other devices on the same Wi-Fi.
+        web-allow-others: false
 
   jpa:
     show-sql: true

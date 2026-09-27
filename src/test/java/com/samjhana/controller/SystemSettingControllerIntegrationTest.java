@@ -43,7 +43,7 @@ class SystemSettingControllerIntegrationTest {
             userRepository.save(User.builder().username(username).passwordHash(passwordEncoder.encode("x"))
                     .fullName(username).fullNameNepali(username).role(role).build());
         }
-        return "Bearer " + jwtUtil.generateToken(username);
+        return "Bearer " + jwtUtil.generateToken(userRepository.findByUsername(username).orElseThrow());
     }
 
     @Test

@@ -9,7 +9,9 @@ import com.samjhana.entity.User;
 import com.samjhana.exception.TransactionNotFoundException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
+import com.samjhana.repository.DailyReportRepository;
 import com.samjhana.repository.FurnitureItemRepository;
+import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,8 @@ class TransactionServiceTest {
     @Mock FurnitureItemRepository furnitureItemRepository;
     @Mock AuditLogRepository auditLogRepository;
     @Mock CalculationEngine calculationEngine;
+    @Mock DailyReportRepository dailyReportRepository;
+    @Mock SystemSettingRepository systemSettingRepository;
 
     private TransactionService service;
     private User staff;
@@ -52,7 +56,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransactionService(transactionRepository, businessUnitRepository, furnitureItemRepository,
-                auditLogRepository, calculationEngine, new ObjectMapper());
+                auditLogRepository, calculationEngine, new ObjectMapper(), dailyReportRepository, systemSettingRepository);
         staff = User.builder().username("staff").passwordHash("x").fullName("Staff Member").role(User.UserRole.STAFF).build();
         manager = User.builder().username("manager").passwordHash("x").fullName("Shop Manager").role(User.UserRole.MANAGER).build();
         pending = Transaction.builder()

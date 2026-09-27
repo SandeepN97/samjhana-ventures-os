@@ -367,6 +367,69 @@ class ChargeSessionServiceTest {
         verify(transactionService, never()).create(any(), any());
     }
 
+    // ------------------------------------------------------------------ price floor for staff
+
+    private User cashier() {
+        return User.builder().id(UUID.randomUUID()).username("cashier").role(User.UserRole.STAFF).build();
+    }
+
+    private ChargeSession chargedFrom30To80() {   // 50% at Rs 14 per 1% = Rs 700
+        ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
+        session.setCurrentSoc(80);
+        return session;
+    }
+
+    @Test
+    void shouldRefuseStaffTakingLessThanThePrice() {
+        ChargeSession session = chargedFrom30To80();
+
+        EvSessionStateException error = assertThrows(EvSessionStateException.class,
+                () -> service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "1"), cashier()));
+
+        assertTrue(error.getMessage().contains("700.00"));
+        assertEquals(ChargeSession.Status.AWAITING_PAYMENT, session.getStatus());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
+        verify(transactionService, never()).create(any(), any());
+    }
+
+    @Test
+    void shouldLetStaffRoundThePriceDownByUpToOneRupee() {
+        ChargeSession session = chargedFrom30To80();
+
+        ChargeSessionResponse response = service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "699"), cashier());
+
+        assertEquals(0, new BigDecimal("699").compareTo(response.getAmount()));
+    }
+
+    @Test
+    void shouldLetStaffChargeMoreThanThePrice() {
+        ChargeSession session = chargedFrom30To80();
+
+        ChargeSessionResponse response = service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "750"), cashier());
+
+        assertEquals(0, new BigDecimal("750").compareTo(response.getAmount()));
+    }
+
+    @Test
+    void shouldLetAManagerGiveADiscount() {
+        ChargeSession session = chargedFrom30To80();
+        User manager = User.builder().id(UUID.randomUUID()).username("mgr").role(User.UserRole.MANAGER).build();
+
+        ChargeSessionResponse response = service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "500"), manager);
+
+        assertEquals(0, new BigDecimal("500").compareTo(response.getAmount()));
+    }
+
+    @Test
+    void shouldAcceptAnyPositiveAmount_whenThereIsNoRateToPriceAgainst() {
+        ChargeSession session = chargedFrom30To80();
+        session.setRatePerPercent(null);
+
+        ChargeSessionResponse response = service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "50"), cashier());
+
+        assertEquals(0, new BigDecimal("50").compareTo(response.getAmount()));
+    }
+
     // ------------------------------------------------------------------ retry unlock
 
     @Test

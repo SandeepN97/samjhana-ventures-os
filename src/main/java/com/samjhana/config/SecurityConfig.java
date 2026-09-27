@@ -16,6 +16,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -37,6 +44,11 @@ public class SecurityConfig {
      * The default deliberately omits wildcard '*' — an unset value blocks cross-origin
      * requests from unknown origins rather than opening them.
      */
+    static final String CONTENT_SECURITY_POLICY =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            + "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
+            + "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
+
     @Value("${samjhana.cors.allowed-origins:http://localhost:5173,http://localhost:5175,http://localhost:8080}")
     private String allowedOrigins;
 
@@ -47,7 +59,22 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.sameOrigin())
+                // Render terminates TLS, so the app itself never sees HTTPS and Spring would skip HSTS.
+                // Send it on every response; browsers ignore it on plain-http localhost.
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .requestMatcher(AnyRequestMatcher.INSTANCE)
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
+                // Only this app's own scripts may run, so an injected <script> can't read the login token.
+                // Not applied to the dev-only H2 console and Swagger UI, which rely on inline scripts.
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                    new NegatedRequestMatcher(new OrRequestMatcher(
+                        new AntPathRequestMatcher("/h2-console/**"),
+                        new AntPathRequestMatcher("/swagger-ui/**"))),
+                    new ContentSecurityPolicyHeaderWriter(CONTENT_SECURITY_POLICY))))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(
@@ -81,12 +108,10 @@ public class SecurityConfig {
                     "/ev-electricity",
                     "/ev-manual",
                     "/analytics",
-                    // Public ecommerce routes
-                    "/api/ecommerce/products",
-                    "/api/ecommerce/products/**",
-                    "/api/ecommerce/auth/**",
-                    "/shop",
-                    "/shop/**"
+                    "/rental-properties",
+                    "/rental-tenants"
+                    // (The old /api/ecommerce/** and /shop/** entries were removed: nothing serves them,
+                    // and an open rule waiting for a future controller would make it public by accident.)
                 ).permitAll();
 
                 // H2 console and Swagger/OpenAPI docs: dev only

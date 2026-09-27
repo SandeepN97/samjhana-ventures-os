@@ -25,6 +25,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { clearSignIn } from '../../utils/session';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -40,6 +41,8 @@ export default function SettingsPage() {
   // Demo reset state
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
   const [demoResetting, setDemoResetting] = useState(false);
+  // Only true where the server offers the reset (dev/staging); prod never shows the button.
+  const [demoResetAvailable, setDemoResetAvailable] = useState(false);
 
   // Edit Profile state
   const [profileFullName, setProfileFullName] = useState(user.fullName || '');
@@ -76,6 +79,9 @@ export default function SettingsPage() {
     if (isAdmin) {
       fetchUsers();
       fetchStaff();
+      api.get('/api/admin/features', { skipAuthRedirect: true })
+        .then((res) => setDemoResetAvailable(res.data?.demoReset === true))
+        .catch(() => setDemoResetAvailable(false));
     }
   }, [isAdmin]);
 
@@ -189,11 +195,13 @@ export default function SettingsPage() {
 
     setPwSaving(true);
     try {
-      await api.post('/api/auth/change-password', {
+      const res = await api.post('/api/auth/change-password', {
         username: user.username,
         currentPassword,
         newPassword,
       });
+      // Changing the password signs out every other device; the server hands this one a new token.
+      if (res?.data?.token) localStorage.setItem('token', res.data.token);
 
       showToast(t('settings.passwordChanged'), 'success');
       setCurrentPassword('');
@@ -229,8 +237,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSignIn();
     navigate('/login', { replace: true });
   };
 
@@ -238,15 +245,12 @@ export default function SettingsPage() {
     setDemoResetting(true);
     setShowDemoConfirm(false);
     try {
+      // The reset keeps every login, including this one, so there is nothing to log back in to.
       await api.post('/api/admin/demo-reset', null, { skipAuthRedirect: true });
-      // Re-login as demo user automatically
-      const loginRes = await api.post('/api/auth/login', { username: 'demo', password: 'demo' }, { skipAuthRedirect: true });
-      localStorage.setItem('token', loginRes.data.token);
-      localStorage.setItem('user', JSON.stringify(loginRes.data.user));
-      showToast('Demo data loaded. Welcome back!', 'success');
+      showToast(t('settings.demoResetDone'), 'success');
       setTimeout(() => navigate('/', { replace: true }), 800);
-    } catch (err) {
-      showToast(err.response?.data?.error || 'Reset failed', 'error');
+    } catch {
+      showToast(t('settings.demoResetFailed'), 'error');
     } finally {
       setDemoResetting(false);
     }
@@ -779,16 +783,16 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Demo Data Reset — admin only */}
-            {isAdmin && (
+            {/* Demo Data Reset — admin only, and only where the server offers it */}
+            {isAdmin && demoResetAvailable && (
               <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-amber-200">
                 <div className="px-4 py-3 border-b bg-amber-50 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span className="font-bold text-amber-800 text-sm uppercase tracking-wide">Demo / Testing</span>
+                  <span className="font-bold text-amber-800 text-sm uppercase tracking-wide">{t('settings.demoTitle')}</span>
                 </div>
                 <div className="px-4 py-4">
                   <p className="text-sm text-gray-600 mb-3">
-                    Clears all data and loads realistic demo data across all business units. You will be logged out automatically.
+                    {t('settings.demoDesc')}
                   </p>
                   {!showDemoConfirm ? (
                     <button
@@ -796,11 +800,11 @@ export default function SettingsPage() {
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all active:scale-95"
                     >
                       <RefreshCw className="w-4 h-4" />
-                      Reset to Demo Data
+                      {t('settings.demoResetButton')}
                     </button>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-sm font-bold text-red-600 text-center">Are you sure? This will delete all existing data.</p>
+                      <p className="text-sm font-bold text-red-600 text-center">{t('settings.demoConfirm')}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setShowDemoConfirm(false)}
@@ -814,7 +818,7 @@ export default function SettingsPage() {
                           className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                         >
                           {demoResetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                          {demoResetting ? 'Resetting…' : 'Yes, Reset'}
+                          {demoResetting ? t('settings.demoResetting') : t('settings.demoConfirmYes')}
                         </button>
                       </div>
                     </div>

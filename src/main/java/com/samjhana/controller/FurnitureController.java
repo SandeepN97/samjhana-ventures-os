@@ -1,13 +1,25 @@
 package com.samjhana.controller;
 
+import com.samjhana.entity.User;
 import com.samjhana.service.FurnitureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Furniture shop. Who may do what:
+ * <ul>
+ *   <li>Everyone signed in: browse items (without cost prices), customers, orders; add/edit customers;
+ *       update delivery status.</li>
+ *   <li>Admins and managers: see cost prices; adjust stock; remove customers.</li>
+ *   <li>Admins only: add, edit or remove items (this is where prices are set).</li>
+ * </ul>
+ */
 @RestController
 @RequestMapping("/api/furniture")
 @RequiredArgsConstructor
@@ -18,8 +30,8 @@ public class FurnitureController {
     // ===================== DASHBOARD =====================
 
     @GetMapping("/dashboard")
-    public ResponseEntity<?> dashboard() {
-        return ResponseEntity.ok(furnitureService.getDashboard());
+    public ResponseEntity<?> dashboard(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(furnitureService.getDashboard(user.canManage()));
     }
 
     // ===================== CUSTOMERS =====================
@@ -42,6 +54,7 @@ public class FurnitureController {
     }
 
     @DeleteMapping("/customers/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> deleteCustomer(@PathVariable String id) {
         furnitureService.deleteCustomer(UUID.fromString(id));
         return ResponseEntity.ok(Map.of("message", "Customer removed"));
@@ -52,34 +65,39 @@ public class FurnitureController {
     @GetMapping("/items")
     public ResponseEntity<?> listItems(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(furnitureService.listItems(category, search));
+            @RequestParam(required = false) String search,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(furnitureService.listItems(category, search, user.canManage()));
     }
 
     @GetMapping("/items/{id}")
-    public ResponseEntity<?> getItem(@PathVariable String id) {
-        return ResponseEntity.ok(furnitureService.getItem(UUID.fromString(id)));
+    public ResponseEntity<?> getItem(@PathVariable String id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(furnitureService.getItem(UUID.fromString(id), user.canManage()));
     }
 
     @PostMapping("/items")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createItem(@RequestBody Map<String, Object> request) {
         Map<String, Object> item = furnitureService.createItem(request);
         return ResponseEntity.ok(Map.of("message", "Item added", "item", item));
     }
 
     @PutMapping("/items/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateItem(@PathVariable String id, @RequestBody Map<String, Object> request) {
         Map<String, Object> item = furnitureService.updateItem(UUID.fromString(id), request);
         return ResponseEntity.ok(Map.of("message", "Item updated", "item", item));
     }
 
     @DeleteMapping("/items/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteItem(@PathVariable String id) {
         furnitureService.deleteItem(UUID.fromString(id));
         return ResponseEntity.ok(Map.of("message", "Item removed"));
     }
 
     @PatchMapping("/items/{id}/stock")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> adjustStock(@PathVariable String id, @RequestBody Map<String, Object> request) {
         int adjustment = request.get("adjustment") instanceof Number
                 ? ((Number) request.get("adjustment")).intValue() : 0;

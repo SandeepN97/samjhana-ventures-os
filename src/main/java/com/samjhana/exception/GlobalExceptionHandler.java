@@ -1,14 +1,17 @@
 package com.samjhana.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -60,6 +63,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
     public ResponseEntity<ErrorResponse> handleAuthentication(RuntimeException ex) {
         return ResponseEntity.status(401).body(new ErrorResponse("UNAUTHORIZED", "Invalid credentials"));
+    }
+
+    /**
+     * A @PreAuthorize refusal. Without this it would fall through to the generic handler as a 500.
+     * The message matters: the admin app treats a 403 without one as an expired login.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(403).body(new ErrorResponse("FORBIDDEN", "You do not have permission to do this"));
+    }
+
+    /** E.g. two people closing the same day at once: the second hits the unique date and gets a clear 409. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(409).body(new ErrorResponse("CONFLICT", "This conflicts with a record that already exists"));
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<ErrorResponse> handleBadDate(DateTimeParseException ex) {
+        return ResponseEntity.status(400).body(new ErrorResponse("BAD_REQUEST", "Dates must be in YYYY-MM-DD format"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -6,6 +6,8 @@ import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.service.DemoDataSeederService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,11 +21,26 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@Slf4j
 public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final DemoDataSeederService demoDataSeederService;
+    /** Empty in prod: the demo reset bean only exists in dev and staging. */
+    private final ObjectProvider<DemoDataSeederService> demoDataSeederService;
+
+    /**
+     * Which admin-only tools this environment offers, so the UI can hide what isn't there
+     * (e.g. the demo reset button in prod).
+     */
+    @GetMapping("/features")
+    public ResponseEntity<?> features(@AuthenticationPrincipal User currentUser) {
+        if (currentUser == null || !currentUser.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin access required"));
+        }
+        return ResponseEntity.ok(Map.of("demoReset", demoDataSeederService.getIfAvailable() != null));
+    }
 
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers(@AuthenticationPrincipal User currentUser) {
@@ -128,15 +145,22 @@ public class AdminController {
 
     @PostMapping("/demo-reset")
     public ResponseEntity<?> resetDemoData(@AuthenticationPrincipal User currentUser) {
-        if (currentUser.getRole() != User.UserRole.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Admin access required"));
+        if (currentUser == null || !currentUser.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin access required"));
+        }
+        DemoDataSeederService seeder = demoDataSeederService.getIfAvailable();
+        if (seeder == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Demo reset is not available in this environment"));
         }
         try {
-            demoDataSeederService.resetAndSeed();
-            return ResponseEntity.ok(Map.of("message", "Demo data reset successfully. Use the credentials from your initial setup or environment configuration."));
+            seeder.resetAndSeed(currentUser);
+            return ResponseEntity.ok(Map.of("message", "Demo data reset. Your login is unchanged."));
         } catch (Exception e) {
+            log.error("Demo data reset failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Reset failed: " + e.getMessage()));
+                    .body(Map.of("message", "Demo data reset failed"));
         }
     }
 }

@@ -74,7 +74,7 @@ class FurnitureServiceTest {
         when(transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("furniture"))
                 .thenReturn(List.of(todaySale, oldSale, pendingDelivery));
 
-        Map<String, Object> dashboard = service.getDashboard();
+        Map<String, Object> dashboard = service.getDashboard(true);
 
         assertThat(dashboard.get("totalItems")).isEqualTo(2);
         assertThat((BigDecimal) dashboard.get("totalStockValue")).isEqualByComparingTo(new BigDecimal("503000"));
@@ -169,34 +169,34 @@ class FurnitureServiceTest {
         FurnitureItem sofa = item("Sofa", "1000", 5, 1);
         when(itemRepository.findByCategoryAndIsActiveTrue(FurnitureCategory.SOFA)).thenReturn(List.of(sofa));
 
-        assertThat(service.listItems("sofa", null)).hasSize(1);
+        assertThat(service.listItems("sofa", null, true)).hasSize(1);
     }
 
     @Test
     void shouldFallBackToAllItems_whenCategoryInvalid() {
         when(itemRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(item("X", "1", 1, 1)));
-        assertThat(service.listItems("not-a-real-category", null)).hasSize(1);
+        assertThat(service.listItems("not-a-real-category", null, true)).hasSize(1);
     }
 
     @Test
     void shouldFilterItemsBySearch_matchingNameOrSku() {
         when(itemRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(item("Sofa", "1", 1, 1)));
-        assertThat(service.listItems(null, "sofa")).hasSize(1);
-        assertThat(service.listItems(null, "nonexistent")).isEmpty();
+        assertThat(service.listItems(null, "sofa", true)).hasSize(1);
+        assertThat(service.listItems(null, "nonexistent", true)).isEmpty();
     }
 
     @Test
     void shouldGetItem_whenActive() {
         FurnitureItem active = item("Sofa", "1", 1, 1);
         when(itemRepository.findById(active.getId())).thenReturn(java.util.Optional.of(active));
-        assertThat(service.getItem(active.getId()).get("name")).isEqualTo("Sofa");
+        assertThat(service.getItem(active.getId(), true).get("name")).isEqualTo("Sofa");
     }
 
     @Test
     void shouldThrow_whenItemNotFoundOrInactive() {
         UUID id = UUID.randomUUID();
         when(itemRepository.findById(id)).thenReturn(java.util.Optional.empty());
-        assertThatThrownBy(() -> service.getItem(id)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.getItem(id, true)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

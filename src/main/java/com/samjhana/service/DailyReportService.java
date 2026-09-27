@@ -166,10 +166,11 @@ public class DailyReportService {
         return dailyReportRepository.findByReportDate(date).map(this::toResponse);
     }
 
-    public List<TransactionResponse> getTransactionsForDate(LocalDate date) {
+    public List<TransactionResponse> getTransactionsForDate(LocalDate date, User viewer) {
         return transactionRepository.findByDateWithDetails(date).stream()
                 .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
-                .map(TransactionResponse::from)
+                .filter(t -> TransactionVisibility.canSee(t, viewer))
+                .map(t -> TransactionVisibility.toResponse(t, viewer, objectMapper))
                 .toList();
     }
 
