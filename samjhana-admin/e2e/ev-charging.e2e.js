@@ -58,7 +58,7 @@ function watchPage(page) {
   page.on('console', (message) => { if (message.type() === 'error') stamp(`console.error ${message.text().slice(0, 140)}`); });
   page.on('pageerror', (error) => stamp(`pageerror ${error.message.slice(0, 140)}`));
   page.on('response', (response) => {
-    if (/\/api\/(charge-points|ev\/sessions)/.test(response.url())) stamp(`http ${response.status()} ${response.url().split('5183')[1]}`);
+    if (/\/api\//.test(response.url())) stamp(`http ${response.status()} ${response.url().split('5183')[1]}`);
   });
   return { log, stamp };
 }
@@ -79,6 +79,11 @@ async function openEvPage(page, user = ADMIN) {
   diagnostics.set(page, watchPage(page));
   await login(page, user);
   await page.goto('/entry/ev');
+  if (await page.getByRole('heading', { name: 'Page Error' }).isVisible()) {
+    const details = await page.locator('pre').innerText();
+    throw new Error(`The app rendered its ErrorBoundary on the EV page:\n${details}`);
+  }
+  await expect(page).toHaveURL(/\/entry\/ev$/);
   await expect(page.getByRole('tab', { name: /Start Session/ })).toHaveAttribute('aria-selected', 'true');
 }
 
