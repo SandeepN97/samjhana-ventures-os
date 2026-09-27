@@ -8,7 +8,7 @@ COPY src ./src
 COPY samjhana-admin ./samjhana-admin
 RUN mvn -B clean package -DskipTests -q
 
-FROM eclipse-temurin:21-jre-jammy@sha256:e9aaf73145bbd1f9f6ec7f6867dd75a44f34b1a6c32a813504bf4129be2d09d7
+FROM eclipse-temurin:22-jre-jammy@sha256:dbcae8b5dd4d63f81739a538ec2c09797735f04a21d814f9071b62f018326043
 # The app runs as this unprivileged user (see docker/entrypoint.sh), not as root.
 RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
 WORKDIR /app
