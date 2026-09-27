@@ -97,7 +97,7 @@ No hard deletes — always use soft delete with a `deletedAt` timestamp.
 Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth token is stored in `localStorage` under `token`; the private route check in `App.jsx` reads this directly.
 
 ### Data seeding
-`DataSeeder` (`@Profile("dev")`) runs on startup in dev only and seeds users, business units, and EV vehicles. Dev credentials: `admin/admin`, `manager/manager`, `staff/staff`.
+`DataSeeder` (`@Profile("dev")`) runs on startup in dev only and seeds users, business units, and EV vehicles. On an empty dev database, the seeded credentials are `admin/admin`, `manager/manager123`, and `staff/staff123`.
 
 ### Profiles
 - **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console enabled, verbose SQL logging, `DataSeeder` runs
