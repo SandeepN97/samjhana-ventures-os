@@ -1,15 +1,17 @@
-# Dependency update PRs, kept small on purpose: one grouped PR per area, once a month, with only
-# minor and patch versions. Major upgrades (Spring Boot 4, React 19, a new Java version...) change
-# behaviour and are planned as their own piece of work, so they are ignored here.
+# Dependabot opens pull requests ONLY for security fixes.
 #
-# Security fixes are separate: Dependabot *security* updates (Settings -> Code security) open a PR
-# as soon as an advisory is published, whatever this schedule says, including for major versions
-# when that is the only fixed release.
+# `open-pull-requests-limit: 0` switches off routine version-update PRs (they used to arrive dozens
+# at a time); Dependabot *security* updates are not affected by that limit and still open a PR as
+# soon as a vulnerability in one of these libraries is published. They must be switched on in
+# GitHub: Settings -> Code security -> Dependabot alerts + Dependabot security updates.
+#
+# Routine upgrades are listed instead in one monthly issue, "Dependency upgrades to plan"
+# (.github/workflows/dependency-report.yml).
 #
 # Docker base images are not included: their tags carry the Java version (e.g. -temurin-21), which
 # must only change on purpose. Update them by hand, keeping the digest pin in the Dockerfile.
 #
-# All PRs target staging, like every other change, and run the full CI before anyone merges them.
+# Every PR targets staging, like every other change, and runs the full CI before anyone merges it.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -17,67 +19,32 @@ updates:
     target-branch: staging
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: npm
     directory: /samjhana-admin
     target-branch: staging
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: npm
     directory: /samjhana-web
     target-branch: staging
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: pip
     directory: /tools/ocpp-simulator
     target-branch: staging
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: github-actions
     directory: /
     target-branch: staging
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 0
