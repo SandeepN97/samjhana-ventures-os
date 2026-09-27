@@ -88,10 +88,34 @@ wss://api.samjhanaventures.com/ocpp/HD-D140-E-01
 
 **Authentication:** OCPP Security Profile 2 pairs the URL with HTTP Basic Auth in the WebSocket handshake — username is the charge point ID again, password is a per-station secret token generated and stored in the backend. This stops an unauthorized device from connecting to the CSMS and impersonating a charger. The charger also sends a `Sec-WebSocket-Protocol: ocpp2.0.1` header during the handshake to declare which OCPP version it speaks.
 
+## EVSE and connector identity
+
+The checked-in Qingdao Hardhitter documentation confirms OCPP 2.0.1 but does not identify how
+each physical nozzle maps to OCPP EVSE and connector IDs. Until the vendor configuration is
+verified on each unit, the application assumes EVSE 1 with connectors 1 and 2. Treat this as a
+provisional mapping, not a confirmed hardware fact.
+
+Sessions are isolated by `(charge point, EVSE, connector)`. The REST start request accepts both
+IDs, transaction events must report both in OCPP's `evse` object, and the unlock request transmits
+the EVSE ID and connector ID separately. OCPP 2.0.1 `RequestStartTransaction` addresses an EVSE
+only; it has no connector-ID field. Therefore, if a unit truly reports both nozzles under one
+EVSE, the charger decides which connector starts, and this CSMS cannot select a specific connector
+in that request. Verify the physical OCPP mapping with the vendor before relying on remote start
+selection; two separate EVSE IDs may be the correct representation for independently startable
+nozzles.
+
+Starting a session takes a pessimistic write lock on its charge-point row for the duration of the
+transaction, then checks whether that exact EVSE/connector has an open session. This serializes
+competing starts on the same charger while allowing distinct connectors to start independently.
+The `evse_id` schema addition and supporting index are in
+`docs/migrations/2026-09-26-add-evse-id-to-charge-sessions.sql`. Apply that SQL to staging and
+production before deploying this version: staging uses `ddl-auto: validate` and will not create
+the new column automatically.
+
 ## Data model
 
 - `charge_point` — one row per physical unit: charge point ID (matches the URL segment above), model, serial number, OCPP auth secret, live connection status
-- `charge_session` — plate/vehicle link, charge_point + connector ID, target %, start time, live meter data, **final energy delivered (kWh)**, status (active / awaiting-payment / closed), payment method + amount
+- `charge_session` — plate/vehicle link, charge_point + EVSE ID + connector ID, target %, start time, live meter data, **final energy delivered (kWh)**, status (active / awaiting-payment / closed), payment method + amount
 - `vehicle` — plate number, optional link to a repeat customer record
 - `electricity_bill` — billing period start/end, total kWh billed by NEA, total amount paid (NPR); entered manually by staff per billing cycle, same pattern as other manual-entry screens in the app
 

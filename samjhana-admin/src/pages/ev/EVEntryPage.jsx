@@ -23,7 +23,10 @@ import {
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const POLL_MS = 10000;
-const EMPTY_FORM = { chargePointId: '', vehicleCatalogId: '', plateNumber: '', platePhotoDataUrl: '', targetPercent: '80' };
+const EMPTY_FORM = {
+  chargePointId: '', evseId: 1, connectorId: '1', vehicleCatalogId: '',
+  plateNumber: '', platePhotoDataUrl: '', targetPercent: '80',
+};
 
 /**
  * EV Charging — live control flow for the staff kiosk: Start Session → Active → Payment.
@@ -153,13 +156,25 @@ export default function EVEntryPage() {
   const activeSessions = useMemo(() => sessions.filter((item) => ACTIVE_STATUSES.includes(item.status)), [sessions]);
   const paymentSessions = useMemo(() => sessions.filter((item) => PAYMENT_STATUSES.includes(item.status)), [sessions]);
   const awaitingCount = paymentSessions.filter((item) => item.status === 'AWAITING_PAYMENT').length;
-  const openChargerIds = useMemo(() => new Set(sessions.map((item) => item.chargePointId)), [sessions]);
+  const occupiedConnectorIds = useMemo(() => new Set(sessions
+    .filter((item) => item.chargePointId === form.chargePointId && (item.evseId ?? 1) === form.evseId)
+    .map((item) => item.connectorId ?? 1)), [sessions, form.chargePointId, form.evseId]);
+  const selectedConnectorOccupied = occupiedConnectorIds.has(Number(form.connectorId));
   const anyOnline = chargers.some((item) => item.connectionStatus === 'ONLINE');
   const chargerName = (charger) => t('evConsole.charger', { number: num(charger.displayOrder) });
 
   const setField = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
     if (errors[key]) setErrors((current) => ({ ...current, [key]: false }));
+  };
+
+  const selectCharger = (chargePointId) => {
+    setField('chargePointId', chargePointId);
+    const occupied = new Set(sessions
+      .filter((item) => item.chargePointId === chargePointId && (item.evseId ?? 1) === 1)
+      .map((item) => item.connectorId ?? 1));
+    const nextConnector = [1, 2].find((connectorId) => !occupied.has(connectorId));
+    setField('connectorId', String(nextConnector ?? 1));
   };
 
   // ---- actions ----
@@ -176,6 +191,7 @@ export default function EVEntryPage() {
     const plate = form.plateNumber.trim();
     const target = Number(form.targetPercent);
     if (!form.chargePointId) { setErrors({ chargePointId: true }); showToast(t('evLive.selectChargerFirst'), 'error'); return; }
+    if (selectedConnectorOccupied) { showToast(t('evLive.connectorAlreadyInUse'), 'error'); return; }
     if (!plate) { setErrors({ plateNumber: true }); showToast(t('evLive.enterPlate'), 'error'); return; }
     if (!(target >= 1 && target <= 100)) { showToast(t('evLive.targetRange'), 'error'); return; }
 
@@ -183,6 +199,8 @@ export default function EVEntryPage() {
     try {
       const response = await api.post('/api/ev/sessions/start', {
         chargePointId: form.chargePointId,
+        evseId: form.evseId,
+        connectorId: Number(form.connectorId),
         plateNumber: plate,
         vehicleCatalogId: form.vehicleCatalogId || null,
         platePhotoDataUrl: form.platePhotoDataUrl || null,
@@ -301,16 +319,42 @@ export default function EVEntryPage() {
                   <ChargerCard
                     key={charger.id}
                     charger={charger}
-                    state={chargerState(charger, openChargerIds.has(charger.id))}
+                    state={chargerState(charger)}
                     selected={form.chargePointId === charger.id}
                     invalid={errors.chargePointId}
-                    onSelect={(id) => setField('chargePointId', id)}
+                    onSelect={selectCharger}
                   />
                 ))}
               </div>
             )}
             {chargers.length > 0 && !anyOnline && (
               <p className="mt-2 text-sm font-medium text-amber-700">{t('evLive.noChargersOnline')}</p>
+            )}
+          </div>
+
+          <div className="px-4 pt-4">
+            <label htmlFor="ev-connector" className="mb-2 block text-lg font-medium text-gray-700">
+              {t('evLive.connector')}
+            </label>
+            <select
+              id="ev-connector"
+              value={form.connectorId}
+              onChange={(event) => setField('connectorId', event.target.value)}
+              disabled={!form.chargePointId}
+              className="min-h-[44px] w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
+            >
+              {[1, 2].map((connectorId) => {
+                const occupied = occupiedConnectorIds.has(connectorId);
+                return (
+                  <option key={connectorId} value={connectorId} disabled={occupied}>
+                    {t('evLive.connectorNumber', { number: num(connectorId) })}
+                    {occupied ? ` — ${t('evLive.connectorInUse')}` : ''}
+                  </option>
+                );
+              })}
+            </select>
+            {occupiedConnectorIds.size === 2 && (
+              <p className="mt-2 text-sm font-medium text-amber-700">{t('evLive.noConnectorsAvailable')}</p>
             )}
           </div>
 

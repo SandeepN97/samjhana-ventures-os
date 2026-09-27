@@ -13,6 +13,9 @@ public class StartChargeSessionRequest {
     private String chargePointId;
 
     @Min(1)
+    private Integer evseId = 1;
+
+    @Min(1)
     private Integer connectorId = 1;
 
     @NotBlank

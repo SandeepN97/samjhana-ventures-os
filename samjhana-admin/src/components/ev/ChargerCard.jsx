@@ -13,7 +13,7 @@ const TONES = {
 };
 
 const PILLS = {
-  ready: { className: 'bg-green-100 text-green-700', labelKey: 'evLive.statusReady' },
+  ready: { className: 'bg-green-100 text-green-700', labelKey: 'evLive.statusOnline' },
   busy: { className: 'bg-amber-100 text-amber-700', labelKey: 'evLive.statusCharging' },
   unavailable: { className: 'bg-amber-100 text-amber-700', labelKey: 'evLive.statusUnavailable' },
   offline: { className: 'bg-gray-100 text-gray-500', labelKey: 'evLive.statusOffline' },
@@ -35,8 +35,8 @@ function StationIcon({ tone, pulse }) {
 }
 
 /**
- * One physical charger. `state` comes from chargerState(): only a "ready" charger can be
- * chosen; the others are rendered disabled so the operator can still see why.
+ * One physical charger. Only offline chargers are disabled; individual connector occupancy
+ * is shown in the connector selector because a unit can serve multiple vehicles.
  */
 export default function ChargerCard({ charger, state, selected, invalid = false, onSelect }) {
   const { t } = useTranslation();

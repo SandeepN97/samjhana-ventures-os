@@ -6,6 +6,7 @@ import { renderWithProviders } from '../../test/test-utils';
 
 const base = {
   id: 's1', status: 'ACTIVE', plateNumber: 'GA3KHA1187', chargerModel: 'HD-D140-E',
+  evseId: 1, connectorId: 2,
   vehicleCatalogName: 'Foton', currentSoc: 22, startSoc: 10, targetPercent: 100,
   energyDeliveredKwh: 4.12, suggestedAmount: 329.6, startedAt: '2026-09-19T10:00:00',
 };
@@ -23,7 +24,7 @@ describe('ActiveSessionCard', () => {
     renderCard();
     expect(screen.getByText('GA3KHA1187')).toHaveClass('bg-gray-900', 'text-green-400', 'font-mono');
     expect(screen.getByLabelText('Elapsed time')).toHaveTextContent('03:05');
-    expect(screen.getByText('HD-D140-E · Foton')).toBeInTheDocument();
+    expect(screen.getByText('HD-D140-E · EVSE 1 · Connector 2 · Foton')).toBeInTheDocument();
   });
 
   it('shows progress toward the target with the current and target percentages', () => {

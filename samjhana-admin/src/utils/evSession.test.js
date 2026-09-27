@@ -19,16 +19,12 @@ describe('chargerState', () => {
     expect(chargerState(undefined)).toBe('offline');
   });
 
-  it.each(['Occupied', 'Charging', 'Reserved'])('is busy when the connector reports %s', (status) => {
-    expect(chargerState({ ...online, connectorStatus: status })).toBe('busy');
+  it.each(['Occupied', 'Charging', 'Reserved'])('keeps a multi-connector charger selectable when aggregate status is %s', (status) => {
+    expect(chargerState({ ...online, connectorStatus: status })).toBe('ready');
   });
 
-  it('is busy when the app has an open session on it, even if the connector still says Available', () => {
-    expect(chargerState(online, true)).toBe('busy');
-  });
-
-  it.each(['Faulted', 'Unavailable'])('is unavailable when the connector is %s', (status) => {
-    expect(chargerState({ ...online, connectorStatus: status })).toBe('unavailable');
+  it.each(['Faulted', 'Unavailable'])('leaves connector-level %s state to the connector selector', (status) => {
+    expect(chargerState({ ...online, connectorStatus: status })).toBe('ready');
   });
 });
 

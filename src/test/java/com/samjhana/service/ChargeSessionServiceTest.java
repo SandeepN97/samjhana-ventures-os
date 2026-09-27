@@ -93,7 +93,7 @@ class ChargeSessionServiceTest {
                 .maxPowerKw(new BigDecimal("80")).displayOrder(1).build();
         staff = User.builder().id(UUID.randomUUID()).username("staff").role(User.UserRole.ADMIN).build();
 
-        when(chargePointRepository.findById(chargePoint.getId())).thenReturn(Optional.of(chargePoint));
+        when(chargePointRepository.findByIdForUpdate(chargePoint.getId())).thenReturn(Optional.of(chargePoint));
         when(ocppCommands.isConnected(CODE)).thenReturn(true);
         when(customerVehicleRepository.findByPlateNumberAndDeletedAtIsNull(anyString())).thenReturn(Optional.empty());
         when(customerVehicleRepository.save(any(EvCustomerVehicle.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -120,7 +120,8 @@ class ChargeSessionServiceTest {
                 .requestedAt(LocalDateTime.now())
                 .build();
         when(chargeSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
-        when(chargeSessionRepository.findByOcppTransactionId("TX-1")).thenReturn(Optional.of(session));
+        when(chargeSessionRepository.findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
+                "TX-1", CODE, 1, 1)).thenReturn(Optional.of(session));
         return session;
     }
 
@@ -147,7 +148,8 @@ class ChargeSessionServiceTest {
             values.append("{\"measurand\":\"Energy.Active.Import.Register\",\"value\":").append(energyWh).append("}");
         }
         return mapper.readTree("{\"eventType\":\"" + type + "\",\"seqNo\":" + seq
-                + ",\"timestamp\":\"2026-09-19T10:00:00+05:45\",\"transactionInfo\":{\"transactionId\":\"TX-1\"},"
+                + ",\"timestamp\":\"2026-09-19T10:00:00+05:45\",\"evse\":{\"id\":1,\"connectorId\":1},"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-1\"},"
                 + "\"meterValue\":[{\"sampledValue\":[" + values + "]}]}");
     }
 
@@ -173,8 +175,34 @@ class ChargeSessionServiceTest {
         assertEquals(0, new BigDecimal("14").compareTo(response.getRatePerPercent()));
         assertEquals("DFAC EV 32", response.getVehicleCatalogName());
         assertEquals("BA1PA4521", response.getPlateNumber());
+        assertEquals(1, response.getEvseId());
+        assertEquals(1, response.getConnectorId());
         verify(ocppCommands).requestStart(eq(CODE), any(UUID.class), eq(1), eq("BA1PA4521"));
+        verify(chargePointRepository).findByIdForUpdate(chargePoint.getId());
         verify(liveEvents).publish(eq("CHARGE_SESSION_UPDATED"), any());
+    }
+
+    @Test
+    void shouldAllowTwoOpenSessionsOnDifferentConnectorsOfTheSameEvse() {
+        StartChargeSessionRequest firstRequest = startRequest("BA 1 PA 4521", 80);
+        StartChargeSessionRequest secondRequest = startRequest("BA 2 PA 4522", 80);
+        secondRequest.setConnectorId(2);
+
+        ChargeSessionResponse first = service.start(firstRequest, staff);
+        ChargeSessionResponse second = service.start(secondRequest, staff);
+
+        assertEquals("STARTING", first.getStatus());
+        assertEquals(1, first.getEvseId());
+        assertEquals(1, first.getConnectorId());
+        assertEquals("STARTING", second.getStatus());
+        assertEquals(1, second.getEvseId());
+        assertEquals(2, second.getConnectorId());
+        verify(chargeSessionRepository).existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
+                eq(chargePoint.getId()), eq(1), eq(1), any());
+        verify(chargeSessionRepository).existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
+                eq(chargePoint.getId()), eq(1), eq(2), any());
+        verify(ocppCommands).requestStart(eq(CODE), any(UUID.class), eq(1), eq("BA1PA4521"));
+        verify(ocppCommands).requestStart(eq(CODE), any(UUID.class), eq(1), eq("BA2PA4522"));
     }
 
     @Test
@@ -217,8 +245,9 @@ class ChargeSessionServiceTest {
     }
 
     @Test
-    void shouldThrowConflict_whenChargerAlreadyHasAnOpenSession() {
-        when(chargeSessionRepository.existsByChargePointIdAndStatusIn(eq(chargePoint.getId()), any())).thenReturn(true);
+    void shouldThrowConflict_whenConnectorAlreadyHasAnOpenSession() {
+        when(chargeSessionRepository.existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
+                eq(chargePoint.getId()), eq(1), eq(1), any())).thenReturn(true);
 
         assertThrows(EvSessionStateException.class, () -> service.start(startRequest("BA 1 PA 4521", 80), staff));
         verify(chargeSessionRepository, never()).save(any(ChargeSession.class));
@@ -255,7 +284,7 @@ class ChargeSessionServiceTest {
 
         assertEquals("STOP_REQUESTED", response.getStatus());
         verify(ocppCommands).requestStop(CODE, session.getId(), "TX-1");
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -298,6 +327,8 @@ class ChargeSessionServiceTest {
     @Test
     void shouldSendUnlockAndBookSale_whenPaidOnExplicitUnlockCharger() {
         ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
+        session.setEvseId(3);
+        session.setConnectorId(2);
         session.setEnergyDeliveredKwh(new BigDecimal("7.500"));
 
         ChargeSessionResponse response = service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "600"), staff);
@@ -305,7 +336,7 @@ class ChargeSessionServiceTest {
         assertEquals("UNLOCK_REQUESTED", response.getStatus());
         assertEquals("CASH", response.getPaymentMethod());
         assertEquals(0, new BigDecimal("600").compareTo(response.getAmount()));
-        verify(ocppCommands).unlockConnector(CODE, session.getId(), 1);
+        verify(ocppCommands).unlockConnector(CODE, session.getId(), 3, 2);
         ArgumentCaptor<TransactionRequest> booked = ArgumentCaptor.forClass(TransactionRequest.class);
         verify(transactionService).create(booked.capture(), eq(staff));
         assertEquals("ev", booked.getValue().getBusinessCode());
@@ -323,7 +354,7 @@ class ChargeSessionServiceTest {
 
         assertEquals("STOP_REQUESTED", response.getStatus());
         verify(ocppCommands).requestStop(CODE, session.getId(), "TX-1");
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -332,7 +363,7 @@ class ChargeSessionServiceTest {
 
         assertThrows(EvSessionStateException.class,
                 () -> service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "100"), staff));
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
         verify(transactionService, never()).create(any(), any());
     }
 
@@ -346,7 +377,7 @@ class ChargeSessionServiceTest {
         ChargeSessionResponse response = service.retryUnlock(session.getId());
 
         assertEquals("UNLOCK_REQUESTED", response.getStatus());
-        verify(ocppCommands).unlockConnector(CODE, session.getId(), 1);
+        verify(ocppCommands).unlockConnector(CODE, session.getId(), 1, 1);
     }
 
     @Test
@@ -354,7 +385,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
 
         assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
     // ------------------------------------------------------------------ TransactionEvent
@@ -394,9 +425,10 @@ class ChargeSessionServiceTest {
 
     @Test
     void shouldIgnoreEvent_whenNoMatchingSessionExists() throws Exception {
-        when(chargeSessionRepository.findByOcppTransactionId("TX-1")).thenReturn(Optional.empty());
-        when(chargeSessionRepository.findFirstByChargePointCodeAndStatusInOrderByRequestedAtDesc(eq(CODE), any()))
-                .thenReturn(Optional.empty());
+        when(chargeSessionRepository.findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
+                "TX-1", CODE, 1, 1)).thenReturn(Optional.empty());
+        when(chargeSessionRepository.findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
+                eq(CODE), eq(1), eq(1), any())).thenReturn(java.util.List.of());
 
         service.handleTransactionEvent(CODE, event("Started", 0, 32, 0L));
 
@@ -411,7 +443,7 @@ class ChargeSessionServiceTest {
 
         assertEquals(ChargeSession.Status.AWAITING_PAYMENT, session.getStatus());
         assertNotNull(session.getStoppedAt());
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
     @Test
@@ -520,7 +552,7 @@ class ChargeSessionServiceTest {
         // the reply refers to.
         InOrder order = inOrder(liveEvents, ocppCommands);
         order.verify(liveEvents).publish(eq("CHARGE_SESSION_UPDATED"), any());
-        order.verify(ocppCommands).unlockConnector(CODE, session.getId(), 1);
+        order.verify(ocppCommands).unlockConnector(CODE, session.getId(), 1, 1);
     }
 
     @Test
@@ -531,7 +563,7 @@ class ChargeSessionServiceTest {
             service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "600"), staff);
 
             // Still inside the (uncommitted) transaction: nothing may have left the server.
-            verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+            verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
             verify(liveEvents, never()).publish(anyString(), any());
 
             for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
@@ -539,7 +571,7 @@ class ChargeSessionServiceTest {
             }
 
             verify(liveEvents).publish(eq("CHARGE_SESSION_UPDATED"), any());
-            verify(ocppCommands).unlockConnector(CODE, session.getId(), 1);
+            verify(ocppCommands).unlockConnector(CODE, session.getId(), 1, 1);
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
@@ -556,7 +588,7 @@ class ChargeSessionServiceTest {
             TransactionSynchronizationManager.clearSynchronization();
         }
 
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
         verify(liveEvents, never()).publish(anyString(), any());
     }
 
@@ -586,7 +618,7 @@ class ChargeSessionServiceTest {
     void shouldLeaveThePaymentUsableForRetry_whenTheUnlockCommandCannotBeSent() {
         ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
         doThrow(new EvSessionStateException("Charger " + CODE + " is offline"))
-                .when(ocppCommands).unlockConnector(anyString(), any(), anyInt());
+                .when(ocppCommands).unlockConnector(anyString(), any(), anyInt(), anyInt());
 
         service.markPaid(session.getId(), paid(ChargeSession.PaymentMethod.CASH, "600"), staff);
 
@@ -641,6 +673,6 @@ class ChargeSessionServiceTest {
 
         assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
 
-        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt());
+        verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 }
