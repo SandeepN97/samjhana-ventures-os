@@ -370,7 +370,7 @@ export default function AnalyticsPage() {
         actions={pendingCount > 0 && (
           <button
             type="button"
-            onClick={() => navigate('/pending-review')}
+            onClick={() => navigate('/pending')}
             className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-400 px-3 text-xs font-bold text-amber-900"
           >
             <AlertCircle className="h-3.5 w-3.5" />
