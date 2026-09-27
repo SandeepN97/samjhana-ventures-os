@@ -12,6 +12,7 @@ import api from '../../utils/api';
 import BusinessDrillSheet from '../../components/BusinessDrillSheet';
 import { formatBsDate, adToBs, bsToAd, getBsMonthDays, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../../utils/nepaliDate';
 import { PageHeader } from '../../components/brand';
+import { nepalTodayDate, toDateStr } from '../../utils/businessDay';
 
 const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-petrol-500', text: 'text-petrol-600', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -32,8 +33,9 @@ const pctChange = (curr, prev) => {
 };
 
 // Date range helpers
+// Periods follow Nepal's calendar, the one sales are filed under (see utils/businessDay).
 function getPeriodRange(period, offset = 0) {
-  const now = new Date();
+  const now = nepalTodayDate();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'today') {
     const d = new Date(today.getTime() - offset * 24 * 60 * 60 * 1000);
@@ -74,10 +76,10 @@ export default function AnalyticsPage() {
   const [weekPickStep, setWeekPickStep] = useState(0); // 0 = picking start, 1 = picking end
   const [showPicker, setShowPicker]   = useState(false);
   // AD view (English mode calendar / month grid)
-  const [pickerYear, setPickerYear]   = useState(() => new Date().getFullYear());
-  const [pickerMonth, setPickerMonth] = useState(() => new Date().getMonth());
+  const [pickerYear, setPickerYear]   = useState(() => nepalTodayDate().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(() => nepalTodayDate().getMonth());
   // BS view (Nepali mode calendar / month grid)
-  const [pickerBsView, setPickerBsView] = useState(() => { const bs = adToBs(new Date()); return { year: bs.year, month: bs.month }; });
+  const [pickerBsView, setPickerBsView] = useState(() => { const bs = adToBs(nepalTodayDate()); return { year: bs.year, month: bs.month }; });
   // Week picker hover preview
   const [hovDay, setHovDay]           = useState(null);
   const pickerRef                     = useRef(null);
@@ -118,7 +120,7 @@ export default function AnalyticsPage() {
 
   // Compute offset from a selected AD date (days from today)
   const selectDay = (adDate) => {
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = nepalTodayDate();
     const sel   = new Date(adDate); sel.setHours(0,0,0,0);
     const diff  = Math.round((today - sel) / 86400000);
     setOffset(Math.max(0, diff));
@@ -143,7 +145,7 @@ export default function AnalyticsPage() {
   };
   // Month offset from an AD year/month
   const selectMonth = (year, month) => {
-    const now = new Date();
+    const now = nepalTodayDate();
     const diff = (now.getFullYear() - year) * 12 + (now.getMonth() - month);
     setOffset(Math.max(0, diff));
     setShowPicker(false);
@@ -156,7 +158,7 @@ export default function AnalyticsPage() {
 
   // Compute the 7-day rolling window that contains a given day
   const getWeekRange = (adDate) => {
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = nepalTodayDate();
     const sel   = new Date(adDate); sel.setHours(0,0,0,0);
     const diff  = Math.round((today - sel) / 86400000);
     const wOffset = Math.max(0, Math.floor(diff / 7));
@@ -174,7 +176,7 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError(null);
     try {
-      const fmtDate = d => d.toISOString().split('T')[0];
+      const fmtDate = toDateStr;   // not toISOString(): that shifts Nepal's midnight to the previous day
       const url = (period === 'week' && weekStart && weekEnd)
         ? `/api/analytics/summary?period=week&startDate=${fmtDate(weekStart)}&endDate=${fmtDate(weekEnd)}`
         : `/api/analytics/summary?period=${period}&offset=${offset}`;
@@ -434,7 +436,7 @@ export default function AnalyticsPage() {
 
                   {/* ── MONTH PICKER ── */}
                   {period === 'month' && (() => {
-                    const now = new Date();
+                    const now = nepalTodayDate();
                     const todayBs = adToBs(now);
                     if (isNepali) {
                       // BS month grid
@@ -519,7 +521,7 @@ export default function AnalyticsPage() {
 
                   {/* ── DAY / WEEK CALENDAR PICKER ── */}
                   {(period === 'today' || period === 'week') && (() => {
-                    const now = new Date(); now.setHours(0,0,0,0);
+                    const now = nepalTodayDate();
                     const isWeek = period === 'week';
 
                     // For week: show selected range (weekStart..weekEnd) or partial (weekStart..hovDay)
