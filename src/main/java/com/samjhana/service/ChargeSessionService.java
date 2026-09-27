@@ -54,14 +54,18 @@ public class ChargeSessionService {
 
     @Transactional
     public ChargeSessionResponse start(StartChargeSessionRequest request, User user) {
-        ChargePoint chargePoint = chargePointRepository.findById(parseUuid(request.getChargePointId(), "charge point"))
+        ChargePoint chargePoint = chargePointRepository.findByIdForUpdate(
+                        parseUuid(request.getChargePointId(), "charge point"))
                 .filter(point -> point.getDeletedAt() == null && Boolean.TRUE.equals(point.getIsActive()))
                 .orElseThrow(() -> new ResourceNotFoundException("Active charge point not found"));
         if (!ocppCommands.isConnected(chargePoint.getCode())) {
             throw new EvSessionStateException("Charger " + chargePoint.getCode() + " is offline");
         }
-        if (chargeSessionRepository.existsByChargePointIdAndStatusIn(chargePoint.getId(), OPEN_STATUSES)) {
-            throw new EvSessionStateException("This charger already has an open session");
+        int evseId = request.getEvseId() == null ? 1 : request.getEvseId();
+        int connectorId = request.getConnectorId() == null ? 1 : request.getConnectorId();
+        if (chargeSessionRepository.existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
+                chargePoint.getId(), evseId, connectorId, OPEN_STATUSES)) {
+            throw new EvSessionStateException("This connector already has an open session");
         }
         if (request.getInitialSoc() != null && request.getTargetPercent() <= request.getInitialSoc()) {
             throw new IllegalArgumentException("Target percentage must be greater than the starting percentage");
@@ -89,7 +93,8 @@ public class ChargeSessionService {
                 .vehicle(vehicle)
                 .vehicleCatalog(catalog)
                 .startedBy(user)
-                .connectorId(request.getConnectorId() == null ? 1 : request.getConnectorId())
+                .evseId(evseId)
+                .connectorId(connectorId)
                 .targetPercent(request.getTargetPercent())
                 .startSoc(request.getInitialSoc())
                 .currentSoc(request.getInitialSoc())
@@ -106,9 +111,9 @@ public class ChargeSessionService {
                 session.getId(), "{\"status\":\"STARTING\",\"chargePoint\":\"" + chargePoint.getCode() + "\"}"));
         UUID sessionId = session.getId();
         String code = chargePoint.getCode();
-        int connectorId = session.getConnectorId();
+        int sessionEvseId = session.getEvseId();
         return publish(session, new Dispatch(
-                () -> ocppCommands.requestStart(code, sessionId, connectorId, plate),
+                () -> ocppCommands.requestStart(code, sessionId, sessionEvseId, plate),
                 (failed, reason) -> {
                     failed.setStatus(ChargeSession.Status.FAILED);
                     failed.setStatusMessage("Could not send the start command: " + reason);
@@ -201,7 +206,14 @@ public class ChargeSessionService {
     @Transactional
     public void handleTransactionEvent(String chargePointCode, JsonNode payload) {
         String transactionId = payload.path("transactionInfo").path("transactionId").asText(null);
-        ChargeSession session = findForEvent(chargePointCode, transactionId);
+        int evseId = payload.path("evse").path("id").asInt(-1);
+        int connectorId = payload.path("evse").path("connectorId").asInt(-1);
+        String eventType = payload.path("eventType").asText();
+        if (evseId < 1 || connectorId < 1) {
+            log.warn("Ignoring TransactionEvent from {} with invalid EVSE/connector identity", chargePointCode);
+            return;
+        }
+        ChargeSession session = findForEvent(chargePointCode, evseId, connectorId, transactionId, eventType);
         if (session == null) {
             log.warn("Ignoring TransactionEvent from {} because no matching session exists", chargePointCode);
             return;
@@ -216,7 +228,6 @@ public class ChargeSessionService {
         if (transactionId != null && !transactionId.isBlank()) session.setOcppTransactionId(transactionId);
 
         updateMeterValues(session, payload.path("meterValue"));
-        String eventType = payload.path("eventType").asText();
         LocalDateTime eventTime = parseTimestamp(payload.path("timestamp").asText(null));
         if ("Started".equals(eventType)) {
             session.setStartedAt(eventTime);
@@ -368,13 +379,24 @@ public class ChargeSessionService {
         session.setTransaction(transactionRepository.getReferenceById(UUID.fromString(transactionId)));
     }
 
-    private ChargeSession findForEvent(String chargePointCode, String transactionId) {
+    private ChargeSession findForEvent(
+            String chargePointCode, int evseId, int connectorId, String transactionId, String eventType) {
         if (transactionId != null && !transactionId.isBlank()) {
-            Optional<ChargeSession> existing = chargeSessionRepository.findByOcppTransactionId(transactionId);
+            Optional<ChargeSession> existing = chargeSessionRepository
+                    .findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
+                            transactionId, chargePointCode, evseId, connectorId);
             if (existing.isPresent()) return existing.get();
         }
-        return chargeSessionRepository.findFirstByChargePointCodeAndStatusInOrderByRequestedAtDesc(
-                chargePointCode, OPEN_STATUSES).orElse(null);
+        if (!"Started".equals(eventType)) return null;
+        List<ChargeSession> matches = chargeSessionRepository
+                .findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
+                        chargePointCode, evseId, connectorId, OPEN_STATUSES);
+        if (matches.size() > 1) {
+            log.error("Ignoring ambiguous Started event from {} on EVSE {} connector {}: {} open sessions",
+                    chargePointCode, evseId, connectorId, matches.size());
+            return null;
+        }
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     /**
@@ -433,9 +455,10 @@ public class ChargeSessionService {
     private Dispatch unlockDispatch(ChargeSession session) {
         String code = session.getChargePoint().getCode();
         UUID sessionId = session.getId();
+        int evseId = session.getEvseId();
         int connectorId = session.getConnectorId();
         return new Dispatch(
-                () -> ocppCommands.unlockConnector(code, sessionId, connectorId),
+                () -> ocppCommands.unlockConnector(code, sessionId, evseId, connectorId),
                 (failed, reason) -> {
                     failed.setStatus(ChargeSession.Status.PAID);
                     failed.setStatusMessage("Could not send the unlock command; retry required: " + reason);

@@ -24,17 +24,23 @@ OCPP updates include transaction state, meter readings, and state of charge when
 
 ## Current session data model
 
-`ChargeSession` references a `ChargePoint`, vehicle, starting user, and optional paid user and transaction. It stores one `connectorId` alongside session/payment state, state-of-charge readings, meter readings, and energy delivered.
+`ChargeSession` references a `ChargePoint`, vehicle, starting user, and optional paid user and transaction. It stores an `evseId` (default 1) and a `connectorId` alongside session/payment state, state-of-charge readings, meter readings, and energy delivered.
 
-There is **no separate EVSE ID field** in the current session model. The start command writes the session's `connectorId` into OCPP's `evseId`; the unlock command writes that same value into both `evseId` and `connectorId`. These identifiers are currently conflated.
+The start command sends the session's `evseId` in OCPP's `RequestStartTransaction`, which addresses an EVSE only and has no connector-ID field. The unlock command sends `evseId` and `connectorId` separately.
 
-## Connector concurrency limitation
+## EVSE and connector identity
 
-The current start logic rejects a new session if **any** open session exists on that charge point. It does not scope the check to connector or EVSE, and the database has no uniqueness constraint for open sessions by connector. Two start requests can also race because the check is not backed by a database constraint or a charge-point lock.
+The checked-in vendor documentation confirms OCPP 2.0.1 but does not identify how each physical nozzle maps to OCPP EVSE and connector IDs. Until the vendor configuration is verified on each unit, the application assumes EVSE 1 with connectors 1 and 2. Treat this as a provisional mapping, not a confirmed hardware fact.
 
-Incoming `TransactionEvent` messages are matched first by OCPP transaction ID. If that does not resolve a session, the handler falls back to the most recently requested open session on the charge point; it does not select by EVSE and connector. This fallback is ambiguous when concurrent sessions exist.
+If a unit reports both nozzles under one EVSE, the charger decides which connector a remote start uses, and this CSMS cannot select a specific connector. Verify the mapping with the vendor before relying on remote start selection; two separate EVSE IDs may be the correct representation for independently startable nozzles.
 
-Therefore, the current code does **not** safely support two simultaneous sessions on one physical charge point. Supporting that requires separate, correctly mapped EVSE and connector fields; connector-specific event matching; and race-safe enforcement of one open session per charge point/EVSE/connector (for example, a database constraint with appropriate status handling or transaction-safe locking). A schema migration would be required for new persisted fields or indexes, with existing sessions backfilled and validated before enabling the new behavior.
+## Connector concurrency
+
+Sessions are isolated by `(charge point, EVSE, connector)`. Starting a session takes a pessimistic write lock on the charge-point row for the duration of the transaction, then rejects the start only if that exact EVSE/connector already has an open session. This serializes competing starts on the same charger while allowing distinct connectors to run at the same time.
+
+Incoming `TransactionEvent` messages must report both IDs in OCPP's `evse` object. They are matched by OCPP transaction ID together with charge point, EVSE, and connector, falling back to the open session on that same charge point, EVSE, and connector.
+
+The `evse_id` column and its supporting index are added by `docs/migrations/2026-09-26-add-evse-id-to-charge-sessions.sql`. **Apply that SQL to the staging and production databases before deploying this version:** staging uses `ddl-auto: validate` and will refuse to start without the column.
 
 ## Security and deployment notes
 

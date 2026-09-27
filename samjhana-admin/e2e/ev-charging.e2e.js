@@ -104,8 +104,8 @@ async function pickVehicle(page, name) {
 }
 
 async function startSession(page, plate) {
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
-  await chargerCard(page, 'Ready').click();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
+  await chargerCard(page, 'Online').click();
   await page.getByLabel(/^Plate number/).fill(plate);
   await page.getByRole('button', { name: 'Start Charging →' }).click();
   await expect(tab(page, 'Active')).toHaveAttribute('aria-selected', 'true');
@@ -182,7 +182,7 @@ test('runs a whole session: start → live progress → stop → payment → unl
 
   // The charger is free again.
   await tab(page, 'Start Session').click();
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
   expect(pageErrors).toEqual([]);
 });
 
@@ -195,7 +195,7 @@ test('asks for the missing charger and plate instead of sending an incomplete fo
   await page.getByRole('button', { name: 'Start Charging →' }).click();
   await expect(page.getByText('Select a charger first')).toBeVisible();
 
-  await chargerCard(page, 'Ready').click();
+  await chargerCard(page, 'Online').click();
   await page.getByRole('button', { name: 'Start Charging →' }).click();
   await expect(page.getByText('Enter the plate number')).toBeVisible();
   await expect(page.getByLabel(/^Plate number/)).toHaveAttribute('aria-invalid', 'true');
@@ -214,7 +214,7 @@ test('shows a failure and frees the charger when the charger rejects the start c
   await expect(page.getByText('Session failed: Charger rejected the start command')).toBeVisible();
   await expect(page.getByText('No active sessions. Start one from the Start Session tab.')).toBeVisible();
   await tab(page, 'Start Session').click();
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
 });
 
 test('keeps the connector locked and offers Retry unlock when the first unlock fails', async ({ page }) => {
@@ -271,24 +271,40 @@ test('lets staff change the amount and take the payment method they choose', asy
 
 // ---------------------------------------------------------------------------- live state
 
-test('turns the charger card Offline when it disconnects and Ready again when it returns', async ({ page }) => {
+test('turns the charger card Offline when it disconnects and Online again when it returns', async ({ page }) => {
   await openEvPage(page);
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
 
   charger.disconnect();
   await expect(chargerCard(page, 'Offline')).toBeDisabled();
 
   await charger.connect();
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
 });
 
-test('marks the charger Charging (and unselectable) while its connector is in use', async ({ page }) => {
+test('keeps the charger selectable and marks only the busy connector in use', async ({ page }) => {
+  const plate = 'BA7PA5656';
   await openEvPage(page);
-  await charger.setConnectorStatus('Occupied');
-  await expect(chargerCard(page, 'Charging')).toBeDisabled();
+  const startsBefore = charger.callsOf('RequestStartTransaction').length;
+  await startSession(page, plate);
+  await charger.waitForCall('RequestStartTransaction', { count: startsBefore + 1 });
+  await expect(page.getByRole('button', { name: 'Stop & Lock for Payment' })).toBeVisible();
 
-  await charger.setConnectorStatus('Available');
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  // One unit serves two vehicles: the charger stays selectable, only connector 1 is taken.
+  await tab(page, 'Start Session').click();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
+  await chargerCard(page, 'Online').click();
+  await expect(page.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
+  await expect(page.getByLabel('Charging connector')).toHaveValue('2');
+
+  // Finish the session so later tests start from a free charger.
+  await tab(page, 'Active').click();
+  await page.getByRole('button', { name: 'Stop & Lock for Payment' }).click();
+  await expect(page.getByText(`${plate} stopped — awaiting payment`)).toBeVisible();
+  const due = page.getByTestId('payment-due');
+  await due.getByLabel('Amount (Rs)').fill('100');
+  await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
+  await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------- language, roles, layout
@@ -332,7 +348,7 @@ test('switches every label to Nepali with Devanagari numerals and back', async (
   await expect(page.getByRole('tab', { name: /सक्रिय/ })).toBeVisible();
   await expect(page.getByRole('tab', { name: /भुक्तानी/ })).toBeVisible();
   await expect(page.getByText('चार्जर छान्नुहोस्')).toBeVisible();
-  await expect(page.getByRole('radio', { name: /चार्जर १.*८० kW.*तयार/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /चार्जर १.*८० kW.*अनलाइन/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'चार्जिङ सुरु गर्नुहोस् →' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Switch to English' }).click();
@@ -341,7 +357,7 @@ test('switches every label to Nepali with Devanagari numerals and back', async (
 
 test('hides the NEA rate and admin-only controls from staff, in the UI and at the API', async ({ page }) => {
   await openEvPage(page, STAFF);
-  await expect(chargerCard(page, 'Ready')).toBeEnabled();
+  await expect(chargerCard(page, 'Online')).toBeEnabled();
 
   // Nothing about what the station pays NEA is on screen (the admin set it to 12.50 earlier)...
   await expect(page.getByText(/NEA Rate per Unit/)).toHaveCount(0);

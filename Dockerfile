@@ -10,4 +10,8 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+# Default to prod, but let each Render service override it (staging sets
+# SPRING_PROFILES_ACTIVE=staging). A -Dspring.profiles.active flag here would win
+# over the env var and force every deploy onto the prod datasource.
+ENV SPRING_PROFILES_ACTIVE=prod
+ENTRYPOINT ["java", "-jar", "app.jar"]

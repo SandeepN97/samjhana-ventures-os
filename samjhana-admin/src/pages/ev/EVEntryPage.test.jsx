@@ -61,7 +61,7 @@ const VEHICLES = () => [
 ];
 const session = (overrides = {}) => ({
   id: 's1', status: 'ACTIVE', plateNumber: 'BA1PA4521', chargePointId: 'cp1', chargePointCode: 'HD-D180-CC-01',
-  chargerModel: 'HD-D180-CC', targetPercent: 80, startSoc: 30, currentSoc: 45, energyDeliveredKwh: 3.2,
+  evseId: 1, connectorId: 1, chargerModel: 'HD-D180-CC', targetPercent: 80, startSoc: 30, currentSoc: 45, energyDeliveredKwh: 3.2,
   suggestedAmount: 256, requestedAt: '2026-09-19T10:00:00', startedAt: '2026-09-19T10:00:05', ...overrides,
 });
 
@@ -147,6 +147,7 @@ describe('EVEntryPage', () => {
       const order = [
         screen.getByText(/NEA Rate per Unit/),
         screen.getByText('Select charger'),
+        screen.getByLabelText('Charging connector'),
         screen.getByLabelText(/^Date/),
         vehicleField(),
         screen.getByText('Vehicle plate'),
@@ -185,16 +186,15 @@ describe('EVEntryPage', () => {
       expect(screen.getByRole('radiogroup', { name: 'Chargers' })).toHaveClass('grid-cols-3');
     });
 
-    it('marks a free charger Ready, an occupied one Charging and an unconnected one Offline', async () => {
+    it('keeps online chargers selectable for connector selection and disables offline chargers', async () => {
       await renderPage();
       await chargerCards();
-      expect(screen.getByRole('radio', { name: /HD-D180-CC, 80 kW, Ready/ })).toBeEnabled();
-      expect(screen.getByRole('radio', { name: /Charger 2.*Charging/ })).toBeDisabled();
+      expect(screen.getByRole('radio', { name: /HD-D180-CC, 80 kW, Online/ })).toBeEnabled();
+      expect(screen.getByRole('radio', { name: /Charger 2.*Online/ })).toBeEnabled();
       expect(screen.getByRole('radio', { name: /Charger 3.*Offline/ })).toBeDisabled();
     });
 
-    it('selects a ready charger and lets the user switch to a different ready one', async () => {
-      mock.chargers[1].connectorStatus = 'Available';
+    it('selects an online charger and lets the user switch to a different online one', async () => {
       await renderPage();
       const [first, second] = await chargerCards();
       await userEvent.click(first);
@@ -204,19 +204,49 @@ describe('EVEntryPage', () => {
       expect(second).toHaveAttribute('aria-checked', 'true');
     });
 
-    it('ignores taps on a busy or offline charger', async () => {
+    it('ignores taps only on an offline charger', async () => {
       await renderPage();
       const cards = await chargerCards();
       await userEvent.click(cards[1]);
       await userEvent.click(cards[2]);
-      cards.forEach((c) => expect(c).toHaveAttribute('aria-checked', 'false'));
+      expect(cards[1]).toHaveAttribute('aria-checked', 'true');
+      expect(cards[2]).toHaveAttribute('aria-checked', 'false');
     });
 
-    it('treats a charger with an open session as busy even if it still reports Available', async () => {
+    it('keeps a charger selectable when one connector has an open session', async () => {
       mock.sessions = [session({ chargePointId: 'cp1' })];
       await renderPage();
       const cards = await chargerCards();
-      await waitFor(() => expect(cards[0]).toBeDisabled());
+      expect(cards[0]).toBeEnabled();
+    });
+
+    it('selects the other connector when a charger already has an open session', async () => {
+      mock.sessions = [session({ chargePointId: 'cp1', connectorId: 1 })];
+      await renderPage();
+      await userEvent.click((await chargerCards())[0]);
+      expect(screen.getByLabelText('Charging connector')).toHaveValue('2');
+      expect(screen.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
+      expect(screen.getByRole('option', { name: 'Connector 2' })).toBeEnabled();
+    });
+
+    it('shows the connector selector in Nepali', async () => {
+      await renderPage('ne');
+      const [first] = await screen.findAllByRole('radio', { name: /चार्जर [१२३]/ });
+      await userEvent.click(first);
+      expect(screen.getByLabelText('चार्जिङ कनेक्टर')).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'कनेक्टर १' })).toBeInTheDocument();
+    });
+
+    it('reports when both connectors already have open sessions', async () => {
+      mock.sessions = [
+        session({ id: 's1', connectorId: 1 }),
+        session({ id: 's2', connectorId: 2 }),
+      ];
+      await renderPage();
+      await userEvent.click((await chargerCards())[0]);
+      expect(screen.getByText('Both connectors have open sessions.')).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
+      expect(screen.getByRole('option', { name: 'Connector 2 — in use' })).toBeDisabled();
     });
 
     it('updates a card live when the charger goes offline', async () => {
@@ -417,7 +447,7 @@ describe('EVEntryPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start Charging →' }));
 
       await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/ev/sessions/start', {
-        chargePointId: 'cp1', plateNumber: 'BA 1 PA 4521', vehicleCatalogId: 'v2',
+        chargePointId: 'cp1', evseId: 1, connectorId: 1, plateNumber: 'BA 1 PA 4521', vehicleCatalogId: 'v2',
         platePhotoDataUrl: null, targetPercent: 50,
       }));
       expect(await screen.findByText('Session started on Charger 1')).toBeInTheDocument();
@@ -432,6 +462,18 @@ describe('EVEntryPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Start Charging →' }));
       await waitFor(() => expect(api.post).toHaveBeenCalled());
       expect(api.post.mock.calls[0][1].vehicleCatalogId).toBeNull();
+    });
+
+    it('sends connector 2 when connector 1 already has an open session', async () => {
+      mock.sessions = [session({ id: 's1', connectorId: 1 })];
+      api.post.mockResolvedValue({ data: session({ id: 's2', status: 'STARTING', connectorId: 2 }) });
+      await renderPage();
+      await fillValidForm();
+      expect(screen.getByLabelText('Charging connector')).toHaveValue('2');
+      await userEvent.click(screen.getByRole('button', { name: 'Start Charging →' }));
+      await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/ev/sessions/start', expect.objectContaining({
+        chargePointId: 'cp1', evseId: 1, connectorId: 2,
+      })));
     });
 
     it('sends no vehicle after the choice was cleared again', async () => {
@@ -672,7 +714,7 @@ describe('EVEntryPage', () => {
 
       await waitFor(() => expect(sessionCalls()).toBeGreaterThan(before));
       await waitFor(() => expect(tab('Active')).toHaveTextContent('1'));
-      expect(await screen.findByRole('radio', { name: /Charger 1.*Charging/ })).toBeDisabled();
+      expect(await screen.findByRole('radio', { name: /Charger 1.*Online/ })).toBeEnabled();
     });
 
     it('does not re-sync on every render while the socket stays connected', async () => {
@@ -710,18 +752,18 @@ describe('EVEntryPage', () => {
         reconnect(rerender);
         await waitFor(() => expect(chargeCalls()).toBeGreaterThan(before));
 
-        // ...meanwhile a live event says Charger 1 is now in use.
-        const busy = { ...CHARGERS()[0], connectorStatus: 'Occupied' };
-        fireLive({ type: 'CHARGE_POINT_UPDATED', payload: busy });
-        expect(await screen.findByRole('radio', { name: /Charger 1.*Charging/ })).toBeDisabled();
+        // ...meanwhile a live event says Charger 1 has gone offline.
+        const offline = { ...CHARGERS()[0], connectionStatus: 'OFFLINE' };
+        fireLive({ type: 'CHARGE_POINT_UPDATED', payload: offline });
+        expect(await screen.findByRole('radio', { name: /Charger 1.*Offline/ })).toBeDisabled();
 
         // The stale answer finally lands. It must not undo the newer state; the page fetches again.
         mock.hold = null;
-        mock.chargers = CHARGERS().map((c) => (c.id === 'cp1' ? busy : c));
+        mock.chargers = CHARGERS().map((c) => (c.id === 'cp1' ? offline : c));
         const settled = chargeCalls();
         await release();
         await waitFor(() => expect(chargeCalls()).toBeGreaterThan(settled));
-        expect(screen.getByRole('radio', { name: /Charger 1.*Charging/ })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: /Charger 1.*Offline/ })).toBeDisabled();
       });
 
       it('still applies a slow fetch normally when nothing newer arrived in the meantime', async () => {
@@ -736,7 +778,7 @@ describe('EVEntryPage', () => {
         await waitFor(() => expect(chargeCalls()).toBeGreaterThan(before));
         await release();
 
-        await waitFor(() => expect(screen.getByRole('radio', { name: /Charger 3.*Ready/ })).toBeEnabled());
+        await waitFor(() => expect(screen.getByRole('radio', { name: /Charger 3.*Online/ })).toBeEnabled());
       });
     });
 
@@ -773,7 +815,7 @@ describe('EVEntryPage', () => {
       expect(screen.getByRole('tab', { name: /भुक्तानी/ })).toBeInTheDocument();
       expect(screen.getByText('चार्जर छान्नुहोस्')).toBeInTheDocument();
       expect(await screen.findAllByRole('radio', { name: /चार्जर [१२३]/ })).toHaveLength(3);
-      expect(screen.getByRole('radio', { name: /चार्जर १.*तयार/ })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /चार्जर १.*अनलाइन/ })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'चार्जिङ सुरु गर्नुहोस् →' })).toBeInTheDocument();
     });
 

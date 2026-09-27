@@ -20,11 +20,11 @@ public class OcppCommandService {
         return connectionRegistry.isConnected(chargePointCode);
     }
 
-    public String requestStart(String chargePointCode, UUID sessionId, int connectorId, String plateNumber) {
+    public String requestStart(String chargePointCode, UUID sessionId, int evseId, String plateNumber) {
         ObjectNode payload = objectMapper.createObjectNode();
         // Mask instead of Math.abs(): abs(Integer.MIN_VALUE) is still negative, which OCPP rejects.
         payload.put("remoteStartId", sessionId.hashCode() & 0x7fffffff);
-        payload.put("evseId", connectorId);
+        payload.put("evseId", evseId);
         ObjectNode idToken = payload.putObject("idToken");
         idToken.put("idToken", truncate(plateNumber, 36));
         idToken.put("type", "Central");
@@ -37,9 +37,9 @@ public class OcppCommandService {
         return send(chargePointCode, "RequestStopTransaction", sessionId, payload);
     }
 
-    public String unlockConnector(String chargePointCode, UUID sessionId, int connectorId) {
+    public String unlockConnector(String chargePointCode, UUID sessionId, int evseId, int connectorId) {
         ObjectNode payload = objectMapper.createObjectNode();
-        payload.put("evseId", connectorId);
+        payload.put("evseId", evseId);
         payload.put("connectorId", connectorId);
         return send(chargePointCode, "UnlockConnector", sessionId, payload);
     }

@@ -119,6 +119,7 @@ export class SimulatedCharger {
       triggerReason: eventType === 'Started' ? 'RemoteStart' : eventType === 'Ended' ? 'RemoteStop' : 'MeterValuePeriodic',
       seqNo: this.seq++,
       transactionInfo: { transactionId: this.transactionId },
+      evse: { id: 1, connectorId: 1 },
       meterValue: [{
         timestamp: new Date().toISOString(),
         sampledValue: [

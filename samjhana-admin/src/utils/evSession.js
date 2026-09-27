@@ -5,21 +5,13 @@ export const ACTIVE_STATUSES = ['STARTING', 'ACTIVE', 'STOP_REQUESTED'];
 export const PAYMENT_STATUSES = ['AWAITING_PAYMENT', 'PAID', 'UNLOCK_REQUESTED'];
 export const OPEN_STATUSES = new Set([...ACTIVE_STATUSES, ...PAYMENT_STATUSES]);
 
-// OCPP connector statuses that mean "someone is (or is about to be) using this connector".
-const IN_USE_CONNECTOR = ['Occupied', 'Charging', 'Reserved'];
-const FAULT_CONNECTOR = ['Faulted', 'Unavailable'];
-
 /**
- * How a charger card should look and whether it can be picked.
- * offline     → not connected to the server (grey, disabled)
- * busy        → connected but in use / has an open session (amber, pulsing, disabled)
- * unavailable → connected but faulted (amber, disabled)
- * ready       → connected and free (green, selectable)
+ * Charger cards represent the physical unit, not an individual connector. Its single
+ * connectorStatus field cannot identify which of its nozzles is in use, so connector
+ * availability is determined from the open sessions after the unit is selected.
  */
-export function chargerState(charger, hasOpenSession = false) {
+export function chargerState(charger) {
   if (!charger || charger.connectionStatus !== 'ONLINE') return 'offline';
-  if (hasOpenSession || IN_USE_CONNECTOR.includes(charger.connectorStatus)) return 'busy';
-  if (FAULT_CONNECTOR.includes(charger.connectorStatus)) return 'unavailable';
   return 'ready';
 }
 

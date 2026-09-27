@@ -6,6 +6,7 @@ import { renderWithProviders } from '../../test/test-utils';
 
 const due = {
   id: 's1', status: 'AWAITING_PAYMENT', plateNumber: 'GA3KHA1187', chargerModel: 'HD-D140-E',
+  evseId: 1, connectorId: 2,
   energyDeliveredKwh: 7.5, suggestedAmount: 600,
 };
 
@@ -21,7 +22,7 @@ describe('PaymentCard (awaiting payment)', () => {
   it('shows the locked-connector heading, summary and the large total', () => {
     renderCard();
     expect(screen.getByText('Awaiting payment — connector locked')).toBeInTheDocument();
-    expect(screen.getByText('GA3KHA1187 · HD-D140-E · 7.5 kWh delivered')).toBeInTheDocument();
+    expect(screen.getByText('GA3KHA1187 · HD-D140-E · EVSE 1 · Connector 2 · 7.5 kWh delivered')).toBeInTheDocument();
     expect(screen.getByText('Rs 600')).toHaveClass('text-4xl', 'font-black');
   });
 

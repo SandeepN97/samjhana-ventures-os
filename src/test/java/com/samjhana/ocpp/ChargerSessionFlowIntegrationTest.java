@@ -44,7 +44,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -283,6 +287,88 @@ class ChargerSessionFlowIntegrationTest {
     }
 
     @Test
+    void shouldRunIndependentSessionsOnDifferentConnectorsOfTheSameEvse() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String firstId = startSession(CHARGER_1, "BA 1 PA 1001", 80).get("id").asText();
+        JsonNode firstStart = charger.awaitCall("RequestStartTransaction");
+        assertThat(firstStart.get(3).get("evseId").asInt()).isEqualTo(1);
+        charger.reply(firstStart, "Accepted");
+
+        String secondId = startSession(CHARGER_1, "BA 1 PA 1002", 80, null, 1, 2).get("id").asText();
+        JsonNode secondStart = charger.awaitCall("RequestStartTransaction");
+        assertThat(secondStart.get(3).get("evseId").asInt()).isEqualTo(1);
+        charger.reply(secondStart, "Accepted");
+
+        charger.call("TransactionEvent", txEvent("Started", 0, "TX-C1", 20, 0, 1, 1));
+        charger.call("TransactionEvent", txEvent("Started", 0, "TX-C2", 30, 0, 1, 2));
+        awaitStatus(firstId, "ACTIVE");
+        awaitStatus(secondId, "ACTIVE");
+        assertThat(session(firstId).get("connectorId").asInt()).isEqualTo(1);
+        assertThat(session(secondId).get("connectorId").asInt()).isEqualTo(2);
+        assertThat(session(firstId).get("currentSoc").asInt()).isEqualTo(20);
+        assertThat(session(secondId).get("currentSoc").asInt()).isEqualTo(30);
+
+        charger.call("TransactionEvent", txEvent("Updated", 1, "TX-C1", 41, 2_000, 1, 1));
+        charger.call("TransactionEvent", txEvent("Updated", 1, "TX-C2", 63, 4_000, 1, 2));
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(session(firstId).get("currentSoc").asInt()).isEqualTo(41);
+            assertThat(session(secondId).get("currentSoc").asInt()).isEqualTo(63);
+        });
+
+        ResponseEntity<JsonNode> duplicate = post("/api/ev/sessions/start",
+                startBody(CHARGER_1, "BA 1 PA 1003", 80, 1, 2));
+        assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        post("/api/ev/sessions/" + secondId + "/stop", null);
+        JsonNode stopCall = charger.awaitCall("RequestStopTransaction");
+        assertThat(stopCall.get(3).get("transactionId").asText()).isEqualTo("TX-C2");
+        charger.reply(stopCall, "Accepted");
+        charger.call("TransactionEvent", txEvent("Ended", 2, "TX-C2", 63, 4_000, 1, 2));
+        awaitStatus(secondId, "AWAITING_PAYMENT");
+        post("/api/ev/sessions/" + secondId + "/mark-paid", Map.of("method", "CASH", "amount", 100));
+        JsonNode unlockCall = charger.awaitCall("UnlockConnector");
+        assertThat(unlockCall.get(3).get("evseId").asInt()).isEqualTo(1);
+        assertThat(unlockCall.get(3).get("connectorId").asInt()).isEqualTo(2);
+        charger.reply(unlockCall, "Unlocked");
+        awaitStatus(secondId, "CLOSED");
+    }
+
+    @Test
+    void shouldSerializeSimultaneousStartsForTheSameConnector() throws Exception {
+        connectAndBoot(CHARGER_1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch startTogether = new CountDownLatch(1);
+
+        try {
+            List<Future<ResponseEntity<JsonNode>>> requests = List.of(
+                    executor.submit(() -> concurrentStart(ready, startTogether, "BA 4 PA 4001")),
+                    executor.submit(() -> concurrentStart(ready, startTogether, "BA 4 PA 4002")));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            startTogether.countDown();
+
+            List<Integer> responses = new ArrayList<>();
+            for (Future<ResponseEntity<JsonNode>> request : requests) {
+                responses.add(request.get(10, TimeUnit.SECONDS).getStatusCode().value());
+            }
+            assertThat(responses).containsExactlyInAnyOrder(HttpStatus.OK.value(), HttpStatus.CONFLICT.value());
+            assertThat(get("/api/ev/sessions/active").getBody()).hasSize(1);
+        } finally {
+            startTogether.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private ResponseEntity<JsonNode> concurrentStart(
+            CountDownLatch ready, CountDownLatch startTogether, String plate) throws Exception {
+        ready.countDown();
+        if (!startTogether.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent start barrier timed out");
+        }
+        return post("/api/ev/sessions/start", startBody(CHARGER_1, plate, 80));
+    }
+
+    @Test
     void shouldRejectInvalidRequests_whenPlateOrTargetIsInvalid() throws Exception {
         connectAndBoot(CHARGER_1);
 
@@ -426,7 +512,13 @@ class ChargerSessionFlowIntegrationTest {
     }
 
     private Map<String, Object> startBody(String code, String plate, int targetPercent) {
-        return Map.of("chargePointId", chargePointId(code), "plateNumber", plate, "targetPercent", targetPercent);
+        return startBody(code, plate, targetPercent, 1, 1);
+    }
+
+    private Map<String, Object> startBody(
+            String code, String plate, int targetPercent, int evseId, int connectorId) {
+        return Map.of("chargePointId", chargePointId(code), "plateNumber", plate, "targetPercent", targetPercent,
+                "evseId", evseId, "connectorId", connectorId);
     }
 
     private JsonNode startSession(String code, String plate, int targetPercent) {
@@ -434,7 +526,13 @@ class ChargerSessionFlowIntegrationTest {
     }
 
     private JsonNode startSession(String code, String plate, int targetPercent, String vehicleCatalogId) {
-        Map<String, Object> body = new java.util.HashMap<>(startBody(code, plate, targetPercent));
+        return startSession(code, plate, targetPercent, vehicleCatalogId, 1, 1);
+    }
+
+    private JsonNode startSession(
+            String code, String plate, int targetPercent, String vehicleCatalogId, int evseId, int connectorId) {
+        Map<String, Object> body = new java.util.HashMap<>(
+                startBody(code, plate, targetPercent, evseId, connectorId));
         if (vehicleCatalogId != null) body.put("vehicleCatalogId", vehicleCatalogId);
         ResponseEntity<JsonNode> response = post("/api/ev/sessions/start", body);
         assertThat(response.getStatusCode()).as("start session: %s", response.getBody()).isEqualTo(HttpStatus.OK);
@@ -454,11 +552,17 @@ class ChargerSessionFlowIntegrationTest {
     // ------------------------------------------------------------------ helpers: OCPP
 
     private ObjectNode txEvent(String eventType, int seqNo, String transactionId, int soc, long energyWh) {
+        return txEvent(eventType, seqNo, transactionId, soc, energyWh, 1, 1);
+    }
+
+    private ObjectNode txEvent(
+            String eventType, int seqNo, String transactionId, int soc, long energyWh, int evseId, int connectorId) {
         ObjectNode payload = mapper.createObjectNode();
         payload.put("eventType", eventType);
         payload.put("timestamp", OffsetDateTime.now().toString());
         payload.put("triggerReason", "Trigger");
         payload.put("seqNo", seqNo);
+        payload.putObject("evse").put("id", evseId).put("connectorId", connectorId);
         payload.putObject("transactionInfo").put("transactionId", transactionId);
         ObjectNode meterValue = payload.putArray("meterValue").addObject();
         meterValue.putArray("sampledValue").addObject().put("value", soc).put("measurand", "SoC");
