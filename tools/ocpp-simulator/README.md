@@ -21,16 +21,56 @@ the `ChargerSessionFlowIntegrationTest` for the protocol this must speak.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Full test transaction (BootNotification -> StatusNotification -> Started/Updated/Ended)
-python simulate_charger.py --secret <staging-charger-secret>
+# Put the STAGING charger secrets in your shell (e.g. at the end of ~/.zshrc), never prod ones:
+export OCPP_SECRET_HD_D180_CC_01='...'
+export OCPP_SECRET_HQC23_80_01='...'
+export OCPP_SECRET_HD_D140_E_01='...'
 
-# Just connect + boot, no transaction
-python simulate_charger.py --secret <staging-charger-secret> --charge-point-id HQC23-80-01 --scenario boot
+# All three chargers, live, until Ctrl+C
+python simulate_charger.py --all
+
+# One charger, live
+python simulate_charger.py --charge-point-id HQC23-80-01
+
+# Just connect + boot, then exit
+python simulate_charger.py --charge-point-id HQC23-80-01 --scenario boot
 ```
 
-`--secret` must be the charger's **actual current secret as stored in that environment's
-database** — see "A secret nuance" below, since this is not always the same as today's
-`OCPP_SECRET_*` Render env var value.
+Options for the live scenario:
+
+| Option | Effect |
+|---|---|
+| `--speed N` | Vehicles charge N times faster than real time (default 10) |
+| `--reject-starts` | Every start command is rejected |
+| `--fail-first-unlock` | The first unlock on each connector fails, so staff must use Retry unlock |
+| `--verbose` | Also log every raw OCPP message |
+| `--url` | Another backend, e.g. `ws://localhost:8080/ocpp/` for a local dev backend |
+
+`--secret` (or the env var) must be the charger's **actual current secret as stored in that
+environment's database** — see "A secret nuance" below, since this is not always the same as
+today's `OCPP_SECRET_*` Render env var value.
+
+## What the live scenario does
+
+Each charger behaves like the real site's units, as the backend currently models them: one
+EVSE with two connectors (nozzles).
+
+- Connects, sends `BootNotification` and a `StatusNotification` per connector, then a
+  `Heartbeat` at the interval the backend returns. Reconnects on its own after a backend
+  restart or deploy, and resumes any charging that was in progress.
+- `RequestStartTransaction` → accepted on the first free connector (rejected if both are busy),
+  connector reports `Occupied`, and a `TransactionEvent` `Started` follows.
+- Every 5 seconds while charging → `TransactionEvent` `Updated` with SoC, energy (Wh), power (W),
+  voltage and current. The unit's rated power (80 kW, 80 kW, 40 kW) is shared between both
+  connectors when two vehicles charge; each vehicle has its own battery size and maximum charge
+  rate and tapers above 80% SoC.
+- `RequestStopTransaction` (manual stop, or the backend reaching the target %) →
+  `TransactionEvent` `Ended`; the connector stays `Occupied` (locked) until payment.
+- `UnlockConnector` → `Unlocked`, and the connector reports `Available` again.
+
+Every `TransactionEvent` names its EVSE and connector, because the backend ignores events that
+don't. `RequestStartTransaction` carries no connector ID in OCPP 2.0.1, so the simulator picks
+the first free connector, the same default the admin's connector selector uses.
 
 ## A secret nuance
 
@@ -49,15 +89,10 @@ localhost) requires typing an explicit confirmation phrase before the tool will 
 `check_target_is_safe()` in `simulate_charger.py`. This tool must never be pointed at production
 charge point IDs or production secrets.
 
-## What's implemented vs. still planned
+## Not simulated
 
-Implemented: connect + authenticate (Basic auth over the WebSocket handshake, `ocpp2.0.1`
-subprotocol), `BootNotification`, `StatusNotification`, and a 3-event `TransactionEvent`
-sequence (Started/Updated/Ended) with SoC + energy meter values — verified end-to-end against a
-throwaway local fake CSMS during development (exact message shapes match
-`ChargerSessionFlowIntegrationTest`, and schema-validated correctly by the `ocpp` library itself).
-
-Still planned, not built: `Heartbeat`, a rejected-start scenario, and a forced mid-session
-drop-and-reconnect (to exercise the backend's resync path when a Render restart or deploy
-interrupts an active session) — see `docs/EV-CHARGING-ARCHITECTURE.md` for why that resync path
-matters.
+- Power, voltage and current are sent but the backend doesn't store or display them yet.
+- Separate EVSE IDs per nozzle: the real vendor mapping is unconfirmed (see
+  `docs/EV-CHARGING-ARCHITECTURE.md`); the simulator follows the backend's EVSE 1 /
+  connectors 1–2 assumption.
+- Firmware, reservations, local authorization and other OCPP features the backend doesn't use.
