@@ -249,7 +249,7 @@ export default function EVEntryPage() {
               type="button"
               onClick={() => navigate('/')}
               aria-label={t('common.goBack')}
-              className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-green-600"
+              className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-green-600"
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
