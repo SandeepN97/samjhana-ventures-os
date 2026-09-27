@@ -55,7 +55,7 @@ class ChargePointControllerIntegrationTest {
                     .locale("en")
                     .build());
         }
-        bearer = "Bearer " + jwtUtil.generateToken("admin");
+        bearer = "Bearer " + jwtUtil.generateToken(userRepository.findByUsername("admin").orElseThrow());
     }
 
     private ChargePoint byCode(String code) {
@@ -125,7 +125,7 @@ class ChargePointControllerIntegrationTest {
                     .role(role)
                     .build());
         }
-        return "Bearer " + jwtUtil.generateToken(username);
+        return "Bearer " + jwtUtil.generateToken(userRepository.findByUsername(username).orElseThrow());
     }
 
     @Test

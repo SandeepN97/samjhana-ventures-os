@@ -165,8 +165,10 @@ public class ChargeSessionService {
         ChargeSession session = find(id);
         requireStatus(session, ChargeSession.Status.AWAITING_PAYMENT);
         requireConnected(session); // both branches send a command: refuse before touching anything
+        BigDecimal charged = request.getAmount().setScale(2, RoundingMode.HALF_UP);
+        requireFullPriceUnlessManager(session, charged, user);
         session.setPaymentMethod(request.getMethod());
-        session.setAmount(request.getAmount().setScale(2, RoundingMode.HALF_UP));
+        session.setAmount(charged);
         session.setPaidBy(user);
         session.setPaidAt(LocalDateTime.now());
         session.setStatus(ChargeSession.Status.PAID);
@@ -370,13 +372,35 @@ public class ChargeSessionService {
         TransactionRequest request = new TransactionRequest();
         request.setBusinessCode(BusinessUnit.CODE_EV);
         request.setTransactionType(Transaction.TransactionType.SALE.name());
-        request.setTransactionDate(LocalDate.now(ZoneId.of("Asia/Kathmandu")));
+        request.setTransactionDate(transactionService.currentBusinessDate());   // the next day once today is closed
         request.setAmount(session.getAmount());
         request.setNotes(session.getNotes());
         request.setReferenceNumber("EV-" + session.getId().toString().substring(0, 8).toUpperCase(Locale.ROOT));
         request.setCustomFields(fields);
         String transactionId = transactionService.create(request, session.getPaidBy()).getId();
         session.setTransaction(transactionRepository.getReferenceById(UUID.fromString(transactionId)));
+    }
+
+    /** Leeway for rounding at the counter; anything lower than this under the price is a discount. */
+    private static final BigDecimal PRICE_TOLERANCE = new BigDecimal("1.00");
+
+    /**
+     * The price is the vehicle's rate per 1% times the percent charged, the same figure the payment
+     * screen suggests. Staff may round it but not give it away: taking less than the price is a
+     * discount only an admin or manager can confirm.
+     */
+    private void requireFullPriceUnlessManager(ChargeSession session, BigDecimal charged, User user) {
+        if (user != null && user.canManage()) return;
+        if (session.getRatePerPercent() == null || session.getStartSoc() == null || session.getCurrentSoc() == null) {
+            return;   // no price to compare against: the amount is entered by hand
+        }
+        BigDecimal price = session.getRatePerPercent()
+                .multiply(BigDecimal.valueOf(Math.max(0, session.getCurrentSoc() - session.getStartSoc())))
+                .setScale(2, RoundingMode.HALF_UP);
+        if (charged.compareTo(price.subtract(PRICE_TOLERANCE)) < 0) {
+            throw new EvSessionStateException("Amount is below the price of " + price
+                    + ". A manager must confirm a discount.");
+        }
     }
 
     private ChargeSession findForEvent(

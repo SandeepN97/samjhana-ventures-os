@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PetrolEntryPage from './PetrolEntryPage';
+import api from '../../utils/api';
 import { renderWithProviders } from '../../test/test-utils';
 
 // Mock api module — different endpoints return different shapes
@@ -119,5 +120,24 @@ describe('PetrolEntryPage', () => {
     const bankBtn = screen.getByText('Bank').closest('button');
     await userEvent.click(bankBtn);
     expect(bankBtn.className).toContain('bg-blue-500');
+  });
+
+  it('does not read transaction records to work out the fuel cost', async () => {
+    renderWithProviders(<PetrolEntryPage />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining('/api/transactions'));
+  });
+
+  it('saves a sale without a purchase rate, which the server adds', async () => {
+    const { container } = renderWithProviders(<PetrolEntryPage />);
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    const literInput = screen.getByPlaceholderText(/Enter liters|लिटर/);
+    await userEvent.type(literInput, '10');
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/transactions', expect.anything()));
+    const payload = api.post.mock.calls.find(([url]) => url === '/api/transactions')[1];
+    expect(payload.customFields).not.toHaveProperty('purchaseRate');
+    expect(payload.customFields.liters).toBe(10);
   });
 });

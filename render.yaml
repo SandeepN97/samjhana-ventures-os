@@ -1,29 +1,35 @@
+# Reference blueprint for the production backend. The live services were created by hand in the
+# Render dashboard (Docker, from ./Dockerfile); if you ever create one from this file instead, it
+# must match how they run:
+#   - the profile comes from SPRING_PROFILES_ACTIVE, never a -D flag (a -D flag beats the env var
+#     and would force every service, staging included, onto the prod database);
+#   - the database settings are the SUPABASE_PROD_* variables that application.yml reads, plus the
+#     Supabase CA certificate uploaded as a Secret File named supabase-ca.crt.
 services:
   - type: web
     name: samjhana-backend
-    runtime: java
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     # OCPP uses persistent WebSockets; paid Starter instances do not spin down.
     plan: starter
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -Dspring.profiles.active=prod -jar target/*.jar
-    healthCheckPath: /api/fuel-prices/current
+    healthCheckPath: /api/public/fuel-prices/current
     envVars:
-      - key: JAVA_VERSION
-        value: 21
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DATABASE_URL
-        sync: false        # set manually in Render dashboard
-      - key: DATABASE_USERNAME
+      - key: SUPABASE_PROD_HOST
+        sync: false        # set in the Render dashboard
+      - key: SUPABASE_PROD_DB
         sync: false
-      - key: DATABASE_PASSWORD
+      - key: SUPABASE_PROD_USER
+        sync: false
+      - key: SUPABASE_PROD_PASSWORD
         sync: false
       - key: JWT_SECRET
-        sync: false
+        sync: false        # openssl rand -base64 48
       - key: SAMJHANA_CORS_ALLOWED_ORIGINS
-        sync: false        # set to your Vercel URL after deploy
+        sync: false        # the public site's URL
       - key: OCPP_SECRET_HD_D180_CC_01
-        sync: false
+        sync: false        # openssl rand -base64 32 (the app refuses dev- values outside dev/test)
       - key: OCPP_SECRET_HQC23_80_01
         sync: false
       - key: OCPP_SECRET_HD_D140_E_01

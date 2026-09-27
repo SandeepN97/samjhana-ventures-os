@@ -41,7 +41,11 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
   const breakdown = session.ratePerPercent != null && session.percentCharged != null
     ? t('evLive.percentBreakdown', { percent: num(session.percentCharged), rate: money(session.ratePerPercent) })
     : null;
-  const valid = Number(amount) > 0;
+  // Staff can round the price but not discount it; the server refuses anything more than Rs 1 under.
+  const role = JSON.parse(localStorage.getItem('user') || '{}').role;
+  const canDiscount = role === 'ADMIN' || role === 'MANAGER';
+  const belowPrice = !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
+  const valid = Number(amount) > 0 && !belowPrice;
 
   if (session.status !== 'AWAITING_PAYMENT') {
     return (
@@ -97,6 +101,12 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
             {t('evLive.changeAmount')}
           </button>
         </div>
+      )}
+
+      {belowPrice && (
+        <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
+          {t('evLive.belowPriceNeedsManager', { price: money(suggested) })}
+        </p>
       )}
 
       <div role="radiogroup" aria-label={t('common.paymentMethod')} className="mb-4 grid grid-cols-3 gap-3">

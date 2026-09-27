@@ -42,11 +42,17 @@ public class DailyReportController {
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal User user) {
 
-        LocalDate closeDate;
-        if (body.containsKey("date") && body.get("date") != null) {
-            closeDate = LocalDate.parse(body.get("date").toString());
-        } else {
-            closeDate = LocalDate.now();
+        // The day being worked on (today, or tomorrow once today is closed). Nobody closes a day that
+        // hasn't happened yet, and closing an earlier, missed day is a manager's job: a closed day
+        // is final, so a wrong close would lock a day's takings.
+        LocalDate businessDate = LocalDate.parse(dailyReportService.getBusinessDate().get("date").toString());
+        LocalDate closeDate = body.get("date") != null ? LocalDate.parse(body.get("date").toString()) : businessDate;
+        if (closeDate.isAfter(businessDate)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Cannot close a day that hasn't happened yet"));
+        }
+        if (closeDate.isBefore(businessDate) && (user == null || !user.canManage())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Only an admin or manager can close an earlier day"));
         }
 
         BigDecimal cashCounted;
@@ -73,8 +79,8 @@ public class DailyReportController {
     }
 
     @GetMapping("/{date}/transactions")
-    public ResponseEntity<?> getTransactionsForDate(@PathVariable String date) {
-        List<TransactionResponse> transactions = dailyReportService.getTransactionsForDate(LocalDate.parse(date));
+    public ResponseEntity<?> getTransactionsForDate(@PathVariable String date, @AuthenticationPrincipal User user) {
+        List<TransactionResponse> transactions = dailyReportService.getTransactionsForDate(LocalDate.parse(date), user);
         return ResponseEntity.ok(transactions);
     }
 

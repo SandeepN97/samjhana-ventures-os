@@ -4,6 +4,7 @@ import com.samjhana.dto.FuelPriceRequest;
 import com.samjhana.dto.FuelPriceResponse;
 import com.samjhana.entity.User;
 import com.samjhana.service.FuelPriceService;
+import com.samjhana.service.PublicApiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +20,17 @@ import java.util.Map;
 public class FuelPriceController {
 
     private final FuelPriceService fuelPriceService;
+    private final PublicApiService publicApiService;
 
+    /**
+     * Open without a login (it doubles as the deploy health check), so anonymous callers get only the
+     * public shape — fuel, price, date — never internal IDs or the name of whoever set the price.
+     */
     @GetMapping("/current")
-    public ResponseEntity<Map<String, FuelPriceResponse>> getCurrentPrices() {
+    public ResponseEntity<?> getCurrentPrices(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.ok(publicApiService.getCurrentFuelPrices());
+        }
         return ResponseEntity.ok(fuelPriceService.getCurrentPrices());
     }
 

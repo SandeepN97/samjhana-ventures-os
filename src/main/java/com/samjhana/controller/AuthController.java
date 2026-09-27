@@ -7,6 +7,7 @@ import com.samjhana.dto.UserDto;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.JwtUtil;
+import com.samjhana.security.LoginAttemptService;
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +33,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttempts;
 
     /** What an admin sees when the named user is unknown or the current password is wrong: one answer for both. */
     private static final String INVALID_TARGET_OR_PASSWORD = "Invalid username or current password";
@@ -47,12 +50,23 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        if (loginAttempts.isBlocked(request.getUsername())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
+        }
+        Authentication auth;
+        try {
+            auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        } catch (AuthenticationException e) {
+            loginAttempts.recordFailure(request.getUsername());
+            throw e;
+        }
+        loginAttempts.recordSuccess(request.getUsername());
 
         User user = (User) auth.getPrincipal();
-        String token = jwtUtil.generateToken(user.getUsername());
+        String token = jwtUtil.generateToken(user);
 
         return ResponseEntity.ok(LoginResponse.builder()
                 .token(token)
@@ -142,6 +156,13 @@ public class AuthController {
         targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(targetUser);
 
-        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
+        // Someone changing their own password gets a fresh token so this device stays signed in.
+        if (targetsAnotherUser) {
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        }
+        return ResponseEntity.ok(Map.of(
+                "message", "Password changed successfully",
+                "token", jwtUtil.generateToken(targetUser)));
     }
 }

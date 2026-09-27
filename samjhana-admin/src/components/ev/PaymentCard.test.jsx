@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PaymentCard from './PaymentCard';
@@ -79,9 +79,9 @@ describe('PaymentCard (awaiting payment)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
     const input = screen.getByLabelText('Amount (Rs)');
     await userEvent.clear(input);
-    await userEvent.type(input, '550');
+    await userEvent.type(input, '650');
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
-    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 550);
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 650);
   });
 
   it('asks staff to type the amount when no rate was configured, and blocks confirming until they do', async () => {
@@ -139,5 +139,59 @@ describe('PaymentCard (after payment)', () => {
     const { onRetryUnlock } = renderCard({ ...due, status: 'PAID', statusMessage: 'Connector unlock failed; retry required' });
     await userEvent.click(screen.getByRole('button', { name: 'Retry unlock' }));
     expect(onRetryUnlock).toHaveBeenCalledWith('s1');
+  });
+});
+
+describe('PaymentCard discount rule', () => {
+  afterEach(() => localStorage.clear());
+
+  async function typeAmount(value) {
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const input = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(input);
+    await userEvent.type(input, value);
+  }
+
+  it('stops staff confirming less than the price and says a manager must do it', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
+    const { onConfirm } = renderCard();
+    await typeAmount('100');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('This is less than the price (Rs 600). Only a manager can give a discount.');
+    const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('lets staff round the price down by up to one rupee', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
+    const { onConfirm } = renderCard();
+    await typeAmount('599');
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 599);
+  });
+
+  it('lets a manager give a discount', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'MANAGER' }));
+    const { onConfirm } = renderCard();
+    await typeAmount('400');
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 400);
+  });
+
+  it('explains the rule in Nepali', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
+    renderCard(due, { locale: 'ne' });
+    await userEvent.click(screen.getByRole('button', { name: 'रकम परिवर्तन' }));
+    const input = screen.getByRole('spinbutton');
+    await userEvent.clear(input);
+    await userEvent.type(input, '100');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('यो मूल्य (रु ६००) भन्दा कम छ। छुट प्रबन्धकले मात्र दिन सक्नुहुन्छ।');
   });
 });

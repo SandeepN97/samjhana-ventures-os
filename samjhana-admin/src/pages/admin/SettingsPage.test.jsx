@@ -79,6 +79,28 @@ describe('SettingsPage change password', () => {
     expect(await screen.findByText('Password changed successfully!')).toBeInTheDocument();
   });
 
+  it('keeps this device signed in by storing the new token the server returns', async () => {
+    localStorage.setItem('token', 'old-token');
+    api.post.mockResolvedValue({ data: { message: 'Password changed successfully', token: 'fresh-token' } });
+    await openChangePassword();
+    await fill({ next: '12345678' });
+    await submit();
+
+    expect(await screen.findByText('Password changed successfully!')).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBe('fresh-token');
+  });
+
+  it('keeps the stored token when the server sends none back', async () => {
+    localStorage.setItem('token', 'old-token');
+    api.post.mockResolvedValue({ data: { message: 'Password changed successfully' } });
+    await openChangePassword();
+    await fill({ next: '12345678' });
+    await submit();
+
+    expect(await screen.findByText('Password changed successfully!')).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBe('old-token');
+  });
+
   it('states the 8-character rule in Nepali with a Devanagari numeral', async () => {
     await openChangePassword({ locale: 'ne' });
     await fill({ next: '1234567' });

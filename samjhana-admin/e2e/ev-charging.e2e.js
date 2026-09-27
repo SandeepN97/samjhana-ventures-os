@@ -50,7 +50,7 @@ function watchPage(page) {
   const t0 = Date.now();
   const stamp = (text) => log.push(`+${String(Date.now() - t0).padStart(5)}ms ${text}`);
   page.on('websocket', (ws) => {
-    stamp(`ws open   ${ws.url().replace(/token=[^&]+/, 'token=…')}`);
+    stamp(`ws open   ${ws.url().replace(/ticket=[^&]+/, 'ticket=…')}`);
     ws.on('framereceived', (frame) => stamp(`ws frame  ${String(frame.payload).slice(0, 140)}`));
     ws.on('socketerror', (error) => stamp(`ws error  ${error}`));
     ws.on('close', () => stamp('ws close'));
