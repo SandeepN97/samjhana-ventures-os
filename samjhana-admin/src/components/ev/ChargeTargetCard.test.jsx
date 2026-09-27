@@ -23,7 +23,7 @@ describe('ChargeTargetCard', () => {
   it('highlights the preset that matches the current value', () => {
     renderWithProviders(<Harness initial="80" />);
     expect(preset('80%')).toHaveAttribute('aria-pressed', 'true');
-    expect(preset('80%')).toHaveClass('bg-green-500', 'text-white');
+    expect(preset('80%')).toHaveClass('bg-ev-500', 'text-white');
     expect(preset('50%')).toHaveAttribute('aria-pressed', 'false');
     expect(preset('Full')).toHaveAttribute('aria-pressed', 'false');
   });

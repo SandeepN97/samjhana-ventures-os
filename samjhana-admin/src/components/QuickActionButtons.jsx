@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,18 +7,21 @@ import {
   Sofa,
   Home,
   Landmark,
-  Plus,
   FileText,
   Settings,
   Users,
   BarChart3,
 } from 'lucide-react';
+import { Wordmark } from './brand';
+import { unitTheme } from '../brand/theme';
+import api from '../utils/api';
+import useLocaleFormat from '../hooks/useLocaleFormat';
 
 /**
  * QuickActionButtons - The "Dad-Proof" mobile home screen.
  *
  * Features:
- * - 6 large buttons (2x3 grid) for common actions
+ * - One large button per business (2-column grid) for common actions
  * - Each button ~120px with clear icon and bilingual label
  * - High contrast colors for easy visibility
  * - Touch-friendly with visual feedback
@@ -29,51 +32,63 @@ const BUSINESS_BUTTONS = [
     code: 'petrol',
     icon: Fuel,
     tKey: 'business.petrol',
-    color: 'bg-orange-500',
-    hoverColor: 'hover:bg-orange-600',
+    unit: 'petrol',
     path: '/entry/petrol',
   },
   {
     code: 'ev',
     icon: Zap,
     tKey: 'business.ev',
-    color: 'bg-green-500',
-    hoverColor: 'hover:bg-green-600',
+    unit: 'ev',
     path: '/entry/ev',
   },
   {
     code: 'furniture',
     icon: Sofa,
     tKey: 'business.furniture',
-    color: 'bg-purple-500',
-    hoverColor: 'hover:bg-purple-600',
+    unit: 'furniture',
     path: '/entry/furniture',
   },
   {
     code: 'rental',
     icon: Home,
     tKey: 'business.rental',
-    color: 'bg-blue-500',
-    hoverColor: 'hover:bg-blue-600',
+    unit: 'rental',
     path: '/entry/rental',
   },
   {
     code: 'loan',
     icon: Landmark,
     tKey: 'business.loan',
-    color: 'bg-red-500',
-    hoverColor: 'hover:bg-red-600',
+    unit: 'loans',
     path: '/entry/loan',
   },
-  {
-    code: 'add',
-    icon: Plus,
-    tKey: 'home.addNew',
-    color: 'bg-yellow-500',
-    hoverColor: 'hover:bg-yellow-600',
-    path: '/add',
-  },
 ];
+
+/**
+ * Cash taken so far on the current business date (the same figure the End of Day page
+ * starts from). Returns null while loading or if the server can't be reached, so the
+ * card shows a dash rather than a made-up number.
+ */
+function useTodayCash() {
+  const [cash, setCash] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/daily-reports/business-date')
+      .then((res) => api.get(`/api/daily-reports/today-summary?date=${res.data.date}`))
+      .then((res) => {
+        const value = parseFloat(res.data?.totalCashSales);
+        if (!cancelled) setCash(Number.isFinite(value) ? value : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setCash(null);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  return cash;
+}
 
 export default function QuickActionButtons() {
   const navigate = useNavigate();
@@ -83,6 +98,8 @@ export default function QuickActionButtons() {
   const isStaff = user.role === 'STAFF';
   const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canViewAnalytics = canManage;
+  const todayCash = useTodayCash();
+  const { money } = useLocaleFormat();
 
   const visibleButtons = isStaff
     ? BUSINESS_BUTTONS.filter((b) => b.code !== 'loan')
@@ -91,11 +108,11 @@ export default function QuickActionButtons() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 pt-14 pb-6 shadow-lg">
-        <h1 className="text-2xl font-bold text-center">
-          🏢 {t('home.title')}
+      <header className="bg-core-800 text-white px-4 pt-14 pb-6 shadow-lg">
+        <h1 className="text-center">
+          <Wordmark />
         </h1>
-        <p className="text-center text-blue-100 mt-1">
+        <p className="text-center text-core-300 mt-1">
           {t('home.welcome')}
         </p>
       </header>
@@ -105,17 +122,22 @@ export default function QuickActionButtons() {
         <p className="text-gray-500 text-sm text-center">
           {t('home.todayCash')}
         </p>
-        <p className="text-3xl font-bold text-center text-green-600 mt-1">
-          रु 1,23,456
+        <p
+          className="text-3xl font-bold text-center text-green-600 mt-1"
+          data-testid="today-cash"
+        >
+          {todayCash === null ? '—' : money(todayCash)}
         </p>
       </div>
 
-      {/* Main Action Buttons - 2x3 Grid */}
+      {/* Main Action Buttons - 2-column grid */}
       <div className="grid grid-cols-2 gap-4 p-4 mt-4">
-        {visibleButtons.map((button) => (
+        {visibleButtons.map((button, i) => (
           <QuickButton
             key={button.code}
             button={button}
+            // An odd tile out fills the last row instead of sitting alone in half of it
+            wide={visibleButtons.length % 2 === 1 && i === visibleButtons.length - 1}
             onClick={() => navigate(button.path)}
           />
         ))}
@@ -176,16 +198,18 @@ export default function QuickActionButtons() {
 // Sub-components
 // =============================================================================
 
-function QuickButton({ button, onClick }) {
+function QuickButton({ button, wide = false, onClick }) {
   const { t } = useTranslation();
   const Icon = button.icon;
   const label = t(button.tKey);
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
-        ${button.color} ${button.hoverColor}
+        ${unitTheme(button.unit).tile}
+        ${wide ? 'col-span-2' : ''}
         flex flex-col items-center justify-center
         h-32 rounded-2xl shadow-lg
         transform transition-all duration-150
@@ -226,8 +250,8 @@ function NavButton({ icon: Icon, label, active, onClick }) {
       onClick={onClick}
       className={`
         flex flex-col items-center py-1 px-3
-        ${active ? 'text-blue-600' : 'text-gray-400'}
-        hover:text-blue-500 transition-colors
+        ${active ? 'text-core-800' : 'text-gray-400'}
+        hover:text-core-600 transition-colors
       `}
     >
       <Icon className="w-6 h-6" />

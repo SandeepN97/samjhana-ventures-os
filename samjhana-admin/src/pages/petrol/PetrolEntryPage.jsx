@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Fuel, Check, Settings, Truck, Banknote, Building2 } from 'lucide-react';
+import { Fuel, Check, Settings, Truck, Banknote, Building2 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function PetrolEntryPage() {
   const navigate = useNavigate();
@@ -177,23 +177,7 @@ export default function PetrolEntryPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-orange-500 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-orange-600 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Fuel className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('petrol.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="petrol" icon={Fuel} title={t('petrol.title')} />
 
       {/* Today's Prices + Actions — three columns */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm overflow-hidden flex">
@@ -226,9 +210,9 @@ export default function PetrolEntryPage() {
         <div className="flex flex-col">
           <button
             onClick={() => navigate('/fuel-prices')}
-            className="flex-1 px-4 flex items-center justify-center gap-2 text-orange-600 hover:bg-orange-50 active:bg-orange-100 transition-colors border-b border-gray-100"
+            className="flex-1 px-4 flex items-center justify-center gap-2 text-petrol-600 hover:bg-petrol-50 active:bg-petrol-100 transition-colors border-b border-gray-100"
           >
-            <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 rounded-full bg-petrol-100 flex items-center justify-center flex-shrink-0">
               <Settings className="w-3.5 h-3.5" />
             </div>
             <span className="text-xs font-bold">{t('petrol.pricesBtn')}</span>
@@ -259,7 +243,7 @@ export default function PetrolEntryPage() {
             value={values.transactionDate}
             onChange={(val) => handleChange('transactionDate', val)}
             error={errors.transactionDate}
-            accentColor="orange"
+            accentColor="petrol"
           />
           {errors.transactionDate && <p className="text-red-500 text-sm mt-1">{errors.transactionDate}</p>}
         </div>
@@ -280,8 +264,8 @@ export default function PetrolEntryPage() {
                 onClick={() => handleFuelTypeChange(type.value)}
                 className={`py-4 text-lg font-bold rounded-xl border-2 transition-all flex flex-col items-center ${
                   values.fuelType === type.value
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
+                    ? 'bg-petrol-500 text-white border-petrol-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-petrol-400'
                 }`}
               >
                 <span>{t(type.tKey)}</span>
@@ -308,7 +292,7 @@ export default function PetrolEntryPage() {
             value={values.liters}
             onChange={(e) => handleChange('liters', e.target.value)}
             placeholder={t('petrol.enterLiters')}
-            className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500 ${errors.liters ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.liters && <p className="text-red-500 text-sm mt-1">{errors.liters}</p>}
         </div>
@@ -335,7 +319,7 @@ export default function PetrolEntryPage() {
         </div>
 
         {/* Calculated Amount - Read Only */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+        <div className="bg-gradient-to-r from-petrol-500 to-petrol-600 rounded-xl p-4 text-white">
           <p className="text-sm opacity-80">{t('common.totalAmount')}</p>
           <p className="text-3xl font-bold">रु {parseFloat(calculatedAmount).toLocaleString('en-IN')}</p>
         </div>
@@ -383,7 +367,7 @@ export default function PetrolEntryPage() {
             onChange={(e) => handleChange('notes', e.target.value)}
             rows={2}
             placeholder={t('common.additionalNotes')}
-            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500 resize-none"
           />
         </div>
 

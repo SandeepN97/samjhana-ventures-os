@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft,
   Globe,
   User,
   Shield,
@@ -22,10 +21,10 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
-import LanguageToggle from '../../components/LanguageToggle';
 import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -262,26 +261,15 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-gray-800 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => activeSection ? setActiveSection(null) : navigate('/')}
-              className="p-2 -ml-2 rounded-full hover:bg-gray-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-xl font-bold ml-3">
-              {activeSection === 'editProfile'
-                ? t('settings.editProfile')
-                : activeSection === 'changePassword'
-                ? t('settings.changePassword')
-                : t('settings.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader
+        unit="core"
+        onBack={() => (activeSection ? setActiveSection(null) : navigate('/'))}
+        title={activeSection === 'editProfile'
+          ? t('settings.editProfile')
+          : activeSection === 'changePassword'
+          ? t('settings.changePassword')
+          : t('settings.title')}
+      />
 
       {/* Edit Profile Section */}
       {activeSection === 'editProfile' && (
@@ -289,7 +277,7 @@ export default function SettingsPage() {
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             {/* Avatar */}
             <div className="flex justify-center">
-              <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-20 h-20 bg-core-500 rounded-full flex items-center justify-center">
                 <span className="text-3xl font-bold text-white">
                   {profileFullName?.charAt(0) || user.username?.charAt(0) || 'U'}
                 </span>
@@ -318,7 +306,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileFullName}
                 onChange={(e) => setProfileFullName(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="Full name"
               />
             </div>
@@ -332,7 +320,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileFullNameNe}
                 onChange={(e) => setProfileFullNameNe(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="पूरा नाम"
               />
             </div>
@@ -354,7 +342,7 @@ export default function SettingsPage() {
               onClick={handleSaveProfile}
               disabled={profileSaving}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg text-white transition-all active:scale-95 ${
-                profileSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                profileSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-600 hover:bg-core-700'
               }`}
             >
               {profileSaving ? (
@@ -384,7 +372,7 @@ export default function SettingsPage() {
                   type={showCurrentPw ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
                   placeholder="••••••"
                 />
                 <button
@@ -407,7 +395,7 @@ export default function SettingsPage() {
                   type={showNewPw ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
                   placeholder="••••••"
                 />
                 <button
@@ -429,7 +417,7 @@ export default function SettingsPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="••••••"
               />
               {confirmPassword && newPassword && confirmPassword !== newPassword && (
@@ -444,7 +432,7 @@ export default function SettingsPage() {
               onClick={handleChangePassword}
               disabled={pwSaving}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg text-white transition-all active:scale-95 ${
-                pwSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                pwSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-600 hover:bg-core-700'
               }`}
             >
               {pwSaving ? (
@@ -466,7 +454,7 @@ export default function SettingsPage() {
           {/* User Profile Card */}
           <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 bg-core-500 rounded-full flex items-center justify-center">
                 <span className="text-2xl font-bold text-white">
                   {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
                 </span>
@@ -549,7 +537,7 @@ export default function SettingsPage() {
                   </h2>
                   <button
                     onClick={() => setShowUserForm(!showUserForm)}
-                    className="flex items-center gap-1 text-blue-600 text-sm font-medium"
+                    className="flex items-center gap-1 text-core-600 text-sm font-medium"
                   >
                     {showUserForm ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                     {showUserForm ? t('settings.close') : t('settings.add')}
@@ -558,7 +546,7 @@ export default function SettingsPage() {
 
                 {/* Add User Form */}
                 {showUserForm && (
-                  <div className="p-4 border-b bg-blue-50">
+                  <div className="p-4 border-b bg-core-50">
                     <h3 className="font-bold text-gray-800 mb-3">
                       {t('settings.addNewUser')}
                     </h3>
@@ -604,9 +592,9 @@ export default function SettingsPage() {
                         const staff = staffList.find(s => String(s.id) === String(selectedStaffId));
                         if (!staff) return null;
                         return (
-                          <div className="bg-white border-2 border-blue-200 rounded-lg px-3 py-2 flex items-center gap-3">
-                            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="font-bold text-blue-600 text-sm">
+                          <div className="bg-white border-2 border-core-200 rounded-lg px-3 py-2 flex items-center gap-3">
+                            <div className="w-9 h-9 bg-core-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="font-bold text-core-600 text-sm">
                                 {staff.fullName?.charAt(0) || '?'}
                               </span>
                             </div>
@@ -649,7 +637,7 @@ export default function SettingsPage() {
                             <select
                               value={newUser.role}
                               onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                             >
                               <option value="STAFF">{t('settings.staffRoleLabel')}</option>
                               <option value="MANAGER">{t('settings.managerRoleLabel')}</option>
@@ -665,7 +653,7 @@ export default function SettingsPage() {
                               type="text"
                               value={newUser.username}
                               onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500"
                               placeholder={t('settings.username')}
                               autoComplete="off"
                             />
@@ -680,7 +668,7 @@ export default function SettingsPage() {
                                 type={showNewUserPw ? 'text' : 'password'}
                                 value={newUser.password}
                                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500 pr-10"
                                 placeholder={t('settings.password')}
                                 autoComplete="new-password"
                               />
@@ -700,7 +688,7 @@ export default function SettingsPage() {
                                 type={showNewUserPwConfirm ? 'text' : 'password'}
                                 value={newUserPasswordConfirm}
                                 onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
-                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 pr-10"
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-core-500 pr-10"
                                 placeholder={t('settings.repeatPassword')}
                                 autoComplete="new-password"
                               />
@@ -718,7 +706,7 @@ export default function SettingsPage() {
                           type="submit"
                           disabled={submitting}
                           className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${
-                            submitting ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                            submitting ? 'bg-gray-400' : 'bg-core-600 hover:bg-core-700'
                           }`}
                         >
                           {submitting
@@ -733,7 +721,7 @@ export default function SettingsPage() {
                 {/* User List */}
                 {loadingUsers ? (
                   <div className="flex items-center justify-center py-6">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-core-600"></div>
                   </div>
                 ) : users.length === 0 ? (
                   <div className="px-4 py-6 text-center text-gray-500">

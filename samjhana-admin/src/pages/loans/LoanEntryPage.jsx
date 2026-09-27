@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff } from 'lucide-react';
+import { Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export default function LoanEntryPage() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-sm">
-          <ShieldOff className="w-16 h-16 mx-auto text-red-500 mb-4" />
+          <ShieldOff className="w-16 h-16 mx-auto text-loans-500 mb-4" />
           <h1 className="text-xl font-bold text-gray-800 mb-2">
             {t('common.accessDenied')}
           </h1>
@@ -55,7 +55,7 @@ export default function LoanEntryPage() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-loans-600 text-white px-6 py-2 rounded-lg hover:bg-loans-700 transition-colors min-h-[44px]"
           >
             {t('loan.goHome')}
           </button>
@@ -254,34 +254,23 @@ export default function LoanEntryPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-red-600 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => mode === 'summary' ? navigate('/') : setMode('summary')}
-              className="p-2 -ml-2 rounded-full hover:bg-red-700 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Landmark className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('business.loan')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader
+        unit="loans"
+        icon={Landmark}
+        title={t('business.loan')}
+        onBack={() => (mode === 'summary' ? navigate('/') : setMode('summary'))}
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-loans-600"></div>
         </div>
       ) : mode === 'summary' ? (
         /* ============ SUMMARY VIEW ============ */
         <div className="p-4 space-y-4">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+            <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-loans-500">
               <p className="text-xs text-gray-500">{t('loan.totalBorrowed')}</p>
               <p className="text-xl font-bold text-gray-800">{formatAmount(totalBorrowed)}</p>
             </div>
@@ -303,7 +292,7 @@ export default function LoanEntryPage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setMode('add_loan')}
-              className="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+              className="bg-loans-500 hover:bg-loans-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
               {t('loan.addLoan')}
@@ -345,7 +334,7 @@ export default function LoanEntryPage() {
                     <div key={loan.id} className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-5 h-5 text-red-500" />
+                          <Building2 className="w-5 h-5 text-loans-500" />
                           <div>
                             <p className="font-bold text-gray-800">{loan.bankName}</p>
                             <p className="text-xs text-gray-500">
@@ -356,7 +345,7 @@ export default function LoanEntryPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-500">{t('loan.remaining')}</p>
-                          <p className="text-lg font-bold text-red-600">{formatAmount(loan.remaining)}</p>
+                          <p className="text-lg font-bold text-loans-600">{formatAmount(loan.remaining)}</p>
                         </div>
                       </div>
                       {/* Progress Bar */}
@@ -385,33 +374,33 @@ export default function LoanEntryPage() {
       ) : mode === 'add_loan' ? (
         /* ============ ADD LOAN FORM ============ */
         <form onSubmit={handleAddLoan} className="p-4 space-y-5">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-            <Landmark className="w-8 h-8 text-red-500" />
+          <div className="bg-loans-50 border border-loans-200 rounded-xl p-4 flex items-center gap-3">
+            <Landmark className="w-8 h-8 text-loans-500" />
             <div>
-              <p className="font-bold text-red-800">{t('loan.addNewBankLoan')}</p>
-              <p className="text-sm text-red-600">{t('loan.loanTakenByBusiness')}</p>
+              <p className="font-bold text-loans-800">{t('loan.addNewBankLoan')}</p>
+              <p className="text-sm text-loans-600">{t('loan.loanTakenByBusiness')}</p>
             </div>
           </div>
 
           {/* Bank Name */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.bankName')} <span className="text-red-500">*</span>
+              {t('loan.bankName')} <span className="text-loans-500">*</span>
             </label>
             <input
               type="text"
               value={newLoan.bankName}
               onChange={(e) => handleNewLoanChange('bankName', e.target.value)}
               placeholder={t('loan.bankNamePlaceholder')}
-              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 ${errors.bankName ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-4 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-loans-500 ${errors.bankName ? 'border-loans-500' : 'border-gray-300'}`}
             />
-            {errors.bankName && <p className="text-red-500 text-sm mt-1">{errors.bankName}</p>}
+            {errors.bankName && <p className="text-loans-500 text-sm mt-1">{errors.bankName}</p>}
           </div>
 
           {/* Loan Amount */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.loanAmount')} <span className="text-red-500">*</span>
+              {t('loan.loanAmount')} <span className="text-loans-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -423,10 +412,10 @@ export default function LoanEntryPage() {
                 value={newLoan.loanAmount}
                 onChange={(e) => handleNewLoanChange('loanAmount', e.target.value)}
                 placeholder="0.00"
-                className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 ${errors.loanAmount ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-loans-500 ${errors.loanAmount ? 'border-loans-500' : 'border-gray-300'}`}
               />
             </div>
-            {errors.loanAmount && <p className="text-red-500 text-sm mt-1">{errors.loanAmount}</p>}
+            {errors.loanAmount && <p className="text-loans-500 text-sm mt-1">{errors.loanAmount}</p>}
           </div>
 
           {/* Interest Rate */}
@@ -443,7 +432,7 @@ export default function LoanEntryPage() {
                 value={newLoan.interestRate}
                 onChange={(e) => handleNewLoanChange('interestRate', e.target.value)}
                 placeholder="0.00"
-                className="w-full px-4 py-4 text-xl text-center border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-4 py-4 text-xl text-center border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-loans-500"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">%</span>
             </div>
@@ -452,13 +441,13 @@ export default function LoanEntryPage() {
           {/* Start Date */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.loanDate')} <span className="text-red-500">*</span>
+              {t('loan.loanDate')} <span className="text-loans-500">*</span>
             </label>
             <DatePicker
               value={newLoan.startDate}
               onChange={(val) => handleNewLoanChange('startDate', val)}
               error={errors.startDate}
-              accentColor="red"
+              accentColor="loans"
             />
           </div>
 
@@ -472,7 +461,7 @@ export default function LoanEntryPage() {
               onChange={(e) => handleNewLoanChange('notes', e.target.value)}
               rows={2}
               placeholder={t('common.additionalNotes')}
-              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-loans-500 resize-none"
             />
           </div>
 
@@ -481,7 +470,7 @@ export default function LoanEntryPage() {
             type="submit"
             disabled={isSubmitting}
             className={`w-full py-5 text-xl font-bold rounded-xl transition-all ${
-              isSubmitting ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700 active:scale-95'
+              isSubmitting ? 'bg-gray-400' : 'bg-loans-600 hover:bg-loans-700 active:scale-95'
             } text-white`}
           >
             {isSubmitting ? (
@@ -514,7 +503,7 @@ export default function LoanEntryPage() {
           {/* Select Loan */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.selectLoan')} <span className="text-red-500">*</span>
+              {t('loan.selectLoan')} <span className="text-loans-500">*</span>
             </label>
             <SearchableSelect
               value={payment.loanId}
@@ -526,9 +515,9 @@ export default function LoanEntryPage() {
               }))}
               placeholder={t('loan.selectLoanPlaceholder')}
               error={errors.loanId}
-              accentColor="green"
+              accentColor="loans"
             />
-            {errors.loanId && <p className="text-red-500 text-sm mt-1">{errors.loanId}</p>}
+            {errors.loanId && <p className="text-loans-500 text-sm mt-1">{errors.loanId}</p>}
           </div>
 
           {/* Show selected loan info */}
@@ -541,7 +530,7 @@ export default function LoanEntryPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-500">{t('loan.remaining')}</p>
-                  <p className="font-bold text-red-600">{formatAmount(selectedLoan.remaining)}</p>
+                  <p className="font-bold text-loans-600">{formatAmount(selectedLoan.remaining)}</p>
                 </div>
               </div>
             </div>
@@ -550,20 +539,20 @@ export default function LoanEntryPage() {
           {/* Payment Date */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.paymentDate')} <span className="text-red-500">*</span>
+              {t('loan.paymentDate')} <span className="text-loans-500">*</span>
             </label>
             <DatePicker
               value={payment.paymentDate}
               onChange={(val) => handlePaymentChange('paymentDate', val)}
               error={errors.paymentDate}
-              accentColor="green"
+              accentColor="loans"
             />
           </div>
 
           {/* Principal Amount */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
-              {t('loan.principalAmount')} <span className="text-red-500">*</span>
+              {t('loan.principalAmount')} <span className="text-loans-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-500">रु</span>
@@ -575,10 +564,10 @@ export default function LoanEntryPage() {
                 value={payment.principalAmount}
                 onChange={(e) => handlePaymentChange('principalAmount', e.target.value)}
                 placeholder="0.00"
-                className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.principalAmount ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full pl-12 pr-4 py-4 text-2xl font-bold text-center border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.principalAmount ? 'border-loans-500' : 'border-gray-300'}`}
               />
             </div>
-            {errors.principalAmount && <p className="text-red-500 text-sm mt-1">{errors.principalAmount}</p>}
+            {errors.principalAmount && <p className="text-loans-500 text-sm mt-1">{errors.principalAmount}</p>}
           </div>
 
           {/* Interest Amount */}

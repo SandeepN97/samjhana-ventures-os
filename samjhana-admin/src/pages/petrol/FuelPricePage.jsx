@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Fuel, Check, History, Plus, Eye, RefreshCw } from 'lucide-react';
+import { Fuel, Check, History, Plus, Eye, RefreshCw } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
 import DatePicker from '../../components/DatePicker';
 import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/brand';
 
 export default function FuelPricePage() {
   const navigate = useNavigate();
@@ -117,23 +117,7 @@ export default function FuelPricePage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-orange-500 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/entry/petrol')}
-              className="p-2 -ml-2 rounded-full hover:bg-orange-600 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Fuel className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('fuelPrice.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="petrol" icon={Fuel} title={t('fuelPrice.title')} backTo="/entry/petrol" />
 
       {/* Current Prices Display */}
       <div className="px-4 py-4">
@@ -206,7 +190,7 @@ export default function FuelPricePage() {
               <DatePicker
                 value={formValues.effectiveDate}
                 onChange={(val) => setFormValues(prev => ({ ...prev, effectiveDate: val }))}
-                accentColor="orange"
+                accentColor="petrol"
               />
             </div>
 
@@ -225,7 +209,7 @@ export default function FuelPricePage() {
                   value={formValues.petrolPrice}
                   onChange={(e) => setFormValues(prev => ({ ...prev, petrolPrice: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full pl-12 pr-4 py-4 text-xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full pl-12 pr-4 py-4 text-xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500"
                 />
               </div>
             </div>
@@ -245,7 +229,7 @@ export default function FuelPricePage() {
                   value={formValues.dieselPrice}
                   onChange={(e) => setFormValues(prev => ({ ...prev, dieselPrice: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full pl-12 pr-4 py-4 text-xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full pl-12 pr-4 py-4 text-xl font-bold border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-petrol-500"
                 />
               </div>
             </div>
@@ -257,7 +241,7 @@ export default function FuelPricePage() {
               className={`w-full py-4 text-lg font-bold rounded-xl transition-all ${
                 saving
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-orange-500 hover:bg-orange-600 active:scale-95'
+                  : 'bg-petrol-500 hover:bg-petrol-600 active:scale-95'
               } text-white`}
             >
               {saving ? (

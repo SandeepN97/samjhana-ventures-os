@@ -66,7 +66,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
     <div className="mb-3 rounded-xl bg-white p-4 shadow-md" data-testid="payment-due">
       <p className="mb-1 text-xs font-semibold uppercase text-amber-600">{t('evLive.awaitingPayment')}</p>
       <p className="mb-1 text-sm text-gray-500">{summary}</p>
-      {breakdown && <p className="mb-3 text-sm font-medium text-green-700">{breakdown}</p>}
+      {breakdown && <p className="mb-3 text-sm font-medium text-ev-700">{breakdown}</p>}
       {!breakdown && <div className="mb-2" />}
 
       {editing ? (
@@ -82,7 +82,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
             inputMode="decimal"
             value={amount}
             onChange={(e) => { touched.current = true; setAmount(e.target.value); }}
-            className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
           />
           {suggested === '' && <p className="mt-1 text-xs text-amber-600">{t('evLive.noRateHint')}</p>}
         </div>
@@ -92,7 +92,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="min-h-[44px] text-sm font-medium text-green-600 underline-offset-2 hover:underline"
+            className="min-h-[44px] text-sm font-medium text-ev-600 underline-offset-2 hover:underline"
           >
             {t('evLive.changeAmount')}
           </button>
@@ -109,7 +109,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
             onClick={() => setMethod(item.value)}
             className={`min-h-[52px] rounded-xl border-2 py-4 text-base font-bold ${
               method === item.value
-                ? 'border-green-500 bg-green-500 text-white'
+                ? 'border-ev-500 bg-ev-500 text-white'
                 : 'border-gray-300 bg-white text-gray-700'
             }`}
           >
@@ -122,7 +122,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
         type="button"
         disabled={busy || !valid}
         onClick={() => onConfirm(session.id, method, Number(amount))}
-        className="mb-3 w-full rounded-xl bg-green-600 py-5 text-xl font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-50"
+        className="mb-3 w-full rounded-xl bg-ev-600 py-5 text-xl font-bold text-white shadow-lg hover:bg-ev-700 disabled:opacity-50"
       >
         {t('evLive.confirmUnlock')}
       </button>

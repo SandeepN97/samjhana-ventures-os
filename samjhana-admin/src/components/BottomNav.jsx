@@ -27,7 +27,7 @@ export default function BottomNav({ active = 'home' }) {
           onClick={() => navigate(path)}
           aria-current={active === key ? 'page' : undefined}
           className={`flex min-h-[44px] min-w-[44px] flex-col items-center px-3 py-1 ${
-            active === key ? 'text-blue-600' : 'text-gray-400'
+            active === key ? 'text-core-800' : 'text-gray-400'
           }`}
         >
           <Icon className="h-5 w-5" />

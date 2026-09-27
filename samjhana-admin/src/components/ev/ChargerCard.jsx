@@ -13,7 +13,7 @@ const TONES = {
 };
 
 const PILLS = {
-  ready: { className: 'bg-green-100 text-green-700', labelKey: 'evLive.statusOnline' },
+  ready: { className: 'bg-ev-100 text-ev-700', labelKey: 'evLive.statusOnline' },
   busy: { className: 'bg-amber-100 text-amber-700', labelKey: 'evLive.statusCharging' },
   unavailable: { className: 'bg-amber-100 text-amber-700', labelKey: 'evLive.statusUnavailable' },
   offline: { className: 'bg-gray-100 text-gray-500', labelKey: 'evLive.statusOffline' },
@@ -57,12 +57,12 @@ export default function ChargerCard({ charger, state, selected, invalid = false,
       onClick={() => onSelect(charger.id)}
       className={`relative min-h-[44px] rounded-xl border-2 p-2.5 pt-3 text-center transition-colors ${
         selected
-          ? 'border-green-500 bg-green-50'
+          ? 'border-ev-500 bg-ev-50'
           : invalid ? 'border-red-400 bg-white' : 'border-gray-200 bg-white'
       } ${disabled ? 'cursor-not-allowed opacity-60' : 'active:scale-[0.97]'}`}
     >
       {selected && (
-        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white">
+        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ev-500 text-white">
           <Check className="h-3 w-3" strokeWidth={3} />
         </span>
       )}

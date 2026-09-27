@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowLeft,
   Zap,
   Plus,
   Edit2,
@@ -15,7 +14,7 @@ import {
   ShieldOff
 } from 'lucide-react';
 import api from '../../utils/api';
-import LanguageToggle from '../../components/LanguageToggle';
+import { PageHeader } from '../../components/brand';
 
 export default function EvVehiclePage() {
   const navigate = useNavigate();
@@ -37,7 +36,7 @@ export default function EvVehiclePage() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700"
+            className="bg-ev-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-ev-700"
           >
             {t('common.goBack')}
           </button>
@@ -159,29 +158,13 @@ export default function EvVehiclePage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <header className="bg-green-500 text-white px-4 py-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/entry/ev')}
-              className="p-2 -ml-2 rounded-full hover:bg-green-600 transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <Car className="w-8 h-8 ml-2" />
-            <h1 className="text-xl font-bold ml-3">
-              {t('evVehicle.title')}
-            </h1>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
+      <PageHeader unit="ev" icon={Car} title={t('evVehicle.title')} backTo="/entry/ev" />
 
       {/* Actions Bar */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700"
+          className="flex items-center gap-2 bg-ev-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-ev-700"
         >
           <Plus className="w-5 h-5" />
           {t('evVehicle.addVehicle')}
@@ -216,7 +199,7 @@ export default function EvVehiclePage() {
                 </div>
               )}
               {formSuccess && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center">
+                <div className="bg-ev-100 border border-ev-400 text-ev-700 px-3 py-2 rounded-lg text-sm flex items-center">
                   <Check className="w-4 h-4 mr-1" />
                   {formSuccess}
                 </div>
@@ -231,7 +214,7 @@ export default function EvVehiclePage() {
                   type="text"
                   value={formData.vehicleName}
                   onChange={(e) => setFormData({ ...formData, vehicleName: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-ev-500"
                   placeholder="e.g. Higer (100KW)"
                 />
               </div>
@@ -247,7 +230,7 @@ export default function EvVehiclePage() {
                     step="0.01"
                     value={formData.batteryCapacityKw}
                     onChange={(e) => setFormData({ ...formData, batteryCapacityKw: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-ev-500"
                     placeholder="50.23"
                   />
                 </div>
@@ -259,7 +242,7 @@ export default function EvVehiclePage() {
                     type="number"
                     value={formData.seatingCapacity}
                     onChange={(e) => setFormData({ ...formData, seatingCapacity: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-ev-500"
                     placeholder="16"
                   />
                 </div>
@@ -277,7 +260,7 @@ export default function EvVehiclePage() {
                     step="0.01"
                     value={formData.ratePerPercent}
                     onChange={(e) => setFormData({ ...formData, ratePerPercent: e.target.value })}
-                    className="w-full pl-10 pr-12 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                    className="w-full pl-10 pr-12 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-ev-500"
                     placeholder="14"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">/%</span>
@@ -289,7 +272,7 @@ export default function EvVehiclePage() {
                 type="submit"
                 disabled={submitting}
                 className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${
-                  submitting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+                  submitting ? 'bg-gray-400' : 'bg-ev-600 hover:bg-ev-700'
                 }`}
               >
                 {submitting
@@ -306,7 +289,7 @@ export default function EvVehiclePage() {
       {/* Vehicle List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-ev-600"></div>
         </div>
       ) : vehicles.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
@@ -333,14 +316,14 @@ export default function EvVehiclePage() {
 
                   <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
-                      <Battery className="w-4 h-4 text-green-500" />
+                      <Battery className="w-4 h-4 text-ev-500" />
                       {vehicle.batteryCapacityKw} KW
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4 text-blue-500" />
                       {vehicle.seatingCapacity} {t('evVehicle.seatsLabel')}
                     </div>
-                    <div className="flex items-center gap-1 font-bold text-green-700">
+                    <div className="flex items-center gap-1 font-bold text-ev-700">
                       <Zap className="w-4 h-4" />
                       रु {vehicle.ratePerPercent}/%
                     </div>

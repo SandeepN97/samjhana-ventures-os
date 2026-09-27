@@ -290,7 +290,7 @@ function DateInput({ field, value, onChange, error }) {
       value={value || ''}
       onChange={onChange}
       error={error}
-      accentColor="blue"
+      accentColor="core"
     />
   );
 }
@@ -309,7 +309,7 @@ function SelectInput({ field, value, onChange, error }) {
       }))}
       placeholder={t('common.select')}
       error={error}
-      accentColor="blue"
+      accentColor="core"
     />
   );
 }

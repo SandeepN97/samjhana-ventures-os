@@ -5,6 +5,7 @@ import { Globe, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 import { changePasswordFromLogin } from '../../utils/changePasswordFromLogin';
 import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
+import { Wordmark } from '../../components/brand';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -127,7 +128,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800 px-4 relative">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-core-700 to-core-900 px-4 relative">
       {/* Language Toggle - Top Right */}
       <button
         onClick={toggleLanguage}
@@ -137,7 +138,11 @@ export default function LoginPage() {
         <span className="font-bold">{isNepali ? 'EN' : 'ने'}</span>
       </button>
 
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
+      <div className="w-full max-w-sm">
+      <div className="mb-6 flex justify-center text-white">
+        <Wordmark />
+      </div>
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full">
         {/* Header */}
         {mode === 'changePassword' && (
           <button
@@ -186,7 +191,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                 placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 required
@@ -202,7 +207,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-4 pr-14 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                  className="w-full pl-4 pr-14 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                   placeholder={t('login.passwordPlaceholder')}
                   autoComplete="current-password"
                   required
@@ -223,7 +228,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
+              className="w-full bg-core-600 hover:bg-core-700 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
             >
               {loading
                 ? t('login.loggingIn')
@@ -235,7 +240,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => switchMode('changePassword')}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                className="text-core-600 hover:text-core-800 text-sm font-medium"
               >
                 {t('login.changePasswordLink')}
               </button>
@@ -254,7 +259,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                 placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 required
@@ -269,7 +274,7 @@ export default function LoginPage() {
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                 placeholder={t('login.currentPasswordPlaceholder')}
                 autoComplete="current-password"
                 required
@@ -284,7 +289,7 @@ export default function LoginPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                 placeholder={t('login.newPasswordPlaceholder')}
                 autoComplete="new-password"
                 required
@@ -299,7 +304,7 @@ export default function LoginPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-core-500"
                 placeholder={t('login.confirmPlaceholder')}
                 autoComplete="new-password"
                 required
@@ -309,7 +314,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
+              className="w-full bg-core-700 hover:bg-core-800 text-white font-bold py-4 rounded-xl text-lg transition-colors disabled:opacity-50"
             >
               {loading
                 ? t('login.changing')
@@ -317,6 +322,7 @@ export default function LoginPage() {
             </button>
           </form>
         )}
+      </div>
       </div>
     </div>
   );

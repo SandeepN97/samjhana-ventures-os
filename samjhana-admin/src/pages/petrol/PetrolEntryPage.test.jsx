@@ -82,7 +82,7 @@ describe('PetrolEntryPage', () => {
     const petrolBtn = screen.getAllByText('Petrol').find(
       el => el.closest('button')
     );
-    expect(petrolBtn.closest('button').className).toContain('bg-orange-500');
+    expect(petrolBtn.closest('button').className).toContain('bg-petrol-500');
   });
 
   it('switches fuel type when diesel is clicked', async () => {
@@ -91,7 +91,7 @@ describe('PetrolEntryPage', () => {
       el => el.closest('button')?.className.includes('rounded-xl')
     );
     await userEvent.click(dieselBtn.closest('button'));
-    expect(dieselBtn.closest('button').className).toContain('bg-orange-500');
+    expect(dieselBtn.closest('button').className).toContain('bg-petrol-500');
   });
 
   it('calculates total amount correctly', async () => {

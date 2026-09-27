@@ -21,7 +21,7 @@ function VehicleFacts({ vehicle, active = false }) {
         {num(vehicle.seatingCapacity)} {t('ev.seats')}
       </span>
       {hasRate && (
-        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-700">
+        <span className="rounded-full bg-ev-100 px-2 py-0.5 text-[11px] font-bold text-ev-700">
           {money(vehicle.ratePerPercent)}
         </span>
       )}
@@ -38,7 +38,7 @@ function Highlight({ text, query }) {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded bg-green-100 text-green-800">{text.slice(at, at + needle.length)}</mark>
+      <mark className="rounded bg-ev-100 text-ev-800">{text.slice(at, at + needle.length)}</mark>
       {text.slice(at + needle.length)}
     </>
   );
@@ -102,10 +102,10 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
         aria-expanded={open}
         aria-labelledby={`${labelledBy} ${valueId}`}
         onClick={() => setOpen(true)}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 pr-14 text-left focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border-2 border-gray-300 bg-white px-4 py-3 pr-14 text-left focus:outline-none focus:ring-2 focus:ring-ev-500"
       >
         <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-          selected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+          selected ? 'bg-ev-500 text-white' : 'bg-gray-100 text-gray-400'
         }`}>
           <Car className="h-5 w-5" aria-hidden="true" />
         </span>
@@ -168,7 +168,7 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t('evLive.vehicleSearch')}
                   aria-label={t('evLive.vehicleSearch')}
-                  className="min-h-[48px] w-full rounded-xl border-2 border-gray-200 py-3 pl-10 pr-12 focus:border-green-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  className="min-h-[48px] w-full rounded-xl border-2 border-gray-200 py-3 pl-10 pr-12 focus:border-ev-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
                 />
                 {query && (
                   <button
@@ -192,7 +192,7 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
                   aria-selected={!selected}
                   onClick={() => choose('')}
                   className={`flex min-h-[56px] w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left ${
-                    selected ? 'border-gray-300 bg-white' : 'border-green-500 bg-green-50'
+                    selected ? 'border-gray-300 bg-white' : 'border-ev-500 bg-ev-50'
                   }`}
                 >
                   <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
@@ -202,7 +202,7 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
                     <span className="block font-bold text-gray-800">{t('evLive.noVehicle')}</span>
                     <span className="block text-xs text-gray-500">{t('evLive.noVehicleHint')}</span>
                   </span>
-                  {!selected && <Check className="h-5 w-5 flex-shrink-0 text-green-600" aria-hidden="true" />}
+                  {!selected && <Check className="h-5 w-5 flex-shrink-0 text-ev-600" aria-hidden="true" />}
                 </button>
               )}
 
@@ -216,11 +216,11 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
                     aria-selected={isSelected}
                     onClick={() => choose(String(item.id))}
                     className={`relative flex min-h-[64px] w-full items-center gap-3 rounded-xl border-2 p-3 text-left active:scale-[0.99] ${
-                      isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-green-300'
+                      isSelected ? 'border-ev-500 bg-ev-50' : 'border-gray-200 bg-white hover:border-ev-300'
                     }`}
                   >
                     <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-                      isSelected ? 'bg-green-500 text-white' : 'bg-green-100 text-green-600'
+                      isSelected ? 'bg-ev-500 text-white' : 'bg-ev-100 text-ev-600'
                     }`}>
                       <Car className="h-5 w-5" aria-hidden="true" />
                     </span>
@@ -231,7 +231,7 @@ export default function VehiclePicker({ vehicles, value, onChange, labelledBy, i
                       <VehicleFacts vehicle={item} active={isSelected} />
                     </span>
                     {isSelected && (
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-white">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-ev-500 text-white">
                         <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                       </span>
                     )}

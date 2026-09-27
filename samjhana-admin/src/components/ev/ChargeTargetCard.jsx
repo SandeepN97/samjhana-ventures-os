@@ -48,7 +48,7 @@ export default function ChargeTargetCard({ value, onChange, currentSoc = null })
               aria-pressed={active}
               onClick={() => onChange(String(preset.value))}
               className={`min-h-[44px] flex-1 rounded-lg border-2 py-2 text-sm font-bold ${
-                active ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white text-gray-700'
+                active ? 'border-ev-500 bg-ev-500 text-white' : 'border-gray-300 bg-white text-gray-700'
               }`}
             >
               {preset.labelKey ? t(preset.labelKey) : num(preset.value) + '%'}
