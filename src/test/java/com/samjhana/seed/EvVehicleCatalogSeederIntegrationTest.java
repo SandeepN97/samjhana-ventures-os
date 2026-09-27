@@ -2,10 +2,10 @@ package com.samjhana.seed;
 
 import com.samjhana.entity.EvVehicle;
 import com.samjhana.repository.EvVehicleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,13 +13,21 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-/** Runs the seeder against a real (embedded) database, the way staging and prod start up. */
+/**
+ * Runs the seeder against a real (embedded) database, the way staging and prod start up.
+ * The seeder is built directly rather than injected: it is excluded from the {@code test}
+ * profile, which CI activates for every test.
+ */
 @DataJpaTest
-@Import(EvVehicleCatalogSeeder.class)
 class EvVehicleCatalogSeederIntegrationTest {
 
     @Autowired EvVehicleRepository evVehicleRepository;
-    @Autowired EvVehicleCatalogSeeder seeder;
+    EvVehicleCatalogSeeder seeder;
+
+    @BeforeEach
+    void setUp() {
+        seeder = new EvVehicleCatalogSeeder(evVehicleRepository);
+    }
 
     @Test
     void shouldSeedNineteenActiveVehicles_whenDatabaseStartsEmpty() {
