@@ -14,12 +14,14 @@ Daily fuel sales tracking with Weighted Average Cost (WAC) profit calculation.
 
 ### EV Charging Station
 
-Meter-based and percentage-based billing for electric vehicle charging.
+The EV module supports manual business records and OCPP 2.0.1 charging sessions.
 
-- **Meter Mode** — Enter opening/closing meter readings; units and amount calculated automatically (`Units = Closing - Opening; Amount = Units x Rate`)
-- **Percentage Mode** — Charge based on battery percentage for vehicles without meter readings
-- **Vehicle Management** — Register vehicle types (e-rickshaw, electric car, etc.) with dynamic per-unit rates
-- **NEA Reconciliation** — Track units consumed against Nepal Electricity Authority billing
+- **OCPP sessions** — Request remote start/stop, record session state and charger meter readings, and collect payment before the configured stop/unlock behavior.
+- **Live updates** — Receive EV session updates in the admin app over WebSocket.
+- **Manual EV records** — Record meter readings and percentage-based charging through the existing business transaction workflows.
+- **Vehicle management** — Maintain EV vehicle types and rates.
+- **NEA reconciliation** — Record electricity bills and reconcile them against EV charging usage.
+- **Important limitation** — An open session currently blocks all other sessions on that charge point. Session data stores a connector ID but no separate EVSE ID; two independent sessions on one charger are not supported safely yet. See [EV Charging architecture](EV-CHARGING-ARCHITECTURE.md).
 
 ### Furniture Shop
 
@@ -92,9 +94,9 @@ Loan tracking with principal/interest split on payments.
 ## Authentication and Security
 
 - **JWT Authentication** — Stateless token-based auth with 7-day expiration
-- **Role-Based Access** — Admin and standard user roles
-- **Public Endpoints** — `/api/auth/**` and `/api/fuel-prices/current` are accessible without login
-- **Protected Endpoints** — All other API routes require a valid JWT token
+- **Role-Based Access** — Admin, manager, and staff roles
+- **Public Endpoints** — `POST /api/auth/login`, `/api/public/**`, `/api/fuel-prices/current`, and public ecommerce product/customer-auth routes under `/api/ecommerce/**` are accessible without a JWT. Public API responses must not expose internal financial or staff data.
+- **Protected Endpoints** — Other business API routes require a valid JWT token.
 
 ---
 
@@ -102,13 +104,19 @@ Loan tracking with principal/interest split on payments.
 
 | Controller | Base Path | Description |
 |------------|-----------|-------------|
-| `AuthController` | `/api/auth` | Login, token refresh |
+| `AuthController` | `/api/auth` | Login, current user, profile, password change |
 | `AdminController` | `/api/admin` | User management (create, list, change password) |
 | `TransactionController` | `/api/transactions` | CRUD for all business unit transactions |
 | `DailyReportController` | `/api/daily-reports` | Daily close reports |
 | `FuelPriceController` | `/api/fuel-prices` | Fuel price management + NOC scraper trigger |
 | `FurnitureController` | `/api/furniture` | Inventory, customers, orders |
 | `EvVehicleController` | `/api/ev-vehicles` | EV vehicle type and rate management |
+| `ChargePointController` | `/api/charge-points` | Charge-point status and configuration |
+| `ChargeSessionController` | `/api/ev/sessions` | OCPP-backed EV charging sessions |
+| `ElectricityBillController` | `/api/ev/electricity-bills` | EV electricity bills and reconciliation |
+| `RentalPropertyController` | `/api/rental-properties` | Rental properties and ledgers |
+| `PublicController` | `/api/public` | Public fuel prices, furniture catalogue, and EV rates |
+| `AnalyticsController` | `/api/analytics` | Business analytics |
 | `StaffController` | `/api/staff` | Staff CRUD |
 
-Full API documentation is available at `/swagger-ui` when the backend is running.
+Swagger UI is available at `/swagger-ui` when the backend is running with the dev profile.

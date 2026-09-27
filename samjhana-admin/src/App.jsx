@@ -13,7 +13,7 @@ class ErrorBoundary extends React.Component {
             {this.state.error.toString()}{'\n'}{this.state.error.stack}
           </pre>
           <button onClick={() => { this.setState({ error: null }); window.history.back(); }}
-            style={{ marginTop: 16, padding: '8px 16px', cursor: 'pointer' }}>
+            style={{ marginTop: 16, padding: '8px 16px', width: 56, minWidth: 56, minHeight: 44, flexShrink: 0, cursor: 'pointer' }}>
             Go Back
           </button>
         </div>
