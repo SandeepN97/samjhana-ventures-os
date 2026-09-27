@@ -32,7 +32,11 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
   }, [suggested]);
 
   const kwh = num(Number(session.energyDeliveredKwh || 0).toFixed(1));
-  const summary = t('evLive.deliveredSummary', { plate: session.plateNumber, charger: session.chargerModel, kwh });
+  const location = t('evLive.connectorLocation', {
+    evse: num(session.evseId ?? 1),
+    connector: num(session.connectorId ?? 1),
+  });
+  const summary = t('evLive.deliveredSummary', { plate: session.plateNumber, charger: session.chargerModel, location, kwh });
   // "18% charged × Rs 14 per 1%": customers pay by car type and percentage, so show the working.
   const breakdown = session.ratePerPercent != null && session.percentCharged != null
     ? t('evLive.percentBreakdown', { percent: num(session.percentCharged), rate: money(session.ratePerPercent) })

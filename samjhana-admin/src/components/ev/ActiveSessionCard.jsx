@@ -10,7 +10,11 @@ export default function ActiveSessionCard({ session, now, busy, onStop }) {
   const soc = session.currentSoc ?? session.startSoc;
   const progress = clampPercent(soc ?? 0);
   const kwh = Number(session.energyDeliveredKwh || 0).toFixed(1);
-  const subline = [session.chargerModel, session.vehicleCatalogName].filter(Boolean).join(' · ');
+  const location = t('evLive.connectorLocation', {
+    evse: num(session.evseId ?? 1),
+    connector: num(session.connectorId ?? 1),
+  });
+  const subline = [session.chargerModel, location, session.vehicleCatalogName].filter(Boolean).join(' · ');
 
   return (
     <div className="rounded-xl bg-white p-4 shadow-md" data-testid="active-session">

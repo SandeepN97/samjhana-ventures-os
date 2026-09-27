@@ -13,6 +13,8 @@ import java.util.UUID;
 @Table(name = "charge_sessions", indexes = {
         @Index(name = "idx_charge_session_status", columnList = "status"),
         @Index(name = "idx_charge_session_charge_point", columnList = "charge_point_id"),
+        @Index(name = "idx_charge_session_location_status",
+                columnList = "charge_point_id, evse_id, connector_id, status"),
         @Index(name = "idx_charge_session_paid_at", columnList = "paid_at"),
         @Index(name = "idx_charge_session_ocpp_tx", columnList = "ocpp_transaction_id")
 })
@@ -51,6 +53,10 @@ public class ChargeSession {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id", unique = true)
     private Transaction transaction;
+
+    @Column(name = "evse_id", nullable = false)
+    @Builder.Default
+    private Integer evseId = 1;
 
     @Column(name = "connector_id", nullable = false)
     @Builder.Default

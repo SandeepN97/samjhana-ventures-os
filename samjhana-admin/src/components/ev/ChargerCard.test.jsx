@@ -16,11 +16,11 @@ function renderCard(props = {}) {
 }
 
 describe('ChargerCard', () => {
-  it('shows the model, power and a green Ready pill for a free charger', () => {
+  it('shows the model, power and a green Online pill', () => {
     renderCard();
     expect(screen.getByText('HD-D180-CC')).toBeInTheDocument();
     expect(screen.getByText('80kW')).toBeInTheDocument();
-    expect(screen.getByText('● Ready')).toHaveClass('bg-green-100', 'text-green-700');
+    expect(screen.getByText('● Online')).toHaveClass('bg-green-100', 'text-green-700');
   });
 
   it('calls onSelect with the charger id when a ready card is tapped', async () => {
@@ -74,7 +74,7 @@ describe('ChargerCard', () => {
 
   it('has an accessible name with charger number, model, power and status', () => {
     renderCard();
-    expect(screen.getByRole('radio', { name: 'Charger 1, HD-D180-CC, 80 kW, Ready' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Charger 1, HD-D180-CC, 80 kW, Online' })).toBeInTheDocument();
   });
 
   it('shows a red border when flagged invalid and unselected', () => {
@@ -90,7 +90,7 @@ describe('ChargerCard', () => {
   it('renders Nepali labels with Devanagari numerals', () => {
     renderCard({ locale: 'ne' });
     expect(screen.getByText('८०kW')).toBeInTheDocument();
-    expect(screen.getByText('● तयार')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'चार्जर १, HD-D180-CC, ८० kW, तयार' })).toBeInTheDocument();
+    expect(screen.getByText('● अनलाइन')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'चार्जर १, HD-D180-CC, ८० kW, अनलाइन' })).toBeInTheDocument();
   });
 });

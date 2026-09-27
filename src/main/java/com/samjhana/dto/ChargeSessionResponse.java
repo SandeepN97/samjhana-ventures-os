@@ -16,6 +16,7 @@ public class ChargeSessionResponse {
     private String chargePointId;
     private String chargePointCode;
     private String chargerModel;
+    private Integer evseId;
     private Integer connectorId;
     private String plateNumber;
     private String customerName;
@@ -56,6 +57,7 @@ public class ChargeSessionResponse {
                 .chargePointId(session.getChargePoint().getId().toString())
                 .chargePointCode(session.getChargePoint().getCode())
                 .chargerModel(session.getChargePoint().getModel())
+                .evseId(session.getEvseId())
                 .connectorId(session.getConnectorId())
                 .plateNumber(session.getVehicle().getPlateNumber())
                 .customerName(session.getVehicle().getCustomerName())

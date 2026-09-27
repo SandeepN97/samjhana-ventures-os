@@ -15,12 +15,14 @@ public interface ChargeSessionRepository extends JpaRepository<ChargeSession, UU
 
     List<ChargeSession> findByStatusInOrderByRequestedAtAsc(Collection<ChargeSession.Status> statuses);
 
-    boolean existsByChargePointIdAndStatusIn(UUID chargePointId, Collection<ChargeSession.Status> statuses);
+    boolean existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
+            UUID chargePointId, Integer evseId, Integer connectorId, Collection<ChargeSession.Status> statuses);
 
-    Optional<ChargeSession> findFirstByChargePointCodeAndStatusInOrderByRequestedAtDesc(
-            String chargePointCode, Collection<ChargeSession.Status> statuses);
+    Optional<ChargeSession> findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
+            String ocppTransactionId, String chargePointCode, Integer evseId, Integer connectorId);
 
-    Optional<ChargeSession> findByOcppTransactionId(String ocppTransactionId);
+    List<ChargeSession> findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
+            String chargePointCode, Integer evseId, Integer connectorId, Collection<ChargeSession.Status> statuses);
 
     List<ChargeSession> findTop50ByOrderByRequestedAtDesc();
 
