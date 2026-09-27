@@ -11,6 +11,9 @@
 # Docker base images are not included: their tags carry the Java version (e.g. -temurin-21), which
 # must only change on purpose. Update them by hand, keeping the digest pin in the Dockerfile.
 #
+# Every one of those PRs is a security fix, so each is labelled "security" + "priority: critical"
+# (the monthly report workflow creates these labels if they are missing).
+#
 # Every PR targets staging, like every other change, and runs the full CI before anyone merges it.
 version: 2
 updates:
@@ -20,6 +23,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: npm
     directory: /samjhana-admin
@@ -27,6 +31,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: npm
     directory: /samjhana-web
@@ -34,6 +39,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: pip
     directory: /tools/ocpp-simulator
@@ -41,6 +47,7 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -48,3 +55,4 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]

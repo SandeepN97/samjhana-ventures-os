@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { kind, parseMaven, parseNpm, table } from './report.mjs';
+import { kind, parseAudit, parseMaven, parseNpm, priority, securityTable, table } from './report.mjs';
 
 test('classifies major, minor and patch updates', () => {
   assert.equal(kind('3.5.16', '4.1.1'), 'major');
@@ -41,4 +41,38 @@ test('lists majors first and says so when nothing is out of date', () => {
   assert.ok(md.indexOf('react') < md.indexOf('ws'));
   assert.match(md, /🔴 major/);
   assert.match(table('Public site', []), /Everything is up to date/);
+});
+
+const audit = (vulns) => JSON.stringify({ auditReportVersion: 2, vulnerabilities: vulns });
+const vite = {
+  name: 'vite', severity: 'high', isDirect: true,
+  via: [{ title: 'Path traversal', url: 'https://github.com/advisories/GHSA-x', severity: 'high' }],
+  fixAvailable: { name: 'vite', version: '8.3.1', isSemVerMajor: true },
+};
+const axios = {
+  name: 'axios', severity: 'moderate', isDirect: true,
+  via: [{ title: 'SSRF', url: 'https://github.com/advisories/GHSA-y', severity: 'moderate' }],
+  fixAvailable: true,
+};
+
+test('a security problem in a library the live site runs makes the issue critical', () => {
+  const problems = parseAudit(audit({ vite, axios }), audit({ axios }));
+  assert.equal(priority(problems), 'critical');
+  assert.deepEqual(problems.map((p) => [p.name, p.live]), [['axios', true], ['vite', false]], 'live-site problems first');
+  assert.equal(problems[0].fix, 'npm audit fix');
+  assert.equal(problems[1].fix, 'vite 8.3.1 (major upgrade)');
+});
+
+test('a security problem only in developer tools is medium, and none at all is low', () => {
+  assert.equal(priority(parseAudit(audit({ vite }), audit({}))), 'medium');
+  assert.equal(priority(parseAudit(audit({}), audit({}))), 'low');
+  assert.equal(priority(parseAudit('', '')), 'low', 'a missing audit file is not an error');
+});
+
+test('lists each security problem with where it is, a link and the fix', () => {
+  const md = securityTable('Admin app', parseAudit(audit({ vite }), audit({})));
+  assert.match(md, /`vite` \| high \| dev tools only \| \[Path traversal\]\(https:\/\/github.com\/advisories\/GHSA-x\) \| vite 8.3.1 \(major upgrade\)/);
+  assert.equal(securityTable('Admin app', []), '');
+  const piped = parseAudit(audit({ vite: { ...vite, via: [{ title: 'a | b', url: 'u' }] } }), audit({}));
+  assert.equal(piped[0].title, 'a \\| b', 'a | in a title must not break the table');
 });

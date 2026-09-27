@@ -2,8 +2,12 @@ name: Monthly Dependency Report
 
 # Once a month, list every library with a newer version in ONE GitHub issue ("Dependency upgrades
 # to plan"), marked major / minor / patch, instead of opening a pull request per library.
-# Security fixes are not handled here: Dependabot security updates open a PR for those as soon as
-# an advisory is published (see .github/dependabot.yml).
+# Known security problems in the frontends are listed first, and the issue gets a priority label:
+#   priority: critical  a library the live site runs has a known security problem
+#   priority: medium    only a developer/build tool does (not shipped to users)
+#   priority: low       nothing insecure, just newer versions
+# Dependabot security updates still open a PR straight away for fixable problems (see
+# .github/dependabot.yml); those PRs are labelled "priority: critical".
 #
 # Scheduled workflows run from the default branch (main), so this starts working after a release.
 # It can also be run by hand from the Actions tab.
@@ -50,33 +54,59 @@ jobs:
           # npm outdated exits 1 when anything is outdated; that is the normal case here.
           (cd samjhana-admin && npm outdated --json > "$RUNNER_TEMP/admin.json") || true
           (cd samjhana-web && npm outdated --json > "$RUNNER_TEMP/web.json") || true
+          # npm audit exits 1 when it finds a problem; the report decides how serious it is.
+          # --omit=dev audits only what the live site runs.
+          for app in admin web; do
+            (cd samjhana-$app && npm audit --json > "$RUNNER_TEMP/$app-audit.json") || true
+            (cd samjhana-$app && npm audit --omit=dev --json > "$RUNNER_TEMP/$app-audit-prod.json") || true
+          done
           node tools/dependency-report/report.mjs \
             --maven "$RUNNER_TEMP/maven.txt" \
             --npm "Admin app=$RUNNER_TEMP/admin.json" \
-            --npm "Public site=$RUNNER_TEMP/web.json" > "$RUNNER_TEMP/report.md"
+            --npm "Public site=$RUNNER_TEMP/web.json" \
+            --audit "Admin app=$RUNNER_TEMP/admin-audit.json=$RUNNER_TEMP/admin-audit-prod.json" \
+            --audit "Public site=$RUNNER_TEMP/web-audit.json=$RUNNER_TEMP/web-audit-prod.json" \
+            --priority-out "$RUNNER_TEMP/priority.txt" > "$RUNNER_TEMP/report.md"
 
       - name: Create or update the issue
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           REPORT_FILE: ${{ runner.temp }}/report.md
+          PRIORITY_FILE: ${{ runner.temp }}/priority.txt
         with:
           script: |
             const fs = require('fs');
+            const { owner, repo } = context.repo;
             const body = fs.readFileSync(process.env.REPORT_FILE, 'utf8');
+            const level = fs.readFileSync(process.env.PRIORITY_FILE, 'utf8').trim();
             const title = 'Dependency upgrades to plan';
+
+            // Make sure every label this repo's dependency work uses exists (Dependabot needs them too).
+            const wanted = {
+              dependencies: ['0366d6', 'Library versions and upgrades'],
+              security: ['d73a4a', 'Fixes a known security problem'],
+              'priority: critical': ['b60205', 'Fix now'],
+              'priority: medium': ['fbca04', 'Fix in the next few weeks'],
+              'priority: low': ['c5def5', 'When convenient'],
+            };
+            for (const [name, [color, description]] of Object.entries(wanted)) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (e) {
+                if (e.status !== 404) throw e;
+                await github.rest.issues.createLabel({ owner, repo, name, color, description });
+              }
+            }
+            const labels = ['dependencies', `priority: ${level}`];
             const { data: open } = await github.rest.issues.listForRepo({
-              owner: context.repo.owner, repo: context.repo.repo,
-              state: 'open', labels: 'dependencies', per_page: 50,
+              owner, repo, state: 'open', labels: 'dependencies', per_page: 50,
             });
-            const existing = open.find((issue) => issue.title === title);
+            const existing = open.find((issue) => issue.title === title && !issue.pull_request);
             if (existing) {
-              await github.rest.issues.update({
-                owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body,
-              });
-              core.notice(`Updated #${existing.number}`);
+              // Replacing the labels also drops last month's priority.
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body, labels });
+              core.notice(`Updated #${existing.number} (priority: ${level})`);
             } else {
-              const { data: created } = await github.rest.issues.create({
-                owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['dependencies'],
-              });
-              core.notice(`Opened #${created.number}`);
+              const { data: created } = await github.rest.issues.create({ owner, repo, title, body, labels });
+              core.notice(`Opened #${created.number} (priority: ${level})`);
             }
