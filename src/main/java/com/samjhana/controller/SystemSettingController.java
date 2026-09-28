@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,6 +23,9 @@ public class SystemSettingController {
      * be readable by staff — hiding them in the UI is not enough, the API has to refuse too.
      */
     private static final Set<String> MANAGER_ONLY_KEYS = Set.of("nea_rate");
+
+    /** The settings the app actually reads. Anything else could only ever be clutter, so it can't be saved. */
+    private static final Set<String> WRITABLE_KEYS = Set.of("nea_rate");
 
     private final SystemSettingRepository settingRepository;
 
@@ -47,10 +51,17 @@ public class SystemSettingController {
                     .body(Map.of("message", "Admin or manager access required"));
         }
 
+        if (!WRITABLE_KEYS.contains(key)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Unknown setting: " + key));
+        }
         String value = body.get("value");
         if (value == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "value is required"));
         }
+        if ("nea_rate".equals(key) && !isPositiveNumber(value)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "NEA rate must be a number greater than 0"));
+        }
+        value = value.trim();
 
         SystemSetting setting = settingRepository.findById(key)
                 .orElse(SystemSetting.builder().settingKey(key).build());
@@ -59,5 +70,13 @@ public class SystemSettingController {
         settingRepository.save(setting);
 
         return ResponseEntity.ok(Map.of("key", key, "value", value));
+    }
+
+    private static boolean isPositiveNumber(String value) {
+        try {
+            return new BigDecimal(value.trim()).signum() > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

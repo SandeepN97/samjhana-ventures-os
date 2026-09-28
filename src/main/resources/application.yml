@@ -131,10 +131,14 @@ logging:
 # =============================================================================
 # Springdoc OpenAPI Configuration
 # =============================================================================
+# Off unless the dev profile turns it on: the docs list every endpoint and its fields, which is
+# a map for anyone probing staging or prod (and any signed-in user could open them there).
 springdoc:
   api-docs:
+    enabled: false
     path: /api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui
     operations-sorter: method
     tags-sorter: alpha
@@ -163,6 +167,12 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
 
 logging:
   level:

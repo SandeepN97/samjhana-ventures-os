@@ -332,6 +332,9 @@
             <id>dev</id>
             <properties>
                 <spring.profiles.active>dev</spring.profiles.active>
+                <!-- What `mvn spring-boot:run -Pdev` actually starts the app with (dev logins, demo reset,
+                     H2 console). spring.profiles.active above is only a Maven property; the plugin ignores it. -->
+                <spring-boot.run.profiles>dev</spring-boot.run.profiles>
             </properties>
             <build>
                 <plugins>

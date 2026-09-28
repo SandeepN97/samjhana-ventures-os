@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.service.TransactionVisibility;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -63,9 +64,11 @@ public class AnalyticsController {
 
         List<Transaction> allTransactions = transactionRepository.findByDateRangeWithDetails(dateFrom, dateTo);
 
-        // Exclude REJECTED
+        // Exclude REJECTED, and whatever this user may not see: staff never see loans, here or anywhere
+        // else, so their totals leave loans out and the loan entry is not in their response at all.
         List<Transaction> transactions = allTransactions.stream()
                 .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
+                .filter(t -> TransactionVisibility.canSee(t, user))
                 .toList();
 
         boolean canViewProfit = user != null && user.canManage();
@@ -265,6 +268,7 @@ public class AnalyticsController {
 
         Map<String, Object> businesses = new LinkedHashMap<>();
         for (String code : businessCodes) {
+            if ("loan".equals(code) && !canViewProfit) continue;
             Map<String, Object> biz = new LinkedHashMap<>();
             biz.put("revenue", bizRevenue.get(code));
             biz.put("expenses", bizExpenses.get(code));

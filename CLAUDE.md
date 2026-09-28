@@ -103,7 +103,7 @@ Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth tok
 - The Settings page "Reset demo data" exists in dev and staging only, never prod.
 
 ### Profiles
-- **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console (localhost only), verbose SQL logging, `DataSeeder` runs
+- **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console (localhost only), API docs at `/swagger-ui` (dev only: off in every other profile), verbose SQL logging, `DataSeeder` runs
 - **staging**: Supabase PostgreSQL via `SUPABASE_STAGING_*`, `ddl-auto: validate` (schema changes need SQL run on Supabase first), deployed from the `staging` branch
 - **prod**: Supabase PostgreSQL via `SUPABASE_PROD_*`, deployed from the `main` branch
 - staging and prod both need the Supabase CA certificate (Render Secret File `supabase-ca.crt`), a real `JWT_SECRET` and real `OCPP_SECRET_*` values — the app refuses to start with the published dev placeholders

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.JwtUtil;
+import com.samjhana.security.LoginAttemptService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +55,18 @@ class AuthChangePasswordIntegrationTest {
     @Autowired UserRepository userRepository;
     // A spy so the enumeration tests can count how many BCrypt comparisons a request performs.
     @SpyBean PasswordEncoder passwordEncoder;
+    @Autowired LoginAttemptService loginAttempts;
+
+    /**
+     * Wrong current passwords count towards the login limit, which is kept in memory for the whole
+     * run; start every test with a clean count for the names these tests guess at.
+     */
+    @BeforeEach
+    void forgetEarlierWrongGuesses() {
+        for (String username : List.of("cp-admin", "cp-attacker", "cp-staff", "cp-target", "cp-victim", "no-such-user")) {
+            loginAttempts.recordSuccess(username);
+        }
+    }
 
     /** What an admin gets when the named user is unknown or the current password is wrong: one answer for both. */
     private static final String UNIFORM_FAILURE = "Invalid username or current password";
