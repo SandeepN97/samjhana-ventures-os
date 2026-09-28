@@ -66,4 +66,44 @@ class LoginAttemptServiceTest {
         fail(null, 1);
         assertThat(attempts.isBlocked(null)).isFalse();
     }
+
+    @Test
+    void shouldForgetUsernames_whoseFailuresHaveAllAgedOut() {
+        for (int i = 0; i < 500; i++) fail("made-up-" + i, 1);
+        clock.advance(LoginAttemptService.WINDOW.plusSeconds(1));
+
+        attempts.forgetExpired();
+
+        assertThat(attempts.trackedUsernames()).isZero();
+    }
+
+    @Test
+    void shouldKeepUsernames_withRecentFailures_whenForgettingExpiredOnes() {
+        fail("old-guess", 1);
+        clock.advance(LoginAttemptService.WINDOW.plusSeconds(1));
+        fail("dad", LoginAttemptService.MAX_FAILURES);
+
+        attempts.forgetExpired();
+
+        assertThat(attempts.trackedUsernames()).isEqualTo(1);
+        assertThat(attempts.isBlocked("dad")).isTrue();
+    }
+
+    @Test
+    void shouldForgetAUsername_whenItIsCheckedAfterItsFailuresAgedOut() {
+        fail("dad", 3);
+        clock.advance(LoginAttemptService.WINDOW.plusSeconds(1));
+
+        assertThat(attempts.isBlocked("dad")).isFalse();
+        assertThat(attempts.trackedUsernames()).isZero();
+    }
+
+    @Test
+    void shouldStayBlocked_whenOneUsernameIsHammeredFarPastTheLimit() {
+        fail("dad", 1_000);
+        assertThat(attempts.isBlocked("dad")).isTrue();
+
+        clock.advance(LoginAttemptService.WINDOW.plusSeconds(1));
+        assertThat(attempts.isBlocked("dad")).isFalse();
+    }
 }
