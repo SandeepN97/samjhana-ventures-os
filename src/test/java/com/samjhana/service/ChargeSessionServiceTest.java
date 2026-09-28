@@ -120,8 +120,8 @@ class ChargeSessionServiceTest {
                 .requestedAt(LocalDateTime.now())
                 .build();
         when(chargeSessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
-        when(chargeSessionRepository.findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
-                "TX-1", CODE, 1, 1)).thenReturn(Optional.of(session));
+        when(chargeSessionRepository.findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+                "TX-1", CODE)).thenReturn(Optional.of(session));
         return session;
     }
 
@@ -488,14 +488,70 @@ class ChargeSessionServiceTest {
 
     @Test
     void shouldIgnoreEvent_whenNoMatchingSessionExists() throws Exception {
-        when(chargeSessionRepository.findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
-                "TX-1", CODE, 1, 1)).thenReturn(Optional.empty());
+        when(chargeSessionRepository.findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+                "TX-1", CODE)).thenReturn(Optional.empty());
         when(chargeSessionRepository.findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
                 eq(CODE), eq(1), eq(1), any())).thenReturn(java.util.List.of());
 
         service.handleTransactionEvent(CODE, event("Started", 0, 32, 0L));
 
         verify(chargeSessionRepository, never()).save(any(ChargeSession.class));
+    }
+
+    @Test
+    void shouldMatchTheSessionByStartIdAndRecordTheRealConnector_whenChargerPicksAnotherConnector() throws Exception {
+        ChargeSession waiting = session(ChargeSession.Status.STARTING);
+        waiting.setOcppTransactionId(null);
+        waiting.setConnectorId(2);
+        when(chargeSessionRepository.findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+                "TX-9", CODE)).thenReturn(Optional.empty());
+        when(chargeSessionRepository.findByChargePointCodeAndStatus(CODE, ChargeSession.Status.STARTING))
+                .thenReturn(java.util.List.of(waiting));
+
+        service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Started\",\"seqNo\":0,"
+                + "\"timestamp\":\"2026-09-19T10:00:00+05:45\",\"evse\":{\"id\":1,\"connectorId\":1},"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-9\",\"remoteStartId\":"
+                + OcppCommandService.remoteStartIdFor(waiting.getId()) + "},"
+                + "\"meterValue\":[{\"sampledValue\":[{\"measurand\":\"SoC\",\"value\":40}]}]}"));
+
+        assertEquals(ChargeSession.Status.ACTIVE, waiting.getStatus());
+        assertEquals(1, waiting.getConnectorId());
+        assertEquals("TX-9", waiting.getOcppTransactionId());
+        assertEquals(40, waiting.getCurrentSoc());
+    }
+
+    @Test
+    void shouldIgnoreEvent_whenStartIdMatchesNoWaitingSession() throws Exception {
+        ChargeSession waiting = session(ChargeSession.Status.STARTING);
+        waiting.setOcppTransactionId(null);
+        when(chargeSessionRepository.findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+                "TX-9", CODE)).thenReturn(Optional.empty());
+        when(chargeSessionRepository.findByChargePointCodeAndStatus(CODE, ChargeSession.Status.STARTING))
+                .thenReturn(java.util.List.of(waiting));
+        when(chargeSessionRepository.findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
+                eq(CODE), eq(1), eq(1), any())).thenReturn(java.util.List.of(waiting));
+
+        service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Started\",\"seqNo\":0,"
+                + "\"evse\":{\"id\":1,\"connectorId\":1},"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-9\",\"remoteStartId\":"
+                + (OcppCommandService.remoteStartIdFor(waiting.getId()) ^ 1) + "}}"));
+
+        assertEquals(ChargeSession.Status.STARTING, waiting.getStatus());
+        verify(chargeSessionRepository, never()).save(any(ChargeSession.class));
+    }
+
+    @Test
+    void shouldUpdateReadings_whenAnEventLeavesOutTheEvse() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+
+        service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Updated\",\"seqNo\":2,"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-1\"},\"meterValue\":[{\"sampledValue\":["
+                + "{\"measurand\":\"SoC\",\"value\":45},"
+                + "{\"measurand\":\"Energy.Active.Import.Register\",\"value\":4000}]}]}"));
+
+        assertEquals(45, session.getCurrentSoc());
+        assertEquals(0, new BigDecimal("3.000").compareTo(session.getEnergyDeliveredKwh()));
     }
 
     @Test

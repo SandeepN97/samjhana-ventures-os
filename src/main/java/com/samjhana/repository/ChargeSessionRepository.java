@@ -18,8 +18,10 @@ public interface ChargeSessionRepository extends JpaRepository<ChargeSession, UU
     boolean existsByChargePointIdAndEvseIdAndConnectorIdAndStatusIn(
             UUID chargePointId, Integer evseId, Integer connectorId, Collection<ChargeSession.Status> statuses);
 
-    Optional<ChargeSession> findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
-            String ocppTransactionId, String chargePointCode, Integer evseId, Integer connectorId);
+    Optional<ChargeSession> findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+            String ocppTransactionId, String chargePointCode);
+
+    List<ChargeSession> findByChargePointCodeAndStatus(String chargePointCode, ChargeSession.Status status);
 
     List<ChargeSession> findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
             String chargePointCode, Integer evseId, Integer connectorId, Collection<ChargeSession.Status> statuses);
