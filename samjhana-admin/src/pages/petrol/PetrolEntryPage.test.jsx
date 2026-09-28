@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PetrolEntryPage from './PetrolEntryPage';
 import api from '../../utils/api';
+import { nepalToday } from '../../utils/businessDay';
 import { renderWithProviders } from '../../test/test-utils';
 
 // Mock api module — different endpoints return different shapes
@@ -46,10 +47,10 @@ describe('PetrolEntryPage', () => {
     expect(screen.getByText('Petrol Pump')).toBeInTheDocument();
   });
 
-  it('has date picker with today as default', async () => {
+  it("has date picker with today's date in Nepal as default", async () => {
     renderWithProviders(<PetrolEntryPage />);
-    // Component uses toISOString() (UTC), so parse day from UTC to avoid timezone mismatch
-    const day = parseInt(new Date().toISOString().split('T')[0].split('-')[2]);
+    // Sales are filed under Nepal's date, whatever timezone this device is in.
+    const day = parseInt(nepalToday().split('-')[2]);
     const dateTrigger = screen.getByRole('button', { name: 'Pick date' });
     expect(dateTrigger.textContent).toContain(String(day));
   });

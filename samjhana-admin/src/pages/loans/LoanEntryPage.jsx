@@ -8,6 +8,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
@@ -25,14 +26,14 @@ export default function LoanEntryPage() {
     bankName: '',
     loanAmount: '',
     interestRate: '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: nepalToday(),
     notes: '',
   });
 
   // Form for making payment
   const [payment, setPayment] = useState({
     loanId: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: nepalToday(),
     principalAmount: '',
     interestAmount: '',
     notes: '',
@@ -191,7 +192,7 @@ export default function LoanEntryPage() {
         bankName: '',
         loanAmount: '',
         interestRate: '',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: nepalToday(),
         notes: '',
       });
       fetchLoans();
@@ -231,7 +232,7 @@ export default function LoanEntryPage() {
       showToast(t('rental.savedSuccess'), 'success');
       setPayment({
         loanId: '',
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: nepalToday(),
         principalAmount: '',
         interestAmount: '',
         notes: '',

@@ -22,10 +22,23 @@ public class WebConfig implements WebMvcConfigurer {
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
                         Resource requested = location.createRelative(resourcePath);
                         // Serve the requested file if it exists, otherwise fall back to index.html for SPA routing
-                        return requested.exists() && requested.isReadable()
-                                ? requested
-                                : new ClassPathResource("/static/index.html");
+                        if (requested.exists() && requested.isReadable()) return requested;
+                        if (!isAppPage(resourcePath)) return null;
+                        Resource index = new ClassPathResource("/static/index.html");
+                        return index.exists() ? index : null;
                     }
                 });
+    }
+
+    /**
+     * Whether an unknown path should get the admin app (which routes it in the browser). API paths
+     * never should: a mistyped endpoint, or the API docs where they are switched off, is a plain
+     * 404 rather than a 200 page of HTML.
+     */
+    static boolean isAppPage(String resourcePath) {
+        String path = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+        return !(path.equals("api") || path.startsWith("api/")
+                || path.equals("api-docs") || path.startsWith("api-docs/")
+                || path.equals("swagger-ui") || path.startsWith("swagger-ui/"));
     }
 }

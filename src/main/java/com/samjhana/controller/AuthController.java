@@ -135,12 +135,23 @@ public class AuthController {
                 ? userRepository.findByUsername(request.getUsername().trim()).orElse(null)
                 : currentUser;
 
+        // Wrong current passwords count towards the same limit as wrong logins, so someone holding a
+        // stolen token can't use this endpoint to keep guessing the real password once login would
+        // refuse them. Keyed by the named account whether or not it exists, so the limit itself
+        // doesn't reveal which usernames are real.
+        String guessedAccount = targetsAnotherUser ? request.getUsername().trim() : currentUser.getUsername();
+        if (loginAttempts.isBlocked(guessedAccount)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
+        }
+
         // Always do exactly one BCrypt comparison, against the target's hash or a stand-in, so neither the
         // response time nor the message tells an admin whether the named user exists.
         String hashToCheck = targetUser != null ? targetUser.getPassword() : standInHash;
         boolean currentPasswordMatches = passwordEncoder.matches(request.getCurrentPassword(), hashToCheck);
 
         if (targetUser == null || !currentPasswordMatches) {
+            loginAttempts.recordFailure(guessedAccount);
             // Naming another user: one answer for "no such user" and "wrong password".
             // Changing your own password: you already know you exist, so the specific message is fine.
             String message = targetsAnotherUser ? INVALID_TARGET_OR_PASSWORD : "Current password is incorrect";
@@ -155,6 +166,7 @@ public class AuthController {
 
         targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(targetUser);
+        loginAttempts.recordSuccess(guessedAccount);
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.

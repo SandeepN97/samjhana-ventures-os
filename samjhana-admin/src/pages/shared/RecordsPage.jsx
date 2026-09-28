@@ -6,16 +6,18 @@ import api from '../../utils/api';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday, nepalTodayDate, toDateStr, addDays } from '../../utils/businessDay';
 
-const today = () => new Date().toISOString().split('T')[0];
-const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
+// Date shortcuts use Nepal's calendar, the one sales are filed under (see utils/businessDay).
+const today = () => nepalToday();
+const daysAgo = (n) => addDays(nepalToday(), -n);
 const startOfWeek = () => {
-  const d = new Date();
+  const d = nepalTodayDate();
   const day = d.getDay();
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d.toISOString().split('T')[0];
+  return toDateStr(d);
 };
-const startOfMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; };
+const startOfMonth = () => { const d = nepalTodayDate(); d.setDate(1); return toDateStr(d); };
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-petrol-500', label: 'Petrol', labelNe: 'पेट्रोल' },

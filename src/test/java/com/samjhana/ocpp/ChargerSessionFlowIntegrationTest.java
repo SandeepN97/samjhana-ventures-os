@@ -333,6 +333,126 @@ class ChargerSessionFlowIntegrationTest {
         awaitStatus(secondId, "CLOSED");
     }
 
+    // ------------------------------------------------------------------ matching charger events to sessions
+    // RequestStartTransaction names only the EVSE, so the charger picks the connector itself. The
+    // remoteStartId the backend sends comes back in the charger's events and is what ties them to
+    // the right session, whichever connector the car ended up on.
+
+    @Test
+    void shouldShowLiveReadings_whenChargerStartsOnADifferentConnectorThanChosen() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 2 PA 2001", 90, null, 1, 2).get("id").asText();
+        JsonNode startCall = charger.awaitCall("RequestStartTransaction");
+        charger.reply(startCall, "Accepted");
+        int remoteStartId = startCall.get(3).get("remoteStartId").asInt();
+
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Started", 0, "TX-M1", 20, 5_000, 1, 1), remoteStartId));
+        awaitStatus(id, "ACTIVE");
+        assertThat(session(id).get("connectorId").asInt()).as("the connector the car is really on").isEqualTo(1);
+
+        charger.call("TransactionEvent", txEvent("Updated", 1, "TX-M1", 35, 12_000, 1, 1));
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(session(id).get("currentSoc").asInt()).isEqualTo(35);
+            assertThat(session(id).get("energyDeliveredKwh").decimalValue()).isEqualByComparingTo("7.000");
+        });
+    }
+
+    @Test
+    void shouldKeepEachCarsReadingsSeparate_whenTheChargerSwapsTheConnectors() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String firstId = startSession(CHARGER_1, "BA 2 PA 2002", 90, null, 1, 1).get("id").asText();
+        JsonNode firstStart = charger.awaitCall("RequestStartTransaction");
+        charger.reply(firstStart, "Accepted");
+        String secondId = startSession(CHARGER_1, "BA 2 PA 2003", 90, null, 1, 2).get("id").asText();
+        JsonNode secondStart = charger.awaitCall("RequestStartTransaction");
+        charger.reply(secondStart, "Accepted");
+
+        // The charger put the first car on connector 2 and the second on connector 1.
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Started", 0, "TX-S1", 10, 0, 1, 2),
+                firstStart.get(3).get("remoteStartId").asInt()));
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Started", 0, "TX-S2", 50, 0, 1, 1),
+                secondStart.get(3).get("remoteStartId").asInt()));
+        awaitStatus(firstId, "ACTIVE");
+        awaitStatus(secondId, "ACTIVE");
+
+        charger.call("TransactionEvent", txEvent("Updated", 1, "TX-S1", 25, 3_000, 1, 2));
+        charger.call("TransactionEvent", txEvent("Updated", 1, "TX-S2", 70, 9_000, 1, 1));
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            JsonNode first = session(firstId);
+            JsonNode second = session(secondId);
+            assertThat(first.get("connectorId").asInt()).isEqualTo(2);
+            assertThat(first.get("currentSoc").asInt()).isEqualTo(25);
+            assertThat(first.get("energyDeliveredKwh").decimalValue()).isEqualByComparingTo("3.000");
+            assertThat(second.get("connectorId").asInt()).isEqualTo(1);
+            assertThat(second.get("currentSoc").asInt()).isEqualTo(70);
+            assertThat(second.get("energyDeliveredKwh").decimalValue()).isEqualByComparingTo("9.000");
+        });
+
+        // Unlocking after payment releases the connector the car is really on.
+        post("/api/ev/sessions/" + firstId + "/stop", null);
+        JsonNode stopCall = charger.awaitCall("RequestStopTransaction");
+        assertThat(stopCall.get(3).get("transactionId").asText()).isEqualTo("TX-S1");
+        charger.reply(stopCall, "Accepted");
+        charger.call("TransactionEvent", txEvent("Ended", 2, "TX-S1", 25, 3_000, 1, 2));
+        awaitStatus(firstId, "AWAITING_PAYMENT");
+        post("/api/ev/sessions/" + firstId + "/mark-paid", Map.of("method", "CASH", "amount", 100));
+        JsonNode unlockCall = charger.awaitCall("UnlockConnector");
+        assertThat(unlockCall.get(3).get("connectorId").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldUpdateLiveReadings_whenLaterEventsLeaveOutTheConnector() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 2 PA 2004", 90).get("id").asText();
+        JsonNode startCall = charger.awaitCall("RequestStartTransaction");
+        charger.reply(startCall, "Accepted");
+        charger.call("TransactionEvent", txEvent("Started", 0, "TX-N1", 20, 1_000));
+        awaitStatus(id, "ACTIVE");
+
+        // OCPP 2.0.1 only requires the EVSE on the first event of a transaction.
+        ObjectNode update = txEvent("Updated", 1, "TX-N1", 44, 16_000);
+        update.remove("evse");
+        charger.call("TransactionEvent", update);
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(session(id).get("currentSoc").asInt()).isEqualTo(44);
+            assertThat(session(id).get("energyDeliveredKwh").decimalValue()).isEqualByComparingTo("15.000");
+        });
+    }
+
+    @Test
+    void shouldRecoverAStuckStartingSession_whenItsReadingsArrive() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 2 PA 2005", 90, null, 1, 2).get("id").asText();
+        JsonNode startCall = charger.awaitCall("RequestStartTransaction");
+        charger.reply(startCall, "Accepted");
+
+        // The Started event was lost; the next periodic reading still names the start ID.
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Updated", 3, "TX-R1", 55, 4_000, 1, 1),
+                startCall.get(3).get("remoteStartId").asInt()));
+        awaitStatus(id, "ACTIVE");
+        JsonNode live = session(id);
+        assertThat(live.get("currentSoc").asInt()).isEqualTo(55);
+        assertThat(live.get("connectorId").asInt()).isEqualTo(1);
+        assertThat(live.get("ocppTransactionId").asText()).isEqualTo("TX-R1");
+    }
+
+    @Test
+    void shouldIgnoreAStartedEvent_whenItsStartIdBelongsToNoSession() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 2 PA 2006", 90).get("id").asText();
+        JsonNode startCall = charger.awaitCall("RequestStartTransaction");
+        charger.reply(startCall, "Accepted");
+        int ours = startCall.get(3).get("remoteStartId").asInt();
+
+        // Same connector, but another start ID: this is some other car's transaction.
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Started", 0, "TX-X1", 80, 0, 1, 1), ours + 1));
+        charger.call("TransactionEvent", withRemoteStartId(txEvent("Updated", 1, "TX-X1", 85, 2_000, 1, 1), ours + 1));
+        JsonNode untouched = session(id);
+        assertThat(untouched.get("status").asText()).isEqualTo("STARTING");
+        assertThat(untouched.get("currentSoc").isNull()).isTrue();
+        assertThat(untouched.get("energyDeliveredKwh").decimalValue()).isEqualByComparingTo("0");
+    }
+
     @Test
     void shouldSerializeSimultaneousStartsForTheSameConnector() throws Exception {
         connectAndBoot(CHARGER_1);
@@ -588,6 +708,11 @@ class ChargerSessionFlowIntegrationTest {
         meterValue.withArray("sampledValue").addObject()
                 .put("value", energyWh).put("measurand", "Energy.Active.Import.Register");
         return payload;
+    }
+
+    private ObjectNode withRemoteStartId(ObjectNode event, int remoteStartId) {
+        ((ObjectNode) event.get("transactionInfo")).put("remoteStartId", remoteStartId);
+        return event;
     }
 
     private SimulatedCharger connectAndBoot(String code) throws Exception {

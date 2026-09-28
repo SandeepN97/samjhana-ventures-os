@@ -20,10 +20,19 @@ public class OcppCommandService {
         return connectionRegistry.isConnected(chargePointCode);
     }
 
+    /**
+     * The remoteStartId sent with a session's start command. The charger echoes it back in its
+     * TransactionEvents, which is how they are tied to the session: the start command can't name
+     * a connector, so the connector the charger picks may not be the one staff chose.
+     */
+    public static int remoteStartIdFor(UUID sessionId) {
+        // Mask instead of Math.abs(): abs(Integer.MIN_VALUE) is still negative, which OCPP rejects.
+        return sessionId.hashCode() & 0x7fffffff;
+    }
+
     public String requestStart(String chargePointCode, UUID sessionId, int evseId, String plateNumber) {
         ObjectNode payload = objectMapper.createObjectNode();
-        // Mask instead of Math.abs(): abs(Integer.MIN_VALUE) is still negative, which OCPP rejects.
-        payload.put("remoteStartId", sessionId.hashCode() & 0x7fffffff);
+        payload.put("remoteStartId", remoteStartIdFor(sessionId));
         payload.put("evseId", evseId);
         ObjectNode idToken = payload.putObject("idToken");
         idToken.put("idToken", truncate(plateNumber, 36));

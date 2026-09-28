@@ -10,6 +10,7 @@ import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader, HeaderAction } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function RentalEntryPage() {
   const navigate = useNavigate();
@@ -23,9 +24,9 @@ export default function RentalEntryPage() {
   const [properties, setProperties] = useState([]);
   const [ledger, setLedger] = useState(null); // { outstandingBalance, totalPayments }
   const [values, setValues] = useState({
-    transactionDate: new Date().toISOString().split('T')[0],
+    transactionDate: nepalToday(),
     propertyId: '',
-    rentalMonth: new Date().toISOString().split('T')[0],
+    rentalMonth: nepalToday(),
     amountReceived: '',
     paymentMethod: 'CASH',
     notes: '',
@@ -107,7 +108,7 @@ export default function RentalEntryPage() {
       setValues({
         transactionDate: businessDate,
         propertyId: '',
-        rentalMonth: new Date().toISOString().split('T')[0],
+        rentalMonth: nepalToday(),
         amountReceived: '',
         paymentMethod: 'CASH',
         notes: '',

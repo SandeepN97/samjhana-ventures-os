@@ -21,6 +21,7 @@ import api from '../../utils/api';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 const BUSINESS_UNITS = [
   { value: 'PETROL', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
@@ -83,7 +84,7 @@ export default function StaffManagementPage() {
     businessUnit: 'PETROL',
     staffRole: 'OPERATOR',
     monthlySalary: '',
-    joinDate: new Date().toISOString().split('T')[0],
+    joinDate: nepalToday(),
     emergencyContact: '',
     emergencyContactName: '',
     citizenshipNumber: '',
@@ -120,7 +121,7 @@ export default function StaffManagementPage() {
       businessUnit: 'PETROL',
       staffRole: 'OPERATOR',
       monthlySalary: '',
-      joinDate: new Date().toISOString().split('T')[0],
+      joinDate: nepalToday(),
       emergencyContact: '',
       emergencyContactName: '',
       citizenshipNumber: '',

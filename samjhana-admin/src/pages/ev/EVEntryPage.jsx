@@ -32,6 +32,8 @@ const EMPTY_FORM = {
  * EV Charging — live control flow for the staff kiosk: Start Session → Active → Payment.
  * Payment confirmation is the only thing that releases the connector after a stop.
  */
+const sessionToastKey = (id) => `ev-session-${id}`;
+
 export default function EVEntryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -62,15 +64,17 @@ export default function EVEntryPage() {
   useEffect(() => { setDate(businessDate); }, [businessDate]);
 
   // ---- sessions: merge one update, and tell staff about transitions they care about ----
+  // One toast per session at a time: each new message about a session replaces the last one.
   const notifyTransition = useCallback((previous, next) => {
     if (previous === undefined || previous === next.status) return;
+    const key = sessionToastKey(next.id);
     if (next.status === 'FAILED') {
-      showToast(t('evLive.sessionFailed', { message: next.statusMessage || '' }), 'error');
+      showToast(t('evLive.sessionFailed', { message: next.statusMessage || '' }), 'error', undefined, key);
     } else if (next.status === 'AWAITING_PAYMENT') {
-      showToast(t('evLive.stoppedAwaitingPayment', { plate: next.plateNumber }), 'info');
+      showToast(t('evLive.stoppedAwaitingPayment', { plate: next.plateNumber }), 'info', undefined, key);
       setTab((current) => (current === 'active' ? 'pay' : current));
     } else if (next.status === 'CLOSED') {
-      showToast(t('evLive.unlocked', { plate: next.plateNumber }), 'success');
+      showToast(t('evLive.unlocked', { plate: next.plateNumber }), 'success', undefined, key);
     }
   }, [showToast, t]);
 
@@ -222,12 +226,18 @@ export default function EVEntryPage() {
 
   const perform = async (id, action, payload, successKey, successValues) => {
     setBusyId(id);
+    const statusBefore = knownStatus.current.get(id);
     try {
       const response = await api.post(`/api/ev/sessions/${id}/${action}`, payload);
+      // If a live update already told staff the outcome (e.g. "Connector unlocked") while this
+      // request was in flight, don't cover it with the older "…unlocking" message.
+      if (knownStatus.current.get(id) === statusBefore) {
+        // Shown before merging, so an outcome carried by this very response replaces it.
+        showToast(t(successKey, successValues), 'success', undefined, sessionToastKey(id));
+      }
       mergeSession(response.data);
-      showToast(t(successKey, successValues), 'success');
     } catch (error) {
-      showToast(error.response?.data?.message || t('evLive.actionFailed'), 'error');
+      showToast(error.response?.data?.message || t('evLive.actionFailed'), 'error', undefined, sessionToastKey(id));
     } finally {
       setBusyId('');
     }

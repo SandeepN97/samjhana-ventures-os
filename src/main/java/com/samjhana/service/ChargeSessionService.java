@@ -207,18 +207,33 @@ public class ChargeSessionService {
 
     @Transactional
     public void handleTransactionEvent(String chargePointCode, JsonNode payload) {
-        String transactionId = payload.path("transactionInfo").path("transactionId").asText(null);
-        int evseId = payload.path("evse").path("id").asInt(-1);
-        int connectorId = payload.path("evse").path("connectorId").asInt(-1);
+        JsonNode transactionInfo = payload.path("transactionInfo");
+        String transactionId = transactionInfo.path("transactionId").asText(null);
+        Integer remoteStartId = transactionInfo.hasNonNull("remoteStartId")
+                ? transactionInfo.path("remoteStartId").asInt() : null;
+        // OCPP 2.0.1 only requires the EVSE (and connector) on the first event of a transaction.
+        JsonNode evse = payload.path("evse");
+        Integer evseId = evse.hasNonNull("id") ? evse.path("id").asInt() : null;
+        Integer connectorId = evse.hasNonNull("connectorId") ? evse.path("connectorId").asInt() : null;
         String eventType = payload.path("eventType").asText();
-        if (evseId < 1 || connectorId < 1) {
+        if ((evseId != null && evseId < 1) || (connectorId != null && connectorId < 1)) {
             log.warn("Ignoring TransactionEvent from {} with invalid EVSE/connector identity", chargePointCode);
             return;
         }
-        ChargeSession session = findForEvent(chargePointCode, evseId, connectorId, transactionId, eventType);
+        ChargeSession session = findForEvent(
+                chargePointCode, evseId, connectorId, transactionId, remoteStartId, eventType);
         if (session == null) {
             log.warn("Ignoring TransactionEvent from {} because no matching session exists", chargePointCode);
             return;
+        }
+        if (session.getStatus() == ChargeSession.Status.STARTING && evseId != null && connectorId != null
+                && (!evseId.equals(session.getEvseId()) || !connectorId.equals(session.getConnectorId()))) {
+            // The start command can't name a connector, so record the one the charger actually used:
+            // stop, unlock and the connector picker all depend on it.
+            log.info("Charge session {} started on EVSE {} connector {} (staff chose EVSE {} connector {})",
+                    session.getId(), evseId, connectorId, session.getEvseId(), session.getConnectorId());
+            session.setEvseId(evseId);
+            session.setConnectorId(connectorId);
         }
 
         int sequence = payload.path("seqNo").asInt(-1);
@@ -231,8 +246,11 @@ public class ChargeSessionService {
 
         updateMeterValues(session, payload.path("meterValue"));
         LocalDateTime eventTime = parseTimestamp(payload.path("timestamp").asText(null));
-        if ("Started".equals(eventType)) {
-            session.setStartedAt(eventTime);
+        if ("Started".equals(eventType)
+                || ("Updated".equals(eventType) && session.getStatus() == ChargeSession.Status.STARTING)) {
+            // An Updated event for a session still STARTING means its Started event was lost or
+            // missed: the car is charging, so show it as such.
+            if (session.getStartedAt() == null || "Started".equals(eventType)) session.setStartedAt(eventTime);
             session.setStatus(ChargeSession.Status.ACTIVE);
             session.setStatusMessage("Charging in progress");
         } else if ("Ended".equals(eventType)) {
@@ -403,15 +421,28 @@ public class ChargeSessionService {
         }
     }
 
-    private ChargeSession findForEvent(
-            String chargePointCode, int evseId, int connectorId, String transactionId, String eventType) {
+    /**
+     * Finds the session a charger event belongs to, most reliable evidence first:
+     * the charger's transaction ID once known, then the remoteStartId we sent with the start
+     * command, and only for chargers that send neither, the connector of a Started event.
+     */
+    private ChargeSession findForEvent(String chargePointCode, Integer evseId, Integer connectorId,
+                                       String transactionId, Integer remoteStartId, String eventType) {
         if (transactionId != null && !transactionId.isBlank()) {
             Optional<ChargeSession> existing = chargeSessionRepository
-                    .findByOcppTransactionIdAndChargePointCodeAndEvseIdAndConnectorId(
-                            transactionId, chargePointCode, evseId, connectorId);
+                    .findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(transactionId, chargePointCode);
             if (existing.isPresent()) return existing.get();
         }
-        if (!"Started".equals(eventType)) return null;
+        if (remoteStartId != null) {
+            // Only a session still waiting for its charger can claim a new transaction; an unknown
+            // ID is some other car's transaction and must never land on ours.
+            return chargeSessionRepository.findByChargePointCodeAndStatus(chargePointCode, ChargeSession.Status.STARTING)
+                    .stream()
+                    .filter(candidate -> OcppCommandService.remoteStartIdFor(candidate.getId()) == remoteStartId)
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (!"Started".equals(eventType) || evseId == null || connectorId == null) return null;
         List<ChargeSession> matches = chargeSessionRepository
                 .findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
                         chargePointCode, evseId, connectorId, OPEN_STATUSES);

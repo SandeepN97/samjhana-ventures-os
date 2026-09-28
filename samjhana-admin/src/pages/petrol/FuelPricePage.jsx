@@ -8,6 +8,7 @@ import { formatBsDate } from '../../utils/nepaliDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function FuelPricePage() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function FuelPricePage() {
   const [fetchingNoc, setFetchingNoc] = useState(false);
 
   const [formValues, setFormValues] = useState({
-    effectiveDate: new Date().toISOString().split('T')[0],
+    effectiveDate: nepalToday(),
     petrolPrice: '',
     dieselPrice: '',
   });

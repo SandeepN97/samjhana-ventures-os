@@ -1,39 +1,58 @@
-# Weekly PRs for dependency updates, including security fixes. They target staging, like every other
-# change, and go through the full CI run before anyone merges them.
+# Dependabot opens pull requests ONLY for security fixes.
+#
+# `open-pull-requests-limit: 0` switches off routine version-update PRs (they used to arrive dozens
+# at a time); Dependabot *security* updates are not affected by that limit and still open a PR as
+# soon as a vulnerability in one of these libraries is published. They must be switched on in
+# GitHub: Settings -> Code security -> Dependabot alerts + Dependabot security updates.
+#
+# Routine upgrades are listed instead in one monthly issue, "Dependency upgrades to plan"
+# (.github/workflows/dependency-report.yml).
+#
+# Docker base images are not included: their tags carry the Java version (e.g. -temurin-21), which
+# must only change on purpose. Update them by hand, keeping the digest pin in the Dockerfile.
+#
+# Every one of those PRs is a security fix, so each is labelled "security" + "priority: critical"
+# (the monthly report workflow creates these labels if they are missing).
+#
+# Every PR targets staging, like every other change, and runs the full CI before anyone merges it.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
-    groups:
-      spring-boot:
-        patterns: ["org.springframework*"]
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: npm
     directory: /samjhana-admin
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: npm
     directory: /samjhana-web
     target-branch: staging
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: pip
     directory: /tools/ocpp-simulator
     target-branch: staging
-    schedule: { interval: weekly }
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]
 
   - package-ecosystem: github-actions
     directory: /
     target-branch: staging
-    schedule: { interval: weekly }
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: staging
-    schedule: { interval: weekly }
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    labels: [dependencies, security, "priority: critical"]

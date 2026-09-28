@@ -27,7 +27,8 @@ export default function EvElectricityPage() {
     catch (error) { showToast(error.response?.data?.message || t('evBills.loadFailed'), 'error'); }
     finally { setLoading(false); }
   }, [showToast, t]);
-  useEffect(() => { loadBills(); }, [loadBills]);
+  // Bills and the profit worked out from them are for admins and managers only (the API refuses staff too).
+  useEffect(() => { if (canManage) loadBills(); }, [canManage, loadBills]);
 
   const saveBill = async (event) => {
     event.preventDefault(); setSaving(true);
@@ -45,36 +46,43 @@ export default function EvElectricityPage() {
     finally { setReconcilingId(''); }
   };
 
+  if (!canManage) {
+    return (
+      <div className="min-h-screen bg-gray-100 pb-8">
+        <PageHeader unit="ev" icon={Zap} title={t('evBills.title')} subtitle={t('evBills.energyDesk')} backTo="/entry/ev" />
+        <main className="mx-auto max-w-3xl px-4 py-4">
+          <Card className="text-sm text-gray-600">{t('evBills.managersOnly')}</Card>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 pb-8">
       <PageHeader unit="ev" icon={Zap} title={t('evBills.title')} subtitle={t('evBills.energyDesk')} backTo="/entry/ev" />
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[380px_1fr] lg:px-8">
         <aside>
-          {canManage ? (
-            <Card as="form" onSubmit={saveBill} className="lg:sticky lg:top-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-xl bg-ev-100 text-ev-700"><FilePlus2 className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-xs font-semibold text-ev-700">{t('evBills.manualEntry')}</p>
-                  <h2 className="text-lg font-bold text-gray-800">{t('evBills.addBill')}</h2>
-                </div>
+          <Card as="form" onSubmit={saveBill} className="lg:sticky lg:top-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-ev-100 text-ev-700"><FilePlus2 className="h-5 w-5" /></div>
+              <div>
+                <p className="text-xs font-semibold text-ev-700">{t('evBills.manualEntry')}</p>
+                <h2 className="text-lg font-bold text-gray-800">{t('evBills.addBill')}</h2>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <Field label={t('evBills.periodStart')}><input required type="date" value={form.periodStart} onChange={(e) => setForm((current) => ({ ...current, periodStart: e.target.value }))} className="bill-input" /></Field>
-                <Field label={t('evBills.periodEnd')}><input required type="date" value={form.periodEnd} onChange={(e) => setForm((current) => ({ ...current, periodEnd: e.target.value }))} className="bill-input" /></Field>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <Field label={t('evBills.billedKwh')}><input required type="number" min="0.001" step="0.001" value={form.billedKwh} onChange={(e) => setForm((current) => ({ ...current, billedKwh: e.target.value }))} className="bill-input" /></Field>
-                <Field label={t('evBills.amountPaid')}><input required type="number" min="0.01" step="0.01" value={form.amountPaid} onChange={(e) => setForm((current) => ({ ...current, amountPaid: e.target.value }))} className="bill-input" /></Field>
-              </div>
-              <div className="mt-3">
-                <Field label={t('evBills.reference')}><input value={form.referenceNumber} onChange={(e) => setForm((current) => ({ ...current, referenceNumber: e.target.value }))} className="bill-input" /></Field>
-              </div>
-              <Button type="submit" unit="ev" fullWidth disabled={saving} className="mt-5">{saving ? t('evBills.saving') : t('evBills.saveBill')}</Button>
-            </Card>
-          ) : (
-            <Card className="text-sm text-gray-500">{t('evBills.managerOnly')}</Card>
-          )}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Field label={t('evBills.periodStart')}><input required type="date" value={form.periodStart} onChange={(e) => setForm((current) => ({ ...current, periodStart: e.target.value }))} className="bill-input" /></Field>
+              <Field label={t('evBills.periodEnd')}><input required type="date" value={form.periodEnd} onChange={(e) => setForm((current) => ({ ...current, periodEnd: e.target.value }))} className="bill-input" /></Field>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Field label={t('evBills.billedKwh')}><input required type="number" min="0.001" step="0.001" value={form.billedKwh} onChange={(e) => setForm((current) => ({ ...current, billedKwh: e.target.value }))} className="bill-input" /></Field>
+              <Field label={t('evBills.amountPaid')}><input required type="number" min="0.01" step="0.01" value={form.amountPaid} onChange={(e) => setForm((current) => ({ ...current, amountPaid: e.target.value }))} className="bill-input" /></Field>
+            </div>
+            <div className="mt-3">
+              <Field label={t('evBills.reference')}><input value={form.referenceNumber} onChange={(e) => setForm((current) => ({ ...current, referenceNumber: e.target.value }))} className="bill-input" /></Field>
+            </div>
+            <Button type="submit" unit="ev" fullWidth disabled={saving} className="mt-5">{saving ? t('evBills.saving') : t('evBills.saveBill')}</Button>
+          </Card>
         </aside>
         <section>
           <p className="text-xs font-semibold text-ev-700">{t('evBills.ledger')}</p>

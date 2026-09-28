@@ -1,5 +1,6 @@
 package com.samjhana.security;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -38,26 +39,52 @@ public class LoginAttemptService {
     }
 
     public boolean isBlocked(String username) {
-        Deque<Instant> recent = failures.get(key(username));
-        if (recent == null) return false;
-        synchronized (recent) {
+        boolean[] blocked = {false};
+        failures.computeIfPresent(key(username), (name, recent) -> {
             dropExpired(recent);
-            return recent.size() >= MAX_FAILURES;
-        }
+            blocked[0] = recent.size() >= MAX_FAILURES;
+            return recent.isEmpty() ? null : recent;
+        });
+        return blocked[0];
     }
 
     public void recordFailure(String username) {
-        Deque<Instant> recent = failures.computeIfAbsent(key(username), k -> new ArrayDeque<>());
-        synchronized (recent) {
-            dropExpired(recent);
-            recent.addLast(clock.instant());
-        }
+        failures.compute(key(username), (name, recent) -> {
+            Deque<Instant> updated = recent != null ? recent : new ArrayDeque<>();
+            dropExpired(updated);
+            updated.addLast(clock.instant());
+            // Only the latest MAX_FAILURES matter for the limit, so one name can't hold more than that.
+            while (updated.size() > MAX_FAILURES) updated.pollFirst();
+            return updated;
+        });
     }
 
     public void recordSuccess(String username) {
         failures.remove(key(username));
     }
 
+    /**
+     * Forgets usernames whose failures have all aged out. Without this, every made-up username
+     * someone tried would be kept for as long as the server runs; with it, memory is bounded by
+     * the names tried in the last {@link #WINDOW}.
+     */
+    @Scheduled(fixedDelayString = "PT5M")
+    public void forgetExpired() {
+        for (String name : failures.keySet()) {
+            failures.computeIfPresent(name, (key, recent) -> {
+                dropExpired(recent);
+                return recent.isEmpty() ? null : recent;
+            });
+        }
+    }
+
+    /** How many usernames currently have failures on record. */
+    int trackedUsernames() {
+        return failures.size();
+    }
+
+    // Every read or change of a username's failures happens inside the map's per-key compute, so a
+    // clean-up running at the same time as a login attempt can never lose a recorded failure.
     private void dropExpired(Deque<Instant> recent) {
         Instant cutoff = clock.instant().minus(WINDOW);
         while (!recent.isEmpty() && recent.peekFirst().isBefore(cutoff)) {
