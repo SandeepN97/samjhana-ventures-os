@@ -5,6 +5,7 @@ import { Camera, RefreshCw, Settings, Zap } from 'lucide-react';
 import api from '../../utils/api';
 import BottomNav from '../../components/BottomNav';
 import ChargerCard from '../../components/ev/ChargerCard';
+import ConnectorPicker from '../../components/ev/ConnectorPicker';
 import ChargeTargetCard from '../../components/ev/ChargeTargetCard';
 import VehiclePicker from '../../components/ev/VehiclePicker';
 import RateBanner from '../../components/ev/RateBanner';
@@ -322,26 +323,16 @@ export default function EVEntryPage() {
           </div>
 
           <div className="px-4 pt-4">
-            <label htmlFor="ev-connector" className="mb-2 block text-lg font-medium text-gray-700">
+            <p id="ev-connector-label" className="mb-2 block text-lg font-medium text-gray-700">
               {t('evLive.connector')}
-            </label>
-            <select
-              id="ev-connector"
+            </p>
+            <ConnectorPicker
+              labelId="ev-connector-label"
               value={form.connectorId}
-              onChange={(event) => setField('connectorId', event.target.value)}
+              occupied={occupiedConnectorIds}
               disabled={!form.chargePointId}
-              className="min-h-[44px] w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-ev-500 disabled:bg-gray-100"
-            >
-              {[1, 2].map((connectorId) => {
-                const occupied = occupiedConnectorIds.has(connectorId);
-                return (
-                  <option key={connectorId} value={connectorId} disabled={occupied}>
-                    {t('evLive.connectorNumber', { number: num(connectorId) })}
-                    {occupied ? ` — ${t('evLive.connectorInUse')}` : ''}
-                  </option>
-                );
-              })}
-            </select>
+              onSelect={(connectorId) => setField('connectorId', connectorId)}
+            />
             {occupiedConnectorIds.size === 2 && (
               <p className="mt-2 text-sm font-medium text-amber-700">{t('evLive.noConnectorsAvailable')}</p>
             )}
