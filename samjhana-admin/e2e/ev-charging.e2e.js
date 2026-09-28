@@ -294,8 +294,9 @@ test('keeps the charger selectable and marks only the busy connector in use', as
   await tab(page, 'Start Session').click();
   await expect(chargerCard(page, 'Online')).toBeEnabled();
   await chargerCard(page, 'Online').click();
-  await expect(page.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
-  await expect(page.getByLabel('Charging connector')).toHaveValue('2');
+  const connectors = page.getByRole('radiogroup', { name: 'Charging connector' });
+  await expect(connectors.getByRole('radio', { name: 'Connector 1, In use' })).toBeDisabled();
+  await expect(connectors.getByRole('radio', { name: 'Connector 2, Free' })).toHaveAttribute('aria-checked', 'true');
 
   // Finish the session so later tests start from a free charger.
   await tab(page, 'Active').click();
