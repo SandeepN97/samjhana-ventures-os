@@ -90,16 +90,6 @@
             <scope>runtime</scope>
         </dependency>
         
-        <!-- Jackson for JSON processing (including JSONB simulation) -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-        
         <!-- Jsoup for HTML scraping (NOC fuel prices) -->
         <dependency>
             <groupId>org.jsoup</groupId>
@@ -112,13 +102,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
-        </dependency>
-        
-        <!-- MapStruct for DTO mapping -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>1.6.3</version>
         </dependency>
         
         <!-- Springdoc OpenAPI for API documentation -->
@@ -140,11 +123,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Systematically exercises Lombok @Data's generated equals/hashCode/canEqual
@@ -176,7 +154,7 @@
                 </configuration>
             </plugin>
             
-            <!-- Compiler Plugin with Lombok + MapStruct -->
+            <!-- Compiler Plugin with Lombok -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -189,16 +167,6 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>1.18.48</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>1.5.5.Final</version>
-                        </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
