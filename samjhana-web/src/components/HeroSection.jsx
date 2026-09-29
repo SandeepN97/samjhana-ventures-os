@@ -60,7 +60,7 @@ function MaurigharArt() {
   );
 }
 
-function FurnitureArt() {
+export function FurnitureArt() {
   return (
     <svg viewBox="0 0 260 260" className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
       {/* Wood-grain lines */}

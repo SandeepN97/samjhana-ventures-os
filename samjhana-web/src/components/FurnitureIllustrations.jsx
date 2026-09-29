@@ -598,7 +598,7 @@ function KitchenIslandIllustration() {
   );
 }
 
-function AccentChairIllustration() {
+export function AccentChairIllustration() {
   return (
     <svg viewBox="0 0 320 240" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="160" cy="213" rx="86" ry="7" fill="#5a3a1a" opacity="0.07"/>

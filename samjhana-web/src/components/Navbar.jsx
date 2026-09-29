@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ShoppingCart } from 'lucide-react';
+import { Menu, X, ShoppingCart, MessageCircle, MapPin, Phone } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 
 const NAV_LINKS = [
-  { label: 'Furniture',   href: '/furniture',    isLink: true },
-  { label: 'Mauri Ghar',  href: '/beekeeping',   isLink: true },
-  { label: 'Fuel & EV',   href: '/#fuel-ev',     isHash: true },
-  { label: 'Bike repair', href: '/#bike-repair',  isHash: true },
-  { label: 'Restaurant',  href: '/#restaurant',   isHash: true },
+  { label: 'Visit & services', href: '/#fuel-ev', isHash: true },
+  { label: 'Shop & order', href: '/shop', isLink: true },
+  { label: 'About', href: '/#about', isHash: true },
+  { label: 'Contact', href: '/#contact', isHash: true },
 ];
 
 function HashLink({ href, children, className, onClick }) {
@@ -46,7 +45,7 @@ export default function Navbar() {
   const { count, setOpen: openCart } = useCartStore();
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-warm/95 backdrop-blur-sm border-b border-warm-border">
+    <header className="site-navbar fixed top-0 inset-x-0 z-50 bg-warm/95 backdrop-blur-sm border-b border-warm-border">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
 
         {/* Logo */}
@@ -77,7 +76,11 @@ export default function Navbar() {
 
         {/* Cart + CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <button onClick={() => openCart(true)} className="relative p-2 text-dark/60 hover:text-dark transition-colors">
+          <span className="hidden lg:flex items-center gap-2 text-xs text-dark/55"><span>EN</span><span className="text-dark/20">|</span><span>नेपाली</span></span>
+          <a href="tel:+9779363147818" aria-label="Call Samjhana Ventures" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><Phone size={17} /></a>
+          <a href="https://wa.me/9779363147818" target="_blank" rel="noreferrer" aria-label="WhatsApp Samjhana Ventures" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MessageCircle size={17} /></a>
+          <a href="https://www.google.com/maps/@27.9922809,83.3629821,48m/data=!3m1!1e3?entry=ttu&g_ep=EgoyMDI2MDkyMy4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noreferrer" aria-label="Get directions" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MapPin size={17} /></a>
+          <button aria-label="Open cart" onClick={() => openCart(true)} className="relative p-2 text-dark/60 hover:text-dark transition-colors">
             <ShoppingCart size={20} />
             {count > 0 && (
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -85,7 +88,7 @@ export default function Navbar() {
               </span>
             )}
           </button>
-          <HashLink href="/#restaurant" className="btn-dark text-sm">View menu</HashLink>
+          <HashLink href="/#contact" className="btn-dark text-sm">Talk to us</HashLink>
         </div>
 
         {/* Mobile toggle */}
@@ -110,7 +113,7 @@ export default function Navbar() {
               </HashLink>
             )
           )}
-          <HashLink href="/#restaurant" onClick={() => setOpen(false)} className="btn-dark mt-3 w-full justify-center">View menu</HashLink>
+          <HashLink href="/#contact" onClick={() => setOpen(false)} className="btn-dark mt-3 w-full justify-center">Call or WhatsApp</HashLink>
         </div>
       )}
     </header>
