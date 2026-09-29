@@ -39,6 +39,12 @@ graphify-out/
 # Locally installed agent skills (restorable from skills-lock.json)
 .agents/
 
+# Local Codex / Impeccable review artifacts and generated visual scratch assets
+.codex/
+.impeccable/
+assets/
+.github/hooks/
+
 # Python (tools/ocpp-simulator)
 __pycache__/
 *.pyc

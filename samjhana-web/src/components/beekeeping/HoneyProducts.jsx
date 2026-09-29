@@ -3,6 +3,7 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { honeyProducts } from '../../data/beekeepingProducts';
 import SectionDivider from './SectionDivider';
 import BadgePill from './BadgePill';
+import { getBeePhoto } from './beePhotoAssets';
 
 const fmt = (n) => Number(n).toLocaleString();
 
@@ -45,7 +46,7 @@ function FeaturedHoneyCard({ product, onAddToCart }) {
     <div className="bg-white rounded-3xl overflow-hidden shadow-[0_4px_24px_rgba(26,16,0,0.08)] flex flex-col">
       <div className="relative h-52 overflow-hidden flex items-center justify-center py-4"
         style={{ backgroundColor: product.bgColor + '44' }}>
-        <HoneyJarSvg color={product.bgColor} />
+        <img src={getBeePhoto(product.id)} alt={product.name} className="bee-product-photo w-full h-full object-contain p-4" />
       </div>
       <div className="p-5 flex flex-col gap-3 flex-1">
         {product.badge && <BadgePill text={product.badge} color="raw" />}
@@ -106,7 +107,7 @@ function SmallHoneyCard({ product, onAddToCart }) {
     <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(26,16,0,0.06)] flex flex-col">
       <div className="h-28 overflow-hidden flex items-center justify-center"
         style={{ backgroundColor: product.bgColor + '44' }}>
-        <HoneyJarSvg color={product.bgColor} />
+        <img src={getBeePhoto(product.id)} alt={product.name} className="bee-product-photo w-full h-full object-contain p-2" />
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
         <p className="font-serif text-base text-[#1a1000] leading-tight line-clamp-2">{product.name}</p>

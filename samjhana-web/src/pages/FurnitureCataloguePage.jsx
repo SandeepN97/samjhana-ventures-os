@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Search, ShoppingCart, ArrowRight,
-  Package, LogOut, X, ChevronDown, Sparkles,
+  X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { furnitureApi } from '../api/api.js';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore';
 import CustomOrderModal from '../components/CustomOrderModal';
 import { getProductVisual } from '../components/FurnitureIllustrations';
 
@@ -86,7 +85,7 @@ function ProductCard({ product, featured = false }) {
         <button
           onClick={handleAdd}
           disabled={outOfStock}
-          className="absolute bottom-3 right-3 h-9 px-4 rounded-full bg-white/95 backdrop-blur-sm
+            className="quick-add absolute bottom-3 right-3 h-9 px-4 rounded-full bg-white/95 backdrop-blur-sm
             shadow-lg text-xs font-semibold text-dark flex items-center gap-1.5
             opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0
             hover:bg-gold hover:text-white
@@ -127,6 +126,7 @@ function ProductCard({ product, featured = false }) {
 export default function FurnitureCataloguePage() {
   const [products, setProducts]   = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch]       = useState('');
   const [catId, setCatId]         = useState('All');
   const [sort, setSort]           = useState('default');
@@ -135,10 +135,9 @@ export default function FurnitureCataloguePage() {
   const searchRef = useRef(null);
 
   const { count, setOpen } = useCartStore();
-  const { customer, token, logout } = useAuthStore();
 
   useEffect(() => {
-    furnitureApi.getItems().then(setProducts).catch(() => setProducts([])).finally(() => setLoading(false));
+    furnitureApi.getItems().then(setProducts).catch(() => { setProducts([]); setLoadError(true); }).finally(() => setLoading(false));
   }, []);
 
   const cat = CATS.find((c) => c.id === catId) ?? CATS[0];
@@ -166,13 +165,13 @@ export default function FurnitureCataloguePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-4">
           {/* Left */}
           <div className="flex items-center gap-3 min-w-0">
-            <Link to="/#furniture"
+            <Link to="/shop"
               className="flex items-center gap-1.5 text-sm text-dark/50 hover:text-dark transition-colors font-sans shrink-0 group">
               <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
               <span className="hidden sm:block">Back</span>
             </Link>
             <div className="w-px h-4 bg-warm-border" />
-            <span className="font-serif text-base text-dark shrink-0">Furniture</span>
+            <span className="font-serif text-base text-dark shrink-0">Furniture studio</span>
             {!loading && (
               <span className="text-xs text-dark/30 font-sans hidden md:block">
                 · {filtered.length} piece{filtered.length !== 1 ? 's' : ''}
@@ -181,19 +180,8 @@ export default function FurnitureCataloguePage() {
           </div>
 
           {/* Right */}
-          <div className="flex items-center gap-1 shrink-0">
-            {token && (
-              <>
-                <Link to="/furniture/orders"
-                  className="hidden sm:flex items-center gap-1.5 text-xs text-dark/50 hover:text-dark font-sans px-3 py-1.5 rounded-xl hover:bg-warm transition-colors">
-                  <Package size={13} /> My Orders
-                </Link>
-                <button onClick={logout}
-                  className="hidden sm:flex items-center gap-1 text-xs text-dark/30 hover:text-red-400 transition-colors font-sans px-2 py-1.5 rounded-xl hover:bg-warm">
-                  <LogOut size={13} />
-                </button>
-              </>
-            )}
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/beekeeping" className="hidden sm:inline-flex items-center gap-1 text-xs text-dark/50 hover:text-dark px-2 py-2">Maurighar <ArrowRight size={12} /></Link>
             <button onClick={() => setOpen(true)} className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
               <ShoppingCart size={19} />
               {count > 0 && (
@@ -207,24 +195,24 @@ export default function FurnitureCataloguePage() {
       </div>
 
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e1206 0%, #2d1a0a 100%)' }}>
+      <div className="relative overflow-hidden" style={{ background: 'radial-gradient(circle at 78% 18%, rgba(196,145,35,.28), transparent 32%), linear-gradient(135deg, #1e1206 0%, #2d1a0a 100%)' }}>
         {/* Grain texture */}
         <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,1) 2px, rgba(255,255,255,1) 4px)' }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-14 sm:py-20 flex flex-col sm:flex-row items-center gap-10">
           {/* Text */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 motion-rise">
             <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold/30 rounded-full px-3 py-1 mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-gold" />
-              <span className="text-[11px] text-gold font-semibold uppercase tracking-widest font-sans">Gulmi, Nepal · Est. 2008</span>
+              <span className="text-[11px] text-gold font-semibold uppercase tracking-widest font-sans">Samjhana Ventures · Gulmi, Nepal</span>
             </div>
             <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white leading-[1.1]">
-              Built to last.<br />
-              <em className="not-italic text-gold">Crafted</em> with care.
+              Furniture for<br />
+              <em className="not-italic text-gold">real homes.</em>
             </h1>
             <p className="text-white/40 font-sans text-sm mt-5 max-w-sm leading-relaxed">
-              Every piece is hand-built in our Gulmi workshop using premium Nepali hardwood and traditional joinery techniques.
+              A considered collection for homes in the hills — browse what is available, then call us when you need a custom conversation.
             </p>
             <div className="flex gap-3 mt-8 flex-wrap">
               <button
@@ -234,14 +222,14 @@ export default function FurnitureCataloguePage() {
               </button>
               <button onClick={() => setShowCustom(true)}
                 className="inline-flex items-center gap-2 border border-white/20 text-white/70 hover:text-white hover:border-white/40 text-sm font-medium px-5 py-2.5 rounded transition-colors">
-                Custom order
+                Ask about custom
               </button>
             </div>
           </div>
 
           {/* Floating product cards */}
           {!loading && products.length > 0 && (
-            <div className="relative w-full sm:w-72 h-52 shrink-0 hidden sm:block">
+            <div className="relative w-full sm:w-72 h-52 shrink-0 hidden sm:block motion-fade motion-delay-2">
               {products.slice(0, 3).map((p, i) => {
                 const { Illustration, accent } = getProductVisual(p.name);
                 const offsets = [
@@ -350,14 +338,13 @@ export default function FurnitureCataloguePage() {
             <div className="w-20 h-20 rounded-3xl bg-warm mx-auto mb-6 flex items-center justify-center">
               <Search size={28} className="text-dark/20" />
             </div>
-            <p className="font-serif text-2xl text-dark/40 mb-2">No matches found</p>
-            <p className="text-sm text-dark/30 font-sans mb-8">Try a different search or browse all categories.</p>
-            <button onClick={() => { setSearch(''); setCatId('All'); }}
-              className="btn-dark text-sm">Show all furniture</button>
+            <p className="font-serif text-2xl text-dark/40 mb-2">{loadError ? 'Furniture catalogue unavailable' : 'No furniture matches'}</p>
+            <p className="text-sm text-dark/30 font-sans mb-8">{loadError ? 'Try again later, or ask us what is available today.' : 'Try a different search or browse all categories.'}</p>
+            {loadError ? <a href="https://wa.me/9779363147818" target="_blank" rel="noreferrer" className="btn-dark text-sm">Ask on WhatsApp</a> : <button onClick={() => { setSearch(''); setCatId('All'); }} className="btn-dark text-sm">Show all furniture</button>}
           </div>
 
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 motion-list">
             {/* Featured first card spans 2 cols on large screens */}
             {featured && catId === 'All' && !search && (
               <ProductCard product={featured} featured key={featured.id} />

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import HeroSection from './components/HeroSection';
+import TwoLaneHubSection from './components/TwoLaneHubSection';
 import FurnitureSection from './components/FurnitureSection';
 import FuelEvSection from './components/FuelEvSection';
 import BikeRepairSection from './components/BikeRepairSection';
@@ -10,14 +10,14 @@ import CartDrawer from './components/CartDrawer';
 import ErrorBoundary from './components/ErrorBoundary';
 import FurnitureCataloguePage from './pages/FurnitureCataloguePage';
 import FurnitureProductPage from './pages/FurnitureProductPage';
-import FurnitureOrdersPage from './pages/FurnitureOrdersPage';
 import BeekeepingPage from './pages/BeekeepingPage';
+import ShopOrderPage from './pages/ShopOrderPage';
 
 // Each section and page sits in its own boundary, so one that fails can't blank the whole site.
 export function MainPage() {
   return (
     <>
-      <ErrorBoundary><HeroSection /></ErrorBoundary>
+      <ErrorBoundary><TwoLaneHubSection /></ErrorBoundary>
       <ErrorBoundary><FurnitureSection /></ErrorBoundary>
       <ErrorBoundary><FuelEvSection /></ErrorBoundary>
       <ErrorBoundary><BikeRepairSection /></ErrorBoundary>
@@ -36,9 +36,9 @@ export default function App() {
       <Routes>
         <Route path="/"                  element={<MainPage />} />
         <Route path="/furniture"         element={page(<FurnitureCataloguePage />)} />
-        <Route path="/furniture/orders"  element={page(<FurnitureOrdersPage />)} />
         <Route path="/furniture/:id"     element={page(<FurnitureProductPage />)} />
         <Route path="/beekeeping"        element={page(<BeekeepingPage />)} />
+        <Route path="/shop"              element={page(<ShopOrderPage />)} />
       </Routes>
       <CartDrawer />
     </BrowserRouter>

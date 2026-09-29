@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ShoppingCart, MessageCircle } from 'lucide-react';
 import { tools } from '../../data/beekeepingProducts';
 import SectionDivider from './SectionDivider';
-import { getBeeSVG } from './BeekeepingSVGs';
+import { getBeePhoto } from './beePhotoAssets';
 
 const CAT_COLORS = {
   inspection: '#faeeda',
@@ -30,9 +30,9 @@ function ToolRow({ tool, onAddToCart }) {
 
   return (
     <div className="flex items-start gap-4 py-3.5 border-b border-[#e8a400]/10 last:border-0">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+      <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
         style={{ backgroundColor: CAT_COLORS[tool.category] }}>
-        <span className="text-lg">🔧</span>
+        <img src={getBeePhoto(tool.id)} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-1" loading="lazy" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-sans text-sm font-semibold text-[#1a1000] leading-tight">{tool.name}</p>
@@ -58,11 +58,11 @@ function QueenDeviceCard({ tool, onAddToCart }) {
     setTimeout(() => setAdded(false), 1500);
   };
 
-  const ToolSvg = getBeeSVG(tool.id);
+  const toolPhoto = getBeePhoto(tool.id);
   return (
     <div className="bg-[#eeedfe] rounded-2xl p-4 border border-[#534ab7]/15">
       <div className="h-28 rounded-xl overflow-hidden mb-3 bg-[#534ab7]/10">
-        <ToolSvg />
+        <img src={toolPhoto} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
       </div>
       <p className="font-sans font-semibold text-sm text-[#1a1000]">{tool.name}</p>
       <p className="font-sans text-[11px] text-[#534ab7] mt-0.5">{tool.nepali}</p>
@@ -132,10 +132,10 @@ export default function BeekeeperTools({ onAddToCart }) {
                 <p className="font-sans text-xs text-white/50 mt-1 leading-relaxed">
                   WhatsApp us for the next workshop date in Gulmi district.
                 </p>
-                <a href="https://wa.me/9779800000000?text=Namaste!%20I%20want%20to%20join%20the%20queen%20rearing%20training."
+                <a href="https://wa.me/9779363147818?text=Namaste!%20I%20want%20to%20ask%20about%20the%20queen%20rearing%20training."
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 mt-3 font-sans text-xs font-semibold text-[#e8a400] hover:underline">
-                  💬 WhatsApp us →
+                  WhatsApp us →
                 </a>
               </div>
             </div>

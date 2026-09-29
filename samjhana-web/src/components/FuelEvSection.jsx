@@ -77,7 +77,7 @@ export default function FuelEvSection() {
                 <span>{vehicles.length > 0 ? `${vehicles.length} vehicle types` : 'All EV types'}</span>
                 {minRate !== null && <><span>·</span><span>From Rs {minRate.toFixed(0)} / %</span></>}
               </div>
-              <a href="#" className="btn-dark self-start mt-1 text-sm">Book a slot</a>
+              <a href="tel:+9779363147818" className="btn-dark self-start mt-1 text-sm">Call to check availability</a>
             </div>
           </div>
 

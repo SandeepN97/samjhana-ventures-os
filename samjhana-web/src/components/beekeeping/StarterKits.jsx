@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { starterKits } from '../../data/beekeepingProducts';
 import SectionDivider from './SectionDivider';
-import { getBeeSVG } from './BeekeepingSVGs';
+import { getBeePhoto } from './beePhotoAssets';
 
 const fmt = (n) => Number(n).toLocaleString();
 
@@ -25,7 +25,7 @@ export default function StarterKits({ onAddToCart }) {
         <div className="grid md:grid-cols-3 gap-5">
           {starterKits.map((kit) => {
             const lc = LEVEL_COLORS[kit.level] ?? LEVEL_COLORS['Beginner'];
-            const KitSVG = getBeeSVG(kit.id);
+            const kitPhoto = getBeePhoto(kit.id);
             return (
               <div key={kit.id}
                 className={`bg-white rounded-3xl overflow-hidden flex flex-col shadow-[0_4px_24px_rgba(26,16,0,0.06)] transition-all hover:-translate-y-1
@@ -33,7 +33,7 @@ export default function StarterKits({ onAddToCart }) {
 
                 {/* Kit illustration */}
                 <div className="h-40 relative overflow-hidden" style={{ backgroundColor: kit.featured ? '#faeeda' : '#fdf8e8' }}>
-                  <KitSVG />
+                  <img src={kitPhoto} alt={kit.name} className="bee-product-photo h-full w-full object-contain p-3" loading="lazy" />
                   {kit.featured && (
                     <div className="absolute top-3 left-3">
                       <span className="bg-[#e8a400] text-white text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-1 rounded-full">

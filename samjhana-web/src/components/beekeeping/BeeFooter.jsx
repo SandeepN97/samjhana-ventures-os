@@ -10,10 +10,10 @@ export default function BeeFooter() {
           <p className="font-sans text-xs text-white/40 mt-0.5">Maurighar Beekeeping · Gulmi, Nepal · Since 2008</p>
         </div>
         <div className="flex items-center gap-4">
-          <a href="https://wa.me/9779800000000"
+          <a href="https://wa.me/9779363147818"
             target="_blank" rel="noopener noreferrer"
             className="font-sans text-sm text-[#e8a400] hover:underline">
-            💬 WhatsApp
+            WhatsApp
           </a>
           <Link to="/" className="font-sans text-sm text-white/40 hover:text-white flex items-center gap-1">
             <ArrowLeft size={13} /> Back to main site

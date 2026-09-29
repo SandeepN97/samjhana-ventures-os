@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { Clock3, MapPin, Phone } from 'lucide-react';
+import nepaliThali from '../assets/real/nepali-thali.jpg';
+
 const VEG = <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-500 mr-2 shrink-0" />;
 const NON = <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500  mr-2 shrink-0" />;
 
@@ -23,17 +27,16 @@ const BREAKFAST = [
   { name: 'Chiura Dahi',    veg: true },
   { name: 'Egg Roti',       veg: false },
 ];
-const DISH_CELLS = [
-  { emoji: '🍛', label: 'Dal Bhat',  bg: '#2d1a0a' },
-  { emoji: '🥩', label: 'Khasi',     bg: '#3d2010' },
-  { emoji: '🍵', label: 'Chiya',     bg: '#2a1808' },
-  { emoji: '🥟', label: 'Momo',      bg: '#351e0d' },
-];
 const AMBIENCE = ['Mountain view', 'Open kitchen', 'Community table', 'No booking needed'];
 const STATS = [
   { value: '10+', label: 'Years' },
   { value: '4.9★', label: 'Rating' },
   { value: '6am–9pm', label: 'Daily' },
+];
+const MEAL_PERIODS = [
+  { id: 'breakfast', label: 'Breakfast', nepali: 'बिहान', story: 'Start early with sel roti, chiura dahi, and a warm cup of tea.', hours: '6:00 – 10:00 am' },
+  { id: 'lunch', label: 'Lunch', nepali: 'दिउँसो', story: 'Settle in for dal bhat, dhido, and a proper pause on the highway.', hours: '11:00 am – 3:00 pm' },
+  { id: 'dinner', label: 'Dinner', nepali: 'बेलुका', story: 'End the day with warm plates, mountain air, and something sweet to drink.', hours: '5:00 – 9:00 pm' },
 ];
 
 function MenuItem({ item }) {
@@ -47,6 +50,7 @@ function MenuItem({ item }) {
 }
 
 export default function RestaurantSection() {
+  const [meal, setMeal] = useState(MEAL_PERIODS[0]);
   return (
     <section id="restaurant" className="bg-[#1e1206]">
 
@@ -65,8 +69,7 @@ export default function RestaurantSection() {
               Taste of<br /><em className="italic text-gold">the hills.</em>
             </h2>
             <p className="text-white/50 font-sans leading-relaxed max-w-md">
-              Home-cooked Nepali food made fresh every day. Grown in the hills, served with warmth.
-              No fuss, no frills — just honest food.
+              Home-cooked Nepali food made fresh every day. Choose the moment of your journey and we’ll show you the kind of pause waiting at the table.
             </p>
             {/* Stats */}
             <div className="flex flex-wrap gap-x-8 gap-y-3 pt-2">
@@ -77,17 +80,13 @@ export default function RestaurantSection() {
                 </div>
               ))}
             </div>
+            <div className="meal-story"><div className="meal-tabs" role="tablist" aria-label="Choose a meal period">{MEAL_PERIODS.map((period) => <button type="button" role="tab" aria-selected={meal.id === period.id} key={period.id} onClick={() => setMeal(period)} className={meal.id === period.id ? 'meal-tab meal-tab-active' : 'meal-tab'}>{period.label}<small>{period.nepali}</small></button>)}</div><p key={meal.id} className="meal-story-copy" aria-live="polite">{meal.story}</p><span><Clock3 size={14} /> {meal.hours}</span></div>
           </div>
 
           {/* 2×2 dish preview */}
-          <div className="grid grid-cols-2 gap-3">
-            {DISH_CELLS.map((d) => (
-              <div key={d.label} style={{ backgroundColor: d.bg }}
-                className="rounded-2xl aspect-square flex flex-col items-center justify-center gap-2 border border-white/5">
-                <span className="text-4xl">{d.emoji}</span>
-                <p className="text-sm font-sans text-white/60">{d.label}</p>
-              </div>
-            ))}
+          <div key={meal.id} className="meal-photo-card meal-dish-grid" aria-label="Nepali thali">
+            <img src={nepaliThali} alt="Nepali thali with rice, dal, curry, greens, pickles, and vegetables" />
+            <div className="meal-photo-caption"><strong>{meal.label} at the table</strong><span>Real Nepali food · served warm in Gulmi</span></div>
           </div>
         </div>
       </div>
@@ -141,7 +140,7 @@ export default function RestaurantSection() {
                     <span className="text-white/80 font-sans">{h.time}</span>
                   </div>
                 ))}
-                <p className="text-xs text-white/30 font-sans mt-3">Open every day — no reservations needed</p>
+                <p className="text-xs text-white/30 font-sans mt-3">Walk-ins welcome · Call to confirm today’s hours</p>
               </div>
 
               {/* Ambience cards */}
@@ -170,9 +169,9 @@ export default function RestaurantSection() {
       <div className="border-t border-white/10 bg-dark/50">
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4 text-sm text-white/40 font-sans">
           <div className="flex flex-wrap gap-6">
-            <span>🕐 Daily 6am – 9pm</span>
-            <span>📍 Gulmi, Baglung Highway</span>
-            <span>📞 +977-XXXXXXXXXX</span>
+            <span><Clock3 size={14} className="inline mr-1" />Daily 6am – 9pm</span>
+            <span><MapPin size={14} className="inline mr-1" />Gulmi, Baglung Highway</span>
+            <a href="tel:+9779363147818"><Phone size={14} className="inline mr-1" />Call +977 9363147818</a>
           </div>
           <span className="text-xs">No reservations · Walk-in only</span>
         </div>

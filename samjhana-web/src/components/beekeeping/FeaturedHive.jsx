@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Minus, Star, Shield, Truck, MessageCircle } from 'lucide-react';
 import { hives } from '../../data/beekeepingProducts';
 import SectionDivider from './SectionDivider';
-import { getBeeSVG } from './BeekeepingSVGs';
+import { getBeePhoto } from './beePhotoAssets';
 
 function HiveSvg() {
   return (
@@ -47,8 +47,8 @@ const WOOD_OPTIONS = [
 
 const TRUST = [
   { Icon: Shield,         label: 'Made in Nepal' },
-  { Icon: Truck,          label: 'Delivery across Nepal' },
-  { Icon: Star,           label: '1-year guarantee' },
+  { Icon: Truck,          label: 'Ask about delivery' },
+  { Icon: Star,           label: 'Built for local keepers' },
   { Icon: MessageCircle,  label: 'WhatsApp support' },
 ];
 
@@ -60,7 +60,7 @@ export default function FeaturedHive({ onAddToCart }) {
   const [selectedWood, setSelectedWood]   = useState('tuni');
   const [qty, setQty]                     = useState(1);
   const [saved, setSaved]                 = useState(false);
-  const HiveSVGComp = getBeeSVG(selectedType);
+  const hivePhoto = getBeePhoto(selectedType);
 
   const handleOrder = () => {
     onAddToCart?.({ ...featured, qty });
@@ -86,7 +86,7 @@ export default function FeaturedHive({ onAddToCart }) {
           <div>
             <div className="rounded-3xl overflow-hidden border border-[#e8a400]/15 mb-6 relative bg-[#fdf3c0]" style={{ minHeight: 280 }}>
               <div className="w-full h-72">
-                <HiveSVGComp />
+                <img src={hivePhoto} alt={selectedType === 'hive-002' ? 'Traditional log hive' : 'Wooden Mauri Ghar hive'} className="bee-product-photo h-full w-full object-contain p-4" />
               </div>
               {/* Overlay diagram badge */}
               <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-md">
@@ -206,10 +206,10 @@ export default function FeaturedHive({ onAddToCart }) {
             </div>
 
             {/* WhatsApp mobile */}
-            <a href={`https://wa.me/9779800000000?text=${encodeURIComponent(`Namaste! I want to order: ${featured.name} (${featured.nepali}) — Rs ${featured.price.toLocaleString()}`)}`}
+            <a href={`https://wa.me/9779363147818?text=${encodeURIComponent(`Namaste! I want to ask about: ${featured.name} (${featured.nepali}) — Rs ${featured.price.toLocaleString()}`)}`}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 min-h-[44px] border border-[#25D366]/30 text-[#128C7E] bg-[#f0fdf4] rounded-xl font-sans text-sm font-semibold hover:bg-[#dcfce7] transition-colors sm:hidden">
-              <span>💬</span> Order via WhatsApp
+              <span>WhatsApp</span> Ask about this hive
             </a>
 
             {/* Trust signals */}

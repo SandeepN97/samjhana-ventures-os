@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { protectiveGear } from '../../data/beekeepingProducts';
 import SectionDivider from './SectionDivider';
 import ProductCard from './ProductCard';
-import { getBeeSVG } from './BeekeepingSVGs';
+import { getBeePhoto } from './beePhotoAssets';
 
 const GEAR_LAYERS = [
   { num: '1', name: 'Full-body bee suit', note: 'Head-to-toe protection — never skip' },
@@ -77,7 +77,7 @@ export default function ProtectiveGear({ onAddToCart }) {
 
 function DarkGearCard({ gear, onAddToCart }) {
   const [added, setAdded] = useState(false);
-  const GearSVG = getBeeSVG(gear.id);
+  const gearPhoto = getBeePhoto(gear.id);
   const handleAdd = () => {
     onAddToCart?.(gear);
     setAdded(true);
@@ -87,7 +87,7 @@ function DarkGearCard({ gear, onAddToCart }) {
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
       <div className="h-20 rounded-xl overflow-hidden" style={{ backgroundColor: gear.bgColor + '22' }}>
-        <GearSVG />
+        <img src={gearPhoto} alt={gear.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
       </div>
       <p className="font-sans text-sm font-semibold text-white leading-tight line-clamp-2">{gear.name}</p>
       <p className="font-sans text-[10px] text-white/40 line-clamp-2 leading-snug">{gear.description}</p>
