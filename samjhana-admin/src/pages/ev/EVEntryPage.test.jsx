@@ -76,6 +76,8 @@ async function renderPage(locale = 'en') {
 const fireLive = (event) => act(() => { mock.live.handler(event); });
 const tab = (name) => screen.getByRole('tab', { name: new RegExp(name) });
 const chargerCards = () => screen.findAllByRole('radio', { name: /Charger \d/ });
+const connectorCard = (name, group = 'Charging connector') =>
+  within(screen.getByRole('radiogroup', { name: group })).getByRole('radio', { name });
 const vehicleField = () => screen.getByRole('button', { name: /^Vehicle \(optional/ });
 async function pickVehicle(name) {
   await userEvent.click(vehicleField());
@@ -220,21 +222,47 @@ describe('EVEntryPage', () => {
       expect(cards[0]).toBeEnabled();
     });
 
+    it('shows the connectors as tap cards like the chargers, not a dropdown', async () => {
+      await renderPage();
+      await userEvent.click((await chargerCards())[0]);
+      const group = screen.getByRole('radiogroup', { name: 'Charging connector' });
+      expect(within(group).getAllByRole('radio')).toHaveLength(2);
+      expect(screen.queryByRole('combobox', { name: 'Charging connector' })).toBeNull();
+      expect(connectorCard('Connector 1, Free')).toHaveAttribute('aria-checked', 'true');
+      expect(connectorCard('Connector 1, Free').className).toContain('min-h-[64px]');
+    });
+
+    it('selects a connector when it is tapped', async () => {
+      await renderPage();
+      await userEvent.click((await chargerCards())[0]);
+      await userEvent.click(connectorCard('Connector 2, Free'));
+      expect(connectorCard('Connector 2, Free')).toHaveAttribute('aria-checked', 'true');
+      expect(connectorCard('Connector 1, Free')).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('keeps the connectors disabled until a charger is chosen', async () => {
+      await renderPage();
+      await chargerCards();
+      expect(connectorCard('Connector 1, Free')).toBeDisabled();
+      expect(connectorCard('Connector 2, Free')).toBeDisabled();
+    });
+
     it('selects the other connector when a charger already has an open session', async () => {
       mock.sessions = [session({ chargePointId: 'cp1', connectorId: 1 })];
       await renderPage();
       await userEvent.click((await chargerCards())[0]);
-      expect(screen.getByLabelText('Charging connector')).toHaveValue('2');
-      expect(screen.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
-      expect(screen.getByRole('option', { name: 'Connector 2' })).toBeEnabled();
+      expect(connectorCard('Connector 2, Free')).toHaveAttribute('aria-checked', 'true');
+      expect(connectorCard('Connector 1, In use')).toBeDisabled();
+      expect(connectorCard('Connector 2, Free')).toBeEnabled();
     });
 
-    it('shows the connector selector in Nepali', async () => {
+    it('shows the connector cards in Nepali with Nepali numerals', async () => {
+      mock.sessions = [session({ chargePointId: 'cp1', connectorId: 1 })];
       await renderPage('ne');
       const [first] = await screen.findAllByRole('radio', { name: /चार्जर [१२३]/ });
       await userEvent.click(first);
-      expect(screen.getByLabelText('चार्जिङ कनेक्टर')).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'कनेक्टर १' })).toBeInTheDocument();
+      expect(connectorCard('कनेक्टर १, प्रयोगमा', 'चार्जिङ कनेक्टर')).toBeDisabled();
+      expect(connectorCard('कनेक्टर २, खाली', 'चार्जिङ कनेक्टर')).toHaveAttribute('aria-checked', 'true');
     });
 
     it('reports when both connectors already have open sessions', async () => {
@@ -245,8 +273,8 @@ describe('EVEntryPage', () => {
       await renderPage();
       await userEvent.click((await chargerCards())[0]);
       expect(screen.getByText('Both connectors have open sessions.')).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'Connector 1 — in use' })).toBeDisabled();
-      expect(screen.getByRole('option', { name: 'Connector 2 — in use' })).toBeDisabled();
+      expect(connectorCard('Connector 1, In use')).toBeDisabled();
+      expect(connectorCard('Connector 2, In use')).toBeDisabled();
     });
 
     it('updates a card live when the charger goes offline', async () => {
@@ -455,6 +483,17 @@ describe('EVEntryPage', () => {
       expect(await screen.findByTestId('active-session')).toHaveTextContent('BA1PA4521');
     });
 
+    it('sends the connector the user tapped', async () => {
+      api.post.mockResolvedValue({ data: session({ status: 'STARTING', connectorId: 2 }) });
+      await renderPage();
+      await fillValidForm();
+      await userEvent.click(connectorCard('Connector 2, Free'));
+      await userEvent.click(screen.getByRole('button', { name: 'Start Charging →' }));
+      await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/ev/sessions/start', expect.objectContaining({
+        chargePointId: 'cp1', evseId: 1, connectorId: 2,
+      })));
+    });
+
     it('sends no vehicle when none is chosen (the field is optional)', async () => {
       api.post.mockResolvedValue({ data: session({ status: 'STARTING' }) });
       await renderPage();
@@ -469,7 +508,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ id: 's2', status: 'STARTING', connectorId: 2 }) });
       await renderPage();
       await fillValidForm();
-      expect(screen.getByLabelText('Charging connector')).toHaveValue('2');
+      expect(connectorCard('Connector 2, Free')).toHaveAttribute('aria-checked', 'true');
       await userEvent.click(screen.getByRole('button', { name: 'Start Charging →' }));
       await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/ev/sessions/start', expect.objectContaining({
         chargePointId: 'cp1', evseId: 1, connectorId: 2,
