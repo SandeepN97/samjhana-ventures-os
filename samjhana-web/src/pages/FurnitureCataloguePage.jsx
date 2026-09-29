@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Search, ShoppingCart, ArrowRight,
-  Package, LogOut, X, ChevronDown, Sparkles,
+  X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { furnitureApi } from '../api/api.js';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore';
 import CustomOrderModal from '../components/CustomOrderModal';
 import { getProductVisual } from '../components/FurnitureIllustrations';
 
@@ -135,7 +134,6 @@ export default function FurnitureCataloguePage() {
   const searchRef = useRef(null);
 
   const { count, setOpen } = useCartStore();
-  const { customer, token, logout } = useAuthStore();
 
   useEffect(() => {
     furnitureApi.getItems().then(setProducts).catch(() => setProducts([])).finally(() => setLoading(false));
@@ -182,18 +180,6 @@ export default function FurnitureCataloguePage() {
 
           {/* Right */}
           <div className="flex items-center gap-1 shrink-0">
-            {token && (
-              <>
-                <Link to="/furniture/orders"
-                  className="hidden sm:flex items-center gap-1.5 text-xs text-dark/50 hover:text-dark font-sans px-3 py-1.5 rounded-xl hover:bg-warm transition-colors">
-                  <Package size={13} /> My Orders
-                </Link>
-                <button onClick={logout}
-                  className="hidden sm:flex items-center gap-1 text-xs text-dark/30 hover:text-red-400 transition-colors font-sans px-2 py-1.5 rounded-xl hover:bg-warm">
-                  <LogOut size={13} />
-                </button>
-              </>
-            )}
             <button onClick={() => setOpen(true)} className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
               <ShoppingCart size={19} />
               {count > 0 && (

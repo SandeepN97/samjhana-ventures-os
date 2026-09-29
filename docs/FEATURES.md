@@ -85,7 +85,6 @@ Loan tracking with principal/interest split on payments.
 |-----------|-------------|
 | `DatePicker` | Custom date picker with Nepali-friendly formatting |
 | `SearchableSelect` | Dropdown with type-ahead filtering for large lists |
-| `DynamicFormBuilder` | Generates forms from `FieldTemplate` metadata per business unit |
 | `QuickActionButtons` | Large touch-friendly 2x3 grid for Dad's home screen |
 | `LanguageToggle` | EN/NE language switcher |
 
