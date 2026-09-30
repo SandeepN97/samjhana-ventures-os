@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Camera, RefreshCw, Settings, Zap } from 'lucide-react';
+import { CalendarClock, Camera, RefreshCw, Settings, Zap } from 'lucide-react';
 import api from '../../utils/api';
 import BottomNav from '../../components/BottomNav';
 import ChargerCard from '../../components/ev/ChargerCard';
@@ -13,13 +13,13 @@ import ActiveSessionCard from '../../components/ev/ActiveSessionCard';
 import PaymentCard from '../../components/ev/PaymentCard';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
-import useBusinessDate from '../../hooks/useBusinessDate';
 import useEvLiveUpdates from '../../hooks/useEvLiveUpdates';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 import {
   ACTIVE_STATUSES, PAYMENT_STATUSES, OPEN_STATUSES, byRequestedAt, chargerState,
 } from '../../utils/evSession';
 import { PageHeader, HeaderAction } from '../../components/brand';
+import { BUSINESS_TIME_ZONE } from '../../utils/businessDay';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -38,9 +38,8 @@ const sessionToastKey = (id) => `ev-session-${id}`;
 export default function EVEntryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { num } = useLocaleFormat();
+  const { isNepali, num } = useLocaleFormat();
   const { toasts, showToast, removeToast } = useToast();
-  const { businessDate } = useBusinessDate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
@@ -52,7 +51,6 @@ export default function EVEntryPage() {
   const [vehicles, setVehicles] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [date, setDate] = useState(businessDate);
   const [photoName, setPhotoName] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -61,8 +59,6 @@ export default function EVEntryPage() {
   const knownStatus = useRef(new Map());
   // Bumped on every live event, so a REST fetch can tell whether it was overtaken (see refresh).
   const eventSeq = useRef(0);
-
-  useEffect(() => { setDate(businessDate); }, [businessDate]);
 
   // ---- sessions: merge one update, and tell staff about transitions they care about ----
   // One toast per session at a time: each new message about a session replaces the last one.
@@ -152,8 +148,7 @@ export default function EVEntryPage() {
 
   const hasRunning = sessions.some((item) => item.status === 'ACTIVE');
   useEffect(() => {
-    if (!hasRunning) return undefined;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), hasRunning ? 1000 : 60_000);
     return () => clearInterval(id);
   }, [hasRunning]);
 
@@ -340,16 +335,24 @@ export default function EVEntryPage() {
 
           <div className="space-y-4 p-4">
             <div>
-              <label htmlFor="ev-date" className="mb-2 block text-lg font-medium text-gray-700">
-                {t('common.date')} <span className="text-red-500">*</span>
+              <label htmlFor="ev-date-time" className="mb-2 block text-lg font-medium text-gray-700">
+                {t('common.dateTime')}
               </label>
-              <input
-                id="ev-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-ev-500"
-              />
+              <div className="relative">
+                <CalendarClock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="ev-date-time"
+                  type="text"
+                  readOnly
+                  aria-label={t('common.currentDateTime')}
+                  value={new Intl.DateTimeFormat(isNepali ? 'ne-NP' : 'en-NP', {
+                    timeZone: BUSINESS_TIME_ZONE,
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(now)}
+                  className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-3 pl-10 pr-3 text-gray-900"
+                />
+              </div>
             </div>
 
             <div>

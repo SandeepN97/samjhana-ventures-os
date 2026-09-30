@@ -308,13 +308,11 @@ describe('EVEntryPage', () => {
   // ------------------------------------------------------------ fields
 
   describe('start form fields', () => {
-    it('auto-fills today’s business date and keeps it editable', async () => {
+    it('shows the current date and time without an editable date field', async () => {
       await renderPage();
-      const date = screen.getByLabelText(/^Date/);
-      await waitFor(() => expect(date).toHaveValue('2026-09-19'));
-      await userEvent.clear(date);
-      await userEvent.type(date, '2026-09-18');
-      expect(date).toHaveValue('2026-09-18');
+      const currentDateTime = screen.getByLabelText('Current date and time');
+      expect(currentDateTime).toHaveAttribute('readonly');
+      expect(currentDateTime.value).toMatch(/\d{1,2}:\d{2}/);
     });
 
     it('shows an optional vehicle field that starts empty', async () => {

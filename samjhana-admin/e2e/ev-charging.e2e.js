@@ -134,6 +134,9 @@ test('runs a whole session: start → live progress → stop → payment → unl
   const amount = percentCharged * DFAC.rate; // 8% × Rs 14 = Rs 112
 
   await openEvPage(page);
+  const currentDateTime = page.getByLabel('Current date and time');
+  await expect(currentDateTime).toHaveAttribute('readonly', '');
+  await expect(currentDateTime).toHaveValue(/\d{1,2}:\d{2}/);
 
   // The admin sees (and can set) what the station pays NEA.
   await page.getByRole('button', { name: /Update/ }).click();
