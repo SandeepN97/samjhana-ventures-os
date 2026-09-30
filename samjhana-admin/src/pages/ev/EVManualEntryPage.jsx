@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
+import { Zap, Check, Banknote, Building2, CalendarClock, Car, Settings, Pencil, X } from 'lucide-react';
 import api from '../../utils/api';
-import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
-import useBusinessDate from '../../hooks/useBusinessDate';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { toNepaliNumerals } from '../../utils/formatters';
 import { PageHeader, HeaderAction } from '../../components/brand';
-import { nepalToday } from '../../utils/businessDay';
+import { BUSINESS_TIME_ZONE, nepalToday } from '../../utils/businessDay';
 
 export default function EVManualEntryPage() {
   const navigate = useNavigate();
@@ -21,8 +19,8 @@ export default function EVManualEntryPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
-  const { businessDate } = useBusinessDate();
   const { toasts, showToast, removeToast } = useToast();
+  const [now, setNow] = useState(() => new Date());
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
@@ -36,7 +34,6 @@ export default function EVManualEntryPage() {
   const [rateSaving, setRateSaving] = useState(false);
 
   const [values, setValues] = useState({
-    transactionDate: nepalToday(),
     chargePointId: '',
     vehicleId: '',
     startPercent: '',
@@ -48,10 +45,9 @@ export default function EVManualEntryPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (businessDate) {
-      setValues(prev => ({ ...prev, transactionDate: businessDate }));
-    }
-  }, [businessDate]);
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     api.get('/api/ev-vehicles')
@@ -141,7 +137,6 @@ export default function EVManualEntryPage() {
 
   const validate = () => {
     const newErrors = {};
-    if (!values.transactionDate) newErrors.transactionDate = 'Date is required';
     if (!values.chargePointId) newErrors.chargePointId = t('ev.chargerRequired');
     if (!values.vehicleId) newErrors.vehicleId = t('ev.selectVehicle');
     if (!values.startPercent && values.startPercent !== '0') {
@@ -196,7 +191,7 @@ export default function EVManualEntryPage() {
       const payload = {
         businessCode: 'ev',
         transactionType: 'SALE',
-        transactionDate: values.transactionDate,
+        transactionDate: nepalToday(),
         amount: parseFloat(calculatedAmount),
         notes: values.notes,
         customFields,
@@ -206,7 +201,6 @@ export default function EVManualEntryPage() {
       showToast(t('ev.savedSuccess'), 'success');
 
       setValues({
-        transactionDate: businessDate,
         chargePointId: '',
         vehicleId: '',
         startPercent: '',
@@ -304,17 +298,25 @@ export default function EVManualEntryPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
-        {/* Date */}
+        {/* Date and time */}
         <div>
           <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('common.date')} <span className="text-red-500">*</span>
+            {t('common.dateTime')}
           </label>
-          <DatePicker
-            value={values.transactionDate}
-            onChange={(val) => handleChange('transactionDate', val)}
-            error={errors.transactionDate}
-            accentColor="ev"
-          />
+          <div className="relative">
+            <CalendarClock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              readOnly
+              aria-label={t('common.currentDateTime')}
+              value={new Intl.DateTimeFormat(isNepali ? 'ne-NP' : 'en-NP', {
+                timeZone: BUSINESS_TIME_ZONE,
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }).format(now)}
+              className="w-full pl-10 pr-3 py-3 text-base border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900"
+            />
+          </div>
         </div>
 
         {/* Charger Selection */}
