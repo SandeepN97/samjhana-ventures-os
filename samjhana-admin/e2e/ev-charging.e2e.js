@@ -175,7 +175,11 @@ test('runs a whole session: start → live progress → stop → payment → unl
 
   // Payment is the only thing that releases the connector.
   await due.getByRole('radio', { name: 'Cash' }).click();
-  await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
+  const confirmPayment = due.getByRole('button', { name: 'Confirm Payment & Unlock' });
+  await expect(confirmPayment).toBeDisabled();
+  await due.getByLabel('Amount received (Rs)').fill(String(amount));
+  await expect(confirmPayment).toBeEnabled();
+  await confirmPayment.click();
   await charger.waitForCall('UnlockConnector');
   await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
   await expect(page.getByText('Nothing awaiting payment. Stop a session from the Active tab first.')).toBeVisible();
@@ -224,7 +228,9 @@ test('keeps the connector locked and offers Retry unlock when the first unlock f
   const unlocksBefore = charger.callsOf('UnlockConnector').length;
 
   await chargeAndStop(page, plate, { soc: 55, deltaWh: 2500 });
-  await page.getByTestId('payment-due').getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
+  const due = page.getByTestId('payment-due');
+  await due.getByLabel('Amount received (Rs)').fill(String((55 - START_SOC) * DFAC.rate));
+  await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
 
   await charger.waitForCall('UnlockConnector', { count: unlocksBefore + 1 });
   const stuck = page.getByTestId('payment-progress');
@@ -246,13 +252,13 @@ test('asks staff to type the amount for a walk-in with no vehicle type', async (
   const confirm = due.getByRole('button', { name: 'Confirm Payment & Unlock' });
   await expect(confirm).toBeDisabled(); // nothing to collect until staff type an amount
 
-  await due.getByLabel('Amount (Rs)').fill('400');
+  await due.getByLabel('Amount received (Rs)').fill('400');
   await expect(confirm).toBeEnabled();
   await confirm.click();
   await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
 });
 
-test('lets staff change the amount and take the payment method they choose', async ({ page }) => {
+test('records the amount received and payment method staff choose', async ({ page }) => {
   const plate = 'BA4PA9999';
   await openEvPage(page);
   await chargeAndStop(page, plate, { soc: 45, deltaWh: 1000, vehicle: FOTON });
@@ -260,8 +266,7 @@ test('lets staff change the amount and take the payment method they choose', asy
   const due = page.getByTestId('payment-due');
   await expect(due).toContainText(`${45 - START_SOC}% charged × Rs ${FOTON.rate} per 1%`); // 13% × 9 = Rs 117
   await expect(due).toContainText(`Rs ${(45 - START_SOC) * FOTON.rate}`);
-  await due.getByRole('button', { name: 'Change amount' }).click();
-  await due.getByLabel('Amount (Rs)').fill('500');
+  await due.getByLabel('Amount received (Rs)').fill('500');
   await due.getByRole('radio', { name: 'eSewa' }).click();
   await expect(due.getByRole('radio', { name: 'eSewa' })).toHaveAttribute('aria-checked', 'true');
   await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
@@ -303,7 +308,7 @@ test('keeps the charger selectable and marks only the busy connector in use', as
   await page.getByRole('button', { name: 'Stop & Lock for Payment' }).click();
   await expect(page.getByText(`${plate} stopped — awaiting payment`)).toBeVisible();
   const due = page.getByTestId('payment-due');
-  await due.getByLabel('Amount (Rs)').fill('100');
+  await due.getByLabel('Amount received (Rs)').fill('100');
   await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
   await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
 });
@@ -337,7 +342,9 @@ test('picks a vehicle from the searchable sheet, and it shows on the session', a
   await chargeAndStop(page, plate, { soc: 50, deltaWh: 3000, vehicle: null }); // Foton already chosen above
   await expect(page.getByTestId('payment-due')).toContainText(`${50 - START_SOC}% charged × Rs ${FOTON.rate} per 1%`);
   await tab(page, 'Payment').click();
-  await page.getByTestId('payment-due').getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
+  const due = page.getByTestId('payment-due');
+  await due.getByLabel('Amount received (Rs)').fill(String((50 - START_SOC) * FOTON.rate));
+  await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
   await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
 });
 

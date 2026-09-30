@@ -59,14 +59,21 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByRole('radio', { name: 'Cash' })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('confirms with the default method and the suggested amount', async () => {
+  it('requires the customer amount before confirming payment', async () => {
     const { onConfirm } = renderCard();
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
+    const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
+    expect(confirm).toBeDisabled();
+    expect(screen.getByLabelText('Amount received (Rs)')).toHaveValue(null);
+
+    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 600);
   });
 
   it('confirms with the chosen payment method', async () => {
     const { onConfirm } = renderCard();
+    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
     await userEvent.click(screen.getByRole('radio', { name: 'eSewa' }));
     expect(screen.getByRole('radio', { name: 'eSewa' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('radio', { name: 'Cash' })).toHaveAttribute('aria-checked', 'false');
@@ -74,11 +81,9 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(onConfirm).toHaveBeenCalledWith('s1', 'ESEWA', 600);
   });
 
-  it('lets staff change the amount before confirming', async () => {
+  it('submits the amount received from the customer', async () => {
     const { onConfirm } = renderCard();
-    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
-    const input = screen.getByLabelText('Amount (Rs)');
-    await userEvent.clear(input);
+    const input = screen.getByLabelText('Amount received (Rs)');
     await userEvent.type(input, '650');
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 650);
@@ -89,7 +94,7 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByText('No vehicle type was chosen for this session, so enter the amount to collect.')).toBeInTheDocument();
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
     expect(confirm).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Amount (Rs)'), '400');
+    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '400');
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 400);
@@ -98,12 +103,13 @@ describe('PaymentCard (awaiting payment)', () => {
   it('blocks confirming a zero or negative amount', async () => {
     renderCard({ ...due, suggestedAmount: null });
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
-    await userEvent.type(screen.getByLabelText('Amount (Rs)'), '0');
+    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '0');
     expect(confirm).toBeDisabled();
   });
 
-  it('disables the confirm button while a request is in flight', () => {
+  it('disables the confirm button while a request is in flight', async () => {
     renderCard(due, { busy: true });
+    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
     expect(screen.getByRole('button', { name: 'Confirm Payment & Unlock' })).toBeDisabled();
   });
 
@@ -122,6 +128,7 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByText('भुक्तानी बाँकी — कनेक्टर लक छ')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'नगद' })).toBeInTheDocument();
+    expect(screen.getByLabelText('प्राप्त रकम (रु)')).toBeInTheDocument();
     expect(screen.getByText('रु ६००')).toBeInTheDocument();
     expect(screen.queryByText(/Rs/)).toBeNull();
   });
@@ -146,9 +153,7 @@ describe('PaymentCard discount rule', () => {
   afterEach(() => localStorage.clear());
 
   async function typeAmount(value) {
-    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
-    const input = screen.getByLabelText('Amount (Rs)');
-    await userEvent.clear(input);
+    const input = screen.getByLabelText('Amount received (Rs)');
     await userEvent.type(input, value);
   }
 
@@ -187,9 +192,7 @@ describe('PaymentCard discount rule', () => {
   it('explains the rule in Nepali', async () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
     renderCard(due, { locale: 'ne' });
-    await userEvent.click(screen.getByRole('button', { name: 'रकम परिवर्तन' }));
     const input = screen.getByRole('spinbutton');
-    await userEvent.clear(input);
     await userEvent.type(input, '100');
 
     expect(screen.getByRole('alert')).toHaveTextContent('यो मूल्य (रु ६००) भन्दा कम छ। छुट प्रबन्धकले मात्र दिन सक्नुहुन्छ।');
