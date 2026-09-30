@@ -1,12 +1,13 @@
+import { Box, Crown, Hexagon, Shield, Sparkles, Wrench } from 'lucide-react';
 const CATEGORIES = [
-  { id: 'hives',        label: 'Hives',         count: 8,  emoji: '🏠' },
-  { id: 'protective',  label: 'Protective gear', count: 6,  emoji: '🛡️' },
-  { id: 'tools',       label: 'Tools',           count: 12, emoji: '🔧' },
-  { id: 'honey',       label: 'Honey',           count: 5,  emoji: '🍯' },
-  { id: 'queen',       label: 'Queen devices',   count: 4,  emoji: '👑' },
-  { id: 'kits',        label: 'Starter kits',    count: 3,  emoji: '📦' },
-  { id: 'wax',         label: 'Wax & frames',    count: 7,  emoji: '🕯️' },
-  { id: 'smokers',     label: 'Smokers',         count: 3,  emoji: '💨' },
+  { id: 'hives', label: 'Hives', count: 8, Icon: Box },
+  { id: 'protective', label: 'Protective gear', count: 6, Icon: Shield },
+  { id: 'tools', label: 'Tools', count: 12, Icon: Wrench },
+  { id: 'honey', label: 'Honey', count: 5, Icon: Hexagon },
+  { id: 'queen', label: 'Queen devices', count: 4, Icon: Crown },
+  { id: 'kits', label: 'Starter kits', count: 3, Icon: Box },
+  { id: 'wax', label: 'Wax & frames', count: 7, Icon: Sparkles },
+  { id: 'smokers', label: 'Smokers', count: 3, Icon: Wrench },
 ];
 
 const SECTION_IDS = {
@@ -40,7 +41,7 @@ export default function BeeNav({ activeCategory, setActiveCategory }) {
                     ? 'bg-[#faeeda] text-[#8B6914] border-b-2 border-[#e8a400]'
                     : 'text-[#1a1000]/50 hover:text-[#1a1000] hover:bg-[#fdf8e8]'
                   }`}>
-                <span className="text-base leading-none">{cat.emoji}</span>
+                <cat.Icon size={15} strokeWidth={1.8} />
                 <span className="font-medium">{cat.label}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold
                   ${active ? 'bg-[#e8a400] text-white' : 'bg-[#f0ebe0] text-[#1a1000]/40'}`}>

@@ -1,7 +1,7 @@
 const LINKS = {
-  Furniture: ['Sofas & Sets', 'Beds & Frames', 'Dining Tables', 'Wardrobes', 'Custom Orders'],
-  Services:  ['Petrol Pump', 'EV Charging', 'Bike Repair', 'Restaurant'],
-  Info:      ['About Us', 'Location', 'Contact', 'Working Hours'],
+  Shop: [['Furniture', '/furniture'], ['Honey & beekeeping', '/beekeeping']],
+  Visit: [['Fuel & EV', '/#fuel-ev'], ['Bike repair', '/#bike-repair'], ['Restaurant', '/#restaurant']],
+  Contact: [['Call +977 9363147818', 'tel:+9779363147818'], ['WhatsApp', 'https://wa.me/9779363147818'], ['Directions', 'https://www.google.com/maps/@27.9922809,83.3629821,48m/data=!3m1!1e3?entry=ttu&g_ep=EgoyMDI2MDkyMy4wIKXMDSoASAFQAw%3D%3D']],
 };
 
 export default function Footer() {
@@ -12,20 +12,12 @@ export default function Footer() {
         {/* Brand */}
         <div className="flex flex-col gap-4">
           <div>
-            <p className="font-serif text-xl text-white">Maurighar Ventures</p>
+            <p className="font-serif text-xl text-white">Samjhana Ventures</p>
             <p className="text-xs text-white/30 font-sans mt-0.5">Gulmi, Nepal · Est. 2008</p>
           </div>
           <p className="text-white/40 text-sm font-sans leading-relaxed">
             Where craft meets community, in the hills. Four businesses, one family, one vision.
           </p>
-          <div className="flex gap-3 mt-2">
-            {['FB', 'IG', 'YT'].map((s) => (
-              <a key={s} href="#"
-                className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-xs font-semibold text-white/50 hover:bg-gold hover:text-white transition-colors">
-                {s}
-              </a>
-            ))}
-          </div>
         </div>
 
         {/* Link columns */}
@@ -33,9 +25,9 @@ export default function Footer() {
           <div key={heading}>
             <p className="text-xs font-semibold uppercase tracking-widest text-gold mb-5">{heading}</p>
             <ul className="space-y-2.5">
-              {items.map((item) => (
-                <li key={item}>
-                  <a href="#" className="text-sm text-white/40 hover:text-white transition-colors font-sans">{item}</a>
+          {items.map(([item, href]) => (
+            <li key={item}>
+                  <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="text-sm text-white/40 hover:text-white transition-colors font-sans">{item}</a>
                 </li>
               ))}
             </ul>

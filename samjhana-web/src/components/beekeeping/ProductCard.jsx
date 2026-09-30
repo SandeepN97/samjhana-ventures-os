@@ -1,7 +1,7 @@
 import { ShoppingCart, Star } from 'lucide-react';
 import { useState } from 'react';
 import BadgePill from './BadgePill';
-import { getBeeSVG } from './BeekeepingSVGs';
+import { getBeePhoto } from './beePhotoAssets';
 
 const fmt = (n) => Number(n).toLocaleString();
 
@@ -21,7 +21,7 @@ function StarRow({ rating, reviewCount }) {
 
 export default function ProductCard({ product, onAddToCart }) {
   const [added, setAdded] = useState(false);
-  const BeeSVG = getBeeSVG(product.id);
+  const productPhoto = getBeePhoto(product.id);
 
   const handleAdd = (e) => {
     e.stopPropagation();
@@ -37,7 +37,7 @@ export default function ProductCard({ product, onAddToCart }) {
 
       {/* Illustration */}
       <div className="relative overflow-hidden h-36" style={{ backgroundColor: product.bgColor + '44' }}>
-        <BeeSVG />
+        <img src={productPhoto} alt={product.name} className="bee-product-photo h-full w-full object-contain p-3" loading="lazy" />
         {product.badge && (
           <div className="absolute top-2 left-2">
             <BadgePill text={product.badge} color={product.badgeColor ?? 'amber'} />

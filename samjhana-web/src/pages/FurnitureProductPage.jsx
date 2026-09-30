@@ -233,7 +233,7 @@ export default function FurnitureProductPage() {
             </div>
 
             <p className="text-xs text-dark/25 font-sans text-center">
-              Questions? Call us: +977-9800000000 · Based in Gulmi, Nepal
+              Questions? Call us: +977 9363147818 · Based in Gulmi, Nepal
             </p>
           </div>
         </div>

@@ -654,6 +654,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED', statusMessage: 'Payment confirmed; unlock command sent' }) });
       await renderPage();
       await userEvent.click(tab('Payment'));
+      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
       await userEvent.click(await screen.findByRole('radio', { name: 'eSewa' }));
       await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
 
@@ -668,6 +669,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage();
       await userEvent.click(tab('Payment'));
+      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
       expect(await screen.findByText('Payment confirmed for BA1PA4521 — unlocking')).toBeInTheDocument();
 
@@ -683,6 +685,7 @@ describe('EVEntryPage', () => {
       api.post.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
       await renderPage();
       await userEvent.click(tab('Payment'));
+      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
 
       fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
@@ -698,6 +701,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage('ne');
       await userEvent.click(screen.getAllByRole('tab')[2]);
+      await userEvent.type(await screen.findByLabelText('प्राप्त रकम (रु)'), '600');
       await userEvent.click(await screen.findByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' }));
       expect(await screen.findByText('BA1PA4521 को भुक्तानी पुष्टि भयो — अनलक हुँदै')).toBeInTheDocument();
 

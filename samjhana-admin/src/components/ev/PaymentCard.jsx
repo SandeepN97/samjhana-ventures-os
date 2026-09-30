@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
@@ -19,17 +19,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
   const { num, money } = useLocaleFormat();
   const suggested = session.suggestedAmount == null ? '' : String(session.suggestedAmount);
   const [method, setMethod] = useState('CASH');
-  const [amount, setAmount] = useState(suggested);
-  const [editing, setEditing] = useState(suggested === '');
-  const touched = useRef(false);
-
-  // The final kWh can still settle after the card first appears; follow it until staff edit.
-  useEffect(() => {
-    if (!touched.current) {
-      setAmount(suggested);
-      if (suggested === '') setEditing(true);
-    }
-  }, [suggested]);
+  const [amount, setAmount] = useState('');
 
   const kwh = num(Number(session.energyDeliveredKwh || 0).toFixed(1));
   const location = t('evLive.connectorLocation', {
@@ -44,7 +34,7 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
   // Staff can round the price but not discount it; the server refuses anything more than Rs 1 under.
   const role = JSON.parse(localStorage.getItem('user') || '{}').role;
   const canDiscount = role === 'ADMIN' || role === 'MANAGER';
-  const belowPrice = !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
+  const belowPrice = amount !== '' && !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
   const valid = Number(amount) > 0 && !belowPrice;
 
   if (session.status !== 'AWAITING_PAYMENT') {
@@ -73,35 +63,24 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
       {breakdown && <p className="mb-3 text-sm font-medium text-ev-700">{breakdown}</p>}
       {!breakdown && <div className="mb-2" />}
 
-      {editing ? (
-        <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`amount-${session.id}`}>
-            {t('evLive.amountLabel')}
-          </label>
-          <input
-            id={`amount-${session.id}`}
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => { touched.current = true; setAmount(e.target.value); }}
-            className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
-          />
-          {suggested === '' && <p className="mt-1 text-xs text-amber-600">{t('evLive.noRateHint')}</p>}
-        </div>
-      ) : (
-        <div className="mb-4">
-          <p className="text-4xl font-black text-gray-900">{money(amount)}</p>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="min-h-[44px] text-sm font-medium text-ev-600 underline-offset-2 hover:underline"
-          >
-            {t('evLive.changeAmount')}
-          </button>
-        </div>
-      )}
+      {suggested !== '' && <p className="mb-4 text-4xl font-black text-gray-900">{money(suggested)}</p>}
+
+      <div className="mb-4">
+        <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`amount-${session.id}`}>
+          {t('evLive.amountLabel')}
+        </label>
+        <input
+          id={`amount-${session.id}`}
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
+        />
+        {suggested === '' && <p className="mt-1 text-xs text-amber-600">{t('evLive.noRateHint')}</p>}
+      </div>
 
       {belowPrice && (
         <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">

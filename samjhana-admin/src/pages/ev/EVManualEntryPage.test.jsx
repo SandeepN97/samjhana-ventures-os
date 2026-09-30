@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EVManualEntryPage from './EVManualEntryPage';
 import { renderWithProviders } from '../../test/test-utils';
+import { nepalToday } from '../../utils/businessDay';
 
 // Switches the charge-points mock into failure / empty mode for individual tests
 const chargerMock = vi.hoisted(() => ({ fail: false, empty: false }));
@@ -70,6 +71,16 @@ describe('EVManualEntryPage', () => {
     renderWithProviders(<EVManualEntryPage />);
     expect(screen.getByText('Start Battery %')).toBeInTheDocument();
     expect(screen.getByText('End Battery %')).toBeInTheDocument();
+  });
+
+  it('shows the current date and time without an editable date picker', () => {
+    renderWithProviders(<EVManualEntryPage />);
+
+    expect(screen.getByText('Date & Time')).toBeInTheDocument();
+    const currentDateTime = screen.getByLabelText('Current date and time');
+    expect(currentDateTime).toHaveAttribute('readonly');
+    expect(currentDateTime.value).toMatch(/\d{1,2}:\d{2}/);
+    expect(screen.queryByRole('button', { name: 'Pick date' })).not.toBeInTheDocument();
   });
 
   it('number inputs have min=0 attribute', () => {
@@ -229,6 +240,7 @@ describe('EVManualEntryPage', () => {
       const [url, payload] = api.post.mock.calls[0];
       expect(url).toBe('/api/transactions');
       expect(payload.businessCode).toBe('ev');
+      expect(payload.transactionDate).toBe(nepalToday());
       expect(payload.customFields).toMatchObject({
         chargePointId: 'cp2',
         chargePointCode: 'HQC23-80-01',
@@ -295,6 +307,8 @@ describe('EVManualEntryPage', () => {
       expect(screen.getByText('चार्जर १')).toBeInTheDocument();
       expect(screen.getByText('चार्जर ३')).toBeInTheDocument();
       expect(screen.getByText('४० kW')).toBeInTheDocument();
+      expect(screen.getByText('मिति र समय')).toBeInTheDocument();
+      expect(screen.getByLabelText('हालको मिति र समय')).toHaveAttribute('readonly');
     });
   });
 
