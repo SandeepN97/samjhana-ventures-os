@@ -11,7 +11,7 @@ test.describe('public website', () => {
 
     await page.goto(PUBLIC_SITE);
 
-    await expect(page.getByRole('heading', { name: /Where craft meets community/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Come for the journey.' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Petrol Pump & EV' })).toBeVisible();
     expect((await fuelResponse).status()).toBe(200);
     expect((await evResponse).status()).toBe(200);
@@ -23,12 +23,12 @@ test.describe('public website', () => {
 
     await page.goto(`${PUBLIC_SITE}/furniture`);
 
-    await expect(page.getByRole('heading', { name: /Built to last/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Furniture for real homes/i })).toBeVisible();
     expect((await catalogueResponse).status()).toBe(200);
 
     const search = page.getByPlaceholder(/Search furniture/i);
     await search.fill('no matching item');
-    await expect(page.getByText('No matches found')).toBeVisible();
+    await expect(page.getByText('No furniture matches')).toBeVisible();
     await page.getByRole('button', { name: 'Show all furniture' }).click();
     await expect(search).toHaveValue('');
   });
