@@ -57,6 +57,9 @@ export default function EVEntryPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState('');
+  // Set once a payment was confirmed on this visit to the Payment tab, so we only send staff back
+  // to Start Session after paying, never when they open an empty Payment tab themselves.
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [now, setNow] = useState(Date.now());
   const knownStatus = useRef(new Map());
   // Bumped on every live event, so a REST fetch can tell whether it was overtaken (see refresh).
@@ -161,6 +164,17 @@ export default function EVEntryPage() {
   const activeSessions = useMemo(() => sessions.filter((item) => ACTIVE_STATUSES.includes(item.status)), [sessions]);
   const paymentSessions = useMemo(() => sessions.filter((item) => PAYMENT_STATUSES.includes(item.status)), [sessions]);
   const awaitingCount = paymentSessions.filter((item) => item.status === 'AWAITING_PAYMENT').length;
+
+  // After paying, stay on the Payment tab until the connector has actually unlocked (a failed
+  // unlock needs its Retry button, which only lives here). When nothing is left, go back to Start.
+  useEffect(() => {
+    if (tab !== 'pay') {
+      setPaymentConfirmed(false);
+    } else if (paymentConfirmed && paymentSessions.length === 0) {
+      setPaymentConfirmed(false);
+      setTab('start');
+    }
+  }, [tab, paymentConfirmed, paymentSessions.length]);
   const occupiedConnectorIds = useMemo(() => new Set(sessions
     .filter((item) => item.chargePointId === form.chargePointId && (item.evseId ?? 1) === form.evseId)
     .map((item) => item.connectorId ?? 1)), [sessions, form.chargePointId, form.evseId]);
@@ -230,6 +244,7 @@ export default function EVEntryPage() {
     const statusBefore = knownStatus.current.get(id);
     try {
       const response = await api.post(`/api/ev/sessions/${id}/${action}`, payload);
+      if (action === 'mark-paid') setPaymentConfirmed(true);
       // If a live update already told staff the outcome (e.g. "Connector unlocked") while this
       // request was in flight, don't cover it with the older "…unlocking" message.
       if (knownStatus.current.get(id) === statusBefore) {

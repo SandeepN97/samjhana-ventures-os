@@ -29,8 +29,8 @@ describe('FurnitureInventoryPage role rules', () => {
     mock.items = [sofa(false)];
     renderWithProviders(<FurnitureInventoryPage />);
 
-    expect(await screen.findByText('Sofa')).toBeInTheDocument();
-    expect(screen.getByText(/Sell: रु 45,000/)).toBeInTheDocument();
+    // The price line only exists once the item row has loaded ("Sofa" is also a category chip).
+    expect(await screen.findByText(/Sell: रु 45,000/)).toBeInTheDocument();
     expect(screen.queryByText(/Buy:/)).not.toBeInTheDocument();
     expect(screen.queryByText('Add Item')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Item' })).not.toBeInTheDocument();
@@ -53,8 +53,9 @@ describe('FurnitureInventoryPage role rules', () => {
     mock.items = [sofa(true)];
     renderWithProviders(<FurnitureInventoryPage />);
 
-    expect(await screen.findByText('Add Item')).toBeInTheDocument();
-    const edit = screen.getByRole('button', { name: 'Edit Item' });
+    // "Add Item" renders straight away; the row buttons only appear once the items have loaded.
+    const edit = await screen.findByRole('button', { name: 'Edit Item' });
+    expect(screen.getByText('Add Item')).toBeInTheDocument();
     expect(edit.className).toContain('h-11');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
@@ -64,8 +65,7 @@ describe('FurnitureInventoryPage role rules', () => {
     mock.items = [sofa(false)];
     renderWithProviders(<FurnitureInventoryPage />, { locale: 'ne' });
 
-    expect(await screen.findByText('Sofa')).toBeInTheDocument();
-    expect(screen.getByText(/बिक्री: रु 45,000/)).toBeInTheDocument();
+    expect(await screen.findByText(/बिक्री: रु 45,000/)).toBeInTheDocument();
     expect(screen.queryByText('नयाँ सामान')).not.toBeInTheDocument();
     expect(screen.queryByText(/खरिद:/)).not.toBeInTheDocument();
   });

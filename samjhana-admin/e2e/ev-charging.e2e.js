@@ -178,10 +178,10 @@ test('runs a whole session: start → live progress → stop → payment → unl
   await due.getByRole('button', { name: 'Confirm Payment & Unlock' }).click();
   await charger.waitForCall('UnlockConnector');
   await expect(page.getByText(`Connector unlocked for ${plate}`)).toBeVisible();
-  await expect(page.getByText('Nothing awaiting payment. Stop a session from the Active tab first.')).toBeVisible();
+  // Nothing is left to pay, so the page sends staff back to Start Session on its own.
+  await expect(tab(page, 'Start Session')).toHaveAttribute('aria-selected', 'true');
 
   // The charger is free again.
-  await tab(page, 'Start Session').click();
   await expect(chargerCard(page, 'Online')).toBeEnabled();
   expect(pageErrors).toEqual([]);
 });
