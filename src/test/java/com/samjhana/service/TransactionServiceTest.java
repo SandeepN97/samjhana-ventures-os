@@ -47,6 +47,7 @@ class TransactionServiceTest {
     @Mock CalculationEngine calculationEngine;
     @Mock DailyReportRepository dailyReportRepository;
     @Mock SystemSettingRepository systemSettingRepository;
+    @Mock BeekeepingService beekeepingService;
 
     private TransactionService service;
     private User staff;
@@ -56,7 +57,8 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransactionService(transactionRepository, businessUnitRepository, furnitureItemRepository,
-                auditLogRepository, calculationEngine, new ObjectMapper(), dailyReportRepository, systemSettingRepository);
+                auditLogRepository, calculationEngine, new ObjectMapper(), dailyReportRepository, systemSettingRepository,
+                beekeepingService);
         staff = User.builder().username("staff").passwordHash("x").fullName("Staff Member").role(User.UserRole.STAFF).build();
         manager = User.builder().username("manager").passwordHash("x").fullName("Shop Manager").role(User.UserRole.MANAGER).build();
         pending = Transaction.builder()

@@ -1,19 +1,20 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { hives } from '../../data/beekeepingProducts';
+import { useSection } from '../../site/SiteContext';
 import SectionDivider from './SectionDivider';
 import ProductCard from './ProductCard';
 
-export default function HiveGrid({ onAddToCart }) {
+export default function HiveGrid({ hives, onAddToCart }) {
+  const copy = useSection('beekeeping').hiveGrid || {};
   return (
     <section className="bg-[#fdf8e8] py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <SectionDivider num="02" name="All hive types" tag="Mauri Ghar" tagColor="honey" />
+        <SectionDivider num="02" name={copy.sectionName} tag={copy.tag} tagColor="honey" />
 
         <div className="flex items-end justify-between mb-8">
-          <h2 className="font-serif text-2xl text-[#1a1000]">More hive options</h2>
+          <h2 className="font-serif text-2xl text-[#1a1000]">{copy.title}</h2>
           <button className="font-sans text-sm font-medium text-[#e8a400] flex items-center gap-1 hover:underline">
-            सबै हेर्नुहोस् <ArrowRight size={13} />
+            {copy.linkLabel} <ArrowRight size={13} />
           </button>
         </div>
 

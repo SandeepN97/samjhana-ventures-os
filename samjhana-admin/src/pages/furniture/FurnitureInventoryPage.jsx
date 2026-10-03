@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import ImageUploader from '../../components/ImageUploader';
+import { resolveMediaUrl } from '../../utils/image';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -36,6 +38,7 @@ export default function FurnitureInventoryPage() {
   const [formData, setFormData] = useState({
     name: '', nameNepali: '', sku: '', category: 'OTHER',
     purchasePrice: '', sellingPrice: '', stockQty: '0', reorderLevel: '2', description: '',
+    badge: '', showOnWebsite: true, imageIds: [],
   });
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -63,6 +66,7 @@ export default function FurnitureInventoryPage() {
     setFormData({
       name: '', nameNepali: '', sku: '', category: 'OTHER',
       purchasePrice: '', sellingPrice: '', stockQty: '0', reorderLevel: '2', description: '',
+    badge: '', showOnWebsite: true, imageIds: [],
     });
     setEditingItem(null);
     setFormError('');
@@ -80,6 +84,9 @@ export default function FurnitureInventoryPage() {
       stockQty: item.stockQty?.toString() || '0',
       reorderLevel: item.reorderLevel?.toString() || '2',
       description: item.description || '',
+      badge: item.badge || '',
+      showOnWebsite: item.showOnWebsite !== false,
+      imageIds: item.imageIds || [],
     });
     setEditingItem(item);
     setShowForm(true);
@@ -290,6 +297,21 @@ export default function FurnitureInventoryPage() {
                   rows={2} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500 resize-none" />
               </div>
 
+              <div>
+                <label htmlFor="furn-badge" className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.badge')}</label>
+                <input id="furn-badge" type="text" value={formData.badge} onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                  className="w-full min-h-[44px] px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
+              </div>
+
+              <ImageUploader id="furn-pictures" label={t('furnitureInv.pictures')} value={formData.imageIds}
+                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
+
+              <label htmlFor="furn-web" className="flex min-h-[44px] items-center gap-3 text-gray-800">
+                <input id="furn-web" type="checkbox" checked={formData.showOnWebsite} className="h-6 w-6"
+                  onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })} />
+                {t('furnitureInv.showOnWebsite')}
+              </label>
+
               <button type="submit" disabled={submitting}
                 className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${submitting ? 'bg-gray-400' : 'bg-furniture-600 hover:bg-furniture-700'}`}>
                 {submitting ? t('furnitureInv.saving') :
@@ -327,6 +349,9 @@ export default function FurnitureInventoryPage() {
             return (
               <div key={item.id} className="bg-white rounded-xl shadow-sm p-4">
                 <div className="flex items-start justify-between">
+                  {item.imageUrls?.[0] && (
+                    <img src={resolveMediaUrl(item.imageUrls[0])} alt="" className="mr-3 h-16 w-16 shrink-0 rounded-lg object-cover" />
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-gray-800">{item.name}</h3>

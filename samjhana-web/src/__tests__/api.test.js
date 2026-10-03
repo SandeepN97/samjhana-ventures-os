@@ -36,11 +36,13 @@ describe('public API client', () => {
   });
 
   it('rejects an HTML page instead of passing it on as data', async () => {
-    const { evApi, furnitureApi, fuelApi } = await loadApi();
+    const { evApi, shopApi, siteApi, restaurantApi, fuelApi } = await loadApi();
     get.mockResolvedValue({ data: INDEX_HTML });
     await expect(evApi.getVehicles()).rejects.toThrow('Unexpected response');
-    await expect(furnitureApi.getItems()).rejects.toThrow('Unexpected response');
-    await expect(furnitureApi.getItem('x')).rejects.toThrow('Unexpected response');
+    await expect(shopApi.products()).rejects.toThrow('Unexpected response');
+    await expect(shopApi.product('x')).rejects.toThrow('Unexpected response');
+    await expect(siteApi.get()).rejects.toThrow('Unexpected response');
+    await expect(restaurantApi.menu()).rejects.toThrow('Unexpected response');
     await expect(fuelApi.getCurrent()).rejects.toThrow('Unexpected response');
   });
 
@@ -50,12 +52,18 @@ describe('public API client', () => {
     await expect(fuelApi.getCurrent()).rejects.toThrow('Unexpected response');
   });
 
-  it('passes the category filter through, but not "ALL"', async () => {
-    const { furnitureApi } = await loadApi();
-    get.mockResolvedValue({ data: [] });
-    await furnitureApi.getItems('SOFA');
-    await furnitureApi.getItems('ALL');
-    expect(get).toHaveBeenNthCalledWith(1, '/furniture/catalogue', { params: { category: 'SOFA' } });
-    expect(get).toHaveBeenNthCalledWith(2, '/furniture/catalogue', { params: {} });
+  it('passes the shop filters through as query parameters', async () => {
+    const { shopApi } = await loadApi();
+    get.mockResolvedValue({ data: { products: [] } });
+    await shopApi.products({ type: 'FURNITURE', q: 'oak' });
+    expect(get).toHaveBeenCalledWith('/shop/products', { params: { type: 'FURNITURE', q: 'oak' } });
+  });
+
+  it('builds picture addresses from the API root', async () => {
+    const { mediaUrl, mediaPath } = await loadApi('https://api.example.com');
+    expect(mediaPath('abc')).toBe('/api/public/media/abc');
+    expect(mediaPath('')).toBe('');
+    expect(mediaUrl('/api/public/media/abc')).toBe('https://api.example.com/api/public/media/abc');
+    expect(mediaUrl('')).toBe('');
   });
 });

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingCart, MessageCircle, MapPin, Phone } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
+import { useSection } from '../site/SiteContext';
+import { telLink, whatsappLink } from '../site/links';
 
 const NAV_LINKS = [
   { label: 'Visit & services', href: '/#fuel-ev', isHash: true },
@@ -43,6 +45,10 @@ function GridMark() {
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { count, setOpen: openCart } = useCartStore();
+  const identity = useSection('identity');
+  const contact = useSection('contact');
+  const tel = telLink(contact);
+  const whatsapp = whatsappLink(contact);
 
   return (
     <header className="site-navbar fixed top-0 inset-x-0 z-50 bg-warm/95 backdrop-blur-sm border-b border-warm-border">
@@ -52,8 +58,8 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-3 shrink-0">
           <GridMark />
           <div className="leading-tight">
-            <p className="font-serif font-semibold text-dark text-base leading-none">Samjhana Ventures</p>
-            <p className="text-[11px] text-dark/50 font-sans mt-0.5">Gulmi, Nepal · Est. 2008</p>
+            <p className="font-serif font-semibold text-dark text-base leading-none">{identity.name}</p>
+            <p className="text-[11px] text-dark/50 font-sans mt-0.5">{identity.tagline}</p>
           </div>
         </Link>
 
@@ -77,9 +83,9 @@ export default function Navbar() {
         {/* Cart + CTA */}
         <div className="hidden md:flex items-center gap-3">
           <span className="hidden lg:flex items-center gap-2 text-xs text-dark/55"><span>EN</span><span className="text-dark/20">|</span><span>नेपाली</span></span>
-          <a href="tel:+9779363147818" aria-label="Call Samjhana Ventures" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><Phone size={17} /></a>
-          <a href="https://wa.me/9779363147818" target="_blank" rel="noreferrer" aria-label="WhatsApp Samjhana Ventures" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MessageCircle size={17} /></a>
-          <a href="https://www.google.com/maps/@27.9922809,83.3629821,48m/data=!3m1!1e3?entry=ttu&g_ep=EgoyMDI2MDkyMy4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noreferrer" aria-label="Get directions" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MapPin size={17} /></a>
+          {tel && <a href={tel} aria-label={`Call ${identity.name || ''}`} className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><Phone size={17} /></a>}
+          {whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer" aria-label={`WhatsApp ${identity.name || ''}`} className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MessageCircle size={17} /></a>}
+          {contact.mapsUrl && <a href={contact.mapsUrl} target="_blank" rel="noreferrer" aria-label="Get directions" className="hidden lg:inline-flex p-2 text-dark/60 hover:text-dark"><MapPin size={17} /></a>}
           <button aria-label="Open cart" onClick={() => openCart(true)} className="relative p-2 text-dark/60 hover:text-dark transition-colors">
             <ShoppingCart size={20} />
             {count > 0 && (
@@ -91,10 +97,18 @@ export default function Navbar() {
           <HashLink href="/#contact" className="btn-dark text-sm">Talk to us</HashLink>
         </div>
 
-        {/* Mobile toggle */}
-        <button onClick={() => setOpen(!open)} className="md:hidden p-2 text-dark">
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Mobile: cart + menu */}
+        <div className="md:hidden flex items-center">
+          <button aria-label="Open cart" onClick={() => openCart(true)} className="relative min-h-[44px] min-w-[44px] flex items-center justify-center text-dark">
+            <ShoppingCart size={20} />
+            {count > 0 && (
+              <span className="absolute top-1 right-0.5 w-4 h-4 bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center">{count}</span>
+            )}
+          </button>
+          <button aria-label="Menu" onClick={() => setOpen(!open)} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-dark">
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}

@@ -7,6 +7,7 @@
  * petrol    Shringeshwor petrol pump
  * ev        EV charging
  * furniture Furniture shop
+ * beekeeping Beekeeping shop
  * rental    House rentals
  * loans     Bank loans
  */
@@ -50,6 +51,16 @@ export const UNIT_THEMES = {
     text: 'text-furniture-700',
     border: 'border-furniture-600',
     tile: 'bg-furniture-500 hover:bg-furniture-600',
+  },
+  beekeeping: {
+    header: 'bg-beekeeping-600',
+    headerHover: 'hover:bg-beekeeping-700',
+    headerSubtle: 'text-beekeeping-100',
+    button: 'bg-beekeeping-600 hover:bg-beekeeping-700 focus-visible:ring-beekeeping-400',
+    soft: 'bg-beekeeping-50 text-beekeeping-800',
+    text: 'text-beekeeping-700',
+    border: 'border-beekeeping-600',
+    tile: 'bg-beekeeping-500 hover:bg-beekeeping-600',
   },
   rental: {
     header: 'bg-rental-600',
