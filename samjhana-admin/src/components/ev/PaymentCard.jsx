@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
@@ -14,12 +14,34 @@ const METHODS = [
  * Payment Due card. While AWAITING_PAYMENT it collects the payment (this is the only way to
  * unlock the connector); once paid it just shows unlock progress with a retry if it failed.
  */
+// The signed-in user is cached by the login flow; a missing or corrupt entry means no special rights.
+function currentRole() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')?.role;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock }) {
   const { t } = useTranslation();
   const { num, money } = useLocaleFormat();
   const suggested = session.suggestedAmount == null ? '' : String(session.suggestedAmount);
   const [method, setMethod] = useState('CASH');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(suggested);
+  // Cash handed over by the customer. Only used to work out change; the amount recorded as the
+  // sale is always `amount` above, never the cash received.
+  const [received, setReceived] = useState('');
+  const [editing, setEditing] = useState(suggested === '');
+  const touched = useRef(false);
+
+  // The final kWh can still settle after the card first appears; follow it until staff edit.
+  useEffect(() => {
+    if (!touched.current) {
+      setAmount(suggested);
+      if (suggested === '') setEditing(true);
+    }
+  }, [suggested]);
 
   const kwh = num(Number(session.energyDeliveredKwh || 0).toFixed(1));
   const location = t('evLive.connectorLocation', {
@@ -32,10 +54,19 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
     ? t('evLive.percentBreakdown', { percent: num(session.percentCharged), rate: money(session.ratePerPercent) })
     : null;
   // Staff can round the price but not discount it; the server refuses anything more than Rs 1 under.
-  const role = JSON.parse(localStorage.getItem('user') || '{}').role;
+  const role = currentRole();
   const canDiscount = role === 'ADMIN' || role === 'MANAGER';
-  const belowPrice = amount !== '' && !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
-  const valid = Number(amount) > 0 && !belowPrice;
+  const belowPrice = !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
+  // Work in whole paisa so 0.1 + 0.2 style float noise never shows a phantom Rs 0.01 of change.
+  const dueCents = Math.round(Number(amount) * 100);
+  const receivedCents = Math.round(Number(received) * 100);
+  const cashEntered = method === 'CASH' && received !== '' && receivedCents >= 0;
+  const changeCents = cashEntered ? receivedCents - dueCents : 0;
+  const shortCents = cashEntered && changeCents < 0 ? -changeCents : 0;
+  // For Cash the counter must count the money in: staff type what was handed over before the
+  // connector can be unlocked. eSewa and Khalti are exact, so there is nothing to count.
+  const needsCash = method === 'CASH';
+  const valid = Number(amount) > 0 && !belowPrice && shortCents === 0 && (!needsCash || cashEntered);
 
   if (session.status !== 'AWAITING_PAYMENT') {
     return (
@@ -63,24 +94,35 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
       {breakdown && <p className="mb-3 text-sm font-medium text-ev-700">{breakdown}</p>}
       {!breakdown && <div className="mb-2" />}
 
-      {suggested !== '' && <p className="mb-4 text-4xl font-black text-gray-900">{money(suggested)}</p>}
-
-      <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`amount-${session.id}`}>
-          {t('evLive.amountLabel')}
-        </label>
-        <input
-          id={`amount-${session.id}`}
-          type="number"
-          min="0.01"
-          step="0.01"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
-        />
-        {suggested === '' && <p className="mt-1 text-xs text-amber-600">{t('evLive.noRateHint')}</p>}
-      </div>
+      {editing ? (
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`amount-${session.id}`}>
+            {t('evLive.amountLabel')}
+          </label>
+          <input
+            id={`amount-${session.id}`}
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => { touched.current = true; setAmount(e.target.value); }}
+            className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-ev-500"
+          />
+          {suggested === '' && <p className="mt-1 text-xs text-amber-600">{t('evLive.noRateHint')}</p>}
+        </div>
+      ) : (
+        <div className="mb-4">
+          <p className="text-4xl font-black text-gray-900">{money(amount)}</p>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="min-h-[44px] text-sm font-medium text-ev-600 underline-offset-2 hover:underline"
+          >
+            {t('evLive.changeAmount')}
+          </button>
+        </div>
+      )}
 
       {belowPrice && (
         <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">
@@ -106,6 +148,39 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
           </button>
         ))}
       </div>
+
+      {method === 'CASH' && (
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`received-${session.id}`}>
+            {t('evLive.receivedLabel')}
+          </label>
+          <input
+            id={`received-${session.id}`}
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={received}
+            onChange={(e) => setReceived(e.target.value)}
+            className={`min-h-[44px] w-full rounded-xl border-2 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 ${
+              shortCents > 0 ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-ev-500'
+            }`}
+          />
+          {!cashEntered && (
+            <p className="mt-2 text-sm text-amber-700">{t('evLive.cashRequiredHint')}</p>
+          )}
+          {cashEntered && shortCents === 0 && (
+            <p role="status" className="mt-2 rounded-lg bg-green-50 p-3 text-lg font-bold text-green-700">
+              {t('evLive.changeDue', { amount: money(changeCents / 100) })}
+            </p>
+          )}
+          {shortCents > 0 && (
+            <p role="alert" className="mt-2 rounded-lg bg-red-50 p-3 text-base font-bold text-red-700">
+              {t('evLive.shortBy', { amount: money(shortCents / 100) })}
+            </p>
+          )}
+        </div>
+      )}
 
       <button
         type="button"

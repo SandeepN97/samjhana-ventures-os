@@ -11,7 +11,7 @@ test.describe('public website', () => {
 
     await page.goto(PUBLIC_SITE);
 
-    await expect(page.getByRole('heading', { name: 'Come for the journey.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Come for the journey/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Petrol Pump & EV' })).toBeVisible();
     expect((await fuelResponse).status()).toBe(200);
     expect((await evResponse).status()).toBe(200);

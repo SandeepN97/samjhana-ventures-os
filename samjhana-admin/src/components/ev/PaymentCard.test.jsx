@@ -59,21 +59,17 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByRole('radio', { name: 'Cash' })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('requires the customer amount before confirming payment', async () => {
+  it('confirms with the default method and the suggested amount once the cash is entered', async () => {
     const { onConfirm } = renderCard();
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
-    expect(confirm).toBeDisabled();
-    expect(screen.getByLabelText('Amount received (Rs)')).toHaveValue(null);
-
-    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
-    expect(confirm).toBeEnabled();
+    expect(confirm).toBeDisabled(); // Cash must be counted in first
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '600');
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 600);
   });
 
   it('confirms with the chosen payment method', async () => {
     const { onConfirm } = renderCard();
-    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
     await userEvent.click(screen.getByRole('radio', { name: 'eSewa' }));
     expect(screen.getByRole('radio', { name: 'eSewa' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('radio', { name: 'Cash' })).toHaveAttribute('aria-checked', 'false');
@@ -81,10 +77,13 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(onConfirm).toHaveBeenCalledWith('s1', 'ESEWA', 600);
   });
 
-  it('submits the amount received from the customer', async () => {
+  it('lets staff change the amount before confirming', async () => {
     const { onConfirm } = renderCard();
-    const input = screen.getByLabelText('Amount received (Rs)');
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const input = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(input);
     await userEvent.type(input, '650');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '650');
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 650);
   });
@@ -94,7 +93,9 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByText('No vehicle type was chosen for this session, so enter the amount to collect.')).toBeInTheDocument();
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
     expect(confirm).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '400');
+    await userEvent.type(screen.getByLabelText('Amount (Rs)'), '400');
+    expect(confirm).toBeDisabled(); // the amount alone is not enough: the cash must be entered too
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '400');
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 400);
@@ -103,13 +104,12 @@ describe('PaymentCard (awaiting payment)', () => {
   it('blocks confirming a zero or negative amount', async () => {
     renderCard({ ...due, suggestedAmount: null });
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
-    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '0');
+    await userEvent.type(screen.getByLabelText('Amount (Rs)'), '0');
     expect(confirm).toBeDisabled();
   });
 
-  it('disables the confirm button while a request is in flight', async () => {
+  it('disables the confirm button while a request is in flight', () => {
     renderCard(due, { busy: true });
-    await userEvent.type(screen.getByLabelText('Amount received (Rs)'), '600');
     expect(screen.getByRole('button', { name: 'Confirm Payment & Unlock' })).toBeDisabled();
   });
 
@@ -128,7 +128,6 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByText('भुक्तानी बाँकी — कनेक्टर लक छ')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'नगद' })).toBeInTheDocument();
-    expect(screen.getByLabelText('प्राप्त रकम (रु)')).toBeInTheDocument();
     expect(screen.getByText('रु ६००')).toBeInTheDocument();
     expect(screen.queryByText(/Rs/)).toBeNull();
   });
@@ -153,7 +152,9 @@ describe('PaymentCard discount rule', () => {
   afterEach(() => localStorage.clear());
 
   async function typeAmount(value) {
-    const input = screen.getByLabelText('Amount received (Rs)');
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const input = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(input);
     await userEvent.type(input, value);
   }
 
@@ -173,6 +174,7 @@ describe('PaymentCard discount rule', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
     const { onConfirm } = renderCard();
     await typeAmount('599');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '599');
 
     expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
@@ -183,6 +185,7 @@ describe('PaymentCard discount rule', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'MANAGER' }));
     const { onConfirm } = renderCard();
     await typeAmount('400');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '400');
 
     expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
@@ -192,9 +195,168 @@ describe('PaymentCard discount rule', () => {
   it('explains the rule in Nepali', async () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
     renderCard(due, { locale: 'ne' });
-    const input = screen.getByRole('spinbutton');
+    await userEvent.click(screen.getByRole('button', { name: 'रकम परिवर्तन' }));
+    const input = screen.getByLabelText('रकम (रु)');
+    await userEvent.clear(input);
     await userEvent.type(input, '100');
 
     expect(screen.getByRole('alert')).toHaveTextContent('यो मूल्य (रु ६००) भन्दा कम छ। छुट प्रबन्धकले मात्र दिन सक्नुहुन्छ।');
+  });
+});
+
+describe('PaymentCard cash received, change and shortfall', () => {
+  afterEach(() => localStorage.clear());
+
+  const confirmButton = () => screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
+  const typeReceived = (value) => userEvent.type(screen.getByLabelText('Cash received (Rs)'), value);
+
+  it('shows the cash received box for Cash and hides it for eSewa and Khalti', async () => {
+    renderCard();
+    expect(screen.getByLabelText('Cash received (Rs)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'eSewa' }));
+    expect(screen.queryByLabelText('Cash received (Rs)')).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: 'Khalti' }));
+    expect(screen.queryByLabelText('Cash received (Rs)')).toBeNull();
+  });
+
+  it('asks for the cash and keeps Confirm disabled until it is entered', async () => {
+    const { onConfirm } = renderCard();
+    expect(screen.getByText('Enter the cash received to confirm the payment.')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(confirmButton()).toBeDisabled();
+    await userEvent.click(confirmButton());
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await typeReceived('600');
+    expect(screen.queryByText('Enter the cash received to confirm the payment.')).toBeNull();
+    expect(confirmButton()).toBeEnabled();
+  });
+
+  it('does not ask for cash on eSewa or Khalti, which are exact', async () => {
+    const { onConfirm } = renderCard();
+    await userEvent.click(screen.getByRole('radio', { name: 'Khalti' }));
+    expect(screen.queryByText('Enter the cash received to confirm the payment.')).toBeNull();
+    await userEvent.click(confirmButton());
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'KHALTI', 600);
+  });
+
+  it('asks for the cash in Nepali too', () => {
+    renderCard(due, { locale: 'ne' });
+    expect(screen.getByText('भुक्तानी पुष्टि गर्न प्राप्त नगद हाल्नुहोस्।')).toBeInTheDocument();
+  });
+
+  it('shows the change to return in green when the customer pays more', async () => {
+    renderCard();
+    await typeReceived('1000');
+    expect(screen.getByRole('status')).toHaveTextContent('Change to return: Rs 400');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows Rs 0 change when the customer pays exactly', async () => {
+    renderCard();
+    await typeReceived('600');
+    expect(screen.getByRole('status')).toHaveTextContent('Change to return: Rs 0');
+  });
+
+  it('records the price as the sale, not the cash handed over', async () => {
+    const { onConfirm } = renderCard();
+    await typeReceived('1000');
+    await userEvent.click(confirmButton());
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 600);
+  });
+
+  it('flags a shortfall in red with the amount owed and blocks confirming', async () => {
+    const { onConfirm } = renderCard();
+    await typeReceived('450');
+    expect(screen.getByRole('alert')).toHaveTextContent('Short by Rs 150 — the customer still owes this.');
+    expect(screen.getByLabelText('Cash received (Rs)')).toHaveClass('border-red-500');
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(confirmButton()).toBeDisabled();
+    await userEvent.click(confirmButton());
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('clears the shortfall and re-enables confirming once the rest is paid', async () => {
+    renderCard();
+    const input = screen.getByLabelText('Cash received (Rs)');
+    await userEvent.type(input, '450');
+    expect(confirmButton()).toBeDisabled();
+    await userEvent.clear(input);
+    await userEvent.type(input, '700');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('Change to return: Rs 100');
+    expect(confirmButton()).toBeEnabled();
+  });
+
+  it('does not invent change from floating-point noise', async () => {
+    renderCard({ ...due, suggestedAmount: 0.3 });
+    await typeReceived('0.1');
+    expect(screen.getByRole('alert')).toHaveTextContent('Short by Rs 0.2');
+  });
+
+  it('ignores cash entered earlier once the method is switched to eSewa', async () => {
+    const { onConfirm } = renderCard();
+    await typeReceived('450');
+    expect(confirmButton()).toBeDisabled();
+    await userEvent.click(screen.getByRole('radio', { name: 'eSewa' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.click(confirmButton());
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'ESEWA', 600);
+  });
+
+  it('lets a manager lower the amount, then checks the cash against the new amount', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'MANAGER' }));
+    const { onConfirm } = renderCard();
+    await typeReceived('450');
+    expect(confirmButton()).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const amount = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '450');
+    expect(screen.getByRole('status')).toHaveTextContent('Change to return: Rs 0');
+    await userEvent.click(confirmButton());
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 450);
+  });
+
+  it('keeps staff from lowering the amount to match a short payment', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
+    const { onConfirm } = renderCard();
+    await typeReceived('450');
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const amount = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '450');
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Only a manager can give a discount.');
+    await userEvent.click(confirmButton());
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('treats a corrupt cached user as having no special rights instead of crashing', async () => {
+    localStorage.setItem('user', '{not json');
+    renderCard();
+    await userEvent.click(screen.getByRole('button', { name: 'Change amount' }));
+    const amount = screen.getByLabelText('Amount (Rs)');
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '100');
+    expect(screen.getByRole('alert')).toHaveTextContent('Only a manager can give a discount.');
+  });
+
+  it('keeps the cash box at least 44px tall', () => {
+    renderCard();
+    expect(screen.getByLabelText('Cash received (Rs)')).toHaveClass('min-h-[44px]');
+  });
+
+  it('shows change and shortfall in Nepali with Devanagari numerals', async () => {
+    renderCard(due, { locale: 'ne' });
+    const input = screen.getByLabelText('नगद प्राप्त (रु)');
+    await userEvent.type(input, '1000');
+    expect(screen.getByRole('status')).toHaveTextContent('फिर्ता दिनुपर्ने: रु ४००');
+    await userEvent.clear(input);
+    await userEvent.type(input, '450');
+    expect(screen.getByRole('alert')).toHaveTextContent('रु १५० कम — ग्राहकले बाँकी तिर्नुपर्छ।');
+    expect(screen.queryByText(/Rs/)).toBeNull();
   });
 });

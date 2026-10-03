@@ -74,6 +74,9 @@ async function renderPage(locale = 'en') {
   return view;
 }
 const fireLive = (event) => act(() => { mock.live.handler(event); });
+// Cash must be counted in before Confirm unlocks; `index` picks the card when several are due.
+const enterCash = async (value, { index = 0, label = 'Cash received (Rs)' } = {}) =>
+  userEvent.type((await screen.findAllByLabelText(label))[index], String(value));
 const tab = (name) => screen.getByRole('tab', { name: new RegExp(name) });
 const chargerCards = () => screen.findAllByRole('radio', { name: /Charger \d/ });
 const connectorCard = (name, group = 'Charging connector') =>
@@ -654,7 +657,6 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED', statusMessage: 'Payment confirmed; unlock command sent' }) });
       await renderPage();
       await userEvent.click(tab('Payment'));
-      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
       await userEvent.click(await screen.findByRole('radio', { name: 'eSewa' }));
       await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
 
@@ -669,7 +671,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage();
       await userEvent.click(tab('Payment'));
-      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
+      await enterCash(600);
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
       expect(await screen.findByText('Payment confirmed for BA1PA4521 — unlocking')).toBeInTheDocument();
 
@@ -685,7 +687,7 @@ describe('EVEntryPage', () => {
       api.post.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
       await renderPage();
       await userEvent.click(tab('Payment'));
-      await userEvent.type(await screen.findByLabelText('Amount received (Rs)'), '600');
+      await enterCash(600);
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
 
       fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
@@ -701,7 +703,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage('ne');
       await userEvent.click(screen.getAllByRole('tab')[2]);
-      await userEvent.type(await screen.findByLabelText('प्राप्त रकम (रु)'), '600');
+      await enterCash(600, { label: 'नगद प्राप्त (रु)' });
       await userEvent.click(await screen.findByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' }));
       expect(await screen.findByText('BA1PA4521 को भुक्तानी पुष्टि भयो — अनलक हुँदै')).toBeInTheDocument();
 
@@ -721,6 +723,133 @@ describe('EVEntryPage', () => {
 
       expect(await screen.findByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
       expect(screen.getByText('Nothing awaiting payment. Stop a session from the Active tab first.')).toBeInTheDocument();
+    });
+
+    describe('returning to Start Session after payment', () => {
+      const confirmPayment = async () => {
+        await userEvent.click(tab('Payment'));
+        await enterCash(600);
+        await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
+      };
+      const isSelected = (name) => expect(tab(name)).toHaveAttribute('aria-selected', 'true');
+
+      it('goes back to Start Session once the last paid session has unlocked', async () => {
+        mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+        api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
+        await renderPage();
+        await confirmPayment();
+
+        // Still unlocking: stay put so staff can see progress (and Retry if it fails).
+        await screen.findByTestId('payment-progress');
+        isSelected('Payment');
+
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+
+        await waitFor(() => isSelected('Start Session'));
+        expect(screen.getByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
+      });
+
+      it('stays on Payment while another session is still awaiting payment', async () => {
+        mock.sessions = [
+          session({ id: 's1', status: 'AWAITING_PAYMENT', suggestedAmount: 600 }),
+          session({ id: 's2', plateNumber: 'BA2PA7777', status: 'AWAITING_PAYMENT', suggestedAmount: 300, requestedAt: '2026-09-19T10:05:00' }),
+        ];
+        api.post.mockResolvedValue({ data: session({ id: 's1', status: 'UNLOCK_REQUESTED' }) });
+        await renderPage();
+        await userEvent.click(tab('Payment'));
+        await enterCash(600);
+        await userEvent.click((await screen.findAllByRole('button', { name: 'Confirm Payment & Unlock' }))[0]);
+
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ id: 's1', status: 'CLOSED' }) });
+
+        expect(await screen.findByText('Connector unlocked for BA1PA4521')).toBeInTheDocument();
+        isSelected('Payment');
+        expect(screen.getByRole('button', { name: 'Confirm Payment & Unlock' })).toBeInTheDocument();
+      });
+
+      it('goes back to Start Session after the second of two payments, not the first', async () => {
+        mock.sessions = [
+          session({ id: 's1', status: 'AWAITING_PAYMENT', suggestedAmount: 600 }),
+          session({ id: 's2', plateNumber: 'BA2PA7777', status: 'AWAITING_PAYMENT', suggestedAmount: 300, requestedAt: '2026-09-19T10:05:00' }),
+        ];
+        api.post.mockImplementation((url) => Promise.resolve({
+          data: session({ id: url.includes('/s2/') ? 's2' : 's1', status: 'UNLOCK_REQUESTED' }),
+        }));
+        await renderPage();
+        await userEvent.click(tab('Payment'));
+        await enterCash(600);
+        await userEvent.click((await screen.findAllByRole('button', { name: 'Confirm Payment & Unlock' }))[0]);
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ id: 's1', status: 'CLOSED' }) });
+        await enterCash(300);
+        await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
+        isSelected('Payment');
+
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ id: 's2', plateNumber: 'BA2PA7777', status: 'CLOSED' }) });
+
+        await waitFor(() => isSelected('Start Session'));
+      });
+
+      it('stays on Payment with Retry unlock when the unlock fails', async () => {
+        mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+        api.post.mockResolvedValue({ data: session({ status: 'PAID', statusMessage: 'Connector unlock failed; retry required' }) });
+        await renderPage();
+        await confirmPayment();
+
+        expect(await screen.findByRole('button', { name: 'Retry unlock' })).toBeInTheDocument();
+        isSelected('Payment');
+      });
+
+      it('still goes back when the unlock finished before the payment reply arrived', async () => {
+        mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+        let reply;
+        api.post.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
+        await renderPage();
+        await confirmPayment();
+
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+        await screen.findByText('Connector unlocked for BA1PA4521');
+        isSelected('Payment');
+        await act(async () => reply({ data: session({ status: 'CLOSED' }) }));
+
+        await waitFor(() => isSelected('Start Session'));
+      });
+
+      it('does not move staff who opened an empty Payment tab themselves', async () => {
+        await renderPage();
+        await userEvent.click(tab('Payment'));
+        expect(await screen.findByText('Nothing awaiting payment. Stop a session from the Active tab first.')).toBeInTheDocument();
+        isSelected('Payment');
+      });
+
+      it('does not move staff who left the Payment tab before the unlock finished', async () => {
+        mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+        api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
+        await renderPage();
+        await confirmPayment();
+        await screen.findByTestId('payment-progress');
+        await userEvent.click(tab('Active'));
+
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+        await screen.findByText('Connector unlocked for BA1PA4521');
+        await userEvent.click(tab('Payment'));
+
+        expect(screen.getByText('Nothing awaiting payment. Stop a session from the Active tab first.')).toBeInTheDocument();
+        isSelected('Payment');
+      });
+
+      it('does not move staff when the payment was refused', async () => {
+        mock.sessions = [session({ status: 'AWAITING_PAYMENT', suggestedAmount: 600 })];
+        api.post.mockRejectedValue({ response: { data: { message: 'Charger HD-D180-CC-01 is offline' } } });
+        await renderPage();
+        await confirmPayment();
+        expect(await screen.findByText('Charger HD-D180-CC-01 is offline')).toBeInTheDocument();
+
+        // Someone else settles it elsewhere: this refused attempt must not trigger the redirect.
+        fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
+        await screen.findByText('Connector unlocked for BA1PA4521');
+
+        isSelected('Payment');
+      });
     });
 
     it('offers Retry unlock when the charger could not unlock a paid session', async () => {
