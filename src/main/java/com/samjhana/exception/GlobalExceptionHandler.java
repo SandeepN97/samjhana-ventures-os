@@ -40,6 +40,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(new ErrorResponse("INSUFFICIENT_STOCK", ex.getMessage()));
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooMany(TooManyRequestsException ex) {
+        return ResponseEntity.status(429).body(new ErrorResponse("TOO_MANY_REQUESTS", ex.getMessage()));
+    }
+
     @ExceptionHandler(EvSessionStateException.class)
     public ResponseEntity<ErrorResponse> handleEvSessionConflict(EvSessionStateException ex) {
         return ResponseEntity.status(409).body(new ErrorResponse("EV_SESSION_CONFLICT", ex.getMessage()));
@@ -101,6 +106,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(400).body(new ErrorResponse("BAD_REQUEST", ex.getMessage()));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleWrongMethod(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(405).body(new ErrorResponse("METHOD_NOT_ALLOWED", "This request type is not allowed here."));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleTooLarge(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(413).body(new ErrorResponse("TOO_LARGE", "The picture is larger than 3 MB"));
+    }
+
+    @ExceptionHandler({org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class})
+    public ResponseEntity<ErrorResponse> handleMissingPart(Exception ex) {
+        return ResponseEntity.status(400).body(new ErrorResponse("BAD_REQUEST", "Choose a picture to upload"));
     }
 
     @ExceptionHandler(Exception.class)

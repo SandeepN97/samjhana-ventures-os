@@ -42,6 +42,8 @@ public class BeekeepingService {
     private final TransactionRepository transactionRepository;
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+    private final MediaService mediaService;
+    private final SlugService slugService;
 
     // ===================== DASHBOARD =====================
 
@@ -119,7 +121,7 @@ public class BeekeepingService {
                 .name(name)
                 .nameNepali(text(request.get("nameNepali")))
                 .sku(sku)
-                .slug(uniqueSlug(sku))
+                .slug(slugService.uniqueSlug(sku))
                 .category(category)
                 .purchasePrice(purchase)
                 .sellingPrice(selling)
@@ -127,6 +129,7 @@ public class BeekeepingService {
                 .reorderLevel(reorder)
                 .description(text(request.get("description")))
                 .badge(text(request.get("badge")))
+                .imageIds(request.containsKey("imageIds") ? mediaService.toJson(mediaService.requireLiveIds(request.get("imageIds"))) : null)
                 .showOnWebsite(!Boolean.FALSE.equals(request.get("showOnWebsite")))
                 .build();
         BeekeepingProduct saved = productRepository.save(product);
@@ -153,6 +156,7 @@ public class BeekeepingService {
         if (request.containsKey("reorderLevel")) product.setReorderLevel(nonNegativeInt(request.get("reorderLevel"), product.getReorderLevel(), "Reorder level"));
         if (request.containsKey("description")) product.setDescription(text(request.get("description")));
         if (request.containsKey("badge")) product.setBadge(text(request.get("badge")));
+        if (request.containsKey("imageIds")) product.setImageIds(mediaService.toJson(mediaService.requireLiveIds(request.get("imageIds"))));
         if (request.containsKey("showOnWebsite")) product.setShowOnWebsite(!Boolean.FALSE.equals(request.get("showOnWebsite")));
 
         BeekeepingProduct saved = productRepository.save(product);
@@ -220,7 +224,10 @@ public class BeekeepingService {
     public Optional<BigDecimal> costOfLines(Map<String, Object> customFields) {
         BigDecimal total = BigDecimal.ZERO;
         for (Map<String, Object> line : lines(customFields)) {
-            BeekeepingProduct product = find(lineId(line));
+            // A product removed since the sale was ordered has no cost to look up: record the sale without profit.
+            Optional<BeekeepingProduct> found = productRepository.findByIdAndDeletedAtIsNull(lineId(line));
+            if (found.isEmpty()) return Optional.empty();
+            BeekeepingProduct product = found.get();
             if (product.getPurchasePrice() == null) return Optional.empty();
             total = total.add(product.getPurchasePrice().multiply(BigDecimal.valueOf(lineQuantity(line))));
         }
@@ -300,6 +307,9 @@ public class BeekeepingService {
         map.put("description", p.getDescription());
         map.put("badge", p.getBadge());
         map.put("showOnWebsite", p.getShowOnWebsite());
+        List<UUID> pictures = mediaService.fromJson(p.getImageIds());
+        map.put("imageIds", pictures.stream().map(UUID::toString).toList());
+        map.put("imageUrls", MediaService.urlsOf(pictures));
         map.put("createdAt", p.getCreatedAt());
         return map;
     }
@@ -352,15 +362,6 @@ public class BeekeepingService {
     private void audit(AuditLog entry, String description) {
         entry.setDescription(description.length() > 500 ? description.substring(0, 500) : description);
         auditLogRepository.save(entry);
-    }
-
-    private String uniqueSlug(String sku) {
-        String base = sku.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
-        if (base.isEmpty()) base = "product";
-        String slug = base;
-        int n = 2;
-        while (productRepository.existsBySlug(slug)) slug = base + "-" + n++;
-        return slug;
     }
 
     private static BeekeepingCategory parseCategory(String category) {

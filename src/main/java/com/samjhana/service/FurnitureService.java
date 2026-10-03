@@ -28,6 +28,8 @@ public class FurnitureService {
     private final FurnitureItemRepository itemRepository;
     private final TransactionRepository transactionRepository;
     private final ObjectMapper objectMapper;
+    private final MediaService mediaService;
+    private final SlugService slugService;
 
     // ===================== DASHBOARD =====================
 
@@ -207,6 +209,10 @@ public class FurnitureService {
                 .stockQty(toInt(request.get("stockQty"), 0))
                 .reorderLevel(toInt(request.get("reorderLevel"), 2))
                 .description((String) request.get("description"))
+                .slug(slugService.uniqueSlug(sku.trim()))
+                .badge(blankToNull(request.get("badge")))
+                .imageIds(request.containsKey("imageIds") ? mediaService.toJson(mediaService.requireLiveIds(request.get("imageIds"))) : null)
+                .showOnWebsite(!Boolean.FALSE.equals(request.get("showOnWebsite")))
                 .isActive(true)
                 .build();
         return itemToMap(itemRepository.save(item));
@@ -228,6 +234,10 @@ public class FurnitureService {
         if (request.containsKey("stockQty")) item.setStockQty(toInt(request.get("stockQty"), item.getStockQty()));
         if (request.containsKey("reorderLevel")) item.setReorderLevel(toInt(request.get("reorderLevel"), item.getReorderLevel()));
         if (request.containsKey("description")) item.setDescription((String) request.get("description"));
+        if (request.containsKey("badge")) item.setBadge(blankToNull(request.get("badge")));
+        if (request.containsKey("imageIds")) item.setImageIds(mediaService.toJson(mediaService.requireLiveIds(request.get("imageIds"))));
+        if (request.containsKey("showOnWebsite")) item.setShowOnWebsite(!Boolean.FALSE.equals(request.get("showOnWebsite")));
+        if (item.getSlug() == null) item.setSlug(slugService.uniqueSlug(item.getSku()));
         return itemToMap(itemRepository.save(item));
     }
 
@@ -324,9 +334,20 @@ public class FurnitureService {
         map.put("stockQty", i.getStockQty());
         map.put("reorderLevel", i.getReorderLevel());
         map.put("description", i.getDescription());
+        map.put("badge", i.getBadge());
+        map.put("showOnWebsite", !Boolean.FALSE.equals(i.getShowOnWebsite()));
+        List<UUID> pictures = mediaService.fromJson(i.getImageIds());
+        map.put("imageIds", pictures.stream().map(UUID::toString).toList());
+        map.put("imageUrls", MediaService.urlsOf(pictures));
         map.put("isActive", i.getIsActive());
         map.put("createdAt", i.getCreatedAt());
         return map;
+    }
+
+    private static String blankToNull(Object value) {
+        if (value == null) return null;
+        String s = value.toString().trim();
+        return s.isEmpty() ? null : s;
     }
 
     public Map<String, Object> transactionToOrderMap(Transaction t) {

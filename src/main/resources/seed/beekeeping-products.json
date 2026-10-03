@@ -18,7 +18,10 @@
         "beeSpecies": "Apis mellifera / cerana",
         "roof": "Galvanised steel"
       }
-    }
+    },
+    "images": [
+      "hive-boxes"
+    ]
   },
   {
     "sku": "HIVE-002",
@@ -39,7 +42,10 @@
         "beeSpecies": "Apis cerana",
         "roof": "Natural bark cap"
       }
-    }
+    },
+    "images": [
+      "log-hive"
+    ]
   },
   {
     "sku": "HIVE-003",
@@ -60,7 +66,10 @@
         "beeSpecies": "Apis mellifera / cerana",
         "roof": "Plywood lid"
       }
-    }
+    },
+    "images": [
+      "nucleus-box"
+    ]
   },
   {
     "sku": "HIVE-004",
@@ -81,7 +90,10 @@
         "beeSpecies": "Universal",
         "roof": "N/A"
       }
-    }
+    },
+    "images": [
+      "hive-frames"
+    ]
   },
   {
     "sku": "GEAR-001",
@@ -92,7 +104,10 @@
     "sellingPrice": 3200,
     "description": "Head-to-toe ventilated cotton-poly suit with integrated round veil. Full-zip with elastic wrist and ankle cuffs.",
     "badge": "Most popular",
-    "details": null
+    "details": null,
+    "images": [
+      "protective-suit"
+    ]
   },
   {
     "sku": "GEAR-002",
@@ -103,7 +118,10 @@
     "sellingPrice": 3200,
     "description": "Same ventilated design as the Large. Lightweight cotton-poly blend. Washes easily — hang to dry.",
     "badge": null,
-    "details": null
+    "details": null,
+    "images": [
+      "protective-suit"
+    ]
   },
   {
     "sku": "GEAR-003",
@@ -114,7 +132,10 @@
     "sellingPrice": 1100,
     "description": "Fine-mesh round veil attached to a wide-brim cotton hat. Fits over any hat. Elastic bottom band.",
     "badge": null,
-    "details": null
+    "details": null,
+    "images": [
+      "round-veil-cap"
+    ]
   },
   {
     "sku": "GEAR-004",
@@ -125,7 +146,10 @@
     "sellingPrice": 850,
     "description": "Wrist-length cowhide gauntlet gloves with ventilated cotton upper. Sting-resistant, flexible palm.",
     "badge": null,
-    "details": null
+    "details": null,
+    "images": [
+      "leather-gauntlet-gloves"
+    ]
   },
   {
     "sku": "GEAR-005",
@@ -136,7 +160,10 @@
     "sellingPrice": 320,
     "description": "Disposable nitrile gloves for quick inspections. Excellent dexterity. Latex-free, one size fits most.",
     "badge": null,
-    "details": null
+    "details": null,
+    "images": [
+      "nitrile-gloves"
+    ]
   },
   {
     "sku": "TOOL-001",
@@ -149,7 +176,10 @@
     "badge": null,
     "details": {
       "category": "inspection"
-    }
+    },
+    "images": [
+      "smoker-tools"
+    ]
   },
   {
     "sku": "TOOL-002",
@@ -162,7 +192,10 @@
     "badge": null,
     "details": {
       "category": "inspection"
-    }
+    },
+    "images": [
+      "j-hive-tool"
+    ]
   },
   {
     "sku": "TOOL-003",
@@ -175,7 +208,10 @@
     "badge": null,
     "details": {
       "category": "queen"
-    }
+    },
+    "images": [
+      "queen-capture-cage"
+    ]
   },
   {
     "sku": "TOOL-004",
@@ -188,7 +224,10 @@
     "badge": null,
     "details": {
       "category": "queen"
-    }
+    },
+    "images": [
+      "queen-marking-cage"
+    ]
   },
   {
     "sku": "TOOL-005",
@@ -201,7 +240,10 @@
     "badge": null,
     "details": {
       "category": "queen"
-    }
+    },
+    "images": [
+      "hive-frames"
+    ]
   },
   {
     "sku": "TOOL-006",
@@ -214,7 +256,10 @@
     "badge": null,
     "details": {
       "category": "inspection"
-    }
+    },
+    "images": [
+      "smoker-tools"
+    ]
   },
   {
     "sku": "TOOL-007",
@@ -227,7 +272,10 @@
     "badge": null,
     "details": {
       "category": "harvest"
-    }
+    },
+    "images": [
+      "honey-extractor"
+    ]
   },
   {
     "sku": "TOOL-008",
@@ -240,7 +288,10 @@
     "badge": null,
     "details": {
       "category": "harvest"
-    }
+    },
+    "images": [
+      "smoker-tools"
+    ]
   },
   {
     "sku": "TOOL-009",
@@ -253,7 +304,10 @@
     "badge": null,
     "details": {
       "category": "hive"
-    }
+    },
+    "images": [
+      "beeswax-foundation"
+    ]
   },
   {
     "sku": "TOOL-010",
@@ -266,7 +320,10 @@
     "badge": null,
     "details": {
       "category": "queen"
-    }
+    },
+    "images": [
+      "hive-frames"
+    ]
   },
   {
     "sku": "HONEY-001",
@@ -279,7 +336,10 @@
     "badge": "Raw · Unfiltered",
     "details": {
       "unit": "per 500g jar"
-    }
+    },
+    "images": [
+      "tile-honey"
+    ]
   },
   {
     "sku": "HONEY-002",
@@ -292,7 +352,10 @@
     "badge": null,
     "details": {
       "unit": "per 500g jar"
-    }
+    },
+    "images": [
+      "tile-honey"
+    ]
   },
   {
     "sku": "HONEY-003",
@@ -305,7 +368,10 @@
     "badge": null,
     "details": {
       "unit": "per 500g block"
-    }
+    },
+    "images": [
+      "beeswax-foundation"
+    ]
   },
   {
     "sku": "HONEY-004",
@@ -318,7 +384,10 @@
     "badge": "Limited",
     "details": {
       "unit": "per frame (~1.5 kg)"
-    }
+    },
+    "images": [
+      "capped-honeycomb"
+    ]
   },
   {
     "sku": "KIT-001",
@@ -342,7 +411,10 @@
       ],
       "originalPrice": 11300,
       "savings": 1800
-    }
+    },
+    "images": [
+      "basic-kit-product"
+    ]
   },
   {
     "sku": "KIT-002",
@@ -368,7 +440,10 @@
       ],
       "originalPrice": 19200,
       "savings": 3700
-    }
+    },
+    "images": [
+      "complete-kit-product"
+    ]
   },
   {
     "sku": "KIT-003",
@@ -393,6 +468,9 @@
       ],
       "originalPrice": 21500,
       "savings": 3700
-    }
+    },
+    "images": [
+      "honey-extractor"
+    ]
   }
 ]

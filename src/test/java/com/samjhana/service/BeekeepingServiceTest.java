@@ -32,13 +32,16 @@ class BeekeepingServiceTest {
     @Mock BeekeepingProductRepository productRepository;
     @Mock TransactionRepository transactionRepository;
     @Mock AuditLogRepository auditLogRepository;
+    @Mock MediaService mediaService;
+    @Mock SlugService slugService;
 
     private BeekeepingService service;
     private final User admin = User.builder().username("admin").passwordHash("x").fullName("Admin").role(User.UserRole.ADMIN).build();
 
     @BeforeEach
     void setUp() {
-        service = new BeekeepingService(productRepository, transactionRepository, auditLogRepository, new ObjectMapper());
+        service = new BeekeepingService(productRepository, transactionRepository, auditLogRepository, new ObjectMapper(),
+                mediaService, slugService);
     }
 
     private BeekeepingProduct product(String name, String selling, String purchase, int stock, int reorder) {
@@ -100,7 +103,7 @@ class BeekeepingServiceTest {
     @Test
     void shouldCreateAProductWithASlug_andLogIt() {
         when(productRepository.existsBySku("HNY-9")).thenReturn(false);
-        when(productRepository.existsBySlug("hny-9")).thenReturn(false);
+        when(slugService.uniqueSlug("HNY-9")).thenReturn("hny-9");
         when(productRepository.save(any(BeekeepingProduct.class))).thenAnswer(inv -> {
             BeekeepingProduct p = inv.getArgument(0);
             p.setId(UUID.randomUUID());
@@ -139,22 +142,6 @@ class BeekeepingServiceTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("SKU");
         assertThatThrownBy(() -> service.createItem(Map.of("name", "A", "category", "BOATS"), admin))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("category");
-    }
-
-    @Test
-    void shouldAddASuffixToTheSlug_whenItIsTaken() {
-        when(productRepository.existsBySku(anyString())).thenReturn(false);
-        when(productRepository.existsBySlug("hive-1")).thenReturn(true);
-        when(productRepository.existsBySlug("hive-1-2")).thenReturn(false);
-        when(productRepository.save(any(BeekeepingProduct.class))).thenAnswer(inv -> {
-            BeekeepingProduct p = inv.getArgument(0);
-            p.setId(UUID.randomUUID());
-            return p;
-        });
-        service.createItem(Map.of("name", "Hive", "sku", "HIVE-1"), admin);
-        ArgumentCaptor<BeekeepingProduct> saved = ArgumentCaptor.forClass(BeekeepingProduct.class);
-        verify(productRepository).save(saved.capture());
-        assertThat(saved.getValue().getSlug()).isEqualTo("hive-1-2");
     }
 
     @Test

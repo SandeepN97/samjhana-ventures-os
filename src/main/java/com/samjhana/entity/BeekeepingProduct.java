@@ -72,6 +72,10 @@ public class BeekeepingProduct {
     @Column(length = 80)
     private String badge;
 
+    /** Picture ids as a JSON list, the first one is the cover. Null means never set. */
+    @Column(columnDefinition = "TEXT")
+    private String imageIds;
+
     /** Type-specific details as JSON (specs, kit contents, unit, level). */
     @Column(columnDefinition = "TEXT")
     private String details;

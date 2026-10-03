@@ -1,0 +1,159 @@
+{
+  "identity": {
+    "name": "Samjhana Ventures",
+    "tagline": "Gulmi, Nepal · Est. 2008",
+    "established": 2008,
+    "footerBlurb": "Where craft meets community, in the hills. Four businesses, one family, one vision.",
+    "footerNote": "गुल्मीको गर्वका साथ — Proudly from Gulmi",
+    "copyrightName": "Maurighar Ventures"
+  },
+  "contact": {
+    "phone": "+977 9363147818",
+    "whatsapp": "9779363147818",
+    "email": "",
+    "addressLine": "Gulmi, Nepal",
+    "latitude": 27.9922809,
+    "longitude": 83.3629821,
+    "mapsUrl": "https://www.google.com/maps/@27.9922809,83.3629821,48m/data=!3m1!1e3?entry=ttu&g_ep=EgoyMDI2MDkyMy4wIKXMDSoASAFQAw%3D%3D",
+    "eyebrow": "Plan your stop",
+    "title": "Make the stop easy.",
+    "copy": "Find us in Gulmi, then call or WhatsApp before you set out. We’ll confirm today’s hours, stock, and the easiest route.",
+    "hoursNote": "Hours confirmed by phone"
+  },
+  "hours": {
+    "fuelEv": "6am – 9pm",
+    "fuelEvSub": "Every day",
+    "restaurantDaily": "6am – 9pm",
+    "bikeRepair": "",
+    "shop": ""
+  },
+  "hub": {
+    "visit": {
+      "eyebrow": "Visit & services",
+      "title": "Come for the journey.",
+      "nepali": "यात्राका लागि आउनुहोस्।",
+      "copy": "A stop here is part of the journey: fuel for the next climb, a charge while you rest, a mechanic when the bike needs care, and a warm meal before the road opens again.",
+      "note": "Gulmi मा बाटोको बीचमा भरपर्दो साथ।",
+      "image": "@visit-scene",
+      "cta": "See visit options",
+      "ctaHref": "#fuel-ev",
+      "services": [
+        { "label": "Fuel", "nepali": "पेट्रोल", "icon": "fuel", "href": "#fuel-ev" },
+        { "label": "EV charging", "nepali": "ईभी चार्जिङ", "icon": "zap", "href": "#fuel-ev" },
+        { "label": "Bike repair", "nepali": "बाइक मर्मत", "icon": "wrench", "href": "#bike-repair" },
+        { "label": "Restaurant", "nepali": "रेस्टुरेन्ट", "icon": "utensils", "href": "#restaurant" },
+        { "label": "Location & hours", "nepali": "स्थान र समय", "icon": "mappin", "href": "#contact" }
+      ]
+    },
+    "shop": {
+      "eyebrow": "Shop & order",
+      "title": "Take a little home.",
+      "nepali": "घरमा पनि सम्झना लैजानुहोस्।",
+      "copy": "Some things begin in the hills and travel home with you: honey from the hives, furniture for daily life, and practical essentials for the road.",
+      "note": "Browse the story first, then choose the right shop.",
+      "image": "@shop-scene",
+      "cta": "Browse shop & order",
+      "ctaHref": "/shop",
+      "cards": [
+        { "label": "Honey & beekeeping", "nepali": "मह र मौरीपालन", "image": "@tile-honey", "href": "/shop?type=BEEKEEPING" },
+        { "label": "Furniture", "nepali": "फर्निचर", "image": "@tile-chair", "href": "/shop?type=FURNITURE" },
+        { "label": "Bike accessories", "nepali": "बाइक सामग्री", "image": "@hub-bike", "href": "@whatsapp" },
+        { "label": "Car accessories", "nepali": "कार सामग्री", "image": "", "href": "@whatsapp" }
+      ]
+    }
+  },
+  "trust": {
+    "items": [
+      { "value": "16+", "label": "years in Gulmi" },
+      { "value": "4", "label": "ways to serve you" },
+      { "value": "2008", "label": "established" }
+    ]
+  },
+  "featured": {
+    "eyebrow": "From our shop",
+    "title": "Made here. Ready for the road.",
+    "linkLabel": "Ask on WhatsApp",
+    "tiles": [
+      {
+        "title": "Honey, bottled with care", "nepali": "मौरीको शुद्ध मह", "image": "@hub-honey",
+        "storyTitle": "A little of the hillside, carried home.",
+        "storyBody": "Maurighar honey begins with local hives, patient seasons, and the work of keeping bees well. Browse the honey collection when you are ready, or ask us which jar is available today.",
+        "action": "Explore Maurighar", "href": "/shop?type=BEEKEEPING"
+      },
+      {
+        "title": "Furniture for real homes", "nepali": "घरका लागि फर्निचर", "image": "@hub-chair",
+        "storyTitle": "Made for the ordinary moments.",
+        "storyBody": "A table gathers people. A chair waits by the window. Our furniture is chosen for the daily life it will hold, then shaped further when a custom piece makes more sense.",
+        "action": "Explore furniture", "href": "/shop?type=FURNITURE"
+      },
+      {
+        "title": "Bike essentials", "nepali": "बाइकका सामग्री", "image": "@hub-bike",
+        "storyTitle": "Keep the road moving.",
+        "storyBody": "For bike essentials, send a photo, a part name, or a short list. We will check what is available at Samjhana Ventures and help you choose the practical next step.",
+        "action": "Ask on WhatsApp", "href": "@whatsapp"
+      },
+      {
+        "title": "Car essentials", "nepali": "कारका सामग्री", "image": "",
+        "storyTitle": "The useful thing you need, when you need it.",
+        "storyBody": "Car products do not always fit a neat online category. Tell us what you are looking for and we will confirm availability before you make the trip.",
+        "action": "Ask on WhatsApp", "href": "@whatsapp"
+      }
+    ]
+  },
+  "fuelEv": {
+    "eyebrow": "Section 02",
+    "title": "Petrol Pump & EV",
+    "evEyebrow": "EV Charging Station",
+    "evTitle": "Fast Charging",
+    "evCta": "Call to check availability",
+    "priceNote": "Source: NOC"
+  },
+  "bike": {
+    "eyebrow": "Section 03",
+    "titleLine1": "Back on the",
+    "titleLine2": "road again.",
+    "copy": "From a quick tyre swap to a deeper engine check, our mechanics help you get moving again. Tap a part of the bike to see how we can help, then call to check today’s availability.",
+    "pills": ["All bikes", "Motorcycles", "Scooters", "Electric"],
+    "cta": "Call about your bike",
+    "hint": "Hover a part · tap on mobile",
+    "image": "@motorcycle",
+    "services": [
+      { "name": "Tyre Change", "time": "30 min", "story": "A quick change when the road has caught up with your tyres.", "icon": "disc", "accent": "#d6b35c", "x": 14, "y": 74 },
+      { "name": "Engine Service", "time": "2–3 hr", "story": "For the deeper check when the bike needs more than a quick adjustment.", "icon": "wrench", "accent": "#8fc5ff", "x": 58, "y": 61 },
+      { "name": "Electrical Fix", "time": "1–2 hr", "story": "Lights, battery, and electrical issues checked before they become roadside problems.", "icon": "battery", "accent": "#c5a5ff", "x": 64, "y": 43 },
+      { "name": "Brake Service", "time": "45 min", "story": "A safety-first stop for brakes that feel soft, noisy, or uncertain.", "icon": "alert", "accent": "#ff8e8e", "x": 87, "y": 74 },
+      { "name": "Lighting Repair", "time": "20 min", "story": "Get seen again on early starts, late returns, and mountain roads.", "icon": "bulb", "accent": "#a3edc0", "x": 84, "y": 32 },
+      { "name": "Free Diagnostics", "time": "Walk-in", "story": "Start with a conversation and a practical look at what is wrong.", "icon": "search", "accent": "#f1d58a", "x": 51, "y": 48 }
+    ]
+  },
+  "restaurant": {
+    "eyebrow": "Section 04",
+    "kicker": "Maurighar Restaurant",
+    "titleLine1": "Taste of",
+    "titleLine2": "the hills.",
+    "intro": "Home-cooked Nepali food made fresh every day. Choose the moment of your journey and we’ll show you the kind of pause waiting at the table.",
+    "stats": [
+      { "value": "10+", "label": "Years" },
+      { "value": "6am–9pm", "label": "Daily" }
+    ],
+    "ambience": ["Mountain view", "Open kitchen", "Community table", "No booking needed"],
+    "captionNote": "Real Nepali food · served warm in Gulmi",
+    "meals": [
+      { "id": "breakfast", "label": "Breakfast", "nepali": "बिहान", "story": "Start early with sel roti, chiura dahi, and a warm cup of tea.", "hours": "6:00 – 10:00 am", "image": "@thali" },
+      { "id": "lunch", "label": "Lunch", "nepali": "दिउँसो", "story": "Settle in for dal bhat, dhido, and a proper pause on the highway.", "hours": "11:00 am – 3:00 pm", "image": "@thali" },
+      { "id": "dinner", "label": "Dinner", "nepali": "बेलुका", "story": "End the day with warm plates, mountain air, and something sweet to drink.", "hours": "5:00 – 9:00 pm", "image": "@thali" }
+    ]
+  },
+  "shop": {
+    "heading": "Shop",
+    "intro": "Honey, beekeeping gear and furniture from the Samjhana Ventures shop in Gulmi.",
+    "deliveryFee": 150,
+    "freeDeliveryOver": 5000,
+    "deliveryNote": "We deliver in Gulmi and nearby. We will call you to confirm the delivery time.",
+    "pickupNote": "Collect from the shop in Gulmi. We will call you when your order is ready.",
+    "paymentNote": "Pay in cash when your order arrives, or at the shop when you collect it.",
+    "customOrderTitle": "Custom furniture",
+    "customOrderText": "Don't see what you need? We build to your exact specifications.",
+    "customOrderCta": "Ask for a quote"
+  }
+}

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.entity.BeekeepingProduct;
 import com.samjhana.entity.BeekeepingProduct.BeekeepingCategory;
 import com.samjhana.repository.BeekeepingProductRepository;
+import com.samjhana.service.MediaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -18,8 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Loads the shop's existing product list ({@code seed/beekeeping-products.json}, the products the public
@@ -39,8 +43,18 @@ public class BeekeepingProductSeeder implements CommandLineRunner {
 
     static final String RESOURCE = "seed/beekeeping-products.json";
 
+    @SuppressWarnings("unchecked")
+    private String starterPictures(Map<String, Object> product) {
+        List<String> names = (List<String>) product.getOrDefault("images", List.of());
+        List<UUID> ids = new ArrayList<>();
+        for (String name : names) seedImages.idFor(name).ifPresent(ids::add);
+        return mediaService.toJson(ids);
+    }
+
     private final BeekeepingProductRepository productRepository;
     private final ObjectMapper objectMapper;
+    private final SeedImages seedImages;
+    private final MediaService mediaService;
 
     @Override
     @Transactional
@@ -52,7 +66,17 @@ public class BeekeepingProductSeeder implements CommandLineRunner {
         int added = 0;
         for (Map<String, Object> p : products) {
             String sku = (String) p.get("sku");
-            if (productRepository.existsBySku(sku) || productRepository.existsBySlug((String) p.get("slug"))) continue;
+            Optional<BeekeepingProduct> existing = productRepository.findBySku(sku);
+            if (existing.isPresent()) {
+                // A product from an earlier version has no pictures yet (null, not an empty list): give it its starter picture.
+                BeekeepingProduct current = existing.get();
+                if (current.getImageIds() == null && current.getDeletedAt() == null) {
+                    current.setImageIds(starterPictures(p));
+                    productRepository.save(current);
+                }
+                continue;
+            }
+            if (productRepository.existsBySlug((String) p.get("slug"))) continue;
             productRepository.save(BeekeepingProduct.builder()
                     .sku(sku)
                     .slug((String) p.get("slug"))
@@ -63,6 +87,7 @@ public class BeekeepingProductSeeder implements CommandLineRunner {
                     .description((String) p.get("description"))
                     .badge((String) p.get("badge"))
                     .details(p.get("details") == null ? null : objectMapper.writeValueAsString(p.get("details")))
+                    .imageIds(starterPictures(p))
                     .stockQty(0)
                     .showOnWebsite(true)
                     .build());

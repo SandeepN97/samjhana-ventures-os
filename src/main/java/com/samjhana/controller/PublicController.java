@@ -1,6 +1,7 @@
 package com.samjhana.controller;
 
 import com.samjhana.service.PublicApiService;
+import com.samjhana.service.ShopCatalogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.UUID;
 public class PublicController {
 
     private final PublicApiService publicApiService;
+    private final ShopCatalogService shopCatalogService;
 
     @GetMapping("/fuel-prices/current")
     public ResponseEntity<?> getCurrentFuelPrices() {
@@ -34,6 +36,28 @@ public class PublicController {
     public ResponseEntity<?> getFurnitureItem(@PathVariable String id) {
         return publicApiService.getFurnitureItem(UUID.fromString(id))
                 .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/shop/products")
+    public ResponseEntity<?> shopProducts(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) java.math.BigDecimal minPrice,
+            @RequestParam(required = false) java.math.BigDecimal maxPrice,
+            @RequestParam(required = false, defaultValue = "false") boolean inStock,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false, defaultValue = "1") int page,
+            @RequestParam(required = false, defaultValue = "24") int size) {
+        return ResponseEntity.ok(shopCatalogService.search(type, category,
+                q != null && q.length() > 100 ? q.substring(0, 100) : q, minPrice, maxPrice, inStock, sort, page, size));
+    }
+
+    @GetMapping("/shop/products/{slug}")
+    public ResponseEntity<?> shopProduct(@PathVariable String slug) {
+        return shopCatalogService.detail(slug)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
