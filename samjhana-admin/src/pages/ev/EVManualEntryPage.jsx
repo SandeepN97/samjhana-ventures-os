@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Zap, Check, Banknote, Building2, CalendarClock, Car, Settings, Pencil, X } from 'lucide-react';
+import { Zap, Check, Banknote, Building2, Car, Settings, Pencil, X } from 'lucide-react';
 import api from '../../utils/api';
 import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { toNepaliNumerals } from '../../utils/formatters';
 import { PageHeader, HeaderAction } from '../../components/brand';
-import { BUSINESS_TIME_ZONE, nepalToday } from '../../utils/businessDay';
+import NepalDateTime from '../../components/NepalDateTime';
+import { nepalToday } from '../../utils/businessDay';
 
 export default function EVManualEntryPage() {
   const navigate = useNavigate();
@@ -20,7 +21,6 @@ export default function EVManualEntryPage() {
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { toasts, showToast, removeToast } = useToast();
-  const [now, setNow] = useState(() => new Date());
 
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLoadError, setVehicleLoadError] = useState(false);
@@ -43,11 +43,6 @@ export default function EVManualEntryPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     api.get('/api/ev-vehicles')
@@ -299,25 +294,7 @@ export default function EVManualEntryPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date and time */}
-        <div>
-          <label className="block text-lg font-medium text-gray-700 mb-2">
-            {t('common.dateTime')}
-          </label>
-          <div className="relative">
-            <CalendarClock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              readOnly
-              aria-label={t('common.currentDateTime')}
-              value={new Intl.DateTimeFormat(isNepali ? 'ne-NP' : 'en-NP', {
-                timeZone: BUSINESS_TIME_ZONE,
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              }).format(now)}
-              className="w-full pl-10 pr-3 py-3 text-base border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900"
-            />
-          </div>
-        </div>
+        <NepalDateTime id="ev-manual-date-time" />
 
         {/* Charger Selection */}
         <div>

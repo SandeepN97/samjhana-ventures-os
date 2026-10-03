@@ -123,17 +123,17 @@ describe('EVEntryPage', () => {
     it('shows the Nepal date and time instead of an editable date', async () => {
       const { container } = await renderPage();
       expect(container.querySelector('input[type="date"]')).toBeNull();
-      const field = screen.getByLabelText('Current date and time');
-      expect(field).toHaveAttribute('readonly');
-      expect(field.value).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} (AM|PM)$/);
+      expect(screen.getByRole('group', { name: 'Current date and time' })).toBeInTheDocument();
+      expect(screen.getByTestId('nepal-date').textContent).toMatch(/^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+      expect(screen.getByTestId('nepal-time').textContent).toMatch(/^\d{1,2}:\d{2} (AM|PM)$/);
       expect(screen.getByText('Date & Time')).toBeInTheDocument();
     });
 
     it('shows the Nepal date and time in Nepali too', async () => {
       await renderPage('ne');
-      const field = screen.getByLabelText('हालको मिति र समय');
-      expect(field).toHaveAttribute('readonly');
-      expect(field.value).not.toMatch(/[0-9]/);
+      expect(screen.getByRole('group', { name: 'हालको मिति र समय' })).toBeInTheDocument();
+      expect(screen.getByTestId('nepal-date').textContent).not.toMatch(/[0-9]/);
+      expect(screen.getByTestId('nepal-time').textContent).not.toMatch(/[0-9]/);
     });
 
     it.each(['ADMIN', 'MANAGER'])('shows the Vehicles button to %s', async (role) => {
@@ -169,7 +169,7 @@ describe('EVEntryPage', () => {
         screen.getByText(/NEA Rate per Unit/),
         screen.getByText('Select charger'),
         screen.getByLabelText('Charging connector'),
-        screen.getByLabelText(/^Date/),
+        screen.getByRole('group', { name: 'Current date and time' }),
         vehicleField(),
         screen.getByText('Vehicle plate'),
         screen.getByText('Charge target'),
