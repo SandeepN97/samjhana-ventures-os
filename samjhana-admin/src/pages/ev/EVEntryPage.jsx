@@ -13,7 +13,7 @@ import ActiveSessionCard from '../../components/ev/ActiveSessionCard';
 import PaymentCard from '../../components/ev/PaymentCard';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
-import useBusinessDate from '../../hooks/useBusinessDate';
+import NepalDateTime from '../../components/NepalDateTime';
 import useEvLiveUpdates from '../../hooks/useEvLiveUpdates';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 import {
@@ -40,7 +40,6 @@ export default function EVEntryPage() {
   const { t } = useTranslation();
   const { num } = useLocaleFormat();
   const { toasts, showToast, removeToast } = useToast();
-  const { businessDate } = useBusinessDate();
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
@@ -52,7 +51,6 @@ export default function EVEntryPage() {
   const [vehicles, setVehicles] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [date, setDate] = useState(businessDate);
   const [photoName, setPhotoName] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -64,8 +62,6 @@ export default function EVEntryPage() {
   const knownStatus = useRef(new Map());
   // Bumped on every live event, so a REST fetch can tell whether it was overtaken (see refresh).
   const eventSeq = useRef(0);
-
-  useEffect(() => { setDate(businessDate); }, [businessDate]);
 
   // ---- sessions: merge one update, and tell staff about transitions they care about ----
   // One toast per session at a time: each new message about a session replaces the last one.
@@ -354,18 +350,7 @@ export default function EVEntryPage() {
           </div>
 
           <div className="space-y-4 p-4">
-            <div>
-              <label htmlFor="ev-date" className="mb-2 block text-lg font-medium text-gray-700">
-                {t('common.date')} <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="ev-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-ev-500"
-              />
-            </div>
+            <NepalDateTime id="ev-date-time" />
 
             <div>
               <label id="ev-vehicle-label" htmlFor="ev-vehicle" className="mb-2 block text-lg font-medium text-gray-700">
