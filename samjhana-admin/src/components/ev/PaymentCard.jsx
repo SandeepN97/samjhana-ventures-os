@@ -14,12 +14,24 @@ const METHODS = [
  * Payment Due card. While AWAITING_PAYMENT it collects the payment (this is the only way to
  * unlock the connector); once paid it just shows unlock progress with a retry if it failed.
  */
+// The signed-in user is cached by the login flow; a missing or corrupt entry means no special rights.
+function currentRole() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')?.role;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock }) {
   const { t } = useTranslation();
   const { num, money } = useLocaleFormat();
   const suggested = session.suggestedAmount == null ? '' : String(session.suggestedAmount);
   const [method, setMethod] = useState('CASH');
   const [amount, setAmount] = useState(suggested);
+  // Cash handed over by the customer. Only used to work out change; the amount recorded as the
+  // sale is always `amount` above, never the cash received.
+  const [received, setReceived] = useState('');
   const [editing, setEditing] = useState(suggested === '');
   const touched = useRef(false);
 
@@ -42,10 +54,16 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
     ? t('evLive.percentBreakdown', { percent: num(session.percentCharged), rate: money(session.ratePerPercent) })
     : null;
   // Staff can round the price but not discount it; the server refuses anything more than Rs 1 under.
-  const role = JSON.parse(localStorage.getItem('user') || '{}').role;
+  const role = currentRole();
   const canDiscount = role === 'ADMIN' || role === 'MANAGER';
   const belowPrice = !canDiscount && suggested !== '' && Number(amount) < Number(suggested) - 1;
-  const valid = Number(amount) > 0 && !belowPrice;
+  // Work in whole paisa so 0.1 + 0.2 style float noise never shows a phantom Rs 0.01 of change.
+  const dueCents = Math.round(Number(amount) * 100);
+  const receivedCents = Math.round(Number(received) * 100);
+  const cashEntered = method === 'CASH' && received !== '' && receivedCents >= 0;
+  const changeCents = cashEntered ? receivedCents - dueCents : 0;
+  const shortCents = cashEntered && changeCents < 0 ? -changeCents : 0;
+  const valid = Number(amount) > 0 && !belowPrice && shortCents === 0;
 
   if (session.status !== 'AWAITING_PAYMENT') {
     return (
@@ -127,6 +145,36 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
           </button>
         ))}
       </div>
+
+      {method === 'CASH' && (
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor={`received-${session.id}`}>
+            {t('evLive.receivedLabel')}
+          </label>
+          <input
+            id={`received-${session.id}`}
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={received}
+            onChange={(e) => setReceived(e.target.value)}
+            className={`min-h-[44px] w-full rounded-xl border-2 px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 ${
+              shortCents > 0 ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-ev-500'
+            }`}
+          />
+          {cashEntered && shortCents === 0 && (
+            <p role="status" className="mt-2 rounded-lg bg-green-50 p-3 text-lg font-bold text-green-700">
+              {t('evLive.changeDue', { amount: money(changeCents / 100) })}
+            </p>
+          )}
+          {shortCents > 0 && (
+            <p role="alert" className="mt-2 rounded-lg bg-red-50 p-3 text-base font-bold text-red-700">
+              {t('evLive.shortBy', { amount: money(shortCents / 100) })}
+            </p>
+          )}
+        </div>
+      )}
 
       <button
         type="button"
