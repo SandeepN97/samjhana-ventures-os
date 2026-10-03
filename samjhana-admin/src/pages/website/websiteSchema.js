@@ -564,6 +564,51 @@ export const TABS = [
             "labelKey": "siteEditor.f.restaurant_captionNote"
           },
           {
+            "name": "mainsNote",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_mainsNote"
+          },
+          {
+            "name": "drinksNote",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_drinksNote"
+          },
+          {
+            "name": "hoursTitle",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_hoursTitle"
+          },
+          {
+            "name": "hoursFooter",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_hoursFooter"
+          },
+          {
+            "name": "kitchenTitle",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_kitchenTitle"
+          },
+          {
+            "name": "kitchenQuote",
+            "type": "textarea",
+            "labelKey": "siteEditor.f.restaurant_kitchenQuote"
+          },
+          {
+            "name": "kitchenQuoteEnglish",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_kitchenQuoteEnglish"
+          },
+          {
+            "name": "locationLine",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_locationLine"
+          },
+          {
+            "name": "walkInNote",
+            "type": "text",
+            "labelKey": "siteEditor.f.restaurant_walkInNote"
+          },
+          {
             "name": "meals",
             "type": "list",
             "labelKey": "siteEditor.f.restaurant_meals",

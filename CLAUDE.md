@@ -109,6 +109,11 @@ Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth tok
 - **prod**: Supabase PostgreSQL via `SUPABASE_PROD_*`, deployed from the `main` branch
 - staging and prod both need the Supabase CA certificate (Render Secret File `supabase-ca.crt`), a real `JWT_SECRET` and real `OCPP_SECRET_*` values — the app refuses to start with the published dev placeholders
 
+### Public site content and online shop
+- `samjhana-web` has no built-in text, prices or pictures. Text/picture choices come from `GET /api/public/site` (admin: Website page → `site_content`), products from `/api/public/shop/products`, the menu from `/api/public/restaurant`. Defaults in `seed/site-content-defaults.json` only fill keys never saved.
+- Pictures are uploaded in the admin and stored in `media_assets` (JPEG/PNG/WebP, ≤3 MB); the public site shows them via `/api/public/media/{id}`.
+- Online orders: guest checkout → `shop_orders`; stock is held when the order is placed and returned if cancelled; completing an order records the sale. New tables/columns need `docs/sql/2026-10-online-shop.sql` run on Supabase before deploy.
+
 ### Fuel price scraper
 `NocPriceScraperService` scrapes NOC (Nepal Oil Corporation) using Jsoup. Configured via `samjhana.fuel-price-scraper.*` in `application.yml`. The depot is set to `Bhalbari` by default.
 

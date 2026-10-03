@@ -27,7 +27,7 @@ const content = () => ({
   featured: { eyebrow: '', title: '', linkLabel: '', tiles: [] },
   fuelEv: { eyebrow: '', title: 'Petrol Pump & EV', evEyebrow: '', evTitle: '', evCta: '', priceNote: '' },
   bike: { eyebrow: '', titleLine1: '', titleLine2: '', copy: '', pills: ['All bikes'], cta: '', hint: '', image: '', services: [] },
-  restaurant: { eyebrow: '', kicker: '', titleLine1: '', titleLine2: '', intro: '', stats: [], ambience: [], captionNote: '',
+  restaurant: { eyebrow: '', kicker: '', titleLine1: '', titleLine2: '', intro: '', stats: [], ambience: [], captionNote: '', mainsNote: '', drinksNote: '', hoursTitle: '', hoursFooter: '', kitchenTitle: '', kitchenQuote: '', kitchenQuoteEnglish: '', locationLine: '', walkInNote: '',
     meals: [{ id: 'breakfast', label: 'Breakfast', nepali: 'बिहान', story: 's', hours: '6 – 10', image: 'img-b' }] },
   shop: { heading: 'Shop', intro: '', deliveryFee: 150, freeDeliveryOver: 5000, deliveryNote: '', pickupNote: '', paymentNote: '', customOrderTitle: '', customOrderText: '', customOrderCta: '' },
 });
