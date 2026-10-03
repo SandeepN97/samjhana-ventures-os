@@ -12,6 +12,8 @@ import {
   Settings,
   Users,
   BarChart3,
+  Globe,
+  ShoppingBag,
 } from 'lucide-react';
 import { Wordmark } from './brand';
 import { unitTheme } from '../brand/theme';
@@ -73,6 +75,19 @@ const BUSINESS_BUTTONS = [
   },
 ];
 
+/** How many online orders are waiting for staff (new, not yet confirmed), or 0 while loading or if it can't be read. */
+function useNewOrderCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/shop-orders/summary')
+      .then((res) => { if (!cancelled) setCount(Number(res.data?.NEW) || 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  return count;
+}
+
 /**
  * Cash taken so far on the current business date (the same figure the End of Day page
  * starts from). Returns null while loading or if the server can't be reached, so the
@@ -107,6 +122,7 @@ export default function QuickActionButtons() {
   const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canViewAnalytics = canManage;
   const todayCash = useTodayCash();
+  const newOrders = useNewOrderCount();
   const { money } = useLocaleFormat();
 
   const visibleButtons = isStaff
@@ -158,6 +174,19 @@ export default function QuickActionButtons() {
           label={t('home.dailyClose')}
           onClick={() => navigate('/reports/close')}
         />
+        <SecondaryButton
+          icon={ShoppingBag}
+          label={t('home.onlineOrders')}
+          badge={newOrders > 0 ? newOrders : undefined}
+          onClick={() => navigate('/online-orders')}
+        />
+        {canManage && (
+          <SecondaryButton
+            icon={Globe}
+            label={t('home.website')}
+            onClick={() => navigate('/website')}
+          />
+        )}
         {isAdmin && (
           <SecondaryButton
             icon={Users}
