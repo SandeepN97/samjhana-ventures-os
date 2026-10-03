@@ -136,7 +136,8 @@ test('runs a whole session: start → live progress → stop → payment → unl
   await openEvPage(page);
 
   // The start form shows the current date and time in Nepal; there is no date to set.
-  await expect(page.getByLabel('Current date and time')).toHaveValue(/\d{1,2}:\d{2} (AM|PM)$/);
+  await expect(page.getByTestId('nepal-time')).toHaveText(/^\d{1,2}:\d{2}\s(AM|PM)$/);
+  await expect(page.getByTestId('nepal-date')).toHaveText(/^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{4}$/);
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
 
   // The admin sees (and can set) what the station pays NEA.
