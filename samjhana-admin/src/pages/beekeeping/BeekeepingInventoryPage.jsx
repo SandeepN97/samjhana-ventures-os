@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
+import { Package, Plus, X, Check, Search } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 import ImageUploader from '../../components/ImageUploader';
-import { resolveMediaUrl } from '../../utils/image';
+import BusinessTabs from '../../components/BusinessTabs';
+import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
+import PhotoDialog from '../../components/PhotoDialog';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'beeInv.catAll' },
@@ -44,6 +46,8 @@ export default function BeekeepingInventoryPage() {
   const [removing, setRemoving] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [photoItem, setPhotoItem] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -148,6 +152,23 @@ export default function BeekeepingInventoryPage() {
     }
   };
 
+  // Quick actions straight from the grid: switch a product on or off the website, or change its pictures.
+  const toggleLive = async (item) => {
+    setActionError('');
+    try {
+      await api.put(`/api/beekeeping/items/${item.id}`, { showOnWebsite: item.showOnWebsite === false });
+      fetchItems();
+    } catch (err) {
+      setActionError(err.response?.data?.message || t('productGrid.liveFailed'));
+    }
+  };
+
+  const savePhotos = async (item, imageIds) => {
+    await api.put(`/api/beekeeping/items/${item.id}`, { imageIds });
+    setPhotoItem(null);
+    fetchItems();
+  };
+
   const adjustStock = async (item, adjustment) => {
     setActionError('');
     try {
@@ -158,7 +179,13 @@ export default function BeekeepingInventoryPage() {
     }
   };
 
+  const matchesStatus = (i, f) => {
+    const st = productStatus(i);
+    return f === 'ALL' || (f === 'LIVE' && st.live) || (f === 'HIDDEN' && !st.live) || (f === 'OUT' && st.out) || (f === 'NOPIC' && !st.hasPicture);
+  };
+  const statusCount = (f) => items.filter((i) => matchesStatus(i, f)).length;
   const visible = items.filter((i) => {
+    if (!matchesStatus(i, statusFilter)) return false;
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return i.name?.toLowerCase().includes(s) || i.sku?.toLowerCase().includes(s);
@@ -171,7 +198,9 @@ export default function BeekeepingInventoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="beekeeping" icon={Package} title={t('beeInv.title')} backTo="/entry/beekeeping" />
+      <PageHeader unit="beekeeping" icon={Package} title={t('beeInv.title')} backTo="/entry/beekeeping">
+        <BusinessTabs business="beekeeping" />
+      </PageHeader>
 
       {isAdmin && (
         <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
@@ -192,6 +221,17 @@ export default function BeekeepingInventoryPage() {
                 selectedCategory === cat.value ? 'bg-beekeeping-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
               {t(cat.tKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4 py-2 bg-white border-b overflow-x-auto">
+        <div className="flex gap-2 min-w-max" role="group" aria-label={t('productGrid.status')}>
+          {[['ALL', 'productGrid.all'], ['LIVE', 'productGrid.live'], ['HIDDEN', 'productGrid.hidden'], ['OUT', 'productGrid.soldOutFilter'], ['NOPIC', 'productGrid.needsPicture']].map(([f, key]) => (
+            <button type="button" key={f} onClick={() => setStatusFilter(f)} aria-pressed={statusFilter === f}
+              className={`min-h-[44px] px-4 rounded-full text-sm font-medium ${statusFilter === f ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {t(key)} <span className="opacity-70">{statusCount(f)}</span>
             </button>
           ))}
         </div>
@@ -225,6 +265,8 @@ export default function BeekeepingInventoryPage() {
         </div>
       )}
 
+      {photoItem && <PhotoDialog item={photoItem} onSave={savePhotos} onClose={() => setPhotoItem(null)} />}
+
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-4">
           <div role="dialog" aria-modal="true" aria-label={editingItem ? t('beeInv.editItem') : t('beeInv.addNewItem')}
@@ -239,6 +281,9 @@ export default function BeekeepingInventoryPage() {
             <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
               {formError && <div role="alert" className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-sm">{formError}</div>}
               {formSuccess && <div role="status" className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
+
+              <ImageUploader id="bee-pictures" label={t('beeInv.pictures')} value={formData.imageIds}
+                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
 
               <div>
                 <label htmlFor="bee-name" className="block text-sm font-medium text-gray-700 mb-1">{t('beeInv.itemName')} *</label>
@@ -305,9 +350,6 @@ export default function BeekeepingInventoryPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </div>
 
-              <ImageUploader id="bee-pictures" label={t('beeInv.pictures')} value={formData.imageIds}
-                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
-
               <label htmlFor="bee-web" className="flex min-h-[44px] items-center gap-3 text-gray-800">
                 <input id="bee-web" type="checkbox" checked={formData.showOnWebsite} className="h-6 w-6"
                   onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })} />
@@ -343,68 +385,14 @@ export default function BeekeepingInventoryPage() {
           )}
         </div>
       ) : (
-        <div className="px-4 py-4 space-y-3">
-          {visible.map((item) => {
-            const out = item.stockQty <= 0;
-            const low = !out && item.stockQty <= item.reorderLevel;
-            return (
-              <div key={item.id} className="bg-white rounded-xl shadow-sm p-4" data-testid="product-row">
-                <div className="flex items-start justify-between gap-3">
-                  {item.imageUrls?.[0] && (
-                    <img src={resolveMediaUrl(item.imageUrls[0])} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-bold text-gray-800">{item.name}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{categoryLabel(item.category)}</span>
-                    </div>
-                    {item.nameNepali && <p className="text-sm text-gray-500 mb-1">{item.nameNepali}</p>}
-                    <p className="text-xs text-gray-400 mb-2">{t('beeInv.sku')}: {item.sku}</p>
-                    <div className="flex flex-wrap items-center gap-x-4 text-sm">
-                      {item.purchasePrice != null && <span className="text-gray-500">{t('beeInv.buy')}: {money(item.purchasePrice)}</span>}
-                      <span className="text-gray-800 font-medium">{t('beeInv.sell')}: {money(item.sellingPrice)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2">
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <button type="button" onClick={() => openEditForm(item)} aria-label={t('beeInv.editItem')}
-                          className="flex h-11 w-11 items-center justify-center text-beekeeping-700 hover:bg-beekeeping-50 rounded-lg">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button type="button" onClick={() => setRemoving(item)} aria-label={t('common.delete')}
-                          className="flex h-11 w-11 items-center justify-center text-red-600 hover:bg-red-50 rounded-lg">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      {canManage && (
-                        <button type="button" onClick={() => adjustStock(item, -1)} disabled={out}
-                          aria-label={t('beeInv.decreaseStock', { name: item.name })}
-                          className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-40">
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
-                      <span className={`text-lg font-bold px-2 min-w-[2rem] text-center ${out || low ? 'text-red-600' : 'text-gray-800'}`}>
-                        {num(item.stockQty)}
-                      </span>
-                      {canManage && (
-                        <button type="button" onClick={() => adjustStock(item, 1)}
-                          aria-label={t('beeInv.increaseStock', { name: item.name })}
-                          className="w-11 h-11 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200">
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    {out && <span className="text-xs text-red-600 font-medium">{t('beeInv.outOfStockBadge')}</span>}
-                    {low && <span className="text-xs text-red-500 font-medium">{t('beeInv.lowStockBadge')}</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
+          {visible.map((item) => (
+            <ProductAdminCard key={item.id} item={item} price={`${t('beeInv.sell')}: ${money(item.sellingPrice)}`} cost={item.purchasePrice != null ? `${t('beeInv.buy')}: ${money(item.purchasePrice)}` : null} categoryLabel={categoryLabel(item.category)}
+              isAdmin={isAdmin} canManage={canManage} accent="bg-beekeeping-600"
+              labels={{ less: t('beeInv.decreaseStock', { name: item.name }), more: t('beeInv.increaseStock', { name: item.name }), edit: t('beeInv.editItem'), remove: t('common.delete'), out: t('beeInv.outOfStockBadge'), low: t('beeInv.lowStockBadge') }}
+              stockText={num(item.stockQty)}
+              onPhoto={setPhotoItem} onEdit={openEditForm} onDelete={setRemoving} onStock={adjustStock} onToggleLive={toggleLive} />
+          ))}
         </div>
       )}
     </div>

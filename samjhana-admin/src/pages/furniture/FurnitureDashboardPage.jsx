@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Sofa, Package, TrendingUp, AlertTriangle, Truck, ShoppingCart, Users, ClipboardList, Clock } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 
 export default function FurnitureDashboardPage() {
   const navigate = useNavigate();
@@ -50,7 +51,9 @@ export default function FurnitureDashboardPage() {
         icon={Sofa}
         title={t('furnitureDash.title')}
         subtitle={t('furnitureDash.dashboardLabel')}
-      />
+      >
+        <BusinessTabs business="furniture" />
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="px-4 py-4 grid grid-cols-2 gap-3">

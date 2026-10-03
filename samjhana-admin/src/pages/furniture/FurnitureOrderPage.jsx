@@ -8,6 +8,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 import { nepalToday } from '../../utils/businessDay';
 
 export default function FurnitureOrderPage() {
@@ -149,7 +150,9 @@ export default function FurnitureOrderPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <PageHeader unit="furniture" icon={ShoppingCart} title={t('furnitureOrd.newSaleTitle')} backTo="/entry/furniture" />
+      <PageHeader unit="furniture" icon={ShoppingCart} title={t('furnitureOrd.newSaleTitle')} backTo="/entry/furniture" >
+        <BusinessTabs business="furniture" />
+      </PageHeader>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-5">
         {/* Date */}

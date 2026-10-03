@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ClipboardList, Search } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 
 export default function BeekeepingOrderHistoryPage() {
@@ -35,7 +36,9 @@ export default function BeekeepingOrderHistoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="beekeeping" icon={ClipboardList} title={t('beeOrd.historyTitle')} backTo="/entry/beekeeping" />
+      <PageHeader unit="beekeeping" icon={ClipboardList} title={t('beeOrd.historyTitle')} backTo="/entry/beekeeping" >
+        <BusinessTabs business="beekeeping" />
+      </PageHeader>
 
       <div className="px-4 py-3 bg-white border-b">
         <div className="relative">
