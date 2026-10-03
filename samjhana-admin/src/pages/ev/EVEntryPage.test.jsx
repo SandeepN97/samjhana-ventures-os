@@ -74,6 +74,9 @@ async function renderPage(locale = 'en') {
   return view;
 }
 const fireLive = (event) => act(() => { mock.live.handler(event); });
+// Cash must be counted in before Confirm unlocks; `index` picks the card when several are due.
+const enterCash = async (value, { index = 0, label = 'Cash received (Rs)' } = {}) =>
+  userEvent.type((await screen.findAllByLabelText(label))[index], String(value));
 const tab = (name) => screen.getByRole('tab', { name: new RegExp(name) });
 const chargerCards = () => screen.findAllByRole('radio', { name: /Charger \d/ });
 const connectorCard = (name, group = 'Charging connector') =>
@@ -668,6 +671,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage();
       await userEvent.click(tab('Payment'));
+      await enterCash(600);
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
       expect(await screen.findByText('Payment confirmed for BA1PA4521 — unlocking')).toBeInTheDocument();
 
@@ -683,6 +687,7 @@ describe('EVEntryPage', () => {
       api.post.mockImplementation(() => new Promise((resolve) => { reply = resolve; }));
       await renderPage();
       await userEvent.click(tab('Payment'));
+      await enterCash(600);
       await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
 
       fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ status: 'CLOSED' }) });
@@ -698,6 +703,7 @@ describe('EVEntryPage', () => {
       api.post.mockResolvedValue({ data: session({ status: 'UNLOCK_REQUESTED' }) });
       await renderPage('ne');
       await userEvent.click(screen.getAllByRole('tab')[2]);
+      await enterCash(600, { label: 'नगद प्राप्त (रु)' });
       await userEvent.click(await screen.findByRole('button', { name: 'भुक्तानी पुष्टि र अनलक' }));
       expect(await screen.findByText('BA1PA4521 को भुक्तानी पुष्टि भयो — अनलक हुँदै')).toBeInTheDocument();
 
@@ -722,6 +728,7 @@ describe('EVEntryPage', () => {
     describe('returning to Start Session after payment', () => {
       const confirmPayment = async () => {
         await userEvent.click(tab('Payment'));
+        await enterCash(600);
         await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
       };
       const isSelected = (name) => expect(tab(name)).toHaveAttribute('aria-selected', 'true');
@@ -750,6 +757,7 @@ describe('EVEntryPage', () => {
         api.post.mockResolvedValue({ data: session({ id: 's1', status: 'UNLOCK_REQUESTED' }) });
         await renderPage();
         await userEvent.click(tab('Payment'));
+        await enterCash(600);
         await userEvent.click((await screen.findAllByRole('button', { name: 'Confirm Payment & Unlock' }))[0]);
 
         fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ id: 's1', status: 'CLOSED' }) });
@@ -769,8 +777,10 @@ describe('EVEntryPage', () => {
         }));
         await renderPage();
         await userEvent.click(tab('Payment'));
+        await enterCash(600);
         await userEvent.click((await screen.findAllByRole('button', { name: 'Confirm Payment & Unlock' }))[0]);
         fireLive({ type: 'CHARGE_SESSION_UPDATED', payload: session({ id: 's1', status: 'CLOSED' }) });
+        await enterCash(300);
         await userEvent.click(await screen.findByRole('button', { name: 'Confirm Payment & Unlock' }));
         isSelected('Payment');
 

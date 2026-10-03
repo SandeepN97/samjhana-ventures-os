@@ -63,7 +63,10 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
   const cashEntered = method === 'CASH' && received !== '' && receivedCents >= 0;
   const changeCents = cashEntered ? receivedCents - dueCents : 0;
   const shortCents = cashEntered && changeCents < 0 ? -changeCents : 0;
-  const valid = Number(amount) > 0 && !belowPrice && shortCents === 0;
+  // For Cash the counter must count the money in: staff type what was handed over before the
+  // connector can be unlocked. eSewa and Khalti are exact, so there is nothing to count.
+  const needsCash = method === 'CASH';
+  const valid = Number(amount) > 0 && !belowPrice && shortCents === 0 && (!needsCash || cashEntered);
 
   if (session.status !== 'AWAITING_PAYMENT') {
     return (
@@ -163,6 +166,9 @@ export default function PaymentCard({ session, busy, onConfirm, onRetryUnlock })
               shortCents > 0 ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-ev-500'
             }`}
           />
+          {!cashEntered && (
+            <p className="mt-2 text-sm text-amber-700">{t('evLive.cashRequiredHint')}</p>
+          )}
           {cashEntered && shortCents === 0 && (
             <p role="status" className="mt-2 rounded-lg bg-green-50 p-3 text-lg font-bold text-green-700">
               {t('evLive.changeDue', { amount: money(changeCents / 100) })}
