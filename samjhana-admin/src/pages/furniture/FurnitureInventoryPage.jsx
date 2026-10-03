@@ -52,8 +52,10 @@ export default function FurnitureInventoryPage() {
     fetchItems();
   }, [selectedCategory]);
 
-  const fetchItems = async () => {
-    setLoading(true);
+  // `silent` refreshes the list in place (after a stock, switch or picture change) without the spinner, so the
+  // page does not jump back to the top.
+  const fetchItems = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory !== 'ALL') params.append('category', selectedCategory);
@@ -126,7 +128,7 @@ export default function FurnitureInventoryPage() {
         setFormSuccess(t('furnitureInv.itemAdded'));
       }
 
-      fetchItems();
+      fetchItems(true);
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
       setFormError(err.response?.data?.message || t('furnitureInv.failedToSave'));
@@ -139,7 +141,7 @@ export default function FurnitureInventoryPage() {
     if (!confirm(`Remove ${item.name}?`)) return;
     try {
       await api.delete(`/api/furniture/items/${item.id}`);
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       alert(err.response?.data?.message || t('furnitureInv.failedToRemove'));
     }
@@ -149,7 +151,7 @@ export default function FurnitureInventoryPage() {
   const toggleLive = async (item) => {
     try {
       await api.put(`/api/furniture/items/${item.id}`, { showOnWebsite: item.showOnWebsite === false });
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       alert(err.response?.data?.message || t('productGrid.liveFailed'));
     }
@@ -158,13 +160,13 @@ export default function FurnitureInventoryPage() {
   const savePhotos = async (item, imageIds) => {
     await api.put(`/api/furniture/items/${item.id}`, { imageIds });
     setPhotoItem(null);
-    fetchItems();
+    fetchItems(true);
   };
 
   const handleStockAdjust = async (item, adjustment) => {
     try {
       await api.patch(`/api/furniture/items/${item.id}/stock`, { adjustment });
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       alert('Failed to update stock');
     }

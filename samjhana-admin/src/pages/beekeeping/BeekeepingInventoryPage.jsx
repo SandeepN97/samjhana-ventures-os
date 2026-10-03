@@ -53,17 +53,19 @@ export default function BeekeepingInventoryPage() {
   const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchItems = async () => {
-    setLoading(true);
-    setLoadError(false);
+  // `silent` refreshes the list in place (after a stock, switch or picture change) without the spinner, so the
+  // page does not jump back to the top.
+  const fetchItems = async (silent = false) => {
+    if (!silent) { setLoading(true); setLoadError(false); }
     try {
       const params = selectedCategory !== 'ALL' ? `?category=${selectedCategory}` : '';
       const res = await api.get(`/api/beekeeping/items${params}`);
       setItems(res.data);
     } catch {
-      setLoadError(true);
+      if (silent) setActionError(t('beeInv.failedToLoad'));
+      else setLoadError(true);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -132,7 +134,7 @@ export default function BeekeepingInventoryPage() {
         await api.post('/api/beekeeping/items', payload);
         setFormSuccess(t('beeInv.itemAdded'));
       }
-      fetchItems();
+      fetchItems(true);
       setTimeout(closeForm, 1200);
     } catch (err) {
       setFormError(err.response?.data?.message || t('beeInv.failedToSave'));
@@ -146,7 +148,7 @@ export default function BeekeepingInventoryPage() {
     setRemoving(null);
     try {
       await api.delete(`/api/beekeeping/items/${item.id}`);
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       setActionError(err.response?.data?.message || t('beeInv.failedToRemove'));
     }
@@ -157,7 +159,7 @@ export default function BeekeepingInventoryPage() {
     setActionError('');
     try {
       await api.put(`/api/beekeeping/items/${item.id}`, { showOnWebsite: item.showOnWebsite === false });
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       setActionError(err.response?.data?.message || t('productGrid.liveFailed'));
     }
@@ -166,14 +168,14 @@ export default function BeekeepingInventoryPage() {
   const savePhotos = async (item, imageIds) => {
     await api.put(`/api/beekeeping/items/${item.id}`, { imageIds });
     setPhotoItem(null);
-    fetchItems();
+    fetchItems(true);
   };
 
   const adjustStock = async (item, adjustment) => {
     setActionError('');
     try {
       await api.patch(`/api/beekeeping/items/${item.id}/stock`, { adjustment });
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       setActionError(err.response?.data?.message || t('beeInv.failedStock'));
     }
@@ -372,7 +374,7 @@ export default function BeekeepingInventoryPage() {
       ) : loadError ? (
         <div role="alert" className="mx-4 mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center text-red-700">
           <p className="mb-3">{t('beeInv.failedToLoad')}</p>
-          <button type="button" onClick={fetchItems} className="min-h-[44px] rounded-lg bg-red-600 px-5 font-bold text-white">{t('beeDash.retry')}</button>
+          <button type="button" onClick={() => fetchItems()} className="min-h-[44px] rounded-lg bg-red-600 px-5 font-bold text-white">{t('beeDash.retry')}</button>
         </div>
       ) : visible.length === 0 ? (
         <div className="text-center py-20 text-gray-500">

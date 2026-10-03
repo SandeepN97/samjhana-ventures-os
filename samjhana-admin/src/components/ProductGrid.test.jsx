@@ -92,6 +92,28 @@ describe('product picture grid (beekeeping)', () => {
     expect(screen.getByRole('dialog', { name: 'Bare Frame' })).toBeInTheDocument();
   });
 
+  it('refreshes in place when stock changes: the grid stays, there is no spinner, the page does not jump', async () => {
+    as('MANAGER');
+    api.patch.mockResolvedValue({ data: {} });
+    renderWithProviders(<BeekeepingInventoryPage />);
+    const before = (await screen.findAllByTestId('product-row'))[0];
+    await userEvent.click(screen.getByRole('button', { name: 'Increase stock of Wild Honey' }));
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('status')).toBeNull();                 // no loading spinner replaced the list
+    expect(before.isConnected).toBe(true);                            // the same cards, not rebuilt
+  });
+
+  it('keeps the grid and shows an error when an in-place refresh fails', async () => {
+    as('MANAGER');
+    api.patch.mockResolvedValue({ data: {} });
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await screen.findAllByTestId('product-row');
+    api.get.mockRejectedValueOnce(new Error('down'));
+    await userEvent.click(screen.getByRole('button', { name: 'Increase stock of Wild Honey' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getAllByTestId('product-row')).toHaveLength(4);
+  });
+
   it('gives staff and managers no picture, switch or edit controls', async () => {
     as('MANAGER');
     renderWithProviders(<BeekeepingInventoryPage />);
@@ -133,6 +155,17 @@ describe('product picture grid (furniture)', () => {
     const first = form.firstElementChild.nextElementSibling;
     expect(form.textContent.indexOf('pictures')).toBeLessThan(form.textContent.indexOf('Item Name'));
     expect(first).not.toBeNull();
+  });
+
+  it('refreshes in place when stock changes, without the spinner', async () => {
+    as('MANAGER');
+    api.patch.mockResolvedValue({ data: {} });
+    renderWithProviders(<FurnitureInventoryPage />);
+    const before = (await screen.findAllByTestId('product-row'))[0];
+    await userEvent.click(screen.getAllByRole('button').find((b) => b.className.includes('bg-green-100')));
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    expect(before.isConnected).toBe(true);
+    expect(document.querySelector('.animate-spin')).toBeNull();
   });
 
   it('switches a piece off the website from the card', async () => {
