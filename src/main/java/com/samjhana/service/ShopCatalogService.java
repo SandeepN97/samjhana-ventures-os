@@ -92,7 +92,17 @@ public class ShopCatalogService {
 
     public Map<String, Object> search(String type, String category, String q, BigDecimal minPrice, BigDecimal maxPrice,
                                       boolean inStockOnly, String sort, int page, int size) {
+        return search(type, category, q, minPrice, maxPrice, inStockOnly, sort, page, size, null);
+    }
+
+    /** @param slugs when given, only these products (the cart asks for the current price and status of what it holds) */
+    public Map<String, Object> search(String type, String category, String q, BigDecimal minPrice, BigDecimal maxPrice,
+                                      boolean inStockOnly, String sort, int page, int size, Collection<String> slugs) {
         List<Entry> all = visible();
+        if (slugs != null && !slugs.isEmpty()) {
+            Set<String> wanted = new HashSet<>(slugs);
+            all = all.stream().filter(e -> wanted.contains(e.slug())).toList();
+        }
         String query = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
 
         // Facets count what is left once the search text is applied, so a count never promises an empty page.

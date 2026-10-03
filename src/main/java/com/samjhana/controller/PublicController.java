@@ -49,9 +49,12 @@ public class PublicController {
             @RequestParam(required = false, defaultValue = "false") boolean inStock,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false, defaultValue = "1") int page,
-            @RequestParam(required = false, defaultValue = "24") int size) {
+            @RequestParam(required = false, defaultValue = "24") int size,
+            @RequestParam(required = false) String slugs) {
+        java.util.List<String> slugList = slugs == null || slugs.isBlank() ? null
+                : java.util.Arrays.stream(slugs.split(",")).map(String::trim).filter(x -> !x.isEmpty()).limit(60).toList();
         return ResponseEntity.ok(shopCatalogService.search(type, category,
-                q != null && q.length() > 100 ? q.substring(0, 100) : q, minPrice, maxPrice, inStock, sort, page, size));
+                q != null && q.length() > 100 ? q.substring(0, 100) : q, minPrice, maxPrice, inStock, sort, page, size, slugList));
     }
 
     @GetMapping("/shop/products/{slug}")

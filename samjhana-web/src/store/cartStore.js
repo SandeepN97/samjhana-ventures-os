@@ -1,54 +1,55 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const recompute = (items) => ({
-  count: items.reduce((s, i) => s + i.qty, 0),
-  total: items.reduce((s, i) => s + Number(i.price) * i.qty, 0),
-});
+export const MAX_PER_LINE = 50;
 
+const count = (items) => items.reduce((sum, i) => sum + i.qty, 0);
+const clamp = (qty) => Math.max(1, Math.min(MAX_PER_LINE, Math.floor(Number(qty)) || 1));
+
+/**
+ * The shopping cart: only which products and how many. Names, prices, pictures and stock are always read
+ * fresh from the shop, so a price changed in the admin is never out of date in somebody's cart.
+ */
 export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
-      open:  false,
       count: 0,
-      total: 0,
+      lastAdded: null,
 
-      setOpen: (v) => set({ open: v }),
-
-      addItem(product, qty = 1, openCart = true) {
+      add(slug, qty = 1) {
         const items = get().items;
-        const existing = items.find((i) => i.id === product.id);
-        const newItems = existing
-          ? items.map((i) => i.id === product.id ? { ...i, qty: i.qty + qty } : i)
-          : [...items, { ...product, price: Number(product.price), qty }];
-        set({ items: newItems, ...(openCart && { open: true }), ...recompute(newItems) });
+        const existing = items.find((i) => i.slug === slug);
+        const next = existing
+          ? items.map((i) => (i.slug === slug ? { ...i, qty: clamp(i.qty + qty) } : i))
+          : [...items, { slug, qty: clamp(qty) }];
+        set({ items: next, count: count(next), lastAdded: { slug, at: Date.now() } });
       },
 
-      removeItem(id) {
-        const newItems = get().items.filter((i) => i.id !== id);
-        set({ items: newItems, ...recompute(newItems) });
+      setQty(slug, qty) {
+        const next = get().items.map((i) => (i.slug === slug ? { ...i, qty: clamp(qty) } : i));
+        set({ items: next, count: count(next) });
       },
 
-      updateQty(id, qty) {
-        if (qty < 1) { get().removeItem(id); return; }
-        const newItems = get().items.map((i) => i.id === id ? { ...i, qty } : i);
-        set({ items: newItems, ...recompute(newItems) });
+      remove(slug) {
+        const next = get().items.filter((i) => i.slug !== slug);
+        set({ items: next, count: count(next) });
       },
 
-      clearCart() {
-        set({ items: [], count: 0, total: 0 });
+      clear() {
+        set({ items: [], count: 0, lastAdded: null });
+      },
+
+      dismissAdded() {
+        set({ lastAdded: null });
       },
     }),
     {
-      name: 'mv-cart',
+      name: 'mv-cart-v2',
+      partialize: (state) => ({ items: state.items }),
       onRehydrateStorage: () => (state) => {
-        if (state?.items) {
-          const { count, total } = recompute(state.items);
-          state.count = count;
-          state.total = total;
-        }
+        if (state) state.count = count(state.items || []);
       },
-    }
-  )
+    },
+  ),
 );

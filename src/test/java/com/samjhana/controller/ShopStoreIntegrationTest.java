@@ -161,6 +161,15 @@ class ShopStoreIntegrationTest {
     }
 
     @Test
+    void shouldReturnJustTheRequestedProducts_forTheCart() throws Exception {
+        mockMvc.perform(get("/api/public/shop/products").param("slugs", "t-hny-1, t-sofa-1,t-jar-1,nope").param("size", "60"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))                      // hidden and unknown slugs just don't appear
+                .andExpect(jsonPath("$.items[?(@.id=='t-hny-1')].price").value(hasItem(850)))
+                .andExpect(jsonPath("$.items[?(@.id=='t-sofa-1')]").isNotEmpty());
+    }
+
+    @Test
     void shouldSortAndPage() throws Exception {
         MvcResult asc = mockMvc.perform(get("/api/public/shop/products?sort=price_asc&type=BEEKEEPING&size=60")).andReturn();
         List<Number> ascPrices = JsonPath.read(asc.getResponse().getContentAsString(), "$.items[*].price");

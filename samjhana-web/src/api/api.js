@@ -3,7 +3,8 @@ import axios from 'axios';
 // The public site is its own static site in staging/prod, so it must call the backend by its full
 // address (VITE_API_BASE, read at build time). Left unset, calls stay relative: `npm run dev`
 // proxies /api to the local backend (vite.config.js).
-export const API_BASE = `${(import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '')}/api/public`;
+export const API_ROOT = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+export const API_BASE = `${API_ROOT}/api/public`;
 
 const api = axios.create({ baseURL: API_BASE });
 
@@ -21,11 +22,39 @@ const object = (r) => {
   return r.data;
 };
 
-export const furnitureApi = {
-  getItems: (category) =>
-    api.get('/furniture/catalogue', { params: category && category !== 'ALL' ? { category } : {} })
-      .then(list),
-  getItem: (id) => api.get(`/furniture/catalogue/${id}`).then(object),
+/** Where a picture can be shown. The API sends picture addresses as paths like /api/public/media/<id>. */
+export function mediaUrl(path) {
+  return path ? `${API_ROOT}${path}` : '';
+}
+
+/** The API path of a picture chosen by id in the website content (those fields hold ids, not paths). */
+export function mediaPath(id) {
+  return id ? `/api/public/media/${id}` : '';
+}
+
+/** The message the server gave for a refused request, or the fallback. */
+export function errorMessage(err, fallback) {
+  return err?.response?.data?.message || fallback;
+}
+
+export const siteApi = {
+  get: () => api.get('/site').then(object),
+};
+
+export const shopApi = {
+  /** params: type, category, q, minPrice, maxPrice, inStock, sort, page, size, slugs */
+  products: (params = {}) => api.get('/shop/products', { params }).then(object),
+  product: (slug) => api.get(`/shop/products/${encodeURIComponent(slug)}`).then(object),
+};
+
+export const restaurantApi = {
+  menu: () => api.get('/restaurant').then(object),
+};
+
+export const ordersApi = {
+  place: (order) => api.post('/shop/orders', order).then(object),
+  track: (orderNumber, phone) =>
+    api.get(`/shop/orders/${encodeURIComponent(orderNumber)}`, { params: { phone } }).then(object),
 };
 
 export const evApi = {
