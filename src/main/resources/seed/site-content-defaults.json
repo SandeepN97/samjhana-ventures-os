@@ -84,13 +84,13 @@
           "label": "Honey & beekeeping",
           "nepali": "मह र मौरीपालन",
           "image": "@tile-honey",
-          "href": "/shop?type=BEEKEEPING"
+          "href": "/beekeeping"
         },
         {
           "label": "Furniture",
           "nepali": "फर्निचर",
           "image": "@tile-chair",
-          "href": "/shop?type=FURNITURE"
+          "href": "/furniture"
         },
         {
           "label": "Bike accessories",
@@ -135,7 +135,7 @@
         "storyTitle": "A little of the hillside, carried home.",
         "storyBody": "Maurighar honey begins with local hives, patient seasons, and the work of keeping bees well. Browse the honey collection when you are ready, or ask us which jar is available today.",
         "action": "Explore Maurighar",
-        "href": "/shop?type=BEEKEEPING"
+        "href": "/beekeeping"
       },
       {
         "title": "Furniture for real homes",
@@ -144,7 +144,7 @@
         "storyTitle": "Made for the ordinary moments.",
         "storyBody": "A table gathers people. A chair waits by the window. Our furniture is chosen for the daily life it will hold, then shaped further when a custom piece makes more sense.",
         "action": "Explore furniture",
-        "href": "/shop?type=FURNITURE"
+        "href": "/furniture"
       },
       {
         "title": "Bike essentials",
@@ -315,5 +315,375 @@
     "customOrderTitle": "Custom furniture",
     "customOrderText": "Don't see what you need? We build to your exact specifications.",
     "customOrderCta": "Ask for a quote"
+  },
+  "shopHub": {
+    "eyebrow": "Samjhana Ventures · Shop & order",
+    "titleLine1": "Useful things,",
+    "titleLine2": "made to stay.",
+    "nepali": "घरका लागि, यात्राका लागि, गुल्मीबाट।",
+    "intro": "The things we make and sell come from the same family-run place in Gulmi: furniture for daily life, honey from the hills, and tools for the people who keep the hives going. Start with a story, then browse deeper.",
+    "image": "@tile-chair",
+    "captionTitle": "Made and selected in Gulmi",
+    "captionNote": "Honey · furniture · beekeeping",
+    "furniture": {
+      "eyebrow": "Furniture studio",
+      "title": "Pieces for real homes.",
+      "copy": "A chair becomes part of breakfast, a table gathers a family, and a bed holds the end of a long day. Browse what we have, then ask about a custom one.",
+      "image": "@tile-chair",
+      "emptyNote": "Browse the collection for current pieces.",
+      "linkLabel": "Browse all furniture"
+    },
+    "honey": {
+      "eyebrow": "Maurighar",
+      "title": "Honey & beekeeping.",
+      "copy": "From the first hive to the first harvest, Maurighar helps keepers begin, learn, and keep going with honey, tools, and starter kits.",
+      "image": "@tile-honey",
+      "linkLabel": "Browse all Maurighar",
+      "links": [
+        {
+          "label": "Gulmi honey",
+          "image": "@tile-honey",
+          "href": "/beekeeping#bee-honey"
+        },
+        {
+          "label": "Hives",
+          "image": "@hive-boxes",
+          "href": "/beekeeping#bee-hives"
+        },
+        {
+          "label": "Starter kits",
+          "image": "@basic-kit-product",
+          "href": "/beekeeping#bee-kits"
+        }
+      ]
+    },
+    "vehicleNote": {
+      "title": "Vehicle essentials are orderable too.",
+      "text": "For bike and car products, send us a photo or list on WhatsApp and we’ll confirm availability.",
+      "button": "See how it works"
+    },
+    "vehicleStory": {
+      "eyebrow": "A quick road story",
+      "title": "Tell us what the road needs.",
+      "text": "Your bike or car does not need to fit a catalogue category. Send a photo, a part name, or a short list. We’ll check what is available at Samjhana Ventures and reply with the next practical option.",
+      "steps": [
+        "Send a photo or list",
+        "We check availability",
+        "You choose how to proceed"
+      ],
+      "cta": "Ask on WhatsApp"
+    }
+  },
+  "furniture": {
+    "eyebrow": "Samjhana Ventures · Gulmi, Nepal",
+    "titleLine1": "Furniture for",
+    "titleLine2": "real homes.",
+    "intro": "A considered collection for homes in the hills — browse what is available, then call us when you need a custom conversation.",
+    "browseCta": "Browse collection",
+    "customCta": "Ask about custom",
+    "barTitle": "Furniture studio",
+    "featuredLabel": "Featured piece",
+    "featuredBadge": "Bestseller",
+    "customCardTitle": "Custom build",
+    "customCardText": "Your dimensions, wood choice, and finish — built from scratch.",
+    "customCardCta": "Request a quote",
+    "productEyebrow": "Handcrafted Furniture · Gulmi, Nepal",
+    "fallbackDescription": "Handcrafted with care using premium Nepali hardwood. Built to last generations with traditional joinery techniques.",
+    "trustBadges": [
+      {
+        "icon": "truck",
+        "label": "Free delivery",
+        "sub": "Gulmi district"
+      },
+      {
+        "icon": "shield",
+        "label": "2-year warranty",
+        "sub": "Guaranteed"
+      },
+      {
+        "icon": "star",
+        "label": "Handcrafted",
+        "sub": "Premium wood"
+      }
+    ],
+    "relatedTitle": "More pieces you'll love",
+    "cartNote": "Free delivery within Gulmi district",
+    "emptyCartText": "Browse our furniture and add pieces to get started.",
+    "homeTag": "Highlight",
+    "homeSection": "Section 01",
+    "homeHeading": "Furniture",
+    "homeLink": "Full catalogue",
+    "homeCustomTitle": "Custom Order",
+    "homeCustomText": "Don't see what you need? We build to your exact specifications.",
+    "homeCustomCta": "Get a quote",
+    "customTitle": "Custom Order",
+    "customIntro": "Tell us what you need — we'll build it to your specifications.",
+    "customHint": "e.g. A 6-seater L-shaped sofa in dark walnut, with removable cushion covers..."
+  },
+  "beekeeping": {
+    "hero": {
+      "eyebrow": "Gulmi · Nepal · Apis Cerana · Since 2008",
+      "titleLine1": "Honey and beekeeping",
+      "titleLine2": "from Gulmi.",
+      "tagline": "Traditional hives. Modern tools. Honest honey.",
+      "copy": "From the hills of Gulmi, we craft Langstroth and traditional hives from seasoned Nepali Tuni wood — perfect for Apis cerana colonies. Everything you need to start or scale your apiary.",
+      "hivesCta": "Browse hives",
+      "kitsCta": "See starter kits",
+      "learnCta": "Learn beekeeping",
+      "tiles": [
+        {
+          "label": "Mauri Ghar hives",
+          "image": "@hive-boxes"
+        },
+        {
+          "label": "Protective suits",
+          "image": "@protective-suit"
+        },
+        {
+          "label": "Beekeeping tools",
+          "image": "@smoker-tools"
+        },
+        {
+          "label": "Raw Gulmi honey",
+          "image": "@tile-honey"
+        }
+      ],
+      "stats": [
+        {
+          "value": "16+",
+          "label": "Years experience"
+        },
+        {
+          "value": "Apis cerana",
+          "label": "Native bee species"
+        },
+        {
+          "value": "Tuni wood",
+          "label": "Premium material"
+        }
+      ]
+    },
+    "featured": {
+      "sectionName": "Mauri Ghar hives",
+      "tag": "Flagship product",
+      "chooseTitle": "Choose your hive type",
+      "woodTitle": "Wood finish",
+      "woods": [
+        {
+          "label": "Tuni",
+          "color": "#8B6914"
+        },
+        {
+          "label": "Uttish",
+          "color": "#3a2010"
+        },
+        {
+          "label": "Mixed",
+          "color": "#6a4a2a"
+        }
+      ],
+      "quantityTitle": "Quantity",
+      "orderCta": "Order now",
+      "madeIn": "Made in Nepal",
+      "askLabel": "Ask about this hive",
+      "trust": [
+        {
+          "icon": "shield",
+          "label": "Made in Nepal"
+        },
+        {
+          "icon": "truck",
+          "label": "Ask about delivery"
+        },
+        {
+          "icon": "star",
+          "label": "Built for local keepers"
+        },
+        {
+          "icon": "chat",
+          "label": "WhatsApp support"
+        }
+      ]
+    },
+    "hiveGrid": {
+      "sectionName": "All hive types",
+      "tag": "Mauri Ghar",
+      "title": "More hive options",
+      "linkLabel": "सबै हेर्नुहोस्"
+    },
+    "gear": {
+      "eyebrow": "Safety first · सुरक्षा पहिले",
+      "titleStart": "Suited for the",
+      "titleEmphasis": "hive.",
+      "intro": "Never approach a colony without protection. Even docile Apis cerana colonies will defend when disturbed. Layer up correctly every time.",
+      "layers": [
+        {
+          "name": "Full-body bee suit",
+          "note": "Head-to-toe protection — never skip"
+        },
+        {
+          "name": "Veil / hood",
+          "note": "Face and neck — critical for safety"
+        },
+        {
+          "name": "Leather gauntlet gloves",
+          "note": "Wrist-length sting protection"
+        },
+        {
+          "name": "Closed-toe boots",
+          "note": "Heavy socks, tucked-in trouser legs"
+        }
+      ],
+      "sectionName": "Protective gear",
+      "tag": "Safety"
+    },
+    "tools": {
+      "sectionName": "Tools & queen devices",
+      "tag": "Inspector",
+      "toolsTitle": "Beekeeping tools",
+      "queenTitle": "Queen devices",
+      "toolSlugs": [
+        "tool-001",
+        "tool-002",
+        "tool-003",
+        "tool-004",
+        "tool-005",
+        "tool-006",
+        "tool-007",
+        "tool-008",
+        "tool-009"
+      ],
+      "queenSlugs": [
+        "tool-003",
+        "tool-010"
+      ],
+      "queenNoteTitle": "Why queen management matters",
+      "queenNote": "The queen is the heart of the colony — she lays up to 1,500 eggs per day. Finding, monitoring, and occasionally replacing the queen keeps your colony productive and disease-free. Invest in queen tools early.",
+      "trainingTitle": "Queen rearing training",
+      "trainingText": "WhatsApp us for the next workshop date in Gulmi district.",
+      "trainingCta": "WhatsApp us →",
+      "trainingMessage": "Namaste! I want to ask about the queen rearing training."
+    },
+    "honey": {
+      "sectionName": "Raw Gulmi honey",
+      "tag": "शुद्ध मह",
+      "title": "Pure honey from Gulmi",
+      "note": "Unfiltered · Unheated · गुल्मी, नेपालबाट",
+      "addLabel": "मालमा थप्नुहोस्",
+      "addedLabel": "Added! मालमा थपियो",
+      "soldOut": "उपलब्ध छैन"
+    },
+    "kits": {
+      "sectionName": "Starter kits",
+      "tag": "Best value",
+      "title": "Everything in one kit",
+      "note": "Free bundled shipping",
+      "popularBadge": "Most popular",
+      "cta": "यो किट लिनुहोस्",
+      "savingsLabel": "बचत",
+      "soldOut": "उपलब्ध छैन"
+    },
+    "education": {
+      "sectionName": "Learn beekeeping",
+      "tag": "Education",
+      "stepsTitle": "How to start beekeeping in Nepal",
+      "steps": [
+        {
+          "title": "Choose your hive",
+          "text": "Langstroth two-story best for Apis cerana. Avoid log hives first — they're harder to manage and inspect."
+        },
+        {
+          "title": "Get a colony",
+          "text": "Purchase nuc with mated queen from local apiary. Chaitra–Baisakh (March–April) is best time for new colonies."
+        },
+        {
+          "title": "Suit up and inspect",
+          "text": "Always wear veil and gloves. Open in morning when bees are calmer. Smoke entrance first, wait 30 seconds."
+        },
+        {
+          "title": "Manage the queen",
+          "text": "Find queen every 2–3 weeks. Check for eggs and brood pattern. Uniform capped brood = healthy queen."
+        },
+        {
+          "title": "Harvest honey",
+          "text": "Capped frames ready to harvest. Use uncapping knife and extractor. Never heat above 40°C — preserves enzymes."
+        }
+      ],
+      "faqTitle": "Frequently asked questions",
+      "faqs": [
+        {
+          "question": "What bee species is best for Nepal?",
+          "answer": "Apis cerana (Ghar Mauri) is native to Nepal and perfectly adapted to local flora and climate. Apis mellifera (European honey bee) is kept commercially but requires more intensive management."
+        },
+        {
+          "question": "What wood is used for Mauri Ghar hives?",
+          "answer": "We use Tuni (Toona ciliata) and Uttish (Alnus nepalensis) — both locally sourced, seasoned Nepali hardwoods. They resist moisture, warping, and don't have strong odours that disturb bees."
+        },
+        {
+          "question": "How many hives can a beginner manage?",
+          "answer": "Start with 1–2 hives to learn the rhythm of inspections and bee behaviour. Most beginners are ready for 4–6 hives by their second season."
+        },
+        {
+          "question": "When is honey season in Gulmi?",
+          "answer": "Two peak seasons: Baisakh–Jestha (April–May, spring blossom) and Asoj–Kartik (October–November, autumn harvest). Spring honey is lighter; autumn darker and stronger."
+        },
+        {
+          "question": "Do you offer training?",
+          "answer": "Yes. We run practical beekeeping workshops in Gulmi district, covering hive setup, queen management, and honey extraction. WhatsApp us for the next date."
+        }
+      ],
+      "seasonTitle": "Nepal honey season calendar",
+      "seasons": [
+        {
+          "month": "Baisakh",
+          "nepali": "बैशाख",
+          "percent": 90,
+          "label": "Peak"
+        },
+        {
+          "month": "Jestha",
+          "nepali": "जेठ",
+          "percent": 60,
+          "label": "Good"
+        },
+        {
+          "month": "Asar",
+          "nepali": "असार",
+          "percent": 20,
+          "label": "Low"
+        },
+        {
+          "month": "Shrawan",
+          "nepali": "साउन",
+          "percent": 15,
+          "label": "Low"
+        },
+        {
+          "month": "Bhadra",
+          "nepali": "भदौ",
+          "percent": 50,
+          "label": "Rising"
+        },
+        {
+          "month": "Asoj",
+          "nepali": "असोज",
+          "percent": 85,
+          "label": "Peak"
+        },
+        {
+          "month": "Kartik",
+          "nepali": "कार्तिक",
+          "percent": 65,
+          "label": "Good"
+        }
+      ],
+      "seasonNote": "गुल्मीको मह मौसम बैशाख–जेठ र असोज–कार्तिकमा हुन्छ। यस समयमा मौरीहरू सबैभन्दा बढी मह संकलन गर्छन्।"
+    },
+    "footer": {
+      "nepaliName": "मौरी घर",
+      "line": "Maurighar Beekeeping · Gulmi, Nepal · Since 2008",
+      "whatsappLabel": "WhatsApp",
+      "backLabel": "Back to main site"
+    }
   }
 }

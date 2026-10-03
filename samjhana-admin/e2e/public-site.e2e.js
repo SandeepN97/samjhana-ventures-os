@@ -29,19 +29,48 @@ test.describe('public website', () => {
     expect((await evResponse).status()).toBe(200);
   });
 
-  test('old catalogue addresses open the shop', async ({ page }) => {
-    await page.goto(`${PUBLIC_SITE}/furniture`);
-    await expect(page).toHaveURL(/\/shop\?type=FURNITURE/);
+  test('the shop & order page lets the customer pick furniture or beekeeping', async ({ page }) => {
+    await page.goto(`${PUBLIC_SITE}/shop`);
+    await expect(page.getByRole('heading', { name: /Useful things/i })).toBeVisible();
+    await page.getByRole('link', { name: /Browse all furniture/i }).click();
+    await expect(page).toHaveURL(/\/furniture$/);
+    await expect(page.getByRole('heading', { name: /Furniture for/i })).toBeVisible();
     await page.goto(`${PUBLIC_SITE}/beekeeping`);
-    await expect(page).toHaveURL(/\/shop\?type=BEEKEEPING/);
+    await expect(page.getByRole('heading', { name: /Honey and beekeeping/i })).toBeVisible();
   });
 
-  test('shop search finds nothing for nonsense and recovers', async ({ page }) => {
-    await page.goto(`${PUBLIC_SITE}/shop`);
-    await page.getByRole('searchbox').fill('zzzz no such thing');
-    await page.getByRole('searchbox').press('Enter');
-    await expect(page).toHaveURL(/q=zzzz/);
-    await expect(page.getByText(/no products|nothing matches|didn.t find/i)).toBeVisible();
+  test('furniture search finds nothing for nonsense and recovers', async ({ page }) => {
+    await page.goto(`${PUBLIC_SITE}/furniture`);
+    const search = page.getByPlaceholder(/Search furniture/i);
+    await search.fill('zzzz no such thing');
+    await expect(page.getByText('No furniture matches')).toBeVisible();
+    await page.getByRole('button', { name: 'Show all furniture' }).click();
+    await expect(search).toHaveValue('');
+  });
+
+  test('a furniture piece with an uploaded picture shows the picture and sells through the cart', async ({ page }) => {
+    const admin = await token('admin', 'admin');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
+    const form = new FormData();
+    form.append('file', new Blob([png], { type: 'image/png' }), 'chair.png');
+    const media = await fetch(`${BACKEND}/api/media`, { method: 'POST', headers: { Authorization: `Bearer ${admin}` }, body: form });
+    expect(media.status).toBe(200);
+    const picture = await media.json();
+    const created = await fetch(`${BACKEND}/api/furniture/items`, {
+      method: 'POST', headers: authed(admin),
+      body: JSON.stringify({ name: 'E2E Oak Chair', category: 'CHAIR', purchasePrice: 1000, sellingPrice: 3200, stockQty: 4, imageIds: [picture.id] }),
+    });
+    expect(created.status).toBeLessThan(300);
+
+    await page.goto(`${PUBLIC_SITE}/furniture`);
+    const card = page.getByText('E2E Oak Chair').first();
+    await expect(card).toBeVisible();
+    await expect(page.getByRole('img', { name: 'E2E Oak Chair' }).first()).toBeVisible();
+    await card.click();
+    await expect(page).toHaveURL(/\/furniture\/[a-z0-9-]+$/);
+    await page.getByRole('button', { name: /add to cart/i }).first().click();
+    await page.getByRole('button', { name: 'Open cart' }).click();
+    await expect(page.getByText('E2E Oak Chair').first()).toBeVisible();
   });
 
   test('a customer orders a product the admin stocked, and staff complete it', async ({ page }) => {
@@ -50,37 +79,36 @@ test.describe('public website', () => {
     // Admin puts honey on the shelf (the imported shop starts at zero stock).
     const items = await (await fetch(`${BACKEND}/api/beekeeping/items`, { headers: authed(admin) })).json();
     const list = Array.isArray(items) ? items : items.items;
-    const honey = list.find((i) => /honey/i.test(i.name) && i.showOnWebsite !== false) || list[0];
+    const honey = list.find((i) => i.sku === 'HONEY-001') || list[0];
     const stocked = await fetch(`${BACKEND}/api/beekeeping/items/${honey.id}/stock`, {
       method: 'PATCH', headers: authed(admin), body: JSON.stringify({ adjustment: 5 }),
     });
     expect(stocked.status).toBe(200);
 
-    // Customer finds it, adds to cart, checks out for pickup.
-    await page.goto(`${PUBLIC_SITE}/shop?type=BEEKEEPING`);
-    await page.getByRole('link', { name: honey.name }).first().click();
-    await page.getByRole('button', { name: /^add to cart/i }).click();
-    await page.goto(`${PUBLIC_SITE}/cart`);
+    // Customer adds it from the Maurighar page and checks out for pickup in the cart drawer.
+    await page.goto(`${PUBLIC_SITE}/beekeeping`);
     await expect(page.getByText(honey.name).first()).toBeVisible();
-    await page.getByRole('button', { name: /proceed to checkout/i }).click();
+    await page.getByRole('button', { name: /मालमा थप्नुहोस्/ }).first().click();
+    await page.getByRole('button', { name: 'Open cart' }).click();
+    await expect(page.getByText(honey.name).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Checkout/ }).click();
 
     await page.getByLabel('Full name').fill('Sita Rana');
-    await page.getByLabel('Phone', { exact: true }).fill('9812345678');
-    await page.getByLabel(/Pick up at the shop/).check();
+    await page.getByLabel('Phone number').fill('9812345678');
+    await page.getByText('Pick up at the shop').click();
     await page.getByRole('button', { name: /place order/i }).click();
 
-    await expect(page).toHaveURL(/\/order\/SV-/);
-    const orderNumber = page.url().split('/order/')[1];
-    await expect(page.getByText(orderNumber).first()).toBeVisible();
+    await expect(page.getByText('Thank you!')).toBeVisible();
+    const orderNumber = (await page.locator('span.font-mono').first().textContent()).trim();
+    expect(orderNumber).toMatch(/^SV-/);
 
     // Staff see it and walk it through to completed.
-    const staff = await token('admin', 'admin');
-    const orders = await (await fetch(`${BACKEND}/api/shop-orders`, { headers: authed(staff) })).json();
+    const orders = await (await fetch(`${BACKEND}/api/shop-orders`, { headers: authed(admin) })).json();
     const mine = (Array.isArray(orders) ? orders : orders.items || orders.orders).find((o) => o.orderNumber === orderNumber);
     expect(mine).toBeTruthy();
     for (const status of ['CONFIRMED', 'READY', 'COMPLETED']) {
       const moved = await fetch(`${BACKEND}/api/shop-orders/${mine.id}/status`, {
-        method: 'PATCH', headers: authed(staff), body: JSON.stringify({ status }),
+        method: 'PATCH', headers: authed(admin), body: JSON.stringify({ status }),
       });
       expect(moved.status).toBe(200);
     }

@@ -749,5 +749,941 @@ export const TABS = [
         ]
       }
     ]
-  }
+  },
+  {
+      "id": "shopPage",
+      "labelKey": "siteEditor.tabs.shopPage",
+      "sections": [
+        {
+          "key": "shopHub",
+          "labelKey": "siteEditor.sections.shopHub",
+          "fields": [
+            {
+              "name": "eyebrow",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_eyebrow"
+            },
+            {
+              "name": "titleLine1",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_titleLine1"
+            },
+            {
+              "name": "titleLine2",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_titleLine2"
+            },
+            {
+              "name": "nepali",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_nepali"
+            },
+            {
+              "name": "intro",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.shopHub_intro"
+            },
+            {
+              "name": "image",
+              "type": "image",
+              "labelKey": "siteEditor.f.shopHub_image"
+            },
+            {
+              "name": "captionTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_captionTitle"
+            },
+            {
+              "name": "captionNote",
+              "type": "text",
+              "labelKey": "siteEditor.f.shopHub_captionNote"
+            },
+            {
+              "name": "furniture",
+              "type": "group",
+              "labelKey": "siteEditor.f.shopHub_furniture",
+              "fields": [
+                {
+                  "name": "eyebrow",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_furniture_eyebrow"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_furniture_title"
+                },
+                {
+                  "name": "copy",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.shopHub_furniture_copy"
+                },
+                {
+                  "name": "image",
+                  "type": "image",
+                  "labelKey": "siteEditor.f.shopHub_furniture_image"
+                },
+                {
+                  "name": "emptyNote",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_furniture_emptyNote"
+                },
+                {
+                  "name": "linkLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_furniture_linkLabel"
+                }
+              ]
+            },
+            {
+              "name": "honey",
+              "type": "group",
+              "labelKey": "siteEditor.f.shopHub_honey",
+              "fields": [
+                {
+                  "name": "eyebrow",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_honey_eyebrow"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_honey_title"
+                },
+                {
+                  "name": "copy",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.shopHub_honey_copy"
+                },
+                {
+                  "name": "image",
+                  "type": "image",
+                  "labelKey": "siteEditor.f.shopHub_honey_image"
+                },
+                {
+                  "name": "linkLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_honey_linkLabel"
+                },
+                {
+                  "name": "links",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.shopHub_honey_links",
+                  "itemName": "label",
+                  "max": 6,
+                  "fields": [
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.shopHub_honey_links_label"
+                    },
+                    {
+                      "name": "image",
+                      "type": "image",
+                      "labelKey": "siteEditor.f.shopHub_honey_links_image"
+                    },
+                    {
+                      "name": "href",
+                      "type": "url",
+                      "labelKey": "siteEditor.f.shopHub_honey_links_href"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "vehicleNote",
+              "type": "group",
+              "labelKey": "siteEditor.f.shopHub_vehicleNote",
+              "fields": [
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_vehicleNote_title"
+                },
+                {
+                  "name": "text",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.shopHub_vehicleNote_text"
+                },
+                {
+                  "name": "button",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_vehicleNote_button"
+                }
+              ]
+            },
+            {
+              "name": "vehicleStory",
+              "type": "group",
+              "labelKey": "siteEditor.f.shopHub_vehicleStory",
+              "fields": [
+                {
+                  "name": "eyebrow",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_vehicleStory_eyebrow"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_vehicleStory_title"
+                },
+                {
+                  "name": "text",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.shopHub_vehicleStory_text"
+                },
+                {
+                  "name": "steps",
+                  "type": "strings",
+                  "labelKey": "siteEditor.f.shopHub_vehicleStory_steps",
+                  "max": 5
+                },
+                {
+                  "name": "cta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.shopHub_vehicleStory_cta"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "furniturePages",
+      "labelKey": "siteEditor.tabs.furniturePages",
+      "sections": [
+        {
+          "key": "furniture",
+          "labelKey": "siteEditor.sections.furniture",
+          "fields": [
+            {
+              "name": "barTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_barTitle"
+            },
+            {
+              "name": "eyebrow",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_eyebrow"
+            },
+            {
+              "name": "titleLine1",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_titleLine1"
+            },
+            {
+              "name": "titleLine2",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_titleLine2"
+            },
+            {
+              "name": "intro",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_intro"
+            },
+            {
+              "name": "browseCta",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_browseCta"
+            },
+            {
+              "name": "customCta",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_customCta"
+            },
+            {
+              "name": "featuredLabel",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_featuredLabel"
+            },
+            {
+              "name": "featuredBadge",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_featuredBadge"
+            },
+            {
+              "name": "customCardTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_customCardTitle"
+            },
+            {
+              "name": "customCardText",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_customCardText"
+            },
+            {
+              "name": "customCardCta",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_customCardCta"
+            },
+            {
+              "name": "productEyebrow",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_productEyebrow"
+            },
+            {
+              "name": "fallbackDescription",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_fallbackDescription"
+            },
+            {
+              "name": "trustBadges",
+              "type": "list",
+              "labelKey": "siteEditor.f.furniture_trustBadges",
+              "itemName": "label",
+              "max": 4,
+              "fields": [
+                {
+                  "name": "icon",
+                  "type": "select",
+                  "labelKey": "siteEditor.f.furniture_trustBadges_icon",
+                  "options": [
+                    "truck",
+                    "shield",
+                    "star"
+                  ]
+                },
+                {
+                  "name": "label",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.furniture_trustBadges_label"
+                },
+                {
+                  "name": "sub",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.furniture_trustBadges_sub"
+                }
+              ]
+            },
+            {
+              "name": "relatedTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_relatedTitle"
+            },
+            {
+              "name": "cartNote",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_cartNote"
+            },
+            {
+              "name": "emptyCartText",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_emptyCartText"
+            },
+            {
+              "name": "homeTag",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeTag"
+            },
+            {
+              "name": "homeSection",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeSection"
+            },
+            {
+              "name": "homeHeading",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeHeading"
+            },
+            {
+              "name": "homeLink",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeLink"
+            },
+            {
+              "name": "homeCustomTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeCustomTitle"
+            },
+            {
+              "name": "homeCustomText",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_homeCustomText"
+            },
+            {
+              "name": "homeCustomCta",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_homeCustomCta"
+            },
+            {
+              "name": "customTitle",
+              "type": "text",
+              "labelKey": "siteEditor.f.furniture_customTitle"
+            },
+            {
+              "name": "customIntro",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_customIntro"
+            },
+            {
+              "name": "customHint",
+              "type": "textarea",
+              "labelKey": "siteEditor.f.furniture_customHint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beekeepingPages",
+      "labelKey": "siteEditor.tabs.beekeepingPages",
+      "sections": [
+        {
+          "key": "beekeeping",
+          "labelKey": "siteEditor.sections.beekeeping",
+          "fields": [
+            {
+              "name": "hero",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_hero",
+              "fields": [
+                {
+                  "name": "eyebrow",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_eyebrow"
+                },
+                {
+                  "name": "titleLine1",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_titleLine1"
+                },
+                {
+                  "name": "titleLine2",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_titleLine2"
+                },
+                {
+                  "name": "tagline",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_tagline"
+                },
+                {
+                  "name": "copy",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_hero_copy"
+                },
+                {
+                  "name": "hivesCta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_hivesCta"
+                },
+                {
+                  "name": "kitsCta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_kitsCta"
+                },
+                {
+                  "name": "learnCta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hero_learnCta"
+                },
+                {
+                  "name": "tiles",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_hero_tiles",
+                  "itemName": "label",
+                  "max": 4,
+                  "fields": [
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_hero_tiles_label"
+                    },
+                    {
+                      "name": "image",
+                      "type": "image",
+                      "labelKey": "siteEditor.f.beekeeping_hero_tiles_image"
+                    }
+                  ]
+                },
+                {
+                  "name": "stats",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_hero_stats",
+                  "itemName": "value",
+                  "max": 4,
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_hero_stats_value"
+                    },
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_hero_stats_label"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "featured",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_featured",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_tag"
+                },
+                {
+                  "name": "chooseTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_chooseTitle"
+                },
+                {
+                  "name": "woodTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_woodTitle"
+                },
+                {
+                  "name": "quantityTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_quantityTitle"
+                },
+                {
+                  "name": "orderCta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_orderCta"
+                },
+                {
+                  "name": "madeIn",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_madeIn"
+                },
+                {
+                  "name": "askLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_featured_askLabel"
+                },
+                {
+                  "name": "woods",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_featured_woods",
+                  "itemName": "label",
+                  "max": 6,
+                  "fields": [
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_featured_woods_label"
+                    },
+                    {
+                      "name": "color",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_featured_woods_color"
+                    }
+                  ]
+                },
+                {
+                  "name": "trust",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_featured_trust",
+                  "itemName": "label",
+                  "max": 6,
+                  "fields": [
+                    {
+                      "name": "icon",
+                      "type": "select",
+                      "labelKey": "siteEditor.f.beekeeping_featured_trust_icon",
+                      "options": [
+                        "truck",
+                        "shield",
+                        "star",
+                        "chat"
+                      ]
+                    },
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_featured_trust_label"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "hiveGrid",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_hiveGrid",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hiveGrid_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hiveGrid_tag"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hiveGrid_title"
+                },
+                {
+                  "name": "linkLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_hiveGrid_linkLabel"
+                }
+              ]
+            },
+            {
+              "name": "gear",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_gear",
+              "fields": [
+                {
+                  "name": "eyebrow",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_gear_eyebrow"
+                },
+                {
+                  "name": "titleStart",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_gear_titleStart"
+                },
+                {
+                  "name": "titleEmphasis",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_gear_titleEmphasis"
+                },
+                {
+                  "name": "intro",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_gear_intro"
+                },
+                {
+                  "name": "layers",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_gear_layers",
+                  "itemName": "name",
+                  "max": 6,
+                  "fields": [
+                    {
+                      "name": "name",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_gear_layers_name"
+                    },
+                    {
+                      "name": "note",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_gear_layers_note"
+                    }
+                  ]
+                },
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_gear_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_gear_tag"
+                }
+              ]
+            },
+            {
+              "name": "tools",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_tools",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_tag"
+                },
+                {
+                  "name": "toolsTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_toolsTitle"
+                },
+                {
+                  "name": "queenTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_queenTitle"
+                },
+                {
+                  "name": "toolSlugs",
+                  "type": "strings",
+                  "labelKey": "siteEditor.f.beekeeping_tools_toolSlugs",
+                  "max": 20
+                },
+                {
+                  "name": "queenSlugs",
+                  "type": "strings",
+                  "labelKey": "siteEditor.f.beekeeping_tools_queenSlugs",
+                  "max": 6
+                },
+                {
+                  "name": "queenNoteTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_queenNoteTitle"
+                },
+                {
+                  "name": "queenNote",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_tools_queenNote"
+                },
+                {
+                  "name": "trainingTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_trainingTitle"
+                },
+                {
+                  "name": "trainingText",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_tools_trainingText"
+                },
+                {
+                  "name": "trainingCta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_tools_trainingCta"
+                },
+                {
+                  "name": "trainingMessage",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_tools_trainingMessage"
+                }
+              ]
+            },
+            {
+              "name": "honey",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_honey",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_tag"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_title"
+                },
+                {
+                  "name": "note",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_note"
+                },
+                {
+                  "name": "addLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_addLabel"
+                },
+                {
+                  "name": "addedLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_addedLabel"
+                },
+                {
+                  "name": "soldOut",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_honey_soldOut"
+                }
+              ]
+            },
+            {
+              "name": "kits",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_kits",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_tag"
+                },
+                {
+                  "name": "title",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_title"
+                },
+                {
+                  "name": "note",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_note"
+                },
+                {
+                  "name": "popularBadge",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_popularBadge"
+                },
+                {
+                  "name": "cta",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_cta"
+                },
+                {
+                  "name": "savingsLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_savingsLabel"
+                },
+                {
+                  "name": "soldOut",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_kits_soldOut"
+                }
+              ]
+            },
+            {
+              "name": "education",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_education",
+              "fields": [
+                {
+                  "name": "sectionName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_education_sectionName"
+                },
+                {
+                  "name": "tag",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_education_tag"
+                },
+                {
+                  "name": "stepsTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_education_stepsTitle"
+                },
+                {
+                  "name": "steps",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_education_steps",
+                  "itemName": "title",
+                  "max": 8,
+                  "fields": [
+                    {
+                      "name": "title",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_education_steps_title"
+                    },
+                    {
+                      "name": "text",
+                      "type": "textarea",
+                      "labelKey": "siteEditor.f.beekeeping_education_steps_text"
+                    }
+                  ]
+                },
+                {
+                  "name": "faqTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_education_faqTitle"
+                },
+                {
+                  "name": "faqs",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_education_faqs",
+                  "itemName": "question",
+                  "max": 12,
+                  "fields": [
+                    {
+                      "name": "question",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_education_faqs_question"
+                    },
+                    {
+                      "name": "answer",
+                      "type": "textarea",
+                      "labelKey": "siteEditor.f.beekeeping_education_faqs_answer"
+                    }
+                  ]
+                },
+                {
+                  "name": "seasonTitle",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_education_seasonTitle"
+                },
+                {
+                  "name": "seasons",
+                  "type": "list",
+                  "labelKey": "siteEditor.f.beekeeping_education_seasons",
+                  "itemName": "month",
+                  "max": 12,
+                  "fields": [
+                    {
+                      "name": "month",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_education_seasons_month"
+                    },
+                    {
+                      "name": "nepali",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_education_seasons_nepali"
+                    },
+                    {
+                      "name": "percent",
+                      "type": "number",
+                      "labelKey": "siteEditor.f.beekeeping_education_seasons_percent"
+                    },
+                    {
+                      "name": "label",
+                      "type": "text",
+                      "labelKey": "siteEditor.f.beekeeping_education_seasons_label"
+                    }
+                  ]
+                },
+                {
+                  "name": "seasonNote",
+                  "type": "textarea",
+                  "labelKey": "siteEditor.f.beekeeping_education_seasonNote"
+                }
+              ]
+            },
+            {
+              "name": "footer",
+              "type": "group",
+              "labelKey": "siteEditor.f.beekeeping_footer",
+              "fields": [
+                {
+                  "name": "nepaliName",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_footer_nepaliName"
+                },
+                {
+                  "name": "line",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_footer_line"
+                },
+                {
+                  "name": "whatsappLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_footer_whatsappLabel"
+                },
+                {
+                  "name": "backLabel",
+                  "type": "text",
+                  "labelKey": "siteEditor.f.beekeeping_footer_backLabel"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
 ];

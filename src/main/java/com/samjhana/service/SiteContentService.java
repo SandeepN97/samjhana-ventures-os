@@ -28,7 +28,8 @@ import java.util.regex.Pattern;
 public class SiteContentService {
 
     public static final Set<String> KEYS = new LinkedHashSet<>(List.of(
-            "identity", "contact", "hours", "hub", "trust", "featured", "fuelEv", "bike", "restaurant", "shop"));
+            "identity", "contact", "hours", "hub", "trust", "featured", "fuelEv", "bike", "restaurant", "shop",
+            "shopHub", "furniture", "beekeeping"));
 
     static final int MAX_JSON_CHARS = 60_000;
     static final int MAX_STRING = 3_000;

@@ -7,7 +7,6 @@ export default {
         gold:  { DEFAULT: '#8B6914', light: '#c4a45a', pale: '#f5edd8' },
         dark:  { DEFAULT: '#1e1206', soft: '#2d1a0a', muted: '#5a3a1a' },
         warm:  { DEFAULT: '#f7f3ed', soft: '#efe9e0', border: '#e0d5c5' },
-        cta:   { DEFAULT: '#f3b73c', hover: '#e3a21c' },
       },
       fontFamily: {
         serif: ['"Playfair Display"', 'Georgia', 'serif'],

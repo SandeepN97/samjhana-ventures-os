@@ -1,21 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import Header from './components/Header';
+import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import CartDrawer from './components/CartDrawer';
 import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './pages/HomePage';
-import ShopPage from './pages/ShopPage';
-import ProductPage from './pages/ProductPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
+import FurnitureCataloguePage from './pages/FurnitureCataloguePage';
+import FurnitureProductPage from './pages/FurnitureProductPage';
+import BeekeepingPage from './pages/BeekeepingPage';
+import ShopOrderPage from './pages/ShopOrderPage';
 import OrderPage from './pages/OrderPage';
 import TrackPage from './pages/TrackPage';
 import { SiteProvider, useSite } from './site/SiteContext';
 
 const page = (element) => <ErrorBoundary>{element}</ErrorBoundary>;
 
-/** Goes back to the top on every new page, but leaves in-page anchors (#contact) to scroll themselves. */
+/** Goes back to the top on every new page; in-page anchors (#contact, #bee-honey) scroll themselves. */
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
   useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname, hash]);
@@ -45,21 +46,18 @@ function Shell() {
   return (
     <>
       <ScrollToTop />
-      <Header />
+      <Navbar />
       <Routes>
-        <Route path="/" element={page(<HomePage />)} />
-        <Route path="/shop" element={page(<ShopPage />)} />
-        <Route path="/product/:slug" element={page(<ProductPage />)} />
-        <Route path="/cart" element={page(<CartPage />)} />
-        <Route path="/checkout" element={page(<CheckoutPage />)} />
-        <Route path="/order/:orderNumber" element={page(<OrderPage />)} />
-        <Route path="/track" element={page(<TrackPage />)} />
-        {/* The old catalogue addresses keep working */}
-        <Route path="/furniture" element={<Navigate to="/shop?type=FURNITURE" replace />} />
-        <Route path="/beekeeping" element={<Navigate to="/shop?type=BEEKEEPING" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/"              element={page(<HomePage />)} />
+        <Route path="/shop"          element={page(<><ShopOrderPage /><Footer /></>)} />
+        <Route path="/furniture"     element={page(<FurnitureCataloguePage />)} />
+        <Route path="/furniture/:id" element={page(<FurnitureProductPage />)} />
+        <Route path="/beekeeping"    element={page(<BeekeepingPage />)} />
+        <Route path="/order/:orderNumber" element={page(<><div className="pt-16"><OrderPage /></div><Footer /></>)} />
+        <Route path="/track"         element={page(<><div className="pt-16"><TrackPage /></div><Footer /></>)} />
+        <Route path="*"              element={<Navigate to="/" replace />} />
       </Routes>
-      <Footer />
+      <CartDrawer />
     </>
   );
 }

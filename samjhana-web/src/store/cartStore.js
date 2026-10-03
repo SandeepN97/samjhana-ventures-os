@@ -3,53 +3,68 @@ import { persist } from 'zustand/middleware';
 
 export const MAX_PER_LINE = 50;
 
-const count = (items) => items.reduce((sum, i) => sum + i.qty, 0);
-const clamp = (qty) => Math.max(1, Math.min(MAX_PER_LINE, Math.floor(Number(qty)) || 1));
+const recompute = (items) => ({
+  count: items.reduce((s, i) => s + i.qty, 0),
+  total: items.reduce((s, i) => (i.unavailable ? s : s + Number(i.price) * i.qty), 0),
+});
 
-/**
- * The shopping cart: only which products and how many. Names, prices, pictures and stock are always read
- * fresh from the shop, so a price changed in the admin is never out of date in somebody's cart.
- */
 export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
+      open:  false,
       count: 0,
-      lastAdded: null,
+      total: 0,
 
-      add(slug, qty = 1) {
+      setOpen: (v) => set({ open: v }),
+
+      addItem(product, qty = 1, openCart = true) {
         const items = get().items;
-        const existing = items.find((i) => i.slug === slug);
-        const next = existing
-          ? items.map((i) => (i.slug === slug ? { ...i, qty: clamp(i.qty + qty) } : i))
-          : [...items, { slug, qty: clamp(qty) }];
-        set({ items: next, count: count(next), lastAdded: { slug, at: Date.now() } });
+        const existing = items.find((i) => i.id === product.id);
+        // Only what the cart shows is kept (never stock or cost); prices are re-read from the shop at checkout.
+        const line = { id: product.id, name: product.name, price: Number(product.price), imageUrl: product.imageUrl || product.image || '' };
+        const newItems = existing
+          ? items.map((i) => i.id === product.id ? { ...i, qty: Math.min(MAX_PER_LINE, i.qty + qty) } : i)
+          : [...items, { ...line, qty: Math.min(MAX_PER_LINE, qty) }];
+        set({ items: newItems, ...(openCart && { open: true }), ...recompute(newItems) });
       },
 
-      setQty(slug, qty) {
-        const next = get().items.map((i) => (i.slug === slug ? { ...i, qty: clamp(qty) } : i));
-        set({ items: next, count: count(next) });
+      removeItem(id) {
+        const newItems = get().items.filter((i) => i.id !== id);
+        set({ items: newItems, ...recompute(newItems) });
       },
 
-      remove(slug) {
-        const next = get().items.filter((i) => i.slug !== slug);
-        set({ items: next, count: count(next) });
+      updateQty(id, qty) {
+        if (qty < 1) { get().removeItem(id); return; }
+        const newItems = get().items.map((i) => i.id === id ? { ...i, qty: Math.min(MAX_PER_LINE, qty) } : i);
+        set({ items: newItems, ...recompute(newItems) });
       },
 
-      clear() {
-        set({ items: [], count: 0, lastAdded: null });
+      /** Brings names, prices and pictures up to date with the shop; a product no longer sold is marked unavailable. */
+      syncProducts(products) {
+        const byId = new Map(products.map((p) => [p.id, p]));
+        const newItems = get().items.map((i) => {
+          const p = byId.get(i.id);
+          if (!p) return { ...i, unavailable: true };
+          return { ...i, name: p.name, price: Number(p.price), imageUrl: p.image || '', unavailable: p.stockStatus === 'OUT_OF_STOCK' };
+        });
+        set({ items: newItems, ...recompute(newItems) });
       },
 
-      dismissAdded() {
-        set({ lastAdded: null });
+      clearCart() {
+        set({ items: [], count: 0, total: 0 });
       },
     }),
     {
-      name: 'mv-cart-v2',
+      name: 'mv-cart-v3',
       partialize: (state) => ({ items: state.items }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.count = count(state.items || []);
+        if (state?.items) {
+          const { count, total } = recompute(state.items);
+          state.count = count;
+          state.total = total;
+        }
       },
-    },
-  ),
+    }
+  )
 );

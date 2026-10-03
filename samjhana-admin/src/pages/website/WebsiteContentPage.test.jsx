@@ -56,7 +56,7 @@ describe('WebsiteContentPage', () => {
 
   it('covers every section the server keeps, so nothing on the public site is uneditable', () => {
     const keys = TABS.flatMap((x) => x.sections.map((s) => s.key)).sort();
-    expect(keys).toEqual(['bike', 'contact', 'featured', 'fuelEv', 'hours', 'hub', 'identity', 'restaurant', 'shop', 'trust']);
+    expect(keys).toEqual(['beekeeping', 'bike', 'contact', 'featured', 'fuelEv', 'furniture', 'hours', 'hub', 'identity', 'restaurant', 'shop', 'shopHub', 'trust']);
   });
 
   it('shows the contact and hours fields filled in, and the shortcuts with the new-order count', async () => {
