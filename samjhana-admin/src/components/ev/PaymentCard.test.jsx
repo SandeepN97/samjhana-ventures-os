@@ -59,9 +59,12 @@ describe('PaymentCard (awaiting payment)', () => {
     expect(screen.getByRole('radio', { name: 'Cash' })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('confirms with the default method and the suggested amount', async () => {
+  it('confirms with the default method and the suggested amount once the cash is entered', async () => {
     const { onConfirm } = renderCard();
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
+    const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
+    expect(confirm).toBeDisabled(); // Cash must be counted in first
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '600');
+    await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 600);
   });
 
@@ -80,6 +83,7 @@ describe('PaymentCard (awaiting payment)', () => {
     const input = screen.getByLabelText('Amount (Rs)');
     await userEvent.clear(input);
     await userEvent.type(input, '650');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '650');
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 650);
   });
@@ -90,6 +94,8 @@ describe('PaymentCard (awaiting payment)', () => {
     const confirm = screen.getByRole('button', { name: 'Confirm Payment & Unlock' });
     expect(confirm).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Amount (Rs)'), '400');
+    expect(confirm).toBeDisabled(); // the amount alone is not enough: the cash must be entered too
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '400');
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 400);
@@ -168,6 +174,7 @@ describe('PaymentCard discount rule', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF' }));
     const { onConfirm } = renderCard();
     await typeAmount('599');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '599');
 
     expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
@@ -178,6 +185,7 @@ describe('PaymentCard discount rule', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'MANAGER' }));
     const { onConfirm } = renderCard();
     await typeAmount('400');
+    await userEvent.type(screen.getByLabelText('Cash received (Rs)'), '400');
 
     expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm Payment & Unlock' }));
@@ -211,12 +219,31 @@ describe('PaymentCard cash received, change and shortfall', () => {
     expect(screen.queryByLabelText('Cash received (Rs)')).toBeNull();
   });
 
-  it('shows nothing and still allows confirming while no cash has been entered', async () => {
+  it('asks for the cash and keeps Confirm disabled until it is entered', async () => {
     const { onConfirm } = renderCard();
+    expect(screen.getByText('Enter the cash received to confirm the payment.')).toBeInTheDocument();
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(confirmButton()).toBeDisabled();
     await userEvent.click(confirmButton());
-    expect(onConfirm).toHaveBeenCalledWith('s1', 'CASH', 600);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await typeReceived('600');
+    expect(screen.queryByText('Enter the cash received to confirm the payment.')).toBeNull();
+    expect(confirmButton()).toBeEnabled();
+  });
+
+  it('does not ask for cash on eSewa or Khalti, which are exact', async () => {
+    const { onConfirm } = renderCard();
+    await userEvent.click(screen.getByRole('radio', { name: 'Khalti' }));
+    expect(screen.queryByText('Enter the cash received to confirm the payment.')).toBeNull();
+    await userEvent.click(confirmButton());
+    expect(onConfirm).toHaveBeenCalledWith('s1', 'KHALTI', 600);
+  });
+
+  it('asks for the cash in Nepali too', () => {
+    renderCard(due, { locale: 'ne' });
+    expect(screen.getByText('भुक्तानी पुष्टि गर्न प्राप्त नगद हाल्नुहोस्।')).toBeInTheDocument();
   });
 
   it('shows the change to return in green when the customer pays more', async () => {
