@@ -1,0 +1,398 @@
+[
+  {
+    "sku": "HIVE-001",
+    "slug": "hive-001",
+    "name": "Langstroth 10-Frame Hive",
+    "nameNepali": "ल्याङ्स्ट्रोथ मौरी घर",
+    "category": "HIVE",
+    "sellingPrice": 4500,
+    "description": "Standard 10-frame two-box setup. Removable frames for easy inspection and honey harvest. Best for beginners.",
+    "badge": "Best seller",
+    "details": {
+      "type": "Langstroth",
+      "specs": {
+        "dimensions": "51 × 42 × 65 cm",
+        "wood": "Tuni / Uttish",
+        "broodFrames": "10 frames (deep)",
+        "honeyFrames": "10 frames (shallow)",
+        "beeSpecies": "Apis mellifera / cerana",
+        "roof": "Galvanised steel"
+      }
+    }
+  },
+  {
+    "sku": "HIVE-002",
+    "slug": "hive-002",
+    "name": "Traditional Log Hive",
+    "nameNepali": "कुन्दो मौरी घर",
+    "category": "HIVE",
+    "sellingPrice": 1800,
+    "description": "Hollowed log hive suited to Apis cerana. Used for generations in Gulmi hills. No frame removal needed.",
+    "badge": "Traditional",
+    "details": {
+      "type": "Log Hive",
+      "specs": {
+        "dimensions": "60 × 30 cm (dia)",
+        "wood": "Sal / Tuni log",
+        "broodFrames": "Fixed comb",
+        "honeyFrames": "Upper section",
+        "beeSpecies": "Apis cerana",
+        "roof": "Natural bark cap"
+      }
+    }
+  },
+  {
+    "sku": "HIVE-003",
+    "slug": "hive-003",
+    "name": "Nucleus Box (5-Frame Nuc)",
+    "nameNepali": "न्युक्लियस बक्स",
+    "category": "HIVE",
+    "sellingPrice": 2200,
+    "description": "Five-frame nuc box for queen rearing, swarm capture, and colony splits. Lightweight with carry handles.",
+    "badge": null,
+    "details": {
+      "type": "Nucleus Box",
+      "specs": {
+        "dimensions": "30 × 42 × 28 cm",
+        "wood": "Ply + Tuni frame",
+        "broodFrames": "5 frames (deep)",
+        "honeyFrames": "None (nuc only)",
+        "beeSpecies": "Apis mellifera / cerana",
+        "roof": "Plywood lid"
+      }
+    }
+  },
+  {
+    "sku": "HIVE-004",
+    "slug": "hive-004",
+    "name": "Tuni Frame — 10 Pack",
+    "nameNepali": "तुनी फ्रेम (१० थान)",
+    "category": "HIVE",
+    "sellingPrice": 950,
+    "description": "Durable hardwood Langstroth frames with pre-wired beeswax foundation. Fits standard 10-frame boxes.",
+    "badge": "Refill pack",
+    "details": {
+      "type": "Frame Pack",
+      "specs": {
+        "dimensions": "48 × 23 cm (deep)",
+        "wood": "Tuni hardwood",
+        "broodFrames": "10 frames included",
+        "honeyFrames": "Fits shallow boxes",
+        "beeSpecies": "Universal",
+        "roof": "N/A"
+      }
+    }
+  },
+  {
+    "sku": "GEAR-001",
+    "slug": "gear-001",
+    "name": "Full Bee Suit — Adult L",
+    "nameNepali": "पूरा सुरक्षा पोशाक (ठूलो)",
+    "category": "GEAR",
+    "sellingPrice": 3200,
+    "description": "Head-to-toe ventilated cotton-poly suit with integrated round veil. Full-zip with elastic wrist and ankle cuffs.",
+    "badge": "Most popular",
+    "details": null
+  },
+  {
+    "sku": "GEAR-002",
+    "slug": "gear-002",
+    "name": "Full Bee Suit — Adult M",
+    "nameNepali": "पूरा सुरक्षा पोशाक (मध्यम)",
+    "category": "GEAR",
+    "sellingPrice": 3200,
+    "description": "Same ventilated design as the Large. Lightweight cotton-poly blend. Washes easily — hang to dry.",
+    "badge": null,
+    "details": null
+  },
+  {
+    "sku": "GEAR-003",
+    "slug": "gear-003",
+    "name": "Round Veil Cap",
+    "nameNepali": "गोलो भेल टोपी",
+    "category": "GEAR",
+    "sellingPrice": 1100,
+    "description": "Fine-mesh round veil attached to a wide-brim cotton hat. Fits over any hat. Elastic bottom band.",
+    "badge": null,
+    "details": null
+  },
+  {
+    "sku": "GEAR-004",
+    "slug": "gear-004",
+    "name": "Leather Gauntlet Gloves",
+    "nameNepali": "छाला पन्जा",
+    "category": "GEAR",
+    "sellingPrice": 850,
+    "description": "Wrist-length cowhide gauntlet gloves with ventilated cotton upper. Sting-resistant, flexible palm.",
+    "badge": null,
+    "details": null
+  },
+  {
+    "sku": "GEAR-005",
+    "slug": "gear-005",
+    "name": "Nitrile Inspection Gloves — 20pk",
+    "nameNepali": "नाइट्राइल जाँच पन्जा",
+    "category": "GEAR",
+    "sellingPrice": 320,
+    "description": "Disposable nitrile gloves for quick inspections. Excellent dexterity. Latex-free, one size fits most.",
+    "badge": null,
+    "details": null
+  },
+  {
+    "sku": "TOOL-001",
+    "slug": "tool-001",
+    "name": "Stainless Steel Bee Smoker",
+    "nameNepali": "धुवाँ यन्त्र",
+    "category": "TOOL",
+    "sellingPrice": 1650,
+    "description": "Heavy-gauge stainless smoker with leather bellows. Heat shield guard. 4\" × 7\" canister. Burns wood pellets or dried grass.",
+    "badge": null,
+    "details": {
+      "category": "inspection"
+    }
+  },
+  {
+    "sku": "TOOL-002",
+    "slug": "tool-002",
+    "name": "J-Type Hive Tool",
+    "nameNepali": "हाइभ टुल (जे-टाइप)",
+    "category": "TOOL",
+    "sellingPrice": 380,
+    "description": "Stainless J-hook for prying frames and scraping propolis. Ergonomic rubber grip handle. 25 cm length.",
+    "badge": null,
+    "details": {
+      "category": "inspection"
+    }
+  },
+  {
+    "sku": "TOOL-003",
+    "slug": "tool-003",
+    "name": "Queen Capture Cage (PVC)",
+    "nameNepali": "रानी कैद पिँजडा",
+    "category": "TOOL",
+    "sellingPrice": 420,
+    "description": "Clear PVC cage for safe queen capture and introduction. Ventilated grid, push-clip lock. Pack of 3.",
+    "badge": null,
+    "details": {
+      "category": "queen"
+    }
+  },
+  {
+    "sku": "TOOL-004",
+    "slug": "tool-004",
+    "name": "Queen Marking Cage",
+    "nameNepali": "रानी मार्किङ पिँजडा",
+    "category": "TOOL",
+    "sellingPrice": 280,
+    "description": "Round soft-mesh cage holds the queen steady for marking. Spring plunger design — no squeeze damage.",
+    "badge": null,
+    "details": {
+      "category": "queen"
+    }
+  },
+  {
+    "sku": "TOOL-005",
+    "slug": "tool-005",
+    "name": "Queen Rearing Cell Bar Frame",
+    "nameNepali": "रानी पालन सेल फ्रेम",
+    "category": "TOOL",
+    "sellingPrice": 750,
+    "description": "Standard Langstroth frame with three movable cell-cup bars. Holds 30+ grafted cells per frame.",
+    "badge": null,
+    "details": {
+      "category": "queen"
+    }
+  },
+  {
+    "sku": "TOOL-006",
+    "slug": "tool-006",
+    "name": "Flat Hive Tool (Standard)",
+    "nameNepali": "समतल हाइभ टुल",
+    "category": "TOOL",
+    "sellingPrice": 280,
+    "description": "Classic flat-blade hive tool. Dual-ended: one flat scraper, one bent hook. Polished stainless steel.",
+    "badge": null,
+    "details": {
+      "category": "inspection"
+    }
+  },
+  {
+    "sku": "TOOL-007",
+    "slug": "tool-007",
+    "name": "Hand-Crank Honey Extractor (2-Frame)",
+    "nameNepali": "मह निकाल्ने यन्त्र",
+    "category": "TOOL",
+    "sellingPrice": 12500,
+    "description": "Stainless tangential extractor for 2 frames. Stable three-leg stand. Gate tap at base. Holds 10 L.",
+    "badge": null,
+    "details": {
+      "category": "harvest"
+    }
+  },
+  {
+    "sku": "TOOL-008",
+    "slug": "tool-008",
+    "name": "Uncapping Fork",
+    "nameNepali": "मह ढक्कन फोर्क",
+    "category": "TOOL",
+    "sellingPrice": 420,
+    "description": "20-tine stainless uncapping fork. Scratch-removes wax cappings without damaging comb. Easy wash.",
+    "badge": null,
+    "details": {
+      "category": "harvest"
+    }
+  },
+  {
+    "sku": "TOOL-009",
+    "slug": "tool-009",
+    "name": "Beeswax Foundation Sheets — 10pk",
+    "nameNepali": "मैन आधार पाना (१० थान)",
+    "category": "TOOL",
+    "sellingPrice": 680,
+    "description": "Pure beeswax embossed foundation sheets cut to Langstroth deep size. Pre-wired for fast frame fitting.",
+    "badge": null,
+    "details": {
+      "category": "hive"
+    }
+  },
+  {
+    "sku": "TOOL-010",
+    "slug": "tool-010",
+    "name": "Queen Excluder (Wire)",
+    "nameNepali": "रानी रोक्ने जाली",
+    "category": "TOOL",
+    "sellingPrice": 560,
+    "description": "Stainless wire queen excluder sized for Langstroth 10-frame. Keeps queen out of honey super. Durable frame.",
+    "badge": null,
+    "details": {
+      "category": "queen"
+    }
+  },
+  {
+    "sku": "HONEY-001",
+    "slug": "honey-001",
+    "name": "Wildflower Raw Honey — Gulmi Hills",
+    "nameNepali": "जंगली फूलको शुद्ध मह",
+    "category": "HONEY",
+    "sellingPrice": 850,
+    "description": "Cold-extracted, unfiltered wildflower honey from Gulmi district. Rich amber colour, floral aroma. Retains all pollen and enzymes.",
+    "badge": "Raw · Unfiltered",
+    "details": {
+      "unit": "per 500g jar"
+    }
+  },
+  {
+    "sku": "HONEY-002",
+    "slug": "honey-002",
+    "name": "Dark Forest Honey",
+    "nameNepali": "जंगल मह (गाढा)",
+    "category": "HONEY",
+    "sellingPrice": 950,
+    "description": "Deep amber honey from Apis cerana foraging dense Gulmi forest. Strong, robust flavour. High antioxidant content.",
+    "badge": null,
+    "details": {
+      "unit": "per 500g jar"
+    }
+  },
+  {
+    "sku": "HONEY-003",
+    "slug": "honey-003",
+    "name": "Pure Beeswax Block",
+    "nameNepali": "शुद्ध मैन ढल्का",
+    "category": "HONEY",
+    "sellingPrice": 600,
+    "description": "Hand-filtered natural beeswax. Use for lip balm, candles, wood polish, or frame foundation. Light golden colour.",
+    "badge": null,
+    "details": {
+      "unit": "per 500g block"
+    }
+  },
+  {
+    "sku": "HONEY-004",
+    "slug": "honey-004",
+    "name": "Capped Honeycomb Frame",
+    "nameNepali": "सिल गरिएको महको छाना",
+    "category": "HONEY",
+    "sellingPrice": 1400,
+    "description": "Full capped honeycomb frame — eat straight from the frame. No processing. Pure comb honey experience.",
+    "badge": "Limited",
+    "details": {
+      "unit": "per frame (~1.5 kg)"
+    }
+  },
+  {
+    "sku": "KIT-001",
+    "slug": "kit-001",
+    "name": "Basic Starter Kit",
+    "nameNepali": "आधारभूत शुरुवाती किट",
+    "category": "KIT",
+    "sellingPrice": 9500,
+    "description": null,
+    "badge": null,
+    "details": {
+      "level": "Beginner",
+      "featured": false,
+      "includes": [
+        "1× Langstroth 10-frame hive (assembled)",
+        "1× Round veil cap",
+        "1× Leather gauntlet gloves",
+        "1× J-type hive tool",
+        "1× Bee smoker (stainless)",
+        "1× Beeswax foundation sheet pack"
+      ],
+      "originalPrice": 11300,
+      "savings": 1800
+    }
+  },
+  {
+    "sku": "KIT-002",
+    "slug": "kit-002",
+    "name": "Complete Beekeeper Kit",
+    "nameNepali": "पूर्ण मौरीपालन किट",
+    "category": "KIT",
+    "sellingPrice": 15500,
+    "description": null,
+    "badge": null,
+    "details": {
+      "level": "Most popular",
+      "featured": true,
+      "includes": [
+        "1× Langstroth 10-frame hive (two boxes)",
+        "1× Full bee suit (select size)",
+        "1× Leather gauntlet gloves",
+        "1× J-type hive tool + flat hive tool",
+        "1× Stainless bee smoker",
+        "1× Queen excluder (wire)",
+        "1× Beeswax foundation sheet pack",
+        "500g raw wildflower honey (first harvest sample)"
+      ],
+      "originalPrice": 19200,
+      "savings": 3700
+    }
+  },
+  {
+    "sku": "KIT-003",
+    "slug": "kit-003",
+    "name": "Honey Harvest Pro Kit",
+    "nameNepali": "मह संकलन प्रो किट",
+    "category": "KIT",
+    "sellingPrice": 17800,
+    "description": null,
+    "badge": null,
+    "details": {
+      "level": "Pro",
+      "featured": false,
+      "includes": [
+        "1× 2-frame hand-crank honey extractor",
+        "1× Uncapping fork",
+        "1× Stainless uncapping tray",
+        "1× Fine honey strainer (double-layer)",
+        "6× 500g glass honey jars with lids",
+        "1× Refractometer (moisture meter)",
+        "1× Nitrile inspection gloves (20pk)"
+      ],
+      "originalPrice": 21500,
+      "savings": 3700
+    }
+  }
+]

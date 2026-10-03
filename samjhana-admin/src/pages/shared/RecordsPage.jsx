@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Filter, Fuel, Zap, Sofa, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
+import { Search, Filter, Fuel, Zap, Sofa, Hexagon, Home, Banknote, Droplet, Calendar, X } from 'lucide-react';
 import api from '../../utils/api';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
@@ -24,6 +24,7 @@ const BUSINESS_ICONS = {
   diesel: { icon: Droplet, color: 'bg-yellow-600', label: 'Diesel', labelNe: 'डिजेल' },
   ev: { icon: Zap, color: 'bg-ev-500', label: 'EV', labelNe: 'EV' },
   furniture: { icon: Sofa, color: 'bg-furniture-500', label: 'Furniture', labelNe: 'फर्निचर' },
+  beekeeping: { icon: Hexagon, color: 'bg-beekeeping-500', label: 'Beekeeping', labelNe: 'मौरीपालन' },
   rental: { icon: Home, color: 'bg-rental-500', label: 'Rental', labelNe: 'भाडा' },
   loan: { icon: Banknote, color: 'bg-loans-500', label: 'Loan', labelNe: 'ऋण' },
 };

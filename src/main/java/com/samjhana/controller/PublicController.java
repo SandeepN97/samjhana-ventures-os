@@ -37,6 +37,18 @@ public class PublicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/beekeeping")
+    public ResponseEntity<?> getBeekeepingCatalogue() {
+        return ResponseEntity.ok(publicApiService.getBeekeepingCatalogue());
+    }
+
+    @GetMapping("/beekeeping/{slug}")
+    public ResponseEntity<?> getBeekeepingProduct(@PathVariable String slug) {
+        return publicApiService.getBeekeepingProduct(slug)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/ev/rates")
     public ResponseEntity<?> getEvRates() {
         return ResponseEntity.ok(publicApiService.getEvRates());
