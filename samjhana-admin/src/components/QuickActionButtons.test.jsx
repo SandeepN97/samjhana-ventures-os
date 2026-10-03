@@ -127,15 +127,24 @@ describe('QuickActionButtons', () => {
     expect(screen.queryByText('Add New')).not.toBeInTheDocument();
   });
 
-  it('stretches the odd last tile across the row for admin', () => {
+  it('shows a Beekeeping tile that opens the beekeeping dashboard', async () => {
     renderWithProviders(<QuickActionButtons />);
-    expect(screen.getByText('Bank Loan').closest('button')).toHaveClass('col-span-2');
-    expect(screen.getByText('Petrol Pump').closest('button')).not.toHaveClass('col-span-2');
+    await userEvent.click(screen.getByText('Beekeeping'));
+    expect(mockNavigate).toHaveBeenCalledWith('/entry/beekeeping');
   });
 
-  it('keeps all tiles half width when staff see an even number', () => {
+  it('keeps all six tiles half width when admin sees an even number', () => {
+    renderWithProviders(<QuickActionButtons />);
+    for (const name of ['Petrol Pump', 'Beekeeping', 'Bank Loan']) {
+      expect(screen.getByText(name).closest('button')).not.toHaveClass('col-span-2');
+    }
+  });
+
+  it('stretches the odd last tile across the row when staff see five tiles', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
     renderWithProviders(<QuickActionButtons />);
-    expect(screen.getByText('House Rental').closest('button')).not.toHaveClass('col-span-2');
+    expect(screen.getByText('House Rental').closest('button')).toHaveClass('col-span-2');
+    expect(screen.getByText('Petrol Pump').closest('button')).not.toHaveClass('col-span-2');
+    expect(screen.queryByText('Bank Loan')).not.toBeInTheDocument();
   });
 });

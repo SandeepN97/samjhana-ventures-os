@@ -197,6 +197,56 @@ function FurnitureContent({ txns, isNepali, canViewProfit }) {
   );
 }
 
+function BeekeepingContent({ txns, isNepali, canViewProfit }) {
+  const sales = txns.filter(t => t.transactionType === 'SALE');
+  const totalRev = sales.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+  const avgOrder = sales.length > 0 ? totalRev / sales.length : 0;
+
+  // Top products, from the product lines on each sale
+  const byItem = {};
+  sales.forEach(t => {
+    (Array.isArray(t.customFields?.items) ? t.customFields.items : []).forEach(line => {
+      const name = line.itemName || (isNepali ? 'अज्ञात' : 'Unknown');
+      if (!byItem[name]) byItem[name] = { qty: 0, rev: 0 };
+      byItem[name].qty += parseFloat(line.quantity || 0);
+      byItem[name].rev += parseFloat(line.quantity || 0) * parseFloat(line.unitPrice || 0);
+    });
+  });
+  const itemRows = Object.entries(byItem).sort((a, b) => b[1].rev - a[1].rev).slice(0, 8);
+  const totalProfit = canViewProfit
+    ? sales.reduce((s, t) => s + (t.customFields?.profit != null ? parseFloat(t.customFields.profit) : 0), 0)
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <SectionHeader>{isNepali ? 'सारांश' : 'Summary'}</SectionHeader>
+        <div className="bg-gray-50 rounded-xl px-3 py-1">
+          <StatRow label={isNepali ? 'कुल बिक्री' : 'Total Sales'} value={sales.length} />
+          <StatRow label={isNepali ? 'औसत बिक्री मूल्य' : 'Avg Sale Value'} value={fmt(avgOrder)} />
+          {totalProfit != null && totalProfit !== 0 && (
+            <StatRow label={isNepali ? 'नाफा' : 'Profit'} value={fmt(totalProfit)} />
+          )}
+        </div>
+      </div>
+
+      {itemRows.length > 0 && (
+        <div>
+          <SectionHeader>{isNepali ? 'शीर्ष सामान' : 'Top Products'}</SectionHeader>
+          <div className="bg-gray-50 rounded-xl px-3 py-1">
+            {itemRows.map(([name, d]) => (
+              <StatRow key={name} label={name} value={fmt(d.rev)} sub={`qty ${d.qty}`} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <RecentTxns txns={sales} isNepali={isNepali}
+        labelFn={t => t.customFields?.items?.[0]?.itemName || (isNepali ? 'मौरीपालन' : 'Beekeeping')} />
+    </div>
+  );
+}
+
 function RentalContent({ txns, isNepali }) {
   const payments = txns.filter(t =>
     t.transactionType === 'PAYMENT' || t.transactionType === 'SALE' || t.transactionType === 'INCOME'
@@ -345,6 +395,7 @@ export default function BusinessDrillSheet({ bizCode, bizConfig, txns, onClose, 
     petrol:    <PetrolContent    txns={bizTxns} isNepali={isNepali} canViewProfit={canViewProfit} />,
     ev:        <EvContent        txns={bizTxns} isNepali={isNepali} />,
     furniture: <FurnitureContent txns={bizTxns} isNepali={isNepali} canViewProfit={canViewProfit} />,
+    beekeeping: <BeekeepingContent txns={bizTxns} isNepali={isNepali} canViewProfit={canViewProfit} />,
     rental:    <RentalContent    txns={bizTxns} isNepali={isNepali} />,
     loan:      <LoanContent      txns={bizTxns} isNepali={isNepali} canViewProfit={canViewProfit} />,
   };

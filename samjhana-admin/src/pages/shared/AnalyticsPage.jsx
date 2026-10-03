@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft, ChevronRight, Calendar,
-  Fuel, Zap, Sofa, Home, Banknote,
+  Fuel, Zap, Sofa, Hexagon, Home, Banknote,
   TrendingUp, TrendingDown, BarChart3, Building2,
   Receipt, AlertCircle,
   Star, Droplets, Battery,
@@ -18,6 +18,7 @@ const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-petrol-500', text: 'text-petrol-600', labelEn: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
   ev:        { icon: Zap,      color: 'bg-ev-500',  text: 'text-ev-600',  labelEn: 'EV',          labelNe: 'EV' },
   furniture: { icon: Sofa,     color: 'bg-furniture-500', text: 'text-furniture-600', labelEn: 'Furniture',   labelNe: 'फर्निचर' },
+  beekeeping: { icon: Hexagon, color: 'bg-beekeeping-500', text: 'text-beekeeping-600', labelEn: 'Beekeeping', labelNe: 'मौरीपालन' },
   rental:    { icon: Home,     color: 'bg-rental-500',   text: 'text-rental-600',   labelEn: 'Rental',      labelNe: 'भाडा' },
   loan:      { icon: Banknote, color: 'bg-loans-500',    text: 'text-loans-600',    labelEn: 'Loans',       labelNe: 'ऋण' },
 };
@@ -248,7 +249,7 @@ export default function AnalyticsPage() {
         currSales.forEach(t => {
           const d = t.transactionDate;
           if (!d) return;
-          if (!map[d]) map[d] = { date: d, petrol: 0, ev: 0, furniture: 0, rental: 0, loan: 0, total: 0, txnCount: 0 };
+          if (!map[d]) map[d] = { date: d, petrol: 0, ev: 0, furniture: 0, beekeeping: 0, rental: 0, loan: 0, total: 0, txnCount: 0 };
           const code = t.businessCode;
           if (map[d][code] !== undefined) map[d][code] += parseFloat(t.amount || 0);
           map[d].total += parseFloat(t.amount || 0);

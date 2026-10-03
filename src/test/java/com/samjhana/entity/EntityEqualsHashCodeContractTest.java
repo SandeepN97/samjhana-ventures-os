@@ -46,6 +46,14 @@ class EntityEqualsHashCodeContractTest {
     }
 
     @Test
+    void beekeepingProductEqualsAndHashCodeShouldCoverEveryField() {
+        EqualsVerifier.forClass(BeekeepingProduct.class)
+                .suppress(Warning.NONFINAL_FIELDS, Warning.STRICT_INHERITANCE, Warning.BIGDECIMAL_EQUALITY)
+                .withIgnoredAnnotations(Id.class)
+                .verify();
+    }
+
+    @Test
     void auditLogEqualsAndHashCodeShouldCoverEveryField() {
         EqualsVerifier.forClass(AuditLog.class)
                 .suppress(Warning.NONFINAL_FIELDS, Warning.STRICT_INHERITANCE)

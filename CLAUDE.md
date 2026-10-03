@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project
 
 **Samjhana Ventures OS** — a multi-business ERP for a Nepal-USA family operation.
-Five business units: petrol pump (Shringeshwor), EV charging, furniture shop, house rentals, bank loans.
+Six business units: petrol pump (Shringeshwor), EV charging, furniture shop, beekeeping shop, house rentals, bank loans.
 
 **Stack:** Java 21 + Spring Boot 3.2.1 backend · React 18 + Vite + Tailwind frontend · H2 (dev) / PostgreSQL (prod) · JWT auth · i18next (English/Nepali with Devanagari numerals)
 
@@ -76,6 +76,7 @@ Each business unit has a `BusinessCalculationStrategy` implementation:
 | `petrol` | `PetrolStrategy` |
 | `ev` | `EVStrategy` |
 | `furniture` | `FurnitureStrategy` |
+| `beekeeping` | `BeekeepingStrategy` |
 | `rental` | `RentalStrategy` |
 | `loan` | `LoanStrategy` |
 
@@ -97,7 +98,7 @@ No hard deletes — always use soft delete with a `deletedAt` timestamp.
 Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth token is stored in `localStorage` under `token`; the private route check in `App.jsx` reads this directly.
 
 ### Data seeding
-- Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the five business units), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
+- Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the six business units), `BeekeepingProductSeeder` (the 26 existing beekeeping products, zero stock), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
 - `DataSeeder` (`@Profile("dev")`) seeds dev logins only: on an empty dev database they are `admin/admin`, `manager/manager123`, `staff/staff123`.
 - `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log.
 - The Settings page "Reset demo data" exists in dev and staging only, never prod.

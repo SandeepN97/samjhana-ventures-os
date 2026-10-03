@@ -48,6 +48,7 @@ public class TransactionService {
     private final ObjectMapper objectMapper;
     private final DailyReportRepository dailyReportRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final BeekeepingService beekeepingService;
 
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
 
@@ -100,6 +101,12 @@ public class TransactionService {
             throw new IllegalArgumentException("Invalid custom fields");
         }
 
+        // Beekeeping stock moves in this same transaction, before the sale is saved: a line the shop
+        // can't cover fails the whole sale and nothing is changed.
+        if (BusinessUnit.CODE_BEEKEEPING.equalsIgnoreCase(request.getBusinessCode()) && customFields != null) {
+            beekeepingService.applyStock(customFields, request.getTransactionType());
+        }
+
         Transaction transaction = Transaction.builder()
                 .business(business)
                 .enteredBy(user)
@@ -140,6 +147,19 @@ public class TransactionService {
             if (fuelType != null) {
                 latestPurchaseRate(fuelType.toString()).ifPresent(rate -> fields.put("purchaseRate", rate));
             }
+        }
+
+        if (BusinessUnit.CODE_BEEKEEPING.equalsIgnoreCase(businessCode)) {
+            // Always the server's figures, never a staff device's: cost is what the goods cost the shop.
+            fields.keySet().removeAll(TransactionVisibility.COST_FIELDS);
+            beekeepingService.costOfLines(fields).ifPresent(cost -> {
+                BigDecimal profit = amount.subtract(cost);
+                fields.put("costPrice", cost);
+                fields.put("profit", profit);
+                fields.put("profitMargin", amount.signum() > 0
+                        ? profit.multiply(BigDecimal.valueOf(100)).divide(amount, 1, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO);
+            });
         }
 
         if ("ev".equalsIgnoreCase(businessCode) && fields.get("neaCost") == null) {
