@@ -40,7 +40,6 @@ export default function FuelPricePage() {
     try {
       // Add timestamp to prevent caching
       const res = await api.get(`/api/fuel-prices/current?_t=${Date.now()}`);
-      console.log('Fetched prices:', res.data);
       setCurrentPrices({
         petrol: res.data.petrol?.pricePerLiter || null,
         diesel: res.data.diesel?.pricePerLiter || null,

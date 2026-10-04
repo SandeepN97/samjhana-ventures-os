@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export const MAX_PER_LINE = 50;
+const MAX_PER_LINE = 50;
 
 const recompute = (items) => ({
   count: items.reduce((s, i) => s + i.qty, 0),

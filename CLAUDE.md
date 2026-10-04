@@ -94,8 +94,8 @@ Touch targets must be ≥ 44px on all interactive elements.
 ### Data integrity
 No hard deletes — always use soft delete with a `deletedAt` timestamp.
 
-### State management (samjhana-admin)
-Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth token is stored in `localStorage` under `token`; the private route check in `App.jsx` reads this directly.
+### State management
+The admin app keeps no global store: the auth token and signed-in user live in `localStorage` (`token`, `user`; see `utils/session.js`), and the private route check in `App.jsx` reads the token directly. Zustand is used only for the public site's cart (`samjhana-web/src/store/cartStore.js`).
 
 ### Data seeding
 - Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the six business units), `BeekeepingProductSeeder` (the 26 existing beekeeping products, zero stock), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
