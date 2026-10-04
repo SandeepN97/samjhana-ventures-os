@@ -170,6 +170,12 @@ feature branch ──PR──► staging (test site) ──release PR, only when
 ### PR rule
 Every PR requires at least 1 approval before merging to `main`. No self-merges.
 
+### Using Superpowers (optional plugin)
+The Superpowers plugin (brainstorm, plan, test first, verify) can be on in a session. These rules still win over its habits:
+- **Big jobs only:** use it for new features, database or API changes and large clean-ups. For a typo, a label or a one-line fix, skip it ("skip the process, just fix this").
+- **Branches and PRs:** every change is a PR into `staging`, never straight to `main`. When it asks how to finish a branch, choose "open a pull request", not "merge".
+- **Confirmation block:** still show the "Shall I proceed?" block before touching any file, once the plan is agreed.
+
 ---
 
 ## Testing
