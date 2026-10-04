@@ -8,6 +8,7 @@ import ImageUploader from '../../components/ImageUploader';
 import BusinessTabs from '../../components/BusinessTabs';
 import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
 import PhotoDialog from '../../components/PhotoDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import useEscape from '../../utils/useEscape';
 
 const CATEGORIES = [
@@ -259,14 +260,8 @@ export default function BeekeepingInventoryPage() {
       )}
 
       {removing && (
-        <div role="alertdialog" aria-label={t('beeInv.removeConfirm', { name: removing.name })}
-          className="mx-4 mt-3 rounded-xl border border-red-300 bg-white p-4 shadow">
-          <p className="mb-3 text-gray-800">{t('beeInv.removeConfirm', { name: removing.name })}</p>
-          <div className="flex gap-3">
-            <button type="button" onClick={confirmRemove} className="min-h-[44px] flex-1 rounded-lg bg-red-600 font-bold text-white">{t('beeInv.removeYes')}</button>
-            <button type="button" onClick={() => setRemoving(null)} className="min-h-[44px] flex-1 rounded-lg border-2 border-gray-300 font-bold text-gray-700">{t('beeInv.keep')}</button>
-          </div>
-        </div>
+        <ConfirmDialog message={t('beeInv.removeConfirm', { name: removing.name })} confirmLabel={t('beeInv.removeYes')}
+          cancelLabel={t('beeInv.keep')} onConfirm={confirmRemove} onCancel={() => setRemoving(null)} />
       )}
 
       {photoItem && <PhotoDialog item={photoItem} onSave={savePhotos} onClose={() => setPhotoItem(null)} />}

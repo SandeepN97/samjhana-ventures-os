@@ -227,3 +227,46 @@ describe('business tabs', () => {
     expect(screen.getByRole('link', { name: 'वेबसाइट पृष्ठ' })).toBeInTheDocument();
   });
 });
+
+describe('remove confirmation pop-up', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    as('ADMIN');
+    api.get.mockResolvedValue({ data: [withPicture, noPicture] });
+    api.delete.mockResolvedValue({ data: {} });
+  });
+
+  it('opens as a centred overlay on the screen, not inline at the top of the page', async () => {
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete' }))[1]);
+    const dialog = screen.getByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Remove Bare Frame? Its sales history is kept.');
+    const overlay = dialog.parentElement;
+    expect(overlay).toHaveClass('fixed', 'inset-0', 'items-center', 'justify-center');
+  });
+
+  it('keeps the product when cancelled, and focuses Keep first so Enter cannot delete', async () => {
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete' }))[0]);
+    expect(screen.getByRole('button', { name: 'Keep' })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('closes when the dark background is tapped', async () => {
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Delete' }))[0]);
+    await userEvent.click(screen.getByRole('alertdialog').parentElement);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('removes the furniture piece after confirming, and says it in Nepali', async () => {
+    renderWithProviders(<FurnitureInventoryPage />, { locale: 'ne' });
+    await userEvent.click((await screen.findAllByRole('button', { name: 'मेट्नुहोस्' }))[0]);
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Wild Honey हटाउने?');
+    await userEvent.click(screen.getByRole('button', { name: 'हटाउनुहोस्' }));
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/api/furniture/items/i1'));
+  });
+});

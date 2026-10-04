@@ -8,6 +8,7 @@ import ImageUploader from '../../components/ImageUploader';
 import BusinessTabs from '../../components/BusinessTabs';
 import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
 import PhotoDialog from '../../components/PhotoDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import useEscape from '../../utils/useEscape';
 
 const CATEGORIES = [
@@ -39,6 +40,7 @@ export default function FurnitureInventoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [photoItem, setPhotoItem] = useState(null);
+  const [removing, setRemoving] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '', nameNepali: '', sku: '', category: 'OTHER',
@@ -140,8 +142,11 @@ export default function FurnitureInventoryPage() {
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!confirm(`Remove ${item.name}?`)) return;
+  const handleDelete = (item) => setRemoving(item);
+
+  const confirmRemove = async () => {
+    const item = removing;
+    setRemoving(null);
     try {
       await api.delete(`/api/furniture/items/${item.id}`);
       fetchItems(true);
@@ -261,6 +266,11 @@ export default function FurnitureInventoryPage() {
           />
         </div>
       </div>
+
+      {removing && (
+        <ConfirmDialog message={t('furnitureInv.removeConfirm', { name: removing.name })} confirmLabel={t('furnitureInv.removeYes')}
+          cancelLabel={t('furnitureInv.keep')} onConfirm={confirmRemove} onCancel={() => setRemoving(null)} />
+      )}
 
       {photoItem && <PhotoDialog item={photoItem} onSave={savePhotos} onClose={() => setPhotoItem(null)} />}
 
