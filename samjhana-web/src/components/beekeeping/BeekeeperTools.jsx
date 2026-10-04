@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ShoppingCart, MessageCircle } from 'lucide-react';
-import { tools } from '../../data/beekeepingProducts';
+import { whatsappLink } from '../../site/links';
+import { useSection } from '../../site/SiteContext';
 import SectionDivider from './SectionDivider';
-import { getBeePhoto } from './beePhotoAssets';
+import BeeImg from './BeeImg';
 
 const CAT_COLORS = {
   inspection: '#faeeda',
@@ -32,7 +33,7 @@ function ToolRow({ tool, onAddToCart }) {
     <div className="flex items-start gap-4 py-3.5 border-b border-[#e8a400]/10 last:border-0">
       <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
         style={{ backgroundColor: CAT_COLORS[tool.category] }}>
-        <img src={getBeePhoto(tool.id)} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-1" loading="lazy" />
+        <BeeImg src={tool.image} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-1" loading="lazy" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-sans text-sm font-semibold text-[#1a1000] leading-tight">{tool.name}</p>
@@ -58,11 +59,10 @@ function QueenDeviceCard({ tool, onAddToCart }) {
     setTimeout(() => setAdded(false), 1500);
   };
 
-  const toolPhoto = getBeePhoto(tool.id);
   return (
     <div className="bg-[#eeedfe] rounded-2xl p-4 border border-[#534ab7]/15">
       <div className="h-28 rounded-xl overflow-hidden mb-3 bg-[#534ab7]/10">
-        <img src={toolPhoto} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
+        <BeeImg src={tool.image} alt={tool.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
       </div>
       <p className="font-sans font-semibold text-sm text-[#1a1000]">{tool.name}</p>
       <p className="font-sans text-[11px] text-[#534ab7] mt-0.5">{tool.nepali}</p>
@@ -79,23 +79,25 @@ function QueenDeviceCard({ tool, onAddToCart }) {
   );
 }
 
-const DISPLAY_TOOLS = ['tool-001','tool-002','tool-003','tool-004','tool-005','tool-006','tool-007','tool-008','tool-009'];
-const QUEEN_DEVICES = ['tool-003','tool-010'];
-
-export default function BeekeeperTools({ onAddToCart }) {
-  const displayList = DISPLAY_TOOLS.map((id) => tools.find((t) => t.id === id)).filter(Boolean);
-  const queenList   = QUEEN_DEVICES.map((id) => tools.find((t) => t.id === id)).filter(Boolean);
+export default function BeekeeperTools({ tools, onAddToCart }) {
+  const copy = useSection('beekeeping').tools || {};
+  const contact = useSection('contact');
+  const pick = (slugs) => (slugs || []).map((id) => tools.find((t) => t.id === id)).filter(Boolean);
+  // Which tools are listed, and which are the queen devices, is chosen in the admin; with no choice every tool is listed.
+  const displayList = copy.toolSlugs?.length ? pick(copy.toolSlugs) : tools;
+  const queenList   = copy.queenSlugs?.length ? pick(copy.queenSlugs) : tools.filter((t) => t.category === 'queen');
+  const training = whatsappLink(contact, copy.trainingMessage);
 
   return (
     <section id="bee-tools" className="bg-[#fdf8e8] py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <SectionDivider num="04" name="Tools & queen devices" tag="Inspector" tagColor="honey" />
+        <SectionDivider num="04" name={copy.sectionName} tag={copy.tag} tagColor="honey" />
 
         <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
 
           {/* Left: tools list */}
           <div>
-            <h2 className="font-serif text-2xl text-[#1a1000] mb-6">Beekeeping tools</h2>
+            <h2 className="font-serif text-2xl text-[#1a1000] mb-6">{copy.toolsTitle}</h2>
             <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(26,16,0,0.05)]">
               {displayList.map((tool) => (
                 <ToolRow key={tool.id} tool={tool} onAddToCart={onAddToCart} />
@@ -105,16 +107,14 @@ export default function BeekeeperTools({ onAddToCart }) {
 
           {/* Right: queen devices */}
           <div>
-            <h2 className="font-serif text-2xl text-[#1a1000] mb-3">Queen devices</h2>
+            <h2 className="font-serif text-2xl text-[#1a1000] mb-3">{copy.queenTitle}</h2>
 
             <div className="bg-[#eeedfe] rounded-2xl p-4 border border-[#534ab7]/15 mb-5">
               <p className="font-sans text-[11px] font-semibold uppercase tracking-widest text-[#534ab7]/60 mb-2">
-                Why queen management matters
+                {copy.queenNoteTitle}
               </p>
               <p className="font-sans text-sm text-[#534ab7]/80 leading-relaxed">
-                The queen is the heart of the colony — she lays up to 1,500 eggs per day.
-                Finding, monitoring, and occasionally replacing the queen keeps your colony
-                productive and disease-free. Invest in queen tools early.
+                {copy.queenNote}
               </p>
             </div>
 
@@ -128,15 +128,15 @@ export default function BeekeeperTools({ onAddToCart }) {
             <div className="mt-5 bg-[#1a1000] rounded-2xl p-5 flex items-start gap-4">
               <MessageCircle size={20} className="text-[#e8a400] shrink-0 mt-0.5" />
               <div>
-                <p className="font-sans font-semibold text-white text-sm">Queen rearing training</p>
+                <p className="font-sans font-semibold text-white text-sm">{copy.trainingTitle}</p>
                 <p className="font-sans text-xs text-white/50 mt-1 leading-relaxed">
-                  WhatsApp us for the next workshop date in Gulmi district.
+                  {copy.trainingText}
                 </p>
-                <a href="https://wa.me/9779363147818?text=Namaste!%20I%20want%20to%20ask%20about%20the%20queen%20rearing%20training."
+                {training && <a href={training}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 mt-3 font-sans text-xs font-semibold text-[#e8a400] hover:underline">
-                  WhatsApp us →
-                </a>
+                  {copy.trainingCta}
+                </a>}
               </div>
             </div>
           </div>

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ShoppingCart, Star } from 'lucide-react';
-import { honeyProducts } from '../../data/beekeepingProducts';
+import { useSection } from '../../site/SiteContext';
 import SectionDivider from './SectionDivider';
 import BadgePill from './BadgePill';
-import { getBeePhoto } from './beePhotoAssets';
+import BeeImg from './BeeImg';
 
 const fmt = (n) => Number(n).toLocaleString();
 
@@ -30,11 +30,9 @@ function HoneyJarSvg({ color = '#e8a400' }) {
   );
 }
 
-const SIZES = ['250g', '500g', '1kg'];
 
-function FeaturedHoneyCard({ product, onAddToCart }) {
+function FeaturedHoneyCard({ product, copy, onAddToCart }) {
   const [added, setAdded] = useState(false);
-  const [size, setSize]   = useState('500g');
 
   const handleAdd = () => {
     onAddToCart?.(product);
@@ -46,7 +44,7 @@ function FeaturedHoneyCard({ product, onAddToCart }) {
     <div className="bg-white rounded-3xl overflow-hidden shadow-[0_4px_24px_rgba(26,16,0,0.08)] flex flex-col">
       <div className="relative h-52 overflow-hidden flex items-center justify-center py-4"
         style={{ backgroundColor: product.bgColor + '44' }}>
-        <img src={getBeePhoto(product.id)} alt={product.name} className="bee-product-photo w-full h-full object-contain p-4" />
+        <BeeImg src={product.image} alt={product.name} className="bee-product-photo w-full h-full object-contain p-4" />
       </div>
       <div className="p-5 flex flex-col gap-3 flex-1">
         {product.badge && <BadgePill text={product.badge} color="raw" />}
@@ -56,20 +54,6 @@ function FeaturedHoneyCard({ product, onAddToCart }) {
         </div>
         <p className="font-sans text-xs text-[#1a1000]/60 leading-relaxed">{product.description}</p>
 
-        {/* Size selector */}
-        <div className="flex gap-2">
-          {SIZES.map((s) => (
-            <button key={s} onClick={() => setSize(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-sans transition-colors border
-                ${size === s
-                  ? 'bg-[#e8a400] text-white border-[#e8a400]'
-                  : 'border-[#e8a400]/20 text-[#1a1000]/50 hover:bg-[#faeeda]'
-                }`}>
-              {s}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center justify-between mt-auto pt-2">
           <div>
             <p className="font-serif text-2xl text-[#1a1000]">Rs {fmt(product.price)}</p>
@@ -78,7 +62,7 @@ function FeaturedHoneyCard({ product, onAddToCart }) {
           <button onClick={handleAdd}
             className="min-h-[44px] px-4 bg-[#e8a400] text-white font-sans font-semibold text-sm rounded-xl hover:bg-[#d49400] transition-colors flex items-center gap-2">
             <ShoppingCart size={14} />
-            {added ? 'Added! मालमा थपियो' : 'मालमा थप्नुहोस्'}
+            {added ? copy.addedLabel : copy.addLabel}
           </button>
         </div>
 
@@ -95,7 +79,7 @@ function FeaturedHoneyCard({ product, onAddToCart }) {
   );
 }
 
-function SmallHoneyCard({ product, onAddToCart }) {
+function SmallHoneyCard({ product, copy, onAddToCart }) {
   const [added, setAdded] = useState(false);
   const handleAdd = () => {
     onAddToCart?.(product);
@@ -107,13 +91,13 @@ function SmallHoneyCard({ product, onAddToCart }) {
     <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(26,16,0,0.06)] flex flex-col">
       <div className="h-28 overflow-hidden flex items-center justify-center"
         style={{ backgroundColor: product.bgColor + '44' }}>
-        <img src={getBeePhoto(product.id)} alt={product.name} className="bee-product-photo w-full h-full object-contain p-2" />
+        <BeeImg src={product.image} alt={product.name} className="bee-product-photo w-full h-full object-contain p-2" />
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
         <p className="font-serif text-base text-[#1a1000] leading-tight line-clamp-2">{product.name}</p>
         <p className="font-sans text-[11px] text-[#8B6914]">{product.nepali}</p>
         {!product.inStock && (
-          <span className="text-[10px] font-semibold text-red-500 font-sans">उपलब्ध छैन</span>
+          <span className="text-[10px] font-semibold text-red-500 font-sans">{copy.soldOut}</span>
         )}
         <div className="flex items-center justify-between mt-auto pt-2">
           <div>
@@ -130,25 +114,27 @@ function SmallHoneyCard({ product, onAddToCart }) {
   );
 }
 
-export default function HoneyProducts({ onAddToCart }) {
+export default function HoneyProducts({ honeyProducts, onAddToCart }) {
+  const copy = useSection('beekeeping').honey || {};
   const [featured, ...rest] = honeyProducts;
+  if (!featured) return null;
 
   return (
     <section id="bee-honey" className="bg-[#fdf8e8] py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <SectionDivider num="05" name="Raw Gulmi honey" tag="शुद्ध मह" tagColor="amber" />
+        <SectionDivider num="05" name={copy.sectionName} tag={copy.tag} tagColor="amber" />
 
         <div className="flex items-end justify-between mb-8">
-          <h2 className="font-serif text-2xl text-[#1a1000]">Pure honey from Gulmi</h2>
-          <p className="font-sans text-xs text-[#1a1000]/40">Unfiltered · Unheated · गुल्मी, नेपालबाट</p>
+          <h2 className="font-serif text-2xl text-[#1a1000]">{copy.title}</h2>
+          <p className="font-sans text-xs text-[#1a1000]/40">{copy.note}</p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-4">
           <div className="col-span-2 lg:col-span-1">
-            <FeaturedHoneyCard product={featured} onAddToCart={onAddToCart} />
+            <FeaturedHoneyCard product={featured} copy={copy} onAddToCart={onAddToCart} />
           </div>
           {rest.map((p) => (
-            <SmallHoneyCard key={p.id} product={p} onAddToCart={onAddToCart} />
+            <SmallHoneyCard key={p.id} product={p} copy={copy} onAddToCart={onAddToCart} />
           ))}
         </div>
       </div>

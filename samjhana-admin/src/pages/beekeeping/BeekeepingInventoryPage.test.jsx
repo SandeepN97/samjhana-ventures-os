@@ -5,6 +5,9 @@ import BeekeepingInventoryPage from './BeekeepingInventoryPage';
 import { renderWithProviders } from '../../test/test-utils';
 import api from '../../utils/api';
 
+vi.mock('../../components/ImageUploader', () => ({
+  default: ({ value, onChange }) => <button type="button" onClick={() => onChange(['pic-new'])}>pictures {value.join(',') || 'none'}</button>,
+}));
 vi.mock('../../utils/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
@@ -154,5 +157,29 @@ describe('BeekeepingInventoryPage', () => {
     as('MANAGER');
     renderWithProviders(<BeekeepingInventoryPage />);
     expect(await screen.findByRole('button', { name: 'Increase stock of Wild Honey' })).toHaveClass('w-11', 'h-11');
+  });
+
+  it('shows a product\'s cover picture in the list', async () => {
+    as('STAFF');
+    api.get.mockResolvedValue({ data: [{ ...honey(false), imageUrls: ['/api/public/media/pic-1'] }] });
+    const { container } = renderWithProviders(<BeekeepingInventoryPage />);
+    await screen.findByText('Wild Honey');
+    expect(container.querySelector('img')).toHaveAttribute('src', '/api/public/media/pic-1');
+  });
+
+  it('saves the pictures and the show-on-website switch with the product', async () => {
+    as('ADMIN');
+    api.get.mockResolvedValue({ data: [{ ...honey(true), imageIds: ['pic-1'], imageUrls: ['/api/public/media/pic-1'] }] });
+    api.put.mockResolvedValue({ data: {} });
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Product' }));
+    expect(screen.getByRole('button', { name: 'pictures pic-1' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'pictures pic-1' }));
+    await userEvent.click(screen.getByLabelText('Show on website'));
+    await userEvent.click(screen.getByRole('button', { name: 'Update Product' }));
+
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    expect(api.put.mock.calls[0][0]).toBe('/api/beekeeping/items/h1');
+    expect(api.put.mock.calls[0][1]).toMatchObject({ imageIds: ['pic-new'], showOnWebsite: false });
   });
 });

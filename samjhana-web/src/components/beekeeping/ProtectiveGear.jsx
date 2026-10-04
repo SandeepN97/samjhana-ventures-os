@@ -1,20 +1,14 @@
 import { ShoppingCart, Star } from 'lucide-react';
 import { useState } from 'react';
-import { protectiveGear } from '../../data/beekeepingProducts';
+import { useSection } from '../../site/SiteContext';
 import SectionDivider from './SectionDivider';
 import ProductCard from './ProductCard';
-import { getBeePhoto } from './beePhotoAssets';
+import BeeImg from './BeeImg';
 
-const GEAR_LAYERS = [
-  { num: '1', name: 'Full-body bee suit', note: 'Head-to-toe protection — never skip' },
-  { num: '2', name: 'Veil / hood', note: 'Face and neck — critical for safety' },
-  { num: '3', name: 'Leather gauntlet gloves', note: 'Wrist-length sting protection' },
-  { num: '4', name: 'Closed-toe boots', note: 'Heavy socks, tucked-in trouser legs' },
-];
-
-const DARK_CARDS = protectiveGear.slice(0, 4);
-
-export default function ProtectiveGear({ onAddToCart }) {
+export default function ProtectiveGear({ protectiveGear, onAddToCart }) {
+  const copy = useSection('beekeeping').gear || {};
+  const GEAR_LAYERS = (copy.layers || []).map((l, i) => ({ ...l, num: String(i + 1) }));
+  const DARK_CARDS = protectiveGear.slice(0, 4);
   return (
     <section id="bee-protective" className="pb-16">
       {/* Dark hero strip */}
@@ -25,14 +19,13 @@ export default function ProtectiveGear({ onAddToCart }) {
             {/* Left */}
             <div>
               <p className="font-sans text-[11px] font-semibold uppercase tracking-widest text-[#e8a400]/60 mb-4">
-                Safety first · सुरक्षा पहिले
+                {copy.eyebrow}
               </p>
               <h2 className="font-serif text-3xl text-white leading-snug mb-4">
-                Suited for the <em className="text-[#e8a400] not-italic">hive.</em>
+                {copy.titleStart} <em className="text-[#e8a400] not-italic">{copy.titleEmphasis}</em>
               </h2>
               <p className="font-sans text-sm text-white/50 leading-relaxed mb-8">
-                Never approach a colony without protection. Even docile Apis cerana
-                colonies will defend when disturbed. Layer up correctly every time.
+                {copy.intro}
               </p>
 
               <div className="flex flex-col gap-3">
@@ -63,7 +56,7 @@ export default function ProtectiveGear({ onAddToCart }) {
       {/* Light product grid */}
       <div className="bg-[#fdf8e8] py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <SectionDivider num="03" name="Protective gear" tag="Safety" tagColor="green" />
+          <SectionDivider num="03" name={copy.sectionName} tag={copy.tag} tagColor="green" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {protectiveGear.map((product) => (
               <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
@@ -77,7 +70,6 @@ export default function ProtectiveGear({ onAddToCart }) {
 
 function DarkGearCard({ gear, onAddToCart }) {
   const [added, setAdded] = useState(false);
-  const gearPhoto = getBeePhoto(gear.id);
   const handleAdd = () => {
     onAddToCart?.(gear);
     setAdded(true);
@@ -87,7 +79,7 @@ function DarkGearCard({ gear, onAddToCart }) {
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
       <div className="h-20 rounded-xl overflow-hidden" style={{ backgroundColor: gear.bgColor + '22' }}>
-        <img src={gearPhoto} alt={gear.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
+        <BeeImg src={gear.image} alt={gear.name} className="bee-product-photo h-full w-full object-contain p-2" loading="lazy" />
       </div>
       <p className="font-sans text-sm font-semibold text-white leading-tight line-clamp-2">{gear.name}</p>
       <p className="font-sans text-[10px] text-white/40 line-clamp-2 leading-snug">{gear.description}</p>

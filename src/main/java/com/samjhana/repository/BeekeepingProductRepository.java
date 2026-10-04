@@ -25,6 +25,8 @@ public interface BeekeepingProductRepository extends JpaRepository<BeekeepingPro
 
     boolean existsBySku(String sku);
 
+    Optional<BeekeepingProduct> findBySku(String sku);
+
     boolean existsBySlug(String slug);
 
     /**

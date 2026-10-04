@@ -44,6 +44,9 @@ import BeekeepingDashboardPage from './pages/beekeeping/BeekeepingDashboardPage'
 import BeekeepingInventoryPage from './pages/beekeeping/BeekeepingInventoryPage';
 import BeekeepingSalePage from './pages/beekeeping/BeekeepingSalePage';
 import BeekeepingOrderHistoryPage from './pages/beekeeping/BeekeepingOrderHistoryPage';
+import WebsiteContentPage from './pages/website/WebsiteContentPage';
+import RestaurantMenuPage from './pages/website/RestaurantMenuPage';
+import OnlineOrdersPage from './pages/website/OnlineOrdersPage';
 import RentalEntryPage from './pages/rental/RentalEntryPage';
 import RentalPropertyPage from './pages/rental/RentalPropertyPage';
 import RentalTenantsPage from './pages/rental/RentalTenantsPage';
@@ -155,6 +158,30 @@ export default function App() {
           element={
             <PrivateRoute>
               <BeekeepingOrderHistoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/website"
+          element={
+            <PrivateRoute>
+              <WebsiteContentPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/restaurant-menu"
+          element={
+            <PrivateRoute>
+              <RestaurantMenuPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/online-orders"
+          element={
+            <PrivateRoute>
+              <OnlineOrdersPage />
             </PrivateRoute>
           }
         />

@@ -61,8 +61,31 @@ public class TransactionService {
         return dailyReportRepository.findByReportDate(today).isPresent() ? today.plusDays(1) : today;
     }
 
+    /** Custom field only {@link #createForOnlineOrder} may set: it marks a sale whose stock was already held back at checkout. */
+    public static final String ONLINE_ORDER_FIELD = "onlineOrderNumber";
+
     @Transactional
     public TransactionResponse create(TransactionRequest request, User user) {
+        if (request.getCustomFields() != null && request.getCustomFields().containsKey(ONLINE_ORDER_FIELD)) {
+            throw new IllegalArgumentException("'" + ONLINE_ORDER_FIELD + "' is reserved for online orders");
+        }
+        return createInternal(request, user, false);
+    }
+
+    /**
+     * Records the sale for an online order that staff completed. Stock was already taken when the customer
+     * ordered, so it is not taken again here. Only the online-order code calls this; a normal request that
+     * tries to claim "already reserved" is refused above.
+     */
+    @Transactional
+    public TransactionResponse createForOnlineOrder(TransactionRequest request, User user, String orderNumber) {
+        Map<String, Object> fields = new LinkedHashMap<>(request.getCustomFields() == null ? Map.of() : request.getCustomFields());
+        fields.put(ONLINE_ORDER_FIELD, orderNumber);
+        request.setCustomFields(fields);
+        return createInternal(request, user, true);
+    }
+
+    private TransactionResponse createInternal(TransactionRequest request, User user, boolean stockAlreadyHeld) {
         BusinessUnit business = businessUnitRepository.findByCode(request.getBusinessCode())
                 .orElseThrow(() -> new BusinessUnitNotFoundException(request.getBusinessCode()));
 
@@ -103,7 +126,7 @@ public class TransactionService {
 
         // Beekeeping stock moves in this same transaction, before the sale is saved: a line the shop
         // can't cover fails the whole sale and nothing is changed.
-        if (BusinessUnit.CODE_BEEKEEPING.equalsIgnoreCase(request.getBusinessCode()) && customFields != null) {
+        if (!stockAlreadyHeld && BusinessUnit.CODE_BEEKEEPING.equalsIgnoreCase(request.getBusinessCode()) && customFields != null) {
             beekeepingService.applyStock(customFields, request.getTransactionType());
         }
 
@@ -124,7 +147,7 @@ public class TransactionService {
         auditLogRepository.save(AuditLog.createEvent(user, AuditLog.EntityType.TRANSACTION,
                 saved.getId(), customFieldsJson));
 
-        if ("furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
+        if (!stockAlreadyHeld && "furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
             adjustFurnitureStock(request.getCustomFields(), request.getTransactionType());
         }
 

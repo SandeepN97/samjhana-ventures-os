@@ -1,0 +1,689 @@
+{
+  "identity": {
+    "name": "Samjhana Ventures",
+    "tagline": "Gulmi, Nepal · Est. 2008",
+    "established": 2008,
+    "footerBlurb": "Where craft meets community, in the hills. Four businesses, one family, one vision.",
+    "footerNote": "गुल्मीको गर्वका साथ — Proudly from Gulmi",
+    "copyrightName": "Maurighar Ventures"
+  },
+  "contact": {
+    "phone": "+977 9363147818",
+    "whatsapp": "9779363147818",
+    "email": "",
+    "addressLine": "Gulmi, Nepal",
+    "latitude": 27.9922809,
+    "longitude": 83.3629821,
+    "mapsUrl": "https://www.google.com/maps/@27.9922809,83.3629821,48m/data=!3m1!1e3?entry=ttu&g_ep=EgoyMDI2MDkyMy4wIKXMDSoASAFQAw%3D%3D",
+    "eyebrow": "Plan your stop",
+    "title": "Make the stop easy.",
+    "copy": "Find us in Gulmi, then call or WhatsApp before you set out. We’ll confirm today’s hours, stock, and the easiest route.",
+    "hoursNote": "Hours confirmed by phone"
+  },
+  "hours": {
+    "fuelEv": "6am – 9pm",
+    "fuelEvSub": "Every day",
+    "restaurantDaily": "6am – 9pm",
+    "bikeRepair": "",
+    "shop": ""
+  },
+  "hub": {
+    "visit": {
+      "eyebrow": "Visit & services",
+      "title": "Come for the journey.",
+      "nepali": "यात्राका लागि आउनुहोस्।",
+      "copy": "A stop here is part of the journey: fuel for the next climb, a charge while you rest, a mechanic when the bike needs care, and a warm meal before the road opens again.",
+      "note": "Gulmi मा बाटोको बीचमा भरपर्दो साथ।",
+      "image": "@visit-scene",
+      "cta": "See visit options",
+      "ctaHref": "#fuel-ev",
+      "services": [
+        {
+          "label": "Fuel",
+          "nepali": "पेट्रोल",
+          "icon": "fuel",
+          "href": "#fuel-ev"
+        },
+        {
+          "label": "EV charging",
+          "nepali": "ईभी चार्जिङ",
+          "icon": "zap",
+          "href": "#fuel-ev"
+        },
+        {
+          "label": "Bike repair",
+          "nepali": "बाइक मर्मत",
+          "icon": "wrench",
+          "href": "#bike-repair"
+        },
+        {
+          "label": "Restaurant",
+          "nepali": "रेस्टुरेन्ट",
+          "icon": "utensils",
+          "href": "#restaurant"
+        },
+        {
+          "label": "Location & hours",
+          "nepali": "स्थान र समय",
+          "icon": "mappin",
+          "href": "#contact"
+        }
+      ]
+    },
+    "shop": {
+      "eyebrow": "Shop & order",
+      "title": "Take a little home.",
+      "nepali": "घरमा पनि सम्झना लैजानुहोस्।",
+      "copy": "Some things begin in the hills and travel home with you: honey from the hives, furniture for daily life, and practical essentials for the road.",
+      "note": "Browse the story first, then choose the right shop.",
+      "image": "@shop-scene",
+      "cta": "Browse shop & order",
+      "ctaHref": "/shop",
+      "cards": [
+        {
+          "label": "Honey & beekeeping",
+          "nepali": "मह र मौरीपालन",
+          "image": "@tile-honey",
+          "href": "/beekeeping"
+        },
+        {
+          "label": "Furniture",
+          "nepali": "फर्निचर",
+          "image": "@tile-chair",
+          "href": "/furniture"
+        },
+        {
+          "label": "Bike accessories",
+          "nepali": "बाइक सामग्री",
+          "image": "@hub-bike",
+          "href": "@whatsapp"
+        },
+        {
+          "label": "Car accessories",
+          "nepali": "कार सामग्री",
+          "image": "",
+          "href": "@whatsapp"
+        }
+      ]
+    }
+  },
+  "trust": {
+    "items": [
+      {
+        "value": "16+",
+        "label": "years in Gulmi"
+      },
+      {
+        "value": "4",
+        "label": "ways to serve you"
+      },
+      {
+        "value": "2008",
+        "label": "established"
+      }
+    ]
+  },
+  "featured": {
+    "eyebrow": "From our shop",
+    "title": "Made here. Ready for the road.",
+    "linkLabel": "Ask on WhatsApp",
+    "tiles": [
+      {
+        "title": "Honey, bottled with care",
+        "nepali": "मौरीको शुद्ध मह",
+        "image": "@hub-honey",
+        "storyTitle": "A little of the hillside, carried home.",
+        "storyBody": "Maurighar honey begins with local hives, patient seasons, and the work of keeping bees well. Browse the honey collection when you are ready, or ask us which jar is available today.",
+        "action": "Explore Maurighar",
+        "href": "/beekeeping"
+      },
+      {
+        "title": "Furniture for real homes",
+        "nepali": "घरका लागि फर्निचर",
+        "image": "@hub-chair",
+        "storyTitle": "Made for the ordinary moments.",
+        "storyBody": "A table gathers people. A chair waits by the window. Our furniture is chosen for the daily life it will hold, then shaped further when a custom piece makes more sense.",
+        "action": "Explore furniture",
+        "href": "/furniture"
+      },
+      {
+        "title": "Bike essentials",
+        "nepali": "बाइकका सामग्री",
+        "image": "@hub-bike",
+        "storyTitle": "Keep the road moving.",
+        "storyBody": "For bike essentials, send a photo, a part name, or a short list. We will check what is available at Samjhana Ventures and help you choose the practical next step.",
+        "action": "Ask on WhatsApp",
+        "href": "@whatsapp"
+      },
+      {
+        "title": "Car essentials",
+        "nepali": "कारका सामग्री",
+        "image": "",
+        "storyTitle": "The useful thing you need, when you need it.",
+        "storyBody": "Car products do not always fit a neat online category. Tell us what you are looking for and we will confirm availability before you make the trip.",
+        "action": "Ask on WhatsApp",
+        "href": "@whatsapp"
+      }
+    ]
+  },
+  "fuelEv": {
+    "eyebrow": "Section 02",
+    "title": "Petrol Pump & EV",
+    "evEyebrow": "EV Charging Station",
+    "evTitle": "Fast Charging",
+    "evCta": "Call to check availability",
+    "priceNote": "Source: NOC"
+  },
+  "bike": {
+    "eyebrow": "Section 03",
+    "titleLine1": "Back on the",
+    "titleLine2": "road again.",
+    "copy": "From a quick tyre swap to a deeper engine check, our mechanics help you get moving again. Tap a part of the bike to see how we can help, then call to check today’s availability.",
+    "pills": [
+      "All bikes",
+      "Motorcycles",
+      "Scooters",
+      "Electric"
+    ],
+    "cta": "Call about your bike",
+    "hint": "Hover a part · tap on mobile",
+    "image": "@motorcycle",
+    "services": [
+      {
+        "name": "Tyre Change",
+        "time": "30 min",
+        "story": "A quick change when the road has caught up with your tyres.",
+        "icon": "disc",
+        "accent": "#d6b35c",
+        "x": 14,
+        "y": 74
+      },
+      {
+        "name": "Engine Service",
+        "time": "2–3 hr",
+        "story": "For the deeper check when the bike needs more than a quick adjustment.",
+        "icon": "wrench",
+        "accent": "#8fc5ff",
+        "x": 58,
+        "y": 61
+      },
+      {
+        "name": "Electrical Fix",
+        "time": "1–2 hr",
+        "story": "Lights, battery, and electrical issues checked before they become roadside problems.",
+        "icon": "battery",
+        "accent": "#c5a5ff",
+        "x": 64,
+        "y": 43
+      },
+      {
+        "name": "Brake Service",
+        "time": "45 min",
+        "story": "A safety-first stop for brakes that feel soft, noisy, or uncertain.",
+        "icon": "alert",
+        "accent": "#ff8e8e",
+        "x": 87,
+        "y": 74
+      },
+      {
+        "name": "Lighting Repair",
+        "time": "20 min",
+        "story": "Get seen again on early starts, late returns, and mountain roads.",
+        "icon": "bulb",
+        "accent": "#a3edc0",
+        "x": 84,
+        "y": 32
+      },
+      {
+        "name": "Free Diagnostics",
+        "time": "Walk-in",
+        "story": "Start with a conversation and a practical look at what is wrong.",
+        "icon": "search",
+        "accent": "#f1d58a",
+        "x": 51,
+        "y": 48
+      }
+    ]
+  },
+  "restaurant": {
+    "eyebrow": "Section 04",
+    "kicker": "Maurighar Restaurant",
+    "titleLine1": "Taste of",
+    "titleLine2": "the hills.",
+    "intro": "Home-cooked Nepali food made fresh every day. Choose the moment of your journey and we’ll show you the kind of pause waiting at the table.",
+    "stats": [
+      {
+        "value": "10+",
+        "label": "Years"
+      },
+      {
+        "value": "6am–9pm",
+        "label": "Daily"
+      }
+    ],
+    "ambience": [
+      "Mountain view",
+      "Open kitchen",
+      "Community table",
+      "No booking needed"
+    ],
+    "captionNote": "Real Nepali food · served warm in Gulmi",
+    "meals": [
+      {
+        "id": "breakfast",
+        "label": "Breakfast",
+        "nepali": "बिहान",
+        "story": "Start early with sel roti, chiura dahi, and a warm cup of tea.",
+        "hours": "6:00 – 10:00 am",
+        "image": "@thali"
+      },
+      {
+        "id": "lunch",
+        "label": "Lunch",
+        "nepali": "दिउँसो",
+        "story": "Settle in for dal bhat, dhido, and a proper pause on the highway.",
+        "hours": "11:00 am – 3:00 pm",
+        "image": "@thali"
+      },
+      {
+        "id": "dinner",
+        "label": "Dinner",
+        "nepali": "बेलुका",
+        "story": "End the day with warm plates, mountain air, and something sweet to drink.",
+        "hours": "5:00 – 9:00 pm",
+        "image": "@thali"
+      }
+    ],
+    "mainsNote": "Served with rice or dhido",
+    "drinksNote": "Hot & cold beverages",
+    "hoursTitle": "Opening hours",
+    "hoursFooter": "Walk-ins welcome · Call to confirm today’s hours",
+    "kitchenTitle": "Our kitchen",
+    "kitchenQuote": "गुल्मीको माटोको स्वाद।",
+    "kitchenQuoteEnglish": "The taste of Gulmi's soil.",
+    "locationLine": "Gulmi, Baglung Highway",
+    "walkInNote": "No reservations · Walk-in only"
+  },
+  "shop": {
+    "heading": "Shop",
+    "intro": "Honey, beekeeping gear and furniture from the Samjhana Ventures shop in Gulmi.",
+    "deliveryFee": 150,
+    "freeDeliveryOver": 5000,
+    "deliveryNote": "We deliver in Gulmi and nearby. We will call you to confirm the delivery time.",
+    "pickupNote": "Collect from the shop in Gulmi. We will call you when your order is ready.",
+    "paymentNote": "Pay in cash when your order arrives, or at the shop when you collect it.",
+    "customOrderTitle": "Custom furniture",
+    "customOrderText": "Don't see what you need? We build to your exact specifications.",
+    "customOrderCta": "Ask for a quote"
+  },
+  "shopHub": {
+    "eyebrow": "Samjhana Ventures · Shop & order",
+    "titleLine1": "Useful things,",
+    "titleLine2": "made to stay.",
+    "nepali": "घरका लागि, यात्राका लागि, गुल्मीबाट।",
+    "intro": "The things we make and sell come from the same family-run place in Gulmi: furniture for daily life, honey from the hills, and tools for the people who keep the hives going. Start with a story, then browse deeper.",
+    "image": "@tile-chair",
+    "captionTitle": "Made and selected in Gulmi",
+    "captionNote": "Honey · furniture · beekeeping",
+    "furniture": {
+      "eyebrow": "Furniture studio",
+      "title": "Pieces for real homes.",
+      "copy": "A chair becomes part of breakfast, a table gathers a family, and a bed holds the end of a long day. Browse what we have, then ask about a custom one.",
+      "image": "@tile-chair",
+      "emptyNote": "Browse the collection for current pieces.",
+      "linkLabel": "Browse all furniture"
+    },
+    "honey": {
+      "eyebrow": "Maurighar",
+      "title": "Honey & beekeeping.",
+      "copy": "From the first hive to the first harvest, Maurighar helps keepers begin, learn, and keep going with honey, tools, and starter kits.",
+      "image": "@tile-honey",
+      "linkLabel": "Browse all Maurighar",
+      "links": [
+        {
+          "label": "Gulmi honey",
+          "image": "@tile-honey",
+          "href": "/beekeeping#bee-honey"
+        },
+        {
+          "label": "Hives",
+          "image": "@hive-boxes",
+          "href": "/beekeeping#bee-hives"
+        },
+        {
+          "label": "Starter kits",
+          "image": "@basic-kit-product",
+          "href": "/beekeeping#bee-kits"
+        }
+      ]
+    },
+    "vehicleNote": {
+      "title": "Vehicle essentials are orderable too.",
+      "text": "For bike and car products, send us a photo or list on WhatsApp and we’ll confirm availability.",
+      "button": "See how it works"
+    },
+    "vehicleStory": {
+      "eyebrow": "A quick road story",
+      "title": "Tell us what the road needs.",
+      "text": "Your bike or car does not need to fit a catalogue category. Send a photo, a part name, or a short list. We’ll check what is available at Samjhana Ventures and reply with the next practical option.",
+      "steps": [
+        "Send a photo or list",
+        "We check availability",
+        "You choose how to proceed"
+      ],
+      "cta": "Ask on WhatsApp"
+    }
+  },
+  "furniture": {
+    "eyebrow": "Samjhana Ventures · Gulmi, Nepal",
+    "titleLine1": "Furniture for",
+    "titleLine2": "real homes.",
+    "intro": "A considered collection for homes in the hills — browse what is available, then call us when you need a custom conversation.",
+    "browseCta": "Browse collection",
+    "customCta": "Ask about custom",
+    "barTitle": "Furniture studio",
+    "featuredLabel": "Featured piece",
+    "featuredBadge": "Bestseller",
+    "customCardTitle": "Custom build",
+    "customCardText": "Your dimensions, wood choice, and finish — built from scratch.",
+    "customCardCta": "Request a quote",
+    "productEyebrow": "Handcrafted Furniture · Gulmi, Nepal",
+    "fallbackDescription": "Handcrafted with care using premium Nepali hardwood. Built to last generations with traditional joinery techniques.",
+    "trustBadges": [
+      {
+        "icon": "truck",
+        "label": "Free delivery",
+        "sub": "Gulmi district"
+      },
+      {
+        "icon": "shield",
+        "label": "2-year warranty",
+        "sub": "Guaranteed"
+      },
+      {
+        "icon": "star",
+        "label": "Handcrafted",
+        "sub": "Premium wood"
+      }
+    ],
+    "relatedTitle": "More pieces you'll love",
+    "cartNote": "Free delivery within Gulmi district",
+    "emptyCartText": "Browse our furniture and add pieces to get started.",
+    "homeTag": "Highlight",
+    "homeSection": "Section 01",
+    "homeHeading": "Furniture",
+    "homeLink": "Full catalogue",
+    "homeCustomTitle": "Custom Order",
+    "homeCustomText": "Don't see what you need? We build to your exact specifications.",
+    "homeCustomCta": "Get a quote",
+    "customTitle": "Custom Order",
+    "customIntro": "Tell us what you need — we'll build it to your specifications.",
+    "customHint": "e.g. A 6-seater L-shaped sofa in dark walnut, with removable cushion covers..."
+  },
+  "beekeeping": {
+    "hero": {
+      "eyebrow": "Gulmi · Nepal · Apis Cerana · Since 2008",
+      "titleLine1": "Honey and beekeeping",
+      "titleLine2": "from Gulmi.",
+      "tagline": "Traditional hives. Modern tools. Honest honey.",
+      "copy": "From the hills of Gulmi, we craft Langstroth and traditional hives from seasoned Nepali Tuni wood — perfect for Apis cerana colonies. Everything you need to start or scale your apiary.",
+      "hivesCta": "Browse hives",
+      "kitsCta": "See starter kits",
+      "learnCta": "Learn beekeeping",
+      "tiles": [
+        {
+          "label": "Mauri Ghar hives",
+          "image": "@hive-boxes"
+        },
+        {
+          "label": "Protective suits",
+          "image": "@protective-suit"
+        },
+        {
+          "label": "Beekeeping tools",
+          "image": "@smoker-tools"
+        },
+        {
+          "label": "Raw Gulmi honey",
+          "image": "@tile-honey"
+        }
+      ],
+      "stats": [
+        {
+          "value": "16+",
+          "label": "Years experience"
+        },
+        {
+          "value": "Apis cerana",
+          "label": "Native bee species"
+        },
+        {
+          "value": "Tuni wood",
+          "label": "Premium material"
+        }
+      ]
+    },
+    "featured": {
+      "sectionName": "Mauri Ghar hives",
+      "tag": "Flagship product",
+      "chooseTitle": "Choose your hive type",
+      "woodTitle": "Wood finish",
+      "woods": [
+        {
+          "label": "Tuni",
+          "color": "#8B6914"
+        },
+        {
+          "label": "Uttish",
+          "color": "#3a2010"
+        },
+        {
+          "label": "Mixed",
+          "color": "#6a4a2a"
+        }
+      ],
+      "quantityTitle": "Quantity",
+      "orderCta": "Order now",
+      "madeIn": "Made in Nepal",
+      "askLabel": "Ask about this hive",
+      "trust": [
+        {
+          "icon": "shield",
+          "label": "Made in Nepal"
+        },
+        {
+          "icon": "truck",
+          "label": "Ask about delivery"
+        },
+        {
+          "icon": "star",
+          "label": "Built for local keepers"
+        },
+        {
+          "icon": "chat",
+          "label": "WhatsApp support"
+        }
+      ]
+    },
+    "hiveGrid": {
+      "sectionName": "All hive types",
+      "tag": "Mauri Ghar",
+      "title": "More hive options",
+      "linkLabel": "सबै हेर्नुहोस्"
+    },
+    "gear": {
+      "eyebrow": "Safety first · सुरक्षा पहिले",
+      "titleStart": "Suited for the",
+      "titleEmphasis": "hive.",
+      "intro": "Never approach a colony without protection. Even docile Apis cerana colonies will defend when disturbed. Layer up correctly every time.",
+      "layers": [
+        {
+          "name": "Full-body bee suit",
+          "note": "Head-to-toe protection — never skip"
+        },
+        {
+          "name": "Veil / hood",
+          "note": "Face and neck — critical for safety"
+        },
+        {
+          "name": "Leather gauntlet gloves",
+          "note": "Wrist-length sting protection"
+        },
+        {
+          "name": "Closed-toe boots",
+          "note": "Heavy socks, tucked-in trouser legs"
+        }
+      ],
+      "sectionName": "Protective gear",
+      "tag": "Safety"
+    },
+    "tools": {
+      "sectionName": "Tools & queen devices",
+      "tag": "Inspector",
+      "toolsTitle": "Beekeeping tools",
+      "queenTitle": "Queen devices",
+      "toolSlugs": [
+        "tool-001",
+        "tool-002",
+        "tool-003",
+        "tool-004",
+        "tool-005",
+        "tool-006",
+        "tool-007",
+        "tool-008",
+        "tool-009"
+      ],
+      "queenSlugs": [
+        "tool-003",
+        "tool-010"
+      ],
+      "queenNoteTitle": "Why queen management matters",
+      "queenNote": "The queen is the heart of the colony — she lays up to 1,500 eggs per day. Finding, monitoring, and occasionally replacing the queen keeps your colony productive and disease-free. Invest in queen tools early.",
+      "trainingTitle": "Queen rearing training",
+      "trainingText": "WhatsApp us for the next workshop date in Gulmi district.",
+      "trainingCta": "WhatsApp us →",
+      "trainingMessage": "Namaste! I want to ask about the queen rearing training."
+    },
+    "honey": {
+      "sectionName": "Raw Gulmi honey",
+      "tag": "शुद्ध मह",
+      "title": "Pure honey from Gulmi",
+      "note": "Unfiltered · Unheated · गुल्मी, नेपालबाट",
+      "addLabel": "मालमा थप्नुहोस्",
+      "addedLabel": "Added! मालमा थपियो",
+      "soldOut": "उपलब्ध छैन"
+    },
+    "kits": {
+      "sectionName": "Starter kits",
+      "tag": "Best value",
+      "title": "Everything in one kit",
+      "note": "Free bundled shipping",
+      "popularBadge": "Most popular",
+      "cta": "यो किट लिनुहोस्",
+      "savingsLabel": "बचत",
+      "soldOut": "उपलब्ध छैन"
+    },
+    "education": {
+      "sectionName": "Learn beekeeping",
+      "tag": "Education",
+      "stepsTitle": "How to start beekeeping in Nepal",
+      "steps": [
+        {
+          "title": "Choose your hive",
+          "text": "Langstroth two-story best for Apis cerana. Avoid log hives first — they're harder to manage and inspect."
+        },
+        {
+          "title": "Get a colony",
+          "text": "Purchase nuc with mated queen from local apiary. Chaitra–Baisakh (March–April) is best time for new colonies."
+        },
+        {
+          "title": "Suit up and inspect",
+          "text": "Always wear veil and gloves. Open in morning when bees are calmer. Smoke entrance first, wait 30 seconds."
+        },
+        {
+          "title": "Manage the queen",
+          "text": "Find queen every 2–3 weeks. Check for eggs and brood pattern. Uniform capped brood = healthy queen."
+        },
+        {
+          "title": "Harvest honey",
+          "text": "Capped frames ready to harvest. Use uncapping knife and extractor. Never heat above 40°C — preserves enzymes."
+        }
+      ],
+      "faqTitle": "Frequently asked questions",
+      "faqs": [
+        {
+          "question": "What bee species is best for Nepal?",
+          "answer": "Apis cerana (Ghar Mauri) is native to Nepal and perfectly adapted to local flora and climate. Apis mellifera (European honey bee) is kept commercially but requires more intensive management."
+        },
+        {
+          "question": "What wood is used for Mauri Ghar hives?",
+          "answer": "We use Tuni (Toona ciliata) and Uttish (Alnus nepalensis) — both locally sourced, seasoned Nepali hardwoods. They resist moisture, warping, and don't have strong odours that disturb bees."
+        },
+        {
+          "question": "How many hives can a beginner manage?",
+          "answer": "Start with 1–2 hives to learn the rhythm of inspections and bee behaviour. Most beginners are ready for 4–6 hives by their second season."
+        },
+        {
+          "question": "When is honey season in Gulmi?",
+          "answer": "Two peak seasons: Baisakh–Jestha (April–May, spring blossom) and Asoj–Kartik (October–November, autumn harvest). Spring honey is lighter; autumn darker and stronger."
+        },
+        {
+          "question": "Do you offer training?",
+          "answer": "Yes. We run practical beekeeping workshops in Gulmi district, covering hive setup, queen management, and honey extraction. WhatsApp us for the next date."
+        }
+      ],
+      "seasonTitle": "Nepal honey season calendar",
+      "seasons": [
+        {
+          "month": "Baisakh",
+          "nepali": "बैशाख",
+          "percent": 90,
+          "label": "Peak"
+        },
+        {
+          "month": "Jestha",
+          "nepali": "जेठ",
+          "percent": 60,
+          "label": "Good"
+        },
+        {
+          "month": "Asar",
+          "nepali": "असार",
+          "percent": 20,
+          "label": "Low"
+        },
+        {
+          "month": "Shrawan",
+          "nepali": "साउन",
+          "percent": 15,
+          "label": "Low"
+        },
+        {
+          "month": "Bhadra",
+          "nepali": "भदौ",
+          "percent": 50,
+          "label": "Rising"
+        },
+        {
+          "month": "Asoj",
+          "nepali": "असोज",
+          "percent": 85,
+          "label": "Peak"
+        },
+        {
+          "month": "Kartik",
+          "nepali": "कार्तिक",
+          "percent": 65,
+          "label": "Good"
+        }
+      ],
+      "seasonNote": "गुल्मीको मह मौसम बैशाख–जेठ र असोज–कार्तिकमा हुन्छ। यस समयमा मौरीहरू सबैभन्दा बढी मह संकलन गर्छन्।"
+    },
+    "footer": {
+      "nepaliName": "मौरी घर",
+      "line": "Maurighar Beekeeping · Gulmi, Nepal · Since 2008",
+      "whatsappLabel": "WhatsApp",
+      "backLabel": "Back to main site"
+    }
+  }
+}

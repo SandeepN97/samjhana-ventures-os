@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Plus, Minus, Star, Shield, Truck, MessageCircle } from 'lucide-react';
-import { hives } from '../../data/beekeepingProducts';
+import { useSection } from '../../site/SiteContext';
+import { whatsappLink } from '../../site/links';
 import SectionDivider from './SectionDivider';
-import { getBeePhoto } from './beePhotoAssets';
+import BeeImg from './BeeImg';
 
 function HiveSvg() {
   return (
@@ -39,46 +40,41 @@ function HiveSvg() {
   );
 }
 
-const WOOD_OPTIONS = [
-  { id: 'tuni',   label: 'Tuni',   color: '#8B6914' },
-  { id: 'uttish', label: 'Uttish', color: '#3a2010' },
-  { id: 'mixed',  label: 'Mixed',  color: '#6a4a2a' },
-];
-
-const TRUST = [
-  { Icon: Shield,         label: 'Made in Nepal' },
-  { Icon: Truck,          label: 'Ask about delivery' },
-  { Icon: Star,           label: 'Built for local keepers' },
-  { Icon: MessageCircle,  label: 'WhatsApp support' },
-];
+const TRUST_ICONS = { shield: Shield, truck: Truck, star: Star, chat: MessageCircle };
 
 const fmt = (n) => Number(n).toLocaleString();
 
-export default function FeaturedHive({ onAddToCart }) {
+export default function FeaturedHive({ hives, onAddToCart }) {
+  const copy = useSection('beekeeping').featured || {};
+  const contact = useSection('contact');
   const featured = hives[0];
-  const [selectedType, setSelectedType]   = useState('hive-001');
-  const [selectedWood, setSelectedWood]   = useState('tuni');
+  const [selectedType, setSelectedType]   = useState(null);
+  const [selectedWood, setSelectedWood]   = useState(0);
   const [qty, setQty]                     = useState(1);
   const [saved, setSaved]                 = useState(false);
-  const hivePhoto = getBeePhoto(selectedType);
+  if (!featured) return null;
+  const chosen = hives.find((h) => h.id === selectedType) || featured;
+  const WOOD_OPTIONS = copy.woods || [];
+  const TRUST = (copy.trust || []).map((t) => ({ Icon: TRUST_ICONS[t.icon] || Star, label: t.label }));
 
   const handleOrder = () => {
-    onAddToCart?.({ ...featured, qty });
+    onAddToCart?.(chosen, qty);
   };
 
+  const specs = featured.specs || {};
   const SPEC_ROWS = [
-    ['Dimensions',      featured.specs.dimensions],
-    ['Wood type',       featured.specs.wood],
-    ['Brood chamber',   featured.specs.broodFrames],
-    ['Honey chamber',   featured.specs.honeyFrames],
-    ['Bee species',     featured.specs.beeSpecies],
-    ['Roof',            featured.specs.roof],
-  ];
+    ['Dimensions',      specs.dimensions],
+    ['Wood type',       specs.wood],
+    ['Brood chamber',   specs.broodFrames],
+    ['Honey chamber',   specs.honeyFrames],
+    ['Bee species',     specs.beeSpecies],
+    ['Roof',            specs.roof],
+  ].filter(([, v]) => v);
 
   return (
     <section id="bee-hives" className="bg-[#fdf3c0] py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <SectionDivider num="01" name="Mauri Ghar hives" tag="Flagship product" tagColor="amber" />
+        <SectionDivider num="01" name={copy.sectionName} tag={copy.tag} tagColor="amber" />
 
         <div className="grid md:grid-cols-[3fr_2fr] gap-10 lg:gap-16">
 
@@ -86,7 +82,7 @@ export default function FeaturedHive({ onAddToCart }) {
           <div>
             <div className="rounded-3xl overflow-hidden border border-[#e8a400]/15 mb-6 relative bg-[#fdf3c0]" style={{ minHeight: 280 }}>
               <div className="w-full h-72">
-                <img src={hivePhoto} alt={selectedType === 'hive-002' ? 'Traditional log hive' : 'Wooden Mauri Ghar hive'} className="bee-product-photo h-full w-full object-contain p-4" />
+                <BeeImg src={chosen.image} alt={chosen.name} className="bee-product-photo h-full w-full object-contain p-4" />
               </div>
               {/* Overlay diagram badge */}
               <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-md">
@@ -100,7 +96,7 @@ export default function FeaturedHive({ onAddToCart }) {
               <div>
                 <h2 className="font-serif text-2xl text-[#1a1000]">{featured.name}</h2>
                 <p className="font-sans text-sm text-[#8B6914] mt-0.5">
-                  {featured.nepali} · {featured.type} · Made in Nepal
+                  {[featured.nepali, featured.type, copy.madeIn].filter(Boolean).join(' · ')}
                 </p>
               </div>
 
@@ -118,12 +114,6 @@ export default function FeaturedHive({ onAddToCart }) {
 
               <div className="flex items-center gap-4 pt-2">
                 <p className="font-serif text-2xl text-[#1a1000]">Rs {fmt(featured.price)}</p>
-                <div className="flex items-center gap-1">
-                  {[1,2,3,4,5].map((i) => (
-                    <Star key={i} size={12} className={i <= Math.round(featured.rating) ? 'fill-[#e8a400] text-[#e8a400]' : 'fill-gray-200 text-gray-200'} />
-                  ))}
-                  <span className="font-sans text-xs text-[#1a1000]/40 ml-1">{featured.rating} · {featured.reviewCount} reviews</span>
-                </div>
               </div>
             </div>
           </div>
@@ -132,12 +122,12 @@ export default function FeaturedHive({ onAddToCart }) {
           <div className="flex flex-col gap-5">
 
             <div>
-              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">Choose your hive type</p>
+              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">{copy.chooseTitle}</p>
               <div className="flex flex-col gap-2">
                 {hives.slice(0, 3).map((h) => (
                   <button key={h.id} onClick={() => setSelectedType(h.id)}
                     className={`text-left p-3 rounded-xl border transition-all font-sans
-                      ${selectedType === h.id
+                      ${chosen.id === h.id
                         ? 'border-[#e8a400] bg-[#faeeda]'
                         : 'border-[#e8a400]/20 bg-white hover:bg-[#fdf8e8]'
                       }`}>
@@ -155,15 +145,15 @@ export default function FeaturedHive({ onAddToCart }) {
 
             {/* Wood selector */}
             <div>
-              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">Wood finish</p>
+              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">{copy.woodTitle}</p>
               <div className="flex gap-3">
-                {WOOD_OPTIONS.map((w) => (
-                  <button key={w.id} onClick={() => setSelectedWood(w.id)}
+                {WOOD_OPTIONS.map((w, i) => (
+                  <button key={w.label} onClick={() => setSelectedWood(i)}
                     className="flex flex-col items-center gap-1.5">
                     <div className="w-8 h-8 rounded-full transition-all"
                       style={{
                         backgroundColor: w.color,
-                        boxShadow: selectedWood === w.id ? `0 0 0 3px white, 0 0 0 5px ${w.color}` : 'none',
+                        boxShadow: selectedWood === i ? `0 0 0 3px white, 0 0 0 5px ${w.color}` : 'none',
                       }} />
                     <span className="font-sans text-[10px] text-[#1a1000]/50">{w.label}</span>
                   </button>
@@ -173,7 +163,7 @@ export default function FeaturedHive({ onAddToCart }) {
 
             {/* Qty */}
             <div>
-              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">Quantity</p>
+              <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">{copy.quantityTitle}</p>
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-white border border-[#e8a400]/20 rounded-xl overflow-hidden">
                   <button onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -187,16 +177,16 @@ export default function FeaturedHive({ onAddToCart }) {
                   </button>
                 </div>
                 {qty > 1 && (
-                  <span className="font-sans text-sm text-[#1a1000]/40">= Rs {fmt(featured.price * qty)}</span>
+                  <span className="font-sans text-sm text-[#1a1000]/40">= Rs {fmt(chosen.price * qty)}</span>
                 )}
               </div>
             </div>
 
             {/* CTA */}
             <div className="flex gap-2">
-              <button onClick={handleOrder}
-                className="flex-1 min-h-[44px] bg-[#e8a400] text-white font-sans font-semibold text-sm rounded-xl hover:bg-[#d49400] transition-colors">
-                Order now · Rs {fmt(featured.price * qty)}
+              <button onClick={handleOrder} disabled={!chosen.inStock}
+                className="disabled:opacity-40 flex-1 min-h-[44px] bg-[#e8a400] text-white font-sans font-semibold text-sm rounded-xl hover:bg-[#d49400] transition-colors">
+                {copy.orderCta} · Rs {fmt(chosen.price * qty)}
               </button>
               <button onClick={() => setSaved((s) => !s)}
                 className={`px-4 min-h-[44px] rounded-xl border font-sans text-sm font-semibold transition-colors
@@ -206,11 +196,11 @@ export default function FeaturedHive({ onAddToCart }) {
             </div>
 
             {/* WhatsApp mobile */}
-            <a href={`https://wa.me/9779363147818?text=${encodeURIComponent(`Namaste! I want to ask about: ${featured.name} (${featured.nepali}) — Rs ${featured.price.toLocaleString()}`)}`}
+ {whatsappLink(contact, `Namaste! I want to ask about: ${chosen.name} (${chosen.nepali || ''}) — Rs ${chosen.price.toLocaleString()}`) && <a href={whatsappLink(contact, `Namaste! I want to ask about: ${chosen.name} (${chosen.nepali || ''}) — Rs ${chosen.price.toLocaleString()}`)}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 min-h-[44px] border border-[#25D366]/30 text-[#128C7E] bg-[#f0fdf4] rounded-xl font-sans text-sm font-semibold hover:bg-[#dcfce7] transition-colors sm:hidden">
-              <span>WhatsApp</span> Ask about this hive
-            </a>
+              <span>WhatsApp</span> {copy.askLabel}
+            </a>}
 
             {/* Trust signals */}
             <div className="grid grid-cols-2 gap-2 pt-2">

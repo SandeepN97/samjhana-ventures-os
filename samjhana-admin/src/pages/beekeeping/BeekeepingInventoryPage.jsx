@@ -4,6 +4,8 @@ import { Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-re
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
+import ImageUploader from '../../components/ImageUploader';
+import { resolveMediaUrl } from '../../utils/image';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'beeInv.catAll' },
@@ -18,7 +20,7 @@ const CATEGORIES = [
 const EMPTY_FORM = {
   name: '', nameNepali: '', sku: '', category: 'OTHER',
   purchasePrice: '', sellingPrice: '', stockQty: '0', reorderLevel: '2',
-  description: '', badge: '', showOnWebsite: true,
+  description: '', badge: '', showOnWebsite: true, imageIds: [],
 };
 
 const FIELD = 'w-full min-h-[44px] px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-beekeeping-500';
@@ -92,6 +94,7 @@ export default function BeekeepingInventoryPage() {
       description: item.description || '',
       badge: item.badge || '',
       showOnWebsite: item.showOnWebsite !== false,
+      imageIds: item.imageIds || [],
     });
     setEditingItem(item);
     setFormError('');
@@ -302,6 +305,9 @@ export default function BeekeepingInventoryPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </div>
 
+              <ImageUploader id="bee-pictures" label={t('beeInv.pictures')} value={formData.imageIds}
+                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
+
               <label htmlFor="bee-web" className="flex min-h-[44px] items-center gap-3 text-gray-800">
                 <input id="bee-web" type="checkbox" checked={formData.showOnWebsite} className="h-6 w-6"
                   onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })} />
@@ -344,6 +350,9 @@ export default function BeekeepingInventoryPage() {
             return (
               <div key={item.id} className="bg-white rounded-xl shadow-sm p-4" data-testid="product-row">
                 <div className="flex items-start justify-between gap-3">
+                  {item.imageUrls?.[0] && (
+                    <img src={resolveMediaUrl(item.imageUrls[0])} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="font-bold text-gray-800">{item.name}</h3>
