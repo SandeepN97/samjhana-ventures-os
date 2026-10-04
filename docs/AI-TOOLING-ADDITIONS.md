@@ -92,12 +92,22 @@ Superpowers (the skills plugin) is also in use on every task, scaled to the size
 
 | Tool | Status | Permitted scope now |
 |---|---|---|
-| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | By hand, before adding or updating any skill or plugin; never an automatic hook or CI step |
+| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | Trial: run on every PR in static mode (no AI) over `skills-lock.json`, `.claude/` and `.agents/`; no hook or CI step yet (see "Trial first, then automate") |
 | Playwright | Populated and wired into CI | Disposable local Spring Boot/H2 and simulated charger |
 | Strix | Deferred | Only before a release, only against an isolated local copy with fake data (not yet built); never prod, staging, a shared database or a charger |
-| Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content |
+| Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content. Connect as a pinned MCP server only after the trial |
 | Ponytail | Not used (owner decision, Oct 4, 2026) | None |
 | Supabase MCP | Deferred | None until isolated synthetic test environment exists |
+
+## 8a. Trial first, then automate
+
+SkillSpector and Context7 are used on every PR for a trial period, and only then moved into automation.
+
+1. **Each PR** carries a "Tooling check" in its description: SkillSpector (static mode, pinned commit, over `skills-lock.json`, `.claude/` and `.agents/`; "no skills or plugins changed" when nothing there changed) and Context7 (library lookups used, and whether the answers held up).
+2. **Honesty rule:** if a tool cannot run in the current environment, the PR says `not run: <reason>`. A tool is never reported as passing when it did not run. Known limits seen on Oct 4, 2026: the cloud coding sandbox could not reach `context7.com` or `api.osv.dev`, and had Python 3.11 while SkillSpector needs 3.12 or newer. Run these in a developer's own Claude Code or Codespace, or in CI.
+3. **Log:** results go in `docs/security/skill-scans/` (date, tool version and commit, what was scanned, findings, decision). The first SkillSpector run still follows the source and dependency review in section 2, in a throwaway environment with no project secrets.
+4. **Pass criteria after about 5 PRs:** no unexplained high or critical findings, false alarms are manageable, and the tool's network behavior is understood (what it sends, and where).
+5. **Then:** SkillSpector becomes one CI job, static mode and no secrets, that runs only when `skills-lock.json` or `.claude/` changes; Context7 is connected as a pinned MCP server with no secrets. No hook, no auto-update, no AI mode in CI without a new review.
 
 ## 9. Recommended order and sources
 
