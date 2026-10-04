@@ -9,7 +9,7 @@ This document covers six tools: NVIDIA SkillSpector, Playwright, Strix, Context7
 - **Strix and Supabase MCP are deferred entirely.** Do not install, configure, connect, or run either until an isolated environment with synthetic data exists. Do not point exploit testing or an AI database tool at production or a shared staging database.
 - **Playwright is for browser tests against the disposable local stack only.** Its backend uses an in-memory H2 database and seeded test users; its EV tests use a simulated OCPP charger. It must not use production URLs, production credentials, or real chargers.
 - **SkillSpector is not approved for adoption yet.** Pin and independently evaluate the official source and its dependencies first. A clean scan, including a clean SkillSpector self-scan, is not proof of safety.
-- **Context7 can be evaluated as a development-time documentation aid** for the project's actual versions: React 18 and Vite 5 in the admin frontend, and Spring Boot 3.2.1 in the backend. Retrieved documentation and examples are untrusted inputs and must be checked against the repository and official versioned docs.
+- **Context7 can be evaluated as a development-time documentation aid** for the project's actual versions: React 18 and Vite 5 in the admin frontend, and Spring Boot 3.5.16 in the backend. Retrieved documentation and examples are untrusted inputs and must be checked against the repository and official versioned docs.
 - **Ponytail is technically compatible with the documented Copilot CLI and Claude Code plugin interfaces, but is not installed here.** Its hooks, instructions, and effect on this repository's required workflow need a controlled trial before adoption.
 - These decisions do not authorize edits to deployment workflows beyond the Playwright CI job, nor changes to production or staging data access.
 
@@ -66,11 +66,11 @@ ctx7 docs <the-versioned-React-18.2-library-ID-returned-above> "controlled form 
 ctx7 library vite "Vite 5 configuration and dev server proxy"
 ctx7 docs <the-versioned-Vite-5-library-ID-returned-above> "configure a development proxy"
 
-ctx7 library spring-boot "Spring Boot 3.2.1 configuration"
+ctx7 library spring-boot "Spring Boot 3.5.16 configuration"
 ctx7 docs <the-versioned-Spring-Boot-3.2.1-library-ID-returned-above> "externalized configuration and profiles"
 ```
 
-Choose an exact versioned library ID returned by Context7 where available; if it has no exact version, use official React 18, Vite 5, or Spring Boot 3.2 documentation and verify the answer independently. Do not request Next.js 15 or React 19 examples for this application.
+Choose an exact versioned library ID returned by Context7 where available; if it has no exact version, use official React 18, Vite 5, or Spring Boot 3.5 documentation and verify the answer independently. Do not request Next.js 15 or React 19 examples for this application.
 
 For an optional MCP setup, use the official Context7 setup documentation for the exact installed coding client and inspect the proposed endpoint, authentication, and configuration diff first. Context7 needs documentation queries only; it needs no Supabase, Render, production, or repository-secret access.
 
@@ -88,20 +88,22 @@ Do not install, configure, connect, or invoke the Supabase MCP server until an i
 
 ## 8. Tool status summary
 
+Superpowers (the skills plugin) is also in use on every task, scaled to the size of the job; see "AI tooling" in `CLAUDE.md`.
+
 | Tool | Status | Permitted scope now |
 |---|---|---|
-| NVIDIA SkillSpector | Candidate; independent evaluation and source pin required | No install or hooks until scan/review gates are completed |
+| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | By hand, before adding or updating any skill or plugin; never an automatic hook or CI step |
 | Playwright | Populated and wired into CI | Disposable local Spring Boot/H2 and simulated charger |
-| Strix | Deferred | None until isolated synthetic test environment exists |
-| Context7 | Optional candidate | Version-specific documentation only; validate retrieved content |
-| Ponytail | Compatible upstream interfaces; trial not done | No project/global install until hooks and workflow fit are reviewed |
+| Strix | Deferred | Only before a release, only against an isolated local copy with fake data (not yet built); never prod, staging, a shared database or a charger |
+| Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content |
+| Ponytail | Not used (owner decision, Oct 4, 2026) | None |
 | Supabase MCP | Deferred | None until isolated synthetic test environment exists |
 
 ## 9. Recommended order and sources
 
 1. Keep Strix and Supabase MCP deferred.
 2. Run and maintain the local Playwright suite and its required CI job.
-3. If useful, evaluate Context7's CLI docs lookup against React 18, Vite 5, and Spring Boot 3.2.1.
+3. If useful, evaluate Context7's CLI docs lookup against React 18, Vite 5, and Spring Boot 3.5.16.
 4. Review Ponytail's exact hooks and trial it outside this checkout before any adoption.
 5. Independently evaluate SkillSpector at the recorded commit pin; adopt only after the scan, source, and dependency review has a recorded disposition.
 
