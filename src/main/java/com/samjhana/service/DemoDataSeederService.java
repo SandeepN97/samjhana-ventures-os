@@ -28,7 +28,7 @@ import java.util.UUID;
 /**
  * Wipes and re-seeds the business data behind the admin "Reset demo data" button.
  *
- * <p>Only exists in dev and staging: in prod this bean is never created, so the endpoint that calls
+ * <p>Only exists in dev: in staging and prod this bean is never created, so the endpoint that calls
  * it answers 404 and real data can't be wiped by a stray tap or a stolen admin token. Even where it
  * does run, it never touches login accounts (the person pressing the button stays logged in with
  * their own password) or the audit log, and it never creates an account anyone could log in to:
@@ -36,7 +36,7 @@ import java.util.UUID;
  * passwords.
  */
 @Service
-@Profile({"dev", "staging"})
+@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DemoDataSeederService {

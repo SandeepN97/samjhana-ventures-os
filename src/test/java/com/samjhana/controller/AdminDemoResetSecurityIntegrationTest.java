@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The demo reset bean only exists in dev and staging. Under any other profile (here: test, standing in
+ * The demo reset bean only exists in dev. Under any other profile (here: test, standing in
  * for prod) the endpoint must answer 404 and report the feature as unavailable, so a stray tap or a
  * stolen admin token can never wipe real data.
  */
@@ -41,14 +41,14 @@ class AdminDemoResetSecurityIntegrationTest {
     }
 
     @Test
-    void shouldReturn404_whenAdminResetsOutsideDevAndStaging() throws Exception {
+    void shouldReturn404_whenAdminResetsOutsideDev() throws Exception {
         mockMvc.perform(post("/api/admin/demo-reset").header("Authorization", bearerFor("reset-admin", User.UserRole.ADMIN)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Demo reset is not available in this environment"));
     }
 
     @Test
-    void shouldReportDemoResetUnavailable_whenOutsideDevAndStaging() throws Exception {
+    void shouldReportDemoResetUnavailable_whenOutsideDev() throws Exception {
         mockMvc.perform(get("/api/admin/features").header("Authorization", bearerFor("reset-admin", User.UserRole.ADMIN)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.demoReset").value(false));

@@ -41,7 +41,7 @@ export default function SettingsPage() {
   // Demo reset state
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
   const [demoResetting, setDemoResetting] = useState(false);
-  // Only true where the server offers the reset (dev/staging); prod never shows the button.
+  // Only true where the server offers the reset (dev only); staging and prod never show the button.
   const [demoResetAvailable, setDemoResetAvailable] = useState(false);
 
   // Edit Profile state
