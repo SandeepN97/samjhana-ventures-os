@@ -21,7 +21,7 @@ const SECTION_IDS = {
   smokers:   'bee-tools',
 };
 
-export default function BeeNav({ activeCategory, setActiveCategory }) {
+export default function BeeNav({ activeCategory, setActiveCategory, counts = {} }) {
   const handleClick = (cat) => {
     setActiveCategory(cat.id);
     const el = document.getElementById(SECTION_IDS[cat.id]);
@@ -45,7 +45,7 @@ export default function BeeNav({ activeCategory, setActiveCategory }) {
                 <span className="font-medium">{cat.label}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold
                   ${active ? 'bg-[#e8a400] text-white' : 'bg-[#f0ebe0] text-[#1a1000]/40'}`}>
-                  {cat.count}
+                  {counts[cat.id] ?? 0}
                 </span>
               </button>
             );

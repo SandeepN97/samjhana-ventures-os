@@ -4,33 +4,23 @@ import {
   ArrowLeft, ShoppingCart, Zap, Star, ChevronRight,
   Loader, AlertCircle, Shield, Truck, Plus, Minus, Check,
 } from 'lucide-react';
-import { furnitureApi } from '../api/api.js';
+const TRUST_ICONS = { truck: Truck, shield: Shield, star: Star };
+import { shopApi } from '../api/api.js';
+import { toFurniture } from '../data/catalogue';
+import { useSection } from '../site/SiteContext';
+import { telLink } from '../site/links';
 import { useCartStore } from '../store/cartStore';
-import { getProductVisual } from '../components/FurnitureIllustrations';
-
-function StarRow({ rating = 4.8, count = 24 }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex">
-        {[1,2,3,4,5].map((i) => (
-          <Star key={i} size={14} className={i <= Math.round(rating) ? 'fill-gold text-gold' : 'fill-warm-border text-warm-border'} />
-        ))}
-      </div>
-      <span className="font-sans text-sm text-dark/40">{rating} ({count} reviews)</span>
-    </div>
-  );
-}
+import ProductVisual, { visualBackground } from '../components/ProductVisual';
 
 function RelatedCard({ product }) {
   const { addItem } = useCartStore();
   const navigate = useNavigate();
   const [added, setAdded] = useState(false);
-  const { Illustration, accent } = getProductVisual(product.name);
-
-  const price = Number(product.sellingPrice ?? 0);
+  const price = product.price;
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (!product.inStock) return;
     addItem({ ...product, price }, 1, false);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -41,9 +31,9 @@ function RelatedCard({ product }) {
       className="group bg-white rounded-2xl overflow-hidden cursor-pointer flex flex-col
         shadow-[0_2px_12px_rgba(30,18,6,0.06)] hover:shadow-[0_8px_28px_rgba(30,18,6,0.12)]
         transition-all duration-300 hover:-translate-y-1">
-      <div className="relative overflow-hidden h-36" style={{ backgroundColor: accent.bg }}>
-        <Illustration />
-        {product.stockQty === 0 && (
+      <div className="relative overflow-hidden h-36" style={{ backgroundColor: visualBackground(product) }}>
+        <ProductVisual product={product} />
+        {!product.inStock && (
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
             <span className="text-xs font-semibold text-dark/40 bg-white px-3 py-1 rounded-full border border-warm-border">Out of stock</span>
           </div>
@@ -53,7 +43,7 @@ function RelatedCard({ product }) {
         <p className="font-sans font-semibold text-dark text-sm leading-tight line-clamp-2 group-hover:text-gold transition-colors">{product.name}</p>
         <div className="flex items-center justify-between mt-auto pt-1">
           <p className="font-serif text-lg text-dark">Rs {price.toLocaleString()}</p>
-          <button onClick={handleAdd} disabled={product.stockQty === 0}
+          <button onClick={handleAdd} disabled={!product.inStock} aria-label={`Add ${product.name} to cart`}
             className="w-8 h-8 rounded-xl bg-warm hover:bg-gold hover:text-white text-dark/50 transition-colors flex items-center justify-center disabled:opacity-30 flex-shrink-0">
             {added ? <Check size={13} className="text-green-600" /> : <ShoppingCart size={13} />}
           </button>
@@ -66,28 +56,31 @@ function RelatedCard({ product }) {
 export default function FurnitureProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const copy = useSection('furniture');
+  const contact = useSection('contact');
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [qty, setQty]         = useState(1);
   const [added, setAdded]     = useState(false);
+  const [shot, setShot]       = useState(0);
   const addItem = useCartStore((s) => s.addItem);
   const setOpen = useCartStore((s) => s.setOpen);
 
   useEffect(() => {
     setLoading(true);
     setQty(1);
-    furnitureApi.getItem(id)
+    setShot(0);
+    shopApi.product(id)
       .then((p) => {
-        setProduct(p);
-        return furnitureApi.getItems();
+        setProduct(toFurniture(p));
+        setRelated((p.related || []).map(toFurniture).slice(0, 4));
       })
-      .then((all) => setRelated(all.filter((p) => p.id !== id).slice(0, 4)))
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const price = Number(product?.sellingPrice ?? 0);
+  const price = product?.price ?? 0;
 
   const handleAddToCart = () => {
     addItem({ ...product, price }, qty, false);
@@ -114,15 +107,14 @@ export default function FurnitureProductPage() {
     </div>
   );
 
-  const inStock   = product.stockQty > 0;
-  const lowStock  = product.stockQty > 0 && product.stockQty <= 3;
+  const inStock   = product.inStock;
   const stockInfo = !inStock
     ? { cls: 'bg-red-50 text-red-600 border-red-200',     label: 'Out of stock' }
-    : lowStock
-    ? { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: `Only ${product.stockQty} left` }
+    : product.lowStock
+    ? { cls: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Only a few left' }
     : { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'In stock' };
-
-  const { Illustration, accent } = getProductVisual(product.name);
+  const images = product.images?.length ? product.images : [];
+  const tel = telLink(contact);
 
   return (
     <div className="min-h-screen bg-warm">
@@ -146,15 +138,24 @@ export default function FurnitureProductPage() {
           {/* Illustration panel — sticky on desktop */}
           <div className="lg:sticky lg:top-32 lg:self-start">
             <div className="rounded-3xl overflow-hidden aspect-[4/3] shadow-[0_8px_40px_rgba(30,18,6,0.10)]"
-              style={{ backgroundColor: accent.bg }}>
-              <Illustration />
+              style={{ backgroundColor: visualBackground({ ...product, imageUrl: images[shot] || product.imageUrl }) }}>
+              <ProductVisual product={{ ...product, imageUrl: images[shot] || product.imageUrl }} />
             </div>
-            {/* Stock + rating pill strip */}
+            {images.length > 1 && (
+              <div className="flex gap-2 mt-3" aria-label="Pictures">
+                {images.map((src, i) => (
+                  <button key={src} type="button" onClick={() => setShot(i)} aria-label={`Show picture ${i + 1}`} aria-current={i === shot ? 'true' : undefined}
+                    className={`h-16 w-16 overflow-hidden rounded-xl border-2 ${i === shot ? 'border-gold' : 'border-warm-border'}`}>
+                    <ProductVisual product={{ ...product, imageUrl: src }} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Stock pill */}
             <div className="flex items-center gap-3 mt-4">
               <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${stockInfo.cls}`}>
                 {stockInfo.label}
               </span>
-              <StarRow />
             </div>
           </div>
 
@@ -163,7 +164,7 @@ export default function FurnitureProductPage() {
 
             <div>
               <p className="font-sans text-[11px] font-semibold uppercase tracking-widest text-gold/70 mb-2">
-                Handcrafted Furniture · Gulmi, Nepal
+                {copy.productEyebrow}
               </p>
               <h1 className="font-serif text-3xl lg:text-4xl text-dark leading-tight">{product.name}</h1>
             </div>
@@ -173,16 +174,14 @@ export default function FurnitureProductPage() {
             </p>
 
             <p className="text-dark/60 text-[15px] leading-relaxed font-sans">
-              {product.description || 'Handcrafted with care using premium Nepali hardwood. Built to last generations with traditional joinery techniques.'}
+              {product.description || copy.fallbackDescription}
             </p>
 
             {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { Icon: Truck,   label: 'Free delivery', sub: 'Gulmi district' },
-                { Icon: Shield,  label: '2-year warranty', sub: 'Guaranteed' },
-                { Icon: Star,    label: 'Handcrafted', sub: 'Premium wood' },
-              ].map(({ Icon, label, sub }) => (
+              {(copy.trustBadges || []).map(({ icon, label, sub }) => {
+                const Icon = TRUST_ICONS[icon] || Star;
+                return (
                 <div key={label} className="bg-white rounded-2xl p-3 flex flex-col items-center text-center gap-1.5
                   shadow-[0_2px_8px_rgba(30,18,6,0.05)]">
                   <div className="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center">
@@ -191,7 +190,8 @@ export default function FurnitureProductPage() {
                   <p className="font-sans font-semibold text-dark text-[11px] leading-tight">{label}</p>
                   <p className="text-[10px] text-dark/35 font-sans">{sub}</p>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Qty selector */}
@@ -199,12 +199,12 @@ export default function FurnitureProductPage() {
               <div className="flex items-center gap-4">
                 <span className="text-sm font-semibold text-dark/40 font-sans uppercase tracking-wide text-[11px]">Quantity</span>
                 <div className="flex items-center bg-white border border-warm-border rounded-2xl overflow-hidden shadow-sm">
-                  <button onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Fewer"
                     className="w-11 h-11 flex items-center justify-center hover:bg-warm text-dark/40 hover:text-dark transition-colors">
                     <Minus size={14} />
                   </button>
                   <span className="w-11 text-center font-serif text-lg text-dark">{qty}</span>
-                  <button onClick={() => setQty((q) => Math.min(product.stockQty, q + 1))}
+                  <button onClick={() => setQty((q) => Math.min(50, q + 1))} aria-label="More"
                     className="w-11 h-11 flex items-center justify-center hover:bg-warm text-dark/40 hover:text-dark transition-colors">
                     <Plus size={14} />
                   </button>
@@ -233,7 +233,7 @@ export default function FurnitureProductPage() {
             </div>
 
             <p className="text-xs text-dark/25 font-sans text-center">
-              Questions? Call us: +977 9363147818 · Based in Gulmi, Nepal
+              {tel ? <>Questions? Call us: <a href={tel}>{contact.phone}</a> · {contact.addressLine}</> : null}
             </p>
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function FurnitureProductPage() {
         {related.length > 0 && (
           <div>
             <div className="flex items-center gap-4 mb-8">
-              <h2 className="font-serif text-2xl text-dark">More pieces you'll love</h2>
+              <h2 className="font-serif text-2xl text-dark">{copy.relatedTitle}</h2>
               <div className="flex-1 h-px bg-warm-border" />
               <Link to="/furniture" className="text-sm font-medium text-gold flex items-center gap-1 hover:underline font-sans shrink-0">
                 View all <ChevronRight size={14} />

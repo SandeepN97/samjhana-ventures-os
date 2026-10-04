@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Search, ShoppingCart, ArrowRight,
   X, ChevronDown, Sparkles,
 } from 'lucide-react';
-import { furnitureApi } from '../api/api.js';
+import { useCatalogue, toFurniture } from '../data/catalogue';
+import { useSection } from '../site/SiteContext';
+import { whatsappLink } from '../site/links';
 import { useCartStore } from '../store/cartStore';
 import CustomOrderModal from '../components/CustomOrderModal';
-import { getProductVisual } from '../components/FurnitureIllustrations';
+import ProductVisual, { visualBackground } from '../components/ProductVisual';
 
 /* ─── Categories ─────────────────────────────────── */
 const CATS = [
@@ -30,13 +32,12 @@ const SORTS = [
 const fmt = (n) => Number(n).toLocaleString();
 
 /* ─── Product card ───────────────────────────────── */
-function ProductCard({ product, featured = false }) {
+function ProductCard({ product, featured = false, copy = {} }) {
   const { addItem } = useCartStore();
   const navigate    = useNavigate();
   const [added, setAdded] = useState(false);
-  const { Illustration, accent } = getProductVisual(product.name);
-  const outOfStock = product.stockQty === 0;
-  const lowStock   = product.stockQty > 0 && product.stockQty <= 3;
+  const outOfStock = !product.inStock;
+  const lowStock   = product.lowStock;
 
   const price = Number(product.sellingPrice ?? 0);
 
@@ -59,15 +60,15 @@ function ProductCard({ product, featured = false }) {
       {/* Image */}
       <div
         className={`relative overflow-hidden flex-shrink-0 ${featured ? 'lg:w-[52%] h-64 lg:h-auto' : 'h-52'}`}
-        style={{ backgroundColor: accent.bg }}>
+        style={{ backgroundColor: visualBackground(product) }}>
         <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500 ease-out">
-          <Illustration />
+          <ProductVisual product={product} />
         </div>
 
         {/* Badges */}
         {lowStock && (
           <span className="absolute top-3 left-3 bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-            Only {product.stockQty} left
+            Only a few left
           </span>
         )}
         {outOfStock && (
@@ -77,7 +78,7 @@ function ProductCard({ product, featured = false }) {
         )}
         {featured && (
           <span className="absolute top-3 left-3 bg-gold text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-            <Sparkles size={9} /> Bestseller
+            <Sparkles size={9} /> {product.badge || copy.featuredBadge}
           </span>
         )}
 
@@ -97,7 +98,7 @@ function ProductCard({ product, featured = false }) {
       {/* Info */}
       <div className={`p-5 flex flex-col gap-3 flex-1 ${featured ? 'justify-center lg:py-8 lg:px-8' : ''}`}>
         {featured && (
-          <p className="text-xs text-gold font-semibold uppercase tracking-widest font-sans">Featured piece</p>
+          <p className="text-xs text-gold font-semibold uppercase tracking-widest font-sans">{copy.featuredLabel}</p>
         )}
         <div className="flex-1">
           <p className="font-sans font-semibold text-dark leading-snug line-clamp-2
@@ -124,9 +125,12 @@ function ProductCard({ product, featured = false }) {
 
 /* ─── Page ───────────────────────────────────────── */
 export default function FurnitureCataloguePage() {
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const copy = useSection('furniture');
+  const contact = useSection('contact');
+  const catalogue = useCatalogue('FURNITURE');
+  const products = catalogue.items.map(toFurniture);
+  const loading = catalogue.loading;
+  const loadError = catalogue.error;
   const [search, setSearch]       = useState('');
   const [catId, setCatId]         = useState('All');
   const [sort, setSort]           = useState('default');
@@ -136,10 +140,6 @@ export default function FurnitureCataloguePage() {
 
   const { count, setOpen } = useCartStore();
 
-  useEffect(() => {
-    furnitureApi.getItems().then(setProducts).catch(() => { setProducts([]); setLoadError(true); }).finally(() => setLoading(false));
-  }, []);
-
   const cat = CATS.find((c) => c.id === catId) ?? CATS[0];
   const filtered = products
     .filter(cat.fn)
@@ -147,8 +147,8 @@ export default function FurnitureCataloguePage() {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.description?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (sort === 'price-asc')  return Number(a.sellingPrice) - Number(b.sellingPrice);
-      if (sort === 'price-desc') return Number(b.sellingPrice) - Number(a.sellingPrice);
+      if (sort === 'price-asc')  return a.price - b.price;
+      if (sort === 'price-desc') return b.price - a.price;
       if (sort === 'name')       return a.name.localeCompare(b.name);
       return 0;
     });
@@ -171,7 +171,7 @@ export default function FurnitureCataloguePage() {
               <span className="hidden sm:block">Back</span>
             </Link>
             <div className="w-px h-4 bg-warm-border" />
-            <span className="font-serif text-base text-dark shrink-0">Furniture studio</span>
+            <span className="font-serif text-base text-dark shrink-0">{copy.barTitle}</span>
             {!loading && (
               <span className="text-xs text-dark/30 font-sans hidden md:block">
                 · {filtered.length} piece{filtered.length !== 1 ? 's' : ''}
@@ -182,7 +182,7 @@ export default function FurnitureCataloguePage() {
           {/* Right */}
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/beekeeping" className="hidden sm:inline-flex items-center gap-1 text-xs text-dark/50 hover:text-dark px-2 py-2">Maurighar <ArrowRight size={12} /></Link>
-            <button onClick={() => setOpen(true)} className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
+            <button onClick={() => setOpen(true)} aria-label="Open cart" className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
               <ShoppingCart size={19} />
               {count > 0 && (
                 <span className="absolute top-0.5 right-0.5 w-[18px] h-[18px] bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -205,24 +205,24 @@ export default function FurnitureCataloguePage() {
           <div className="flex-1 min-w-0 motion-rise">
             <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold/30 rounded-full px-3 py-1 mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-gold" />
-              <span className="text-[11px] text-gold font-semibold uppercase tracking-widest font-sans">Samjhana Ventures · Gulmi, Nepal</span>
+              <span className="text-[11px] text-gold font-semibold uppercase tracking-widest font-sans">{copy.eyebrow}</span>
             </div>
             <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white leading-[1.1]">
-              Furniture for<br />
-              <em className="not-italic text-gold">real homes.</em>
+              {copy.titleLine1}<br />
+              <em className="not-italic text-gold">{copy.titleLine2}</em>
             </h1>
             <p className="text-white/40 font-sans text-sm mt-5 max-w-sm leading-relaxed">
-              A considered collection for homes in the hills — browse what is available, then call us when you need a custom conversation.
+              {copy.intro}
             </p>
             <div className="flex gap-3 mt-8 flex-wrap">
               <button
                 onClick={() => searchRef.current?.focus()}
                 className="btn-gold text-sm gap-2">
-                Browse collection <ArrowRight size={14} />
+                {copy.browseCta} <ArrowRight size={14} />
               </button>
               <button onClick={() => setShowCustom(true)}
                 className="inline-flex items-center gap-2 border border-white/20 text-white/70 hover:text-white hover:border-white/40 text-sm font-medium px-5 py-2.5 rounded transition-colors">
-                Ask about custom
+                {copy.customCta}
               </button>
             </div>
           </div>
@@ -231,7 +231,6 @@ export default function FurnitureCataloguePage() {
           {!loading && products.length > 0 && (
             <div className="relative w-full sm:w-72 h-52 shrink-0 hidden sm:block motion-fade motion-delay-2">
               {products.slice(0, 3).map((p, i) => {
-                const { Illustration, accent } = getProductVisual(p.name);
                 const offsets = [
                   'top-0 right-0 w-44 h-44 z-30 rotate-2',
                   'top-8 right-36 w-36 h-36 z-20 -rotate-3',
@@ -239,8 +238,8 @@ export default function FurnitureCataloguePage() {
                 ];
                 return (
                   <div key={p.id} className={`absolute rounded-2xl overflow-hidden shadow-2xl border border-white/10 ${offsets[i]}`}
-                    style={{ backgroundColor: accent.bg }}>
-                    <Illustration />
+                    style={{ backgroundColor: visualBackground(p) }}>
+                    <ProductVisual product={p} />
                   </div>
                 );
               })}
@@ -292,7 +291,7 @@ export default function FurnitureCataloguePage() {
                 focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/60
                 shadow-sm placeholder:text-dark/30 transition-shadow" />
             {search && (
-              <button onClick={() => setSearch('')}
+              <button onClick={() => setSearch('')} aria-label="Clear search"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-dark/30 hover:text-dark transition-colors">
                 <X size={14} />
               </button>
@@ -340,19 +339,19 @@ export default function FurnitureCataloguePage() {
             </div>
             <p className="font-serif text-2xl text-dark/40 mb-2">{loadError ? 'Furniture catalogue unavailable' : 'No furniture matches'}</p>
             <p className="text-sm text-dark/30 font-sans mb-8">{loadError ? 'Try again later, or ask us what is available today.' : 'Try a different search or browse all categories.'}</p>
-            {loadError ? <a href="https://wa.me/9779363147818" target="_blank" rel="noreferrer" className="btn-dark text-sm">Ask on WhatsApp</a> : <button onClick={() => { setSearch(''); setCatId('All'); }} className="btn-dark text-sm">Show all furniture</button>}
+            {loadError ? <a href={whatsappLink(contact)} target="_blank" rel="noreferrer" className="btn-dark text-sm">Ask on WhatsApp</a> : <button onClick={() => { setSearch(''); setCatId('All'); }} className="btn-dark text-sm">Show all furniture</button>}
           </div>
 
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 motion-list">
             {/* Featured first card spans 2 cols on large screens */}
             {featured && catId === 'All' && !search && (
-              <ProductCard product={featured} featured key={featured.id} />
+              <ProductCard product={featured} featured key={featured.id} copy={copy} />
             )}
 
             {/* Rest of the products */}
             {(catId === 'All' && !search ? rest : filtered).map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} copy={copy} />
             ))}
 
             {/* Custom order card */}
@@ -366,13 +365,13 @@ export default function FurnitureCataloguePage() {
                 ✏️
               </div>
               <div>
-                <p className="font-serif text-lg text-dark">Custom build</p>
+                <p className="font-serif text-lg text-dark">{copy.customCardTitle}</p>
                 <p className="text-xs text-dark/40 font-sans mt-1.5 leading-relaxed max-w-[160px]">
-                  Your dimensions, wood choice, and finish — built from scratch.
+                  {copy.customCardText}
                 </p>
               </div>
               <span className="text-xs font-semibold text-gold flex items-center gap-1.5">
-                Request a quote <ArrowRight size={12} />
+                {copy.customCardCta} <ArrowRight size={12} />
               </span>
             </button>
           </div>

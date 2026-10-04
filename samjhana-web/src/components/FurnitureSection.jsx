@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Sofa, ShoppingCart, Eye, Loader } from 'lucide-react';
-import { furnitureApi } from '../api/api.js';
+import { useCatalogue, toFurniture } from '../data/catalogue';
+import { useSection } from '../site/SiteContext';
+import ProductVisual from './ProductVisual';
 import { useCartStore } from '../store/cartStore';
 import ProductModal from './ProductModal';
 import CustomOrderModal from './CustomOrderModal';
@@ -26,6 +28,7 @@ function ProductCard({ product, onView, compact }) {
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (!product.inStock) return;
     addItem({ ...product, price }, 1, false);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -34,14 +37,14 @@ function ProductCard({ product, onView, compact }) {
   if (compact) return (
     <div onClick={() => onView(product)}
       className="bg-white rounded-2xl border border-warm-border p-4 flex items-center gap-3 hover:shadow-sm transition-all cursor-pointer group">
-      <div className="w-12 h-12 rounded-xl bg-[#e8dfc8] flex items-center justify-center flex-shrink-0">
-        <Sofa size={20} strokeWidth={1.5} className="text-dark/20" />
+      <div className="w-12 h-12 rounded-xl bg-[#e8dfc8] flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {product.imageUrl ? <ProductVisual product={product} /> : <Sofa size={20} strokeWidth={1.5} className="text-dark/20" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-sans font-medium text-dark text-sm truncate">{product.name}</p>
         <p className="font-serif text-base text-dark mt-0.5">Rs {price.toLocaleString()}</p>
       </div>
-      <button onClick={handleAdd}
+      <button onClick={handleAdd} aria-label={`Add ${product.name} to cart`}
         className="w-8 h-8 rounded-full bg-warm flex items-center justify-center hover:bg-gold hover:text-white transition-colors text-dark/40 flex-shrink-0">
         {added ? '✓' : <ShoppingCart size={13} />}
       </button>
@@ -51,8 +54,8 @@ function ProductCard({ product, onView, compact }) {
   return (
     <div onClick={() => onView(product)}
       className="bg-white rounded-2xl border border-warm-border overflow-hidden hover:shadow-md transition-all cursor-pointer group flex flex-col">
-      <div className="bg-[#e8dfc8] h-32 flex items-center justify-center relative">
-        <Sofa size={40} strokeWidth={1.2} className="text-dark/15" />
+      <div className="bg-[#e8dfc8] h-32 flex items-center justify-center relative overflow-hidden">
+        {product.imageUrl ? <ProductVisual product={product} /> : <Sofa size={40} strokeWidth={1.2} className="text-dark/15" />}
         <div className="absolute inset-0 bg-dark/0 group-hover:bg-dark/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <span className="bg-white text-dark text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1">
             <Eye size={12} /> View
@@ -77,20 +80,15 @@ function ProductCard({ product, onView, compact }) {
 }
 
 export default function FurnitureSection() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const copy = useSection('furniture');
+  const catalogue = useCatalogue('FURNITURE');
+  const products = catalogue.items.map(toFurniture);
+  const loading = catalogue.loading;
   const [filter, setFilter] = useState('All pieces');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showCustomOrder, setShowCustomOrder] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    furnitureApi.getItems()
-      .then(setProducts)
-      .catch(() => setProducts([]))
-      .finally(() => setLoading(false));
-  }, []);
 
   const handleFilter = (f) => {
     if (f === 'Custom order') { setShowCustomOrder(true); return; }
@@ -113,17 +111,17 @@ export default function FurnitureSection() {
 
         <div className="flex items-center gap-4 mb-10">
           <div className="flex items-center gap-2.5">
-            <span className="bg-gold text-white text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full">Highlight</span>
-            <span className="section-label">Section 01</span>
+            <span className="bg-gold text-white text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full">{copy.homeTag}</span>
+            <span className="section-label">{copy.homeSection}</span>
           </div>
           <div className="flex-1 h-px bg-warm-border" />
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-          <h2 className="font-serif text-4xl lg:text-5xl text-dark">Furniture</h2>
+          <h2 className="font-serif text-4xl lg:text-5xl text-dark">{copy.homeHeading}</h2>
           <Link to="/furniture"
             className="text-sm font-medium text-gold flex items-center gap-1 hover:underline">
-            Full catalogue <ArrowRight size={14} />
+            {copy.homeLink} <ArrowRight size={14} />
           </Link>
         </div>
 
@@ -143,7 +141,7 @@ export default function FurnitureSection() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="font-serif text-xl text-dark/40">No pieces in this category yet.</p>
+            <p className="font-serif text-xl text-dark/40">{catalogue.error ? 'The collection could not be loaded.' : 'No pieces in this category yet.'}</p>
             <button onClick={() => setFilter('All pieces')} className="btn-outline mt-4">View all pieces</button>
           </div>
         ) : (
@@ -151,13 +149,13 @@ export default function FurnitureSection() {
             {featured && (
               <div className="grid lg:grid-cols-3 gap-5 mb-5">
                 <div className="lg:col-span-2 bg-white rounded-2xl overflow-hidden border border-warm-border flex flex-col sm:flex-row">
-                  <div className="bg-[#e8dfc8] sm:w-60 flex-shrink-0 flex items-center justify-center p-10 min-h-[220px] cursor-pointer"
+                  <div className={`bg-[#e8dfc8] sm:w-60 flex-shrink-0 flex items-center justify-center min-h-[220px] cursor-pointer overflow-hidden ${featured.imageUrl ? '' : 'p-10'}`}
                     onClick={() => navigate(`/furniture/${featured.id}`)}>
-                    <Sofa size={88} strokeWidth={0.8} className="text-dark/15" />
+                    {featured.imageUrl ? <ProductVisual product={featured} /> : <Sofa size={88} strokeWidth={0.8} className="text-dark/15" />}
                   </div>
                   <div className="p-7 flex flex-col justify-between flex-1">
                     <div>
-                      <span className="inline-block bg-gold/10 text-gold text-xs font-semibold px-2.5 py-1 rounded mb-3">Bestseller</span>
+                      <span className="inline-block bg-gold/10 text-gold text-xs font-semibold px-2.5 py-1 rounded mb-3">{featured.badge || copy.featuredBadge}</span>
                       <h3 className="font-serif text-2xl text-dark mb-2 cursor-pointer hover:text-gold transition-colors"
                         onClick={() => navigate(`/furniture/${featured.id}`)}>
                         {featured.name}
@@ -180,12 +178,12 @@ export default function FurnitureSection() {
                   {sidebar.map((p) => <ProductCard key={p.id} product={p} onView={setSelectedProduct} compact />)}
                   <button onClick={() => setShowCustomOrder(true)}
                     className="bg-gold rounded-2xl p-5 flex flex-col gap-2 flex-1 text-left hover:opacity-90 transition-opacity">
-                    <p className="font-serif text-lg text-white">Custom Order</p>
+                    <p className="font-serif text-lg text-white">{copy.homeCustomTitle}</p>
                     <p className="text-sm text-white/75 font-sans leading-relaxed">
-                      Don't see what you need? We build to your exact specifications.
+                      {copy.homeCustomText}
                     </p>
                     <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-white underline underline-offset-2">
-                      Get a quote <ArrowRight size={13} />
+                      {copy.homeCustomCta} <ArrowRight size={13} />
                     </span>
                   </button>
                 </div>

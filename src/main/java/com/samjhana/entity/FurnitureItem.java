@@ -54,6 +54,20 @@ public class FurnitureItem {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /** The id the public website uses instead of the database id. Filled in on first start for older items. */
+    @Column(length = 80)
+    private String slug;
+
+    @Column(length = 80)
+    private String badge;
+
+    /** Picture ids as a JSON list, the first one is the cover. Null means never set. */
+    @Column(columnDefinition = "TEXT")
+    private String imageIds;
+
+    /** Null counts as shown: items added before this switch existed stay on the website. */
+    private Boolean showOnWebsite;
+
     @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;

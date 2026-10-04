@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Users, UserPlus, Edit2, Trash2, X, Check, Search, Phone, MapPin } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 
 export default function FurnitureCustomerPage() {
   const navigate = useNavigate();
@@ -124,7 +125,9 @@ export default function FurnitureCustomerPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <PageHeader unit="furniture" icon={Users} title={t('furnitureCust.title')} backTo="/entry/furniture" />
+      <PageHeader unit="furniture" icon={Users} title={t('furnitureCust.title')} backTo="/entry/furniture" >
+        <BusinessTabs business="furniture" />
+      </PageHeader>
 
       {/* Actions */}
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">

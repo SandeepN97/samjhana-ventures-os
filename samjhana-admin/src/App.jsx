@@ -40,6 +40,14 @@ import FurnitureInventoryPage from './pages/furniture/FurnitureInventoryPage';
 import FurnitureCustomerPage from './pages/furniture/FurnitureCustomerPage';
 import FurnitureOrderPage from './pages/furniture/FurnitureOrderPage';
 import FurnitureOrderHistoryPage from './pages/furniture/FurnitureOrderHistoryPage';
+import BeekeepingDashboardPage from './pages/beekeeping/BeekeepingDashboardPage';
+import BeekeepingInventoryPage from './pages/beekeeping/BeekeepingInventoryPage';
+import BeekeepingSalePage from './pages/beekeeping/BeekeepingSalePage';
+import BeekeepingOrderHistoryPage from './pages/beekeeping/BeekeepingOrderHistoryPage';
+import BusinessWebsitePage from './pages/website/BusinessWebsitePage';
+import WebsiteContentPage from './pages/website/WebsiteContentPage';
+import RestaurantMenuPage from './pages/website/RestaurantMenuPage';
+import OnlineOrdersPage from './pages/website/OnlineOrdersPage';
 import RentalEntryPage from './pages/rental/RentalEntryPage';
 import RentalPropertyPage from './pages/rental/RentalPropertyPage';
 import RentalTenantsPage from './pages/rental/RentalTenantsPage';
@@ -119,6 +127,78 @@ export default function App() {
           element={
             <PrivateRoute>
               <FurnitureOrderHistoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/entry/beekeeping"
+          element={
+            <PrivateRoute>
+              <BeekeepingDashboardPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/inventory"
+          element={
+            <PrivateRoute>
+              <BeekeepingInventoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/orders/new"
+          element={
+            <PrivateRoute>
+              <BeekeepingSalePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/orders"
+          element={
+            <PrivateRoute>
+              <BeekeepingOrderHistoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/furniture/website"
+          element={
+            <PrivateRoute>
+              <BusinessWebsitePage business="furniture" />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/website"
+          element={
+            <PrivateRoute>
+              <BusinessWebsitePage business="beekeeping" />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/website"
+          element={
+            <PrivateRoute>
+              <WebsiteContentPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/restaurant-menu"
+          element={
+            <PrivateRoute>
+              <RestaurantMenuPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/online-orders"
+          element={
+            <PrivateRoute>
+              <OnlineOrdersPage />
             </PrivateRoute>
           }
         />

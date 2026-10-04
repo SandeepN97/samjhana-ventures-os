@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import FurnitureInventoryPage from './FurnitureInventoryPage';
 import { renderWithProviders } from '../../test/test-utils';
+
+vi.mock('../../components/ImageUploader', () => ({
+  default: ({ value, onChange }) => <button type="button" onClick={() => onChange(['pic-new'])}>pictures {value.join(',') || 'none'}</button>,
+}));
 
 const mock = { items: [] };
 vi.mock('../../utils/api', () => ({
@@ -68,5 +73,25 @@ describe('FurnitureInventoryPage role rules', () => {
     expect(await screen.findByText(/बिक्री: रु 45,000/)).toBeInTheDocument();
     expect(screen.queryByText('नयाँ सामान')).not.toBeInTheDocument();
     expect(screen.queryByText(/खरिद:/)).not.toBeInTheDocument();
+  });
+
+  it('shows a cover picture in the list and saves pictures, badge and the website switch', async () => {
+    as('ADMIN');
+    mock.items = [{ ...sofa(true), imageIds: ['pic-1'], imageUrls: ['/api/public/media/pic-1'], showOnWebsite: true, badge: '' }];
+    const api = (await import('../../utils/api')).default;
+    api.put.mockResolvedValue({ data: {} });
+    const { container } = renderWithProviders(<FurnitureInventoryPage />);
+
+    await screen.findByText(/Sell: रु 45,000/);
+    expect(container.querySelector('img')).toHaveAttribute('src', '/api/public/media/pic-1');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Item' }));
+    await userEvent.click(screen.getByRole('button', { name: 'pictures pic-1' }));
+    await userEvent.type(screen.getByLabelText('Badge (optional)'), 'New');
+    await userEvent.click(screen.getByLabelText('Show on website'));
+    await userEvent.click(screen.getByRole('button', { name: 'Update Item' }));
+
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    expect(api.put.mock.calls[0][1]).toMatchObject({ imageIds: ['pic-new'], badge: 'New', showOnWebsite: false });
   });
 });

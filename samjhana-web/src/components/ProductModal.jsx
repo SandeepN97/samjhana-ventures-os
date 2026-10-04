@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Sofa, ShoppingCart, Zap, ArrowRight } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
+import ProductVisual from './ProductVisual';
 
 export default function ProductModal({ product, onClose }) {
   const addItem = useCartStore((s) => s.addItem);
@@ -26,8 +27,8 @@ export default function ProductModal({ product, onClose }) {
       <div className="relative bg-white rounded-3xl overflow-hidden w-full max-w-2xl shadow-2xl flex flex-col sm:flex-row">
 
         {/* Image area */}
-        <div className="bg-[#e8dfc8] sm:w-64 flex-shrink-0 flex items-center justify-center p-12 min-h-[220px]">
-          <Sofa size={88} strokeWidth={0.8} className="text-dark/15" />
+        <div className={`bg-[#e8dfc8] sm:w-64 flex-shrink-0 flex items-center justify-center min-h-[220px] overflow-hidden ${product.imageUrl ? '' : 'p-12'}`}>
+          {product.imageUrl ? <ProductVisual product={product} /> : <Sofa size={88} strokeWidth={0.8} className="text-dark/15" />}
         </div>
 
         {/* Content */}
@@ -38,7 +39,7 @@ export default function ProductModal({ product, onClose }) {
 
           <div>
             <span className="inline-block bg-gold/10 text-gold text-xs font-semibold px-2.5 py-1 rounded mb-3">
-              {product.category}
+              {product.categoryLabel || product.category}
             </span>
             <h2 className="font-serif text-2xl text-dark">{product.name}</h2>
             <p className="text-dark/60 text-sm leading-relaxed font-sans mt-2">{product.description}</p>
@@ -46,18 +47,18 @@ export default function ProductModal({ product, onClose }) {
 
           <div className="flex items-center gap-4 pt-1">
             <p className="font-serif text-3xl text-dark">Rs {price.toLocaleString()}</p>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${product.stockQty > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-              {product.stockQty > 0 ? `${product.stockQty} in stock` : 'Out of stock'}
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${product.inStock ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              {!product.inStock ? 'Out of stock' : product.lowStock ? 'Only a few left' : 'In stock'}
             </span>
           </div>
 
           <div className="flex gap-2 mt-auto pt-2 flex-col">
             <div className="flex gap-2">
-              <button onClick={handleOrderNow} disabled={product.stockQty === 0}
+              <button onClick={handleOrderNow} disabled={!product.inStock}
                 className="btn-dark flex-1 justify-center gap-2 disabled:opacity-40">
                 <Zap size={15} /> Order now
               </button>
-              <button onClick={handleAdd} disabled={product.stockQty === 0}
+              <button onClick={handleAdd} disabled={!product.inStock}
                 className="btn-outline flex-1 justify-center gap-2 disabled:opacity-40">
                 <ShoppingCart size={15} /> Add to cart
               </button>

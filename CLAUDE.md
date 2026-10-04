@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project
 
 **Samjhana Ventures OS** — a multi-business ERP for a Nepal-USA family operation.
-Five business units: petrol pump (Shringeshwor), EV charging, furniture shop, house rentals, bank loans.
+Six business units: petrol pump (Shringeshwor), EV charging, furniture shop, beekeeping shop, house rentals, bank loans.
 
 **Stack:** Java 21 + Spring Boot 3.2.1 backend · React 18 + Vite + Tailwind frontend · H2 (dev) / PostgreSQL (prod) · JWT auth · i18next (English/Nepali with Devanagari numerals)
 
@@ -76,6 +76,7 @@ Each business unit has a `BusinessCalculationStrategy` implementation:
 | `petrol` | `PetrolStrategy` |
 | `ev` | `EVStrategy` |
 | `furniture` | `FurnitureStrategy` |
+| `beekeeping` | `BeekeepingStrategy` |
 | `rental` | `RentalStrategy` |
 | `loan` | `LoanStrategy` |
 
@@ -97,7 +98,7 @@ No hard deletes — always use soft delete with a `deletedAt` timestamp.
 Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth token is stored in `localStorage` under `token`; the private route check in `App.jsx` reads this directly.
 
 ### Data seeding
-- Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the five business units), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
+- Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the six business units), `BeekeepingProductSeeder` (the 26 existing beekeeping products, zero stock), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
 - `DataSeeder` (`@Profile("dev")`) seeds dev logins only: on an empty dev database they are `admin/admin`, `manager/manager123`, `staff/staff123`.
 - `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log.
 - The Settings page "Reset demo data" exists in dev and staging only, never prod.
@@ -107,6 +108,11 @@ Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth tok
 - **staging**: Supabase PostgreSQL via `SUPABASE_STAGING_*`, `ddl-auto: validate` (schema changes need SQL run on Supabase first), deployed from the `staging` branch
 - **prod**: Supabase PostgreSQL via `SUPABASE_PROD_*`, deployed from the `main` branch
 - staging and prod both need the Supabase CA certificate (Render Secret File `supabase-ca.crt`), a real `JWT_SECRET` and real `OCPP_SECRET_*` values — the app refuses to start with the published dev placeholders
+
+### Public site content and online shop
+- `samjhana-web` has no built-in text, prices or pictures. Text/picture choices come from `GET /api/public/site` (admin: Website page → `site_content`), products from `/api/public/shop/products`, the menu from `/api/public/restaurant`. Defaults in `seed/site-content-defaults.json` only fill keys never saved.
+- Pictures are uploaded in the admin and stored in `media_assets` (JPEG/PNG/WebP, ≤3 MB); the public site shows them via `/api/public/media/{id}`.
+- Online orders: guest checkout → `shop_orders`; stock is held when the order is placed and returned if cancelled; completing an order records the sale. New tables/columns need `docs/sql/2026-10-online-shop.sql` run on Supabase before deploy.
 
 ### Fuel price scraper
 `NocPriceScraperService` scrapes NOC (Nepal Oil Corporation) using Jsoup. Configured via `samjhana.fuel-price-scraper.*` in `application.yml`. The depot is set to `Bhalbari` by default.

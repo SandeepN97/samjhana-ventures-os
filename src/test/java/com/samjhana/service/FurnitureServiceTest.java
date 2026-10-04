@@ -32,12 +32,15 @@ class FurnitureServiceTest {
     @Mock FurnitureCustomerRepository customerRepository;
     @Mock FurnitureItemRepository itemRepository;
     @Mock TransactionRepository transactionRepository;
+    @Mock MediaService mediaService;
+    @Mock SlugService slugService;
 
     private FurnitureService service;
 
     @BeforeEach
     void setUp() {
-        service = new FurnitureService(customerRepository, itemRepository, transactionRepository, new ObjectMapper());
+        service = new FurnitureService(customerRepository, itemRepository, transactionRepository, new ObjectMapper(),
+                mediaService, slugService);
     }
 
     private FurnitureItem item(String name, String sellingPrice, int stockQty, int reorderLevel) {

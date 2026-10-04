@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ClipboardList, Search, X, Truck, Check } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 
 const STATUS_TABS = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -92,7 +93,9 @@ export default function FurnitureOrderHistoryPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <PageHeader unit="furniture" icon={ClipboardList} title={t('furnitureOrd.historyTitle')} backTo="/entry/furniture" />
+      <PageHeader unit="furniture" icon={ClipboardList} title={t('furnitureOrd.historyTitle')} backTo="/entry/furniture" >
+        <BusinessTabs business="furniture" />
+      </PageHeader>
 
       {/* Status Filter Tabs */}
       <div className="px-4 py-2 bg-white border-b overflow-x-auto">

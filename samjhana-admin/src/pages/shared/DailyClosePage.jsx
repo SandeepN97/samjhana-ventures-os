@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Clock,
   Sofa,
+  Hexagon,
   Home,
   AlertTriangle,
   Droplet,
@@ -31,6 +32,7 @@ const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-petrol-500' },
   ev: { icon: Zap, color: 'bg-ev-500' },
   furniture: { icon: Sofa, color: 'bg-furniture-500' },
+  beekeeping: { icon: Hexagon, color: 'bg-beekeeping-500' },
   rental: { icon: Home, color: 'bg-rental-500' },
   loan: { icon: Banknote, color: 'bg-loans-500' },
 };
@@ -39,6 +41,7 @@ const BUSINESS_CONFIG = {
   petrol:    { icon: Fuel,     color: 'bg-petrol-500', label: 'Petrol Pump', labelNe: 'पेट्रोल पम्प' },
   ev:        { icon: Zap,      color: 'bg-ev-500',  label: 'EV',          labelNe: 'EV' },
   furniture: { icon: Sofa,     color: 'bg-furniture-500', label: 'Furniture',   labelNe: 'फर्निचर' },
+  beekeeping: { icon: Hexagon, color: 'bg-beekeeping-500', label: 'Beekeeping',  labelNe: 'मौरीपालन' },
   rental:    { icon: Home,     color: 'bg-rental-500',   label: 'Rental',      labelNe: 'भाडा' },
   loan:      { icon: Banknote, color: 'bg-loans-500',    label: 'Loan',        labelNe: 'ऋण' },
 };
@@ -64,6 +67,12 @@ function txnLabel(txn, t) {
         : txn.businessName || 'Rental';
     case 'furniture':
       return cf.customerName ? `${t('furniture.order')} — ${cf.customerName}` : t('furniture.order');
+    case 'beekeeping': {
+      const first = Array.isArray(cf.items) && cf.items[0]?.itemName;
+      const more = Array.isArray(cf.items) && cf.items.length > 1 ? ` +${cf.items.length - 1}` : '';
+      const what = first ? `${first}${more}` : t('business.beekeeping');
+      return cf.customerName ? `${what} — ${cf.customerName}` : what;
+    }
     case 'loan':
       return cf.bankName ? `Loan — ${cf.bankName}` : 'Loan';
     default:

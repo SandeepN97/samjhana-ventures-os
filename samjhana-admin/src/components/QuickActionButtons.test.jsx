@@ -5,7 +5,7 @@ import QuickActionButtons from './QuickActionButtons';
 import { renderWithProviders } from '../test/test-utils';
 import api from '../utils/api';
 
-const summary = { cash: '154500.00', fail: false };
+const summary = { cash: '154500.00', fail: false, newOrders: 0, ordersFail: false };
 vi.mock('../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
@@ -15,6 +15,10 @@ vi.mock('../utils/api', () => ({
       }
       if (url.startsWith('/api/daily-reports/today-summary')) {
         return Promise.resolve({ data: { totalCashSales: summary.cash } });
+      }
+      if (url === '/api/shop-orders/summary') {
+        if (summary.ordersFail) return Promise.reject(new Error('down'));
+        return Promise.resolve({ data: { NEW: summary.newOrders } });
       }
       return Promise.resolve({ data: {} });
     }),
@@ -32,6 +36,8 @@ describe('QuickActionButtons', () => {
     vi.clearAllMocks();
     summary.cash = '154500.00';
     summary.fail = false;
+    summary.newOrders = 0;
+    summary.ordersFail = false;
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
   });
 
@@ -127,15 +133,51 @@ describe('QuickActionButtons', () => {
     expect(screen.queryByText('Add New')).not.toBeInTheDocument();
   });
 
-  it('stretches the odd last tile across the row for admin', () => {
+  it('shows a Beekeeping tile that opens the beekeeping dashboard', async () => {
     renderWithProviders(<QuickActionButtons />);
-    expect(screen.getByText('Bank Loan').closest('button')).toHaveClass('col-span-2');
-    expect(screen.getByText('Petrol Pump').closest('button')).not.toHaveClass('col-span-2');
+    await userEvent.click(screen.getByText('Beekeeping'));
+    expect(mockNavigate).toHaveBeenCalledWith('/entry/beekeeping');
   });
 
-  it('keeps all tiles half width when staff see an even number', () => {
+  it('keeps all six tiles half width when admin sees an even number', () => {
+    renderWithProviders(<QuickActionButtons />);
+    for (const name of ['Petrol Pump', 'Beekeeping', 'Bank Loan']) {
+      expect(screen.getByText(name).closest('button')).not.toHaveClass('col-span-2');
+    }
+  });
+
+  it('stretches the odd last tile across the row when staff see five tiles', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
     renderWithProviders(<QuickActionButtons />);
-    expect(screen.getByText('House Rental').closest('button')).not.toHaveClass('col-span-2');
+    expect(screen.getByText('House Rental').closest('button')).toHaveClass('col-span-2');
+    expect(screen.getByText('Petrol Pump').closest('button')).not.toHaveClass('col-span-2');
+    expect(screen.queryByText('Bank Loan')).not.toBeInTheDocument();
+  });
+
+  it('shows an Online Orders shortcut with the number of new orders waiting', async () => {
+    summary.newOrders = 3;
+    renderWithProviders(<QuickActionButtons />);
+    const button = screen.getByRole('button', { name: /Online Orders/ });
+    await waitFor(() => expect(button).toHaveTextContent('3'));
+    await userEvent.click(button);
+    expect(mockNavigate).toHaveBeenCalledWith('/online-orders');
+  });
+
+  it('shows no count when there are no new orders, or when the count cannot be read', async () => {
+    renderWithProviders(<QuickActionButtons />);
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/shop-orders/summary'));
+    expect(screen.getByRole('button', { name: /Online Orders/ }).textContent).toBe('Online Orders');
+  });
+
+  it('shows the Website shortcut to admins and managers, but not to staff', async () => {
+    const { unmount } = renderWithProviders(<QuickActionButtons />);
+    await userEvent.click(screen.getByRole('button', { name: 'Website' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/website');
+    unmount();
+
+    localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
+    renderWithProviders(<QuickActionButtons />);
+    expect(screen.queryByRole('button', { name: 'Website' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Online Orders/ })).toBeInTheDocument();
   });
 });
