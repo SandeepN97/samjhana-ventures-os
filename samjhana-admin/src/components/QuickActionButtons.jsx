@@ -5,6 +5,7 @@ import {
   Fuel,
   Zap,
   Sofa,
+  Hexagon,
   Home,
   Landmark,
   FileText,
@@ -48,6 +49,13 @@ const BUSINESS_BUTTONS = [
     tKey: 'business.furniture',
     unit: 'furniture',
     path: '/entry/furniture',
+  },
+  {
+    code: 'beekeeping',
+    icon: Hexagon,
+    tKey: 'business.beekeeping',
+    unit: 'beekeeping',
+    path: '/entry/beekeeping',
   },
   {
     code: 'rental',

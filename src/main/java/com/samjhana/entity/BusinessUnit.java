@@ -17,6 +17,7 @@ import java.util.UUID;
  * - EV Charging Station
  * - House Rental
  * - Bank Loan Management
+ * - Beekeeping Shop
  * 
  * Each business has its own calculation strategy and field templates.
  */
@@ -33,7 +34,7 @@ public class BusinessUnit {
     private UUID id;
 
     @Column(unique = true, nullable = false, length = 50)
-    private String code;  // e.g., "petrol", "ev", "furniture", "rental", "loan"
+    private String code;  // e.g., "petrol", "ev", "furniture", "rental", "loan", "beekeeping"
 
     @Column(nullable = false, length = 100)
     private String name;  // Display name: "Shringeshwor Petrol Pump"
@@ -73,4 +74,5 @@ public class BusinessUnit {
     public static final String CODE_FURNITURE = "furniture";
     public static final String CODE_RENTAL = "rental";
     public static final String CODE_LOAN = "loan";
+    public static final String CODE_BEEKEEPING = "beekeeping";
 }

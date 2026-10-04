@@ -29,6 +29,7 @@ const ACCENT_MAP = {
   petrol:    { ring: 'focus-within:ring-petrol-500',    bg: 'bg-petrol-600 text-white' },
   ev:        { ring: 'focus-within:ring-ev-500',        bg: 'bg-ev-600 text-white' },
   furniture: { ring: 'focus-within:ring-furniture-500', bg: 'bg-furniture-600 text-white' },
+  beekeeping: { ring: 'focus-within:ring-beekeeping-500', bg: 'bg-beekeeping-600 text-white' },
   rental:    { ring: 'focus-within:ring-rental-500',    bg: 'bg-rental-600 text-white' },
   loans:     { ring: 'focus-within:ring-loans-500',     bg: 'bg-loans-600 text-white' },
 };

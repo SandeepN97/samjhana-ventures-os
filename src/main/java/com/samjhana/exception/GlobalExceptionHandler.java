@@ -35,6 +35,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(new ErrorResponse("ALREADY_CLOSED", ex.getMessage()));
     }
 
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex) {
+        return ResponseEntity.status(409).body(new ErrorResponse("INSUFFICIENT_STOCK", ex.getMessage()));
+    }
+
     @ExceptionHandler(EvSessionStateException.class)
     public ResponseEntity<ErrorResponse> handleEvSessionConflict(EvSessionStateException ex) {
         return ResponseEntity.status(409).body(new ErrorResponse("EV_SESSION_CONFLICT", ex.getMessage()));

@@ -27,11 +27,11 @@ class BusinessUnitSeederIntegrationTest {
     }
 
     @Test
-    void shouldCreateAllFiveUnits_whenTheDatabaseHasNone() {
+    void shouldCreateAllSixUnits_whenTheDatabaseHasNone() {
         seeder.run();
 
         assertThat(businessUnitRepository.findAll()).extracting(BusinessUnit::getCode)
-                .containsExactlyInAnyOrder("petrol", "ev", "furniture", "rental", "loan");
+                .containsExactlyInAnyOrder("petrol", "ev", "furniture", "rental", "loan", "beekeeping");
         assertThat(businessUnitRepository.findByCode("ev").orElseThrow().getIsActive()).isTrue();
     }
 
@@ -42,7 +42,7 @@ class BusinessUnitSeederIntegrationTest {
 
         seeder.run();
 
-        assertThat(businessUnitRepository.count()).isEqualTo(5);
+        assertThat(businessUnitRepository.count()).isEqualTo(6);
         assertThat(businessUnitRepository.findByCode("ev")).isPresent();
     }
 
@@ -56,7 +56,7 @@ class BusinessUnitSeederIntegrationTest {
         seeder.run();
 
         assertThat(businessUnitRepository.findByCode("petrol").orElseThrow().getName()).isEqualTo("Renamed Pump");
-        assertThat(businessUnitRepository.count()).isEqualTo(5);
+        assertThat(businessUnitRepository.count()).isEqualTo(6);
     }
 
     @Test

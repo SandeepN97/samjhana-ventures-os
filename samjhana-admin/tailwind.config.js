@@ -16,6 +16,7 @@ export default {
         petrol: colors.orange,
         ev: colors.green,
         furniture: colors.amber,
+        beekeeping: colors.yellow,
         rental: colors.blue,
         loans: colors.red,
       },

@@ -3,6 +3,8 @@ package com.samjhana.service;
 import com.samjhana.entity.EvVehicle;
 import com.samjhana.entity.FuelPrice;
 import com.samjhana.entity.FurnitureItem;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samjhana.repository.BeekeepingProductRepository;
 import com.samjhana.repository.EvVehicleRepository;
 import com.samjhana.repository.FuelPriceRepository;
 import com.samjhana.repository.FurnitureItemRepository;
@@ -33,12 +35,14 @@ class PublicApiServiceTest {
     @Mock FuelPriceRepository fuelPriceRepository;
     @Mock FurnitureItemRepository furnitureItemRepository;
     @Mock EvVehicleRepository evVehicleRepository;
+    @Mock BeekeepingProductRepository beekeepingProductRepository;
 
     private PublicApiService service;
 
     @BeforeEach
     void setUp() {
-        service = new PublicApiService(fuelPriceRepository, furnitureItemRepository, evVehicleRepository);
+        service = new PublicApiService(fuelPriceRepository, furnitureItemRepository, evVehicleRepository,
+                beekeepingProductRepository, new ObjectMapper());
     }
 
     @Test

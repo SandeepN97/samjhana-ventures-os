@@ -97,6 +97,7 @@ public class SecurityConfig {
                     "/login",
                     "/entry/**",
                     "/furniture/**",
+                    "/beekeeping/**",
                     "/records",
                     "/reports/**",
                     "/settings",

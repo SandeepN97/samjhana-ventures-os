@@ -80,7 +80,7 @@ public class AnalyticsController {
         int transactionCount = transactions.size();
 
         // Per-business accumulators
-        String[] businessCodes = {"petrol", "ev", "furniture", "rental", "loan"};
+        String[] businessCodes = {"petrol", "ev", "furniture", "beekeeping", "rental", "loan"};
         Map<String, BigDecimal> bizRevenue = new LinkedHashMap<>();
         Map<String, BigDecimal> bizExpenses = new LinkedHashMap<>();
         Map<String, Integer> bizCount = new LinkedHashMap<>();
@@ -342,6 +342,10 @@ public class AnalyticsController {
                 }
                 if (qty == null) qty = BigDecimal.ONE;
                 return sellingPrice.subtract(purchasePrice).multiply(qty);
+            }
+            case "beekeeping": {
+                if (type != Transaction.TransactionType.SALE) return null;
+                return toBigDecimal(cf.get("profit"));   // worked out by the server from product cost prices
             }
             case "rental": {
                 if (type != Transaction.TransactionType.PAYMENT &&

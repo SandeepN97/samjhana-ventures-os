@@ -40,6 +40,10 @@ import FurnitureInventoryPage from './pages/furniture/FurnitureInventoryPage';
 import FurnitureCustomerPage from './pages/furniture/FurnitureCustomerPage';
 import FurnitureOrderPage from './pages/furniture/FurnitureOrderPage';
 import FurnitureOrderHistoryPage from './pages/furniture/FurnitureOrderHistoryPage';
+import BeekeepingDashboardPage from './pages/beekeeping/BeekeepingDashboardPage';
+import BeekeepingInventoryPage from './pages/beekeeping/BeekeepingInventoryPage';
+import BeekeepingSalePage from './pages/beekeeping/BeekeepingSalePage';
+import BeekeepingOrderHistoryPage from './pages/beekeeping/BeekeepingOrderHistoryPage';
 import RentalEntryPage from './pages/rental/RentalEntryPage';
 import RentalPropertyPage from './pages/rental/RentalPropertyPage';
 import RentalTenantsPage from './pages/rental/RentalTenantsPage';
@@ -119,6 +123,38 @@ export default function App() {
           element={
             <PrivateRoute>
               <FurnitureOrderHistoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/entry/beekeeping"
+          element={
+            <PrivateRoute>
+              <BeekeepingDashboardPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/inventory"
+          element={
+            <PrivateRoute>
+              <BeekeepingInventoryPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/orders/new"
+          element={
+            <PrivateRoute>
+              <BeekeepingSalePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/beekeeping/orders"
+          element={
+            <PrivateRoute>
+              <BeekeepingOrderHistoryPage />
             </PrivateRoute>
           }
         />

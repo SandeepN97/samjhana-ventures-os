@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Makes sure the five business units exist: every transaction (a fuel sale, an EV payment, a rent
+ * Makes sure the six business units exist: every transaction (a fuel sale, an EV payment, a rent
  * receipt...) is filed under one, and without them saving any of those fails with
  * "Business unit not found".
  *
@@ -34,7 +34,8 @@ public class BusinessUnitSeeder implements CommandLineRunner {
         new UnitSpec(BusinessUnit.CODE_EV, "EV Charging Station", "EV चार्जिंग स्टेशन", "⚡", "EVStrategy", 2),
         new UnitSpec(BusinessUnit.CODE_FURNITURE, "Furniture Shop", "फर्निचर पसल", "🪑", "FurnitureStrategy", 3),
         new UnitSpec(BusinessUnit.CODE_RENTAL, "House Rental", "घर भाडा", "🏠", "RentalStrategy", 4),
-        new UnitSpec(BusinessUnit.CODE_LOAN, "Bank Loan Management", "बैंक ऋण व्यवस्थापन", "🏦", "LoanStrategy", 5)
+        new UnitSpec(BusinessUnit.CODE_LOAN, "Bank Loan Management", "बैंक ऋण व्यवस्थापन", "🏦", "LoanStrategy", 5),
+        new UnitSpec(BusinessUnit.CODE_BEEKEEPING, "Beekeeping Shop", "मौरीपालन पसल", "🍯", "BeekeepingStrategy", 6)
     );
 
     private final BusinessUnitRepository businessUnitRepository;
