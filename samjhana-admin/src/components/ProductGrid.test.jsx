@@ -15,6 +15,9 @@ vi.mock('../utils/api', () => ({
 }));
 import api from '../utils/api';
 
+// The tab bar also asks for the new-order count; stock refreshes are counted without it.
+const productLoads = () => api.get.mock.calls.filter(([url]) => url !== '/api/shop-orders/summary').length;
+
 const item = (over) => ({
   id: 'i1', name: 'Wild Honey', sku: 'HONEY-1', category: 'HONEY', sellingPrice: 850, purchasePrice: 500,
   stockQty: 5, reorderLevel: 2, showOnWebsite: true, imageIds: ['p1'], imageUrls: ['/api/public/media/p1'], ...over,
@@ -98,7 +101,7 @@ describe('product picture grid (beekeeping)', () => {
     renderWithProviders(<BeekeepingInventoryPage />);
     const before = (await screen.findAllByTestId('product-row'))[0];
     await userEvent.click(screen.getByRole('button', { name: 'Increase stock of Wild Honey' }));
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(productLoads()).toBe(2));
     expect(screen.queryByRole('status')).toBeNull();                 // no loading spinner replaced the list
     expect(before.isConnected).toBe(true);                            // the same cards, not rebuilt
   });
@@ -183,7 +186,7 @@ describe('product picture grid (furniture)', () => {
     renderWithProviders(<FurnitureInventoryPage />);
     const before = (await screen.findAllByTestId('product-row'))[0];
     await userEvent.click(screen.getAllByRole('button').find((b) => b.className.includes('bg-green-100')));
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(productLoads()).toBe(2));
     expect(before.isConnected).toBe(true);
     expect(document.querySelector('.animate-spin')).toBeNull();
   });
@@ -197,13 +200,15 @@ describe('product picture grid (furniture)', () => {
 });
 
 describe('business tabs', () => {
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
+
   const tabs = (business, path) => { window.history.pushState({}, '', path); return renderWithProviders(<BusinessTabs business={business} />); };
 
   it('lists the furniture tabs, highlights the open one and links to each', () => {
     as('ADMIN');
     tabs('furniture', '/furniture/inventory');
     const names = screen.getAllByRole('link').map((l) => l.textContent);
-    expect(names).toEqual(['Overview', 'Products', 'New sale', 'Orders', 'Customers', 'Website page']);
+    expect(names).toEqual(['Overview', 'Products', 'New sale', 'Orders', 'Customers', 'Online orders', 'Website page']);
     expect(screen.getByRole('link', { name: 'Products' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Website page' })).toHaveAttribute('href', '/furniture/website');
   });
@@ -211,7 +216,7 @@ describe('business tabs', () => {
   it('lists the beekeeping tabs without a Customers tab', () => {
     as('MANAGER');
     tabs('beekeeping', '/beekeeping/orders');
-    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['Overview', 'Products', 'New sale', 'Orders', 'Website page']);
+    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['Overview', 'Products', 'New sale', 'Orders', 'Online orders', 'Website page']);
   });
 
   it('hides the Website page tab from staff, who cannot edit it, and keeps tabs 44px tall', () => {
@@ -225,6 +230,46 @@ describe('business tabs', () => {
     as('ADMIN');
     renderWithProviders(<BusinessTabs business="furniture" />, { locale: 'ne' });
     expect(screen.getByRole('link', { name: 'वेबसाइट पृष्ठ' })).toBeInTheDocument();
+  });
+
+  it('links the Online orders tab to the website orders inbox in both businesses', () => {
+    as('STAFF');
+    api.get.mockResolvedValue({ data: {} });
+    const first = tabs('furniture', '/furniture/inventory');
+    expect(screen.getByRole('link', { name: 'Online orders' })).toHaveAttribute('href', '/online-orders');
+    first.unmount();
+    tabs('beekeeping', '/beekeeping/inventory');
+    expect(screen.getByRole('link', { name: 'Online orders' })).toHaveAttribute('href', '/online-orders');
+  });
+
+  it('shows how many new online orders are waiting on the tab', async () => {
+    as('ADMIN');
+    api.get.mockResolvedValue({ data: { NEW: 3, CONFIRMED: 1 } });
+    tabs('furniture', '/furniture/inventory');
+    expect(await screen.findByLabelText('3 new')).toHaveTextContent('3');
+    expect(api.get).toHaveBeenCalledWith('/api/shop-orders/summary');
+  });
+
+  it('shows no number on the Online orders tab when nothing is new or the count cannot be read', async () => {
+    as('ADMIN');
+    api.get.mockResolvedValue({ data: { NEW: 0 } });
+    const first = tabs('furniture', '/furniture/inventory');
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    expect(screen.queryByLabelText(/new$/)).toBeNull();
+    first.unmount();
+    api.get.mockRejectedValue(new Error('down'));
+    tabs('beekeeping', '/beekeeping/inventory');
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('link', { name: 'Online orders' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/new$/)).toBeNull();
+  });
+
+  it('shows the Online orders tab and its number in Nepali', async () => {
+    as('ADMIN');
+    api.get.mockResolvedValue({ data: { NEW: 2 } });
+    renderWithProviders(<BusinessTabs business="furniture" />, { locale: 'ne' });
+    expect(screen.getByRole('link', { name: /अनलाइन अर्डर/ })).toBeInTheDocument();
+    expect(await screen.findByLabelText('२ नयाँ')).toBeInTheDocument();
   });
 });
 
