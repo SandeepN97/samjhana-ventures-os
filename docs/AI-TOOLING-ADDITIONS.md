@@ -2,7 +2,7 @@
 
 **Revision 2 — decisions applied and checked against the repository on September 26, 2026**
 
-This document covers six tools: NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Playwright is being used for local admin and public-site E2E tests and CI; Context7 is an optional documentation aid; SkillSpector and Ponytail remain candidates pending review; Strix and Supabase MCP are deferred.
+This document covers seven tools: Superpowers, NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Superpowers and Context7 are in use on every task; Playwright is being used for local admin and public-site E2E tests and CI; SkillSpector is in a trial on every PR; Ponytail is not used; Strix and Supabase MCP are deferred.
 
 ## 1. Decisions and safety boundaries
 
@@ -86,12 +86,33 @@ Ponytail's official Claude/Codex plugin manifest references lifecycle hooks. Bef
 
 Do not install, configure, connect, or invoke the Supabase MCP server until an isolated synthetic-data environment exists. This applies to both production and shared staging. “Read-only” production access is not an acceptable interim exception: it can still expose employee, customer, financial, and operational data.
 
-## 8. Tool status summary
+## 7a. Superpowers — in use, scaled to the task
 
-Superpowers (the skills plugin) is also in use on every task, scaled to the size of the job; see "AI tooling" in `CLAUDE.md`.
+**Official source:** [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (`obra`), MIT licensed.
+**Installed version:** 6.4.2, added on October 4, 2026 from the Anthropic plugin directory (the "partner" listing whose upstream is `obra/superpowers`). The community remixes in the same directory (`beads-superpowers`, `sdd-superpowers`, `ux-superpowers`, `design-superpowers`, `ZSL Superpowers`, `Decibel Superpowers`) are not used.
+
+**What it is:** a plugin of 15 skills and one start-up hook that makes the coding assistant follow a fixed process: brainstorm a design, write a plan of small tasks, work in an isolated git worktree, build with test-driven development (optionally with a fresh subagent per task), debug systematically, request and receive code review, verify before claiming "done", and finish the branch.
+
+**How we use it:** every task starts with the Superpowers check, sized to the job. A typo, label or one-line fix gets a one-line plan; a new feature, a database or API change or a large clean-up gets the full brainstorm, plan, test-first and verify. See "AI tooling (use on every task)" in `CLAUDE.md`.
+
+**Rules that still win over the plugin's habits:**
+
+- Every change is a pull request into `staging`, never straight to `main`. When it asks how to finish a branch, choose "open a pull request", never "merge".
+- The "Shall I proceed?" confirmation block is still shown before any file is touched, once the plan is agreed.
+- The repository's required tests, bilingual UI, 44px touch targets and soft-delete rules are never traded away for speed.
+
+**Safety notes:**
+
+- The plugin installs a session start-up hook, and the directory lists it as able to "run code without asking". That is how it activates itself, but it means it runs in every session with that user's permissions. Run SkillSpector over it (section 8a) before relying on it, and again whenever the plugin updates.
+- It is installed per developer (in their own Claude Code), not in this repository. No project hook, `.claude/settings.json` change or CI step is added for it.
+- It uses more tokens than a plain session. For small fixes, say "skip the process, just fix this" and keep the one-line plan.
+- It is a process aid, not a scanner: it does not inspect or secure the repository. Use `/security-review`, `/code-review` and the tests for that.
+
+## 8. Tool status summary
 
 | Tool | Status | Permitted scope now |
 |---|---|---|
+| Superpowers | In use (owner decision, Oct 4, 2026) | Every task, scaled to its size; the rules in `CLAUDE.md` win over its habits; re-check with SkillSpector when it updates |
 | NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | Trial: run on every PR in static mode (no AI) over `skills-lock.json`, `.claude/` and `.agents/`; no hook or CI step yet (see "Trial first, then automate") |
 | Playwright | Populated and wired into CI | Disposable local Spring Boot/H2 and simulated charger |
 | Strix | Deferred | Only before a release, only against an isolated local copy with fake data (not yet built); never prod, staging, a shared database or a charger |
@@ -121,6 +142,7 @@ Official references:
 
 - SkillSpector source and version: <https://github.com/NVIDIA/SkillSpector/tree/89e90872e2ec813bcb137bf6b3145c92e55811ae>
 - SkillSpector official scanning guide: <https://docs.nvidia.com/skills/scanning-agent-skills>
+- Superpowers source: <https://github.com/obra/superpowers>
 - Context7 source: <https://github.com/upstash/context7>
 - Context7 CLI documentation: <https://context7.com/docs/clients/cli>
 - Ponytail pinned source: <https://github.com/DietrichGebert/ponytail/tree/e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156>
