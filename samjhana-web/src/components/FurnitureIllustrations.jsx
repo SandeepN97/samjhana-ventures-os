@@ -4,7 +4,7 @@
    Warm palette: #8B6914 / #c4a45a / #5a3a1a / #1e1206
 ───────────────────────────────────────────────────────────── */
 
-export const PRODUCT_ACCENTS = {
+const PRODUCT_ACCENTS = {
   sofa:       { bg: '#ede5d4', shadow: '#8B6914' },
   bed:        { bg: '#e8e0d0', shadow: '#6b4c2a' },
   wardrobe:   { bg: '#ddd5c0', shadow: '#5a3a1a' },
@@ -598,7 +598,7 @@ function KitchenIslandIllustration() {
   );
 }
 
-export function AccentChairIllustration() {
+function AccentChairIllustration() {
   return (
     <svg viewBox="0 0 320 240" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="160" cy="213" rx="86" ry="7" fill="#5a3a1a" opacity="0.07"/>

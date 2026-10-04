@@ -13,6 +13,4 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
     List<Staff> findByIsActiveTrueOrderByFullNameAsc();
 
     List<Staff> findByBusinessUnitAndIsActiveTrueOrderByFullNameAsc(Staff.BusinessUnit businessUnit);
-
-    List<Staff> findByStaffRoleAndIsActiveTrueOrderByFullNameAsc(Staff.StaffRole staffRole);
 }

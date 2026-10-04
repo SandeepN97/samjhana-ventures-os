@@ -43,7 +43,7 @@ export function toEnglishNumerals(str) {
  * @param {boolean} useNepaliNumerals - Use Nepali numerals
  * @returns {string} Formatted number
  */
-export function formatIndianNumber(num, useNepaliNumerals = false) {
+function formatIndianNumber(num, useNepaliNumerals = false) {
   if (num === null || num === undefined || num === '') return '';
   
   // Parse the number
@@ -93,13 +93,6 @@ export function formatIndianNumber(num, useNepaliNumerals = false) {
 }
 
 /**
- * Alias for formatIndianNumber with Nepali numerals
- */
-export function formatNepaliNumber(num) {
-  return formatIndianNumber(num, true);
-}
-
-/**
  * Format as currency (NPR)
  * 
  * @param {number|string} amount - Amount to format
@@ -123,120 +116,4 @@ export function formatCurrency(amount, showSymbol = true, useNepaliNumerals = fa
   const cleaned = formatted.replace(/\.00$/, '');
   
   return showSymbol ? `रु ${cleaned}` : cleaned;
-}
-
-/**
- * Format as Nepali currency with Nepali numerals
- */
-export function formatNepaliCurrency(amount) {
-  return formatCurrency(amount, true, true);
-}
-
-/**
- * Parse formatted number back to raw number
- * 
- * @param {string} formatted - Formatted number string
- * @returns {number} Parsed number
- */
-export function parseFormattedNumber(formatted) {
-  if (!formatted) return 0;
-  
-  // Convert Nepali numerals to English
-  let cleaned = toEnglishNumerals(formatted);
-  
-  // Remove currency symbol and commas
-  cleaned = cleaned.replace(/[रु\s,]/g, '');
-  
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-}
-
-/**
- * Format number in words (Nepali)
- * Useful for cheque amounts
- * 
- * @param {number} num - Number to convert
- * @returns {string} Number in Nepali words
- */
-export function numberToNepaliWords(num) {
-  if (num === 0) return 'शून्य';
-  if (num < 0) return 'ऋणात्मक ' + numberToNepaliWords(-num);
-  
-  const ones = ['', 'एक', 'दुई', 'तीन', 'चार', 'पाँच', 'छ', 'सात', 'आठ', 'नौ'];
-  const tens = ['', 'दश', 'बीस', 'तीस', 'चालीस', 'पचास', 'साठी', 'सत्तरी', 'अस्सी', 'नब्बे'];
-  const hundreds = ['', 'एक सय', 'दुई सय', 'तीन सय', 'चार सय', 'पाँच सय', 'छ सय', 'सात सय', 'आठ सय', 'नौ सय'];
-  
-  const crore = Math.floor(num / 10000000);
-  const lakh = Math.floor((num % 10000000) / 100000);
-  const thousand = Math.floor((num % 100000) / 1000);
-  const hundred = Math.floor((num % 1000) / 100);
-  const ten = Math.floor((num % 100) / 10);
-  const one = num % 10;
-  
-  let result = '';
-  
-  if (crore > 0) {
-    result += numberToNepaliWords(crore) + ' करोड ';
-  }
-  if (lakh > 0) {
-    result += numberToNepaliWords(lakh) + ' लाख ';
-  }
-  if (thousand > 0) {
-    result += numberToNepaliWords(thousand) + ' हजार ';
-  }
-  if (hundred > 0) {
-    result += hundreds[hundred] + ' ';
-  }
-  if (ten > 0) {
-    result += tens[ten] + ' ';
-  }
-  if (one > 0) {
-    result += ones[one];
-  }
-  
-  return result.trim();
-}
-
-/**
- * Format date in Nepali style
- * 
- * @param {Date|string} date - Date to format
- * @param {boolean} useNepaliNumerals - Use Nepali numerals
- * @returns {string} Formatted date
- */
-export function formatNepaliDate(date, useNepaliNumerals = true) {
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  
-  const formatted = `${year}-${month}-${day}`;
-  
-  return useNepaliNumerals ? toNepaliNumerals(formatted) : formatted;
-}
-
-/**
- * Get relative time in Nepali
- * 
- * @param {Date|string} date - Date to compare
- * @returns {string} Relative time string
- */
-export function getRelativeTimeNepali(date) {
-  const d = new Date(date);
-  const now = new Date();
-  const diffMs = now - d;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffMins < 1) return 'अहिले';
-  if (diffMins < 60) return `${toNepaliNumerals(diffMins)} मिनेट अघि`;
-  if (diffHours < 24) return `${toNepaliNumerals(diffHours)} घण्टा अघि`;
-  if (diffDays === 1) return 'हिजो';
-  if (diffDays < 7) return `${toNepaliNumerals(diffDays)} दिन अघि`;
-  if (diffDays < 30) return `${toNepaliNumerals(Math.floor(diffDays / 7))} हप्ता अघि`;
-  
-  return formatNepaliDate(date);
 }
