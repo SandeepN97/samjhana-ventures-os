@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Hexagon, Package, TrendingUp, AlertTriangle, ShoppingCart, ClipboardList, Clock } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 
 export default function BeekeepingDashboardPage() {
@@ -43,7 +44,9 @@ export default function BeekeepingDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="beekeeping" icon={Hexagon} title={t('beeDash.title')} subtitle={t('beeDash.dashboardLabel')} />
+      <PageHeader unit="beekeeping" icon={Hexagon} title={t('beeDash.title')} subtitle={t('beeDash.dashboardLabel')} >
+        <BusinessTabs business="beekeeping" />
+      </PageHeader>
 
       {error && (
         <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">

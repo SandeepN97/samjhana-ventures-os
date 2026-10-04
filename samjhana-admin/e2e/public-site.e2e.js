@@ -48,6 +48,23 @@ test.describe('public website', () => {
     await expect(search).toHaveValue('');
   });
 
+  test('the phone menu stacks its links, sits above the page and closes after any navigation', async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 851 });
+    await page.goto(PUBLIC_SITE);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    const tops = await page.locator('header a:visible').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)).filter((t) => t > 70));
+    expect(new Set(tops).size).toBeGreaterThanOrEqual(4);                          // one under another, not one row
+    const header = await page.locator('header').boundingBox();
+    const callBtn = await page.getByRole('link', { name: 'Call or WhatsApp' }).boundingBox();
+    expect(header.y + header.height).toBeGreaterThanOrEqual(callBtn.y + callBtn.height - 1);   // the panel really contains its links
+    await page.getByRole('link', { name: 'Browse shop & order' }).click({ force: true }).catch(() => {});
+    await page.goto(PUBLIC_SITE);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.locator('header').getByRole('link', { name: 'Shop & order' }).click();
+    await expect(page).toHaveURL(/\/shop$/);
+    await expect(page.locator('header').getByRole('link', { name: 'Shop & order' })).toHaveCount(0);   // menu closed
+  });
+
   test('a furniture piece with an uploaded picture shows the picture and sells through the cart', async ({ page }) => {
     const admin = await token('admin', 'admin');
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');

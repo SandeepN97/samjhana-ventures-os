@@ -23,7 +23,7 @@ export default function LanguageToggle({ className = '' }) {
     <button
       onClick={toggleLanguage}
       className={`
-        flex items-center gap-2 px-3 py-2
+        flex min-h-[44px] items-center gap-2 px-3 py-2
         bg-white/20 hover:bg-white/30
         rounded-full transition-all
         text-white font-medium text-sm

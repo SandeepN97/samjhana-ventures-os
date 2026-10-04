@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Package, Plus, Edit2, Trash2, X, Check, Search, Minus } from 'lucide-react';
+import { Package, Plus, X, Check, Search } from 'lucide-react';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
 import ImageUploader from '../../components/ImageUploader';
-import { resolveMediaUrl } from '../../utils/image';
+import BusinessTabs from '../../components/BusinessTabs';
+import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
+import PhotoDialog from '../../components/PhotoDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useEscape from '../../utils/useEscape';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -34,6 +38,9 @@ export default function FurnitureInventoryPage() {
   const [editingItem, setEditingItem] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [photoItem, setPhotoItem] = useState(null);
+  const [removing, setRemoving] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '', nameNepali: '', sku: '', category: 'OTHER',
@@ -48,8 +55,10 @@ export default function FurnitureInventoryPage() {
     fetchItems();
   }, [selectedCategory]);
 
-  const fetchItems = async () => {
-    setLoading(true);
+  // `silent` refreshes the list in place (after a stock, switch or picture change) without the spinner, so the
+  // page does not jump back to the top.
+  const fetchItems = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedCategory !== 'ALL') params.append('category', selectedCategory);
@@ -72,6 +81,8 @@ export default function FurnitureInventoryPage() {
     setFormError('');
     setFormSuccess('');
   };
+
+  useEscape(() => { setShowForm(false); resetForm(); }, showForm && !photoItem);
 
   const openEditForm = (item) => {
     setFormData({
@@ -122,7 +133,7 @@ export default function FurnitureInventoryPage() {
         setFormSuccess(t('furnitureInv.itemAdded'));
       }
 
-      fetchItems();
+      fetchItems(true);
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (err) {
       setFormError(err.response?.data?.message || t('furnitureInv.failedToSave'));
@@ -131,26 +142,51 @@ export default function FurnitureInventoryPage() {
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!confirm(`Remove ${item.name}?`)) return;
+  const handleDelete = (item) => setRemoving(item);
+
+  const confirmRemove = async () => {
+    const item = removing;
+    setRemoving(null);
     try {
       await api.delete(`/api/furniture/items/${item.id}`);
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       alert(err.response?.data?.message || t('furnitureInv.failedToRemove'));
     }
   };
 
+  // Quick actions straight from the grid: switch a piece on or off the website, or change its pictures.
+  const toggleLive = async (item) => {
+    try {
+      await api.put(`/api/furniture/items/${item.id}`, { showOnWebsite: item.showOnWebsite === false });
+      fetchItems(true);
+    } catch (err) {
+      alert(err.response?.data?.message || t('productGrid.liveFailed'));
+    }
+  };
+
+  const savePhotos = async (item, imageIds) => {
+    await api.put(`/api/furniture/items/${item.id}`, { imageIds });
+    setPhotoItem(null);
+    fetchItems(true);
+  };
+
   const handleStockAdjust = async (item, adjustment) => {
     try {
       await api.patch(`/api/furniture/items/${item.id}/stock`, { adjustment });
-      fetchItems();
+      fetchItems(true);
     } catch (err) {
       alert('Failed to update stock');
     }
   };
 
+  const matchesStatus = (i, f) => {
+    const st = productStatus(i);
+    return f === 'ALL' || (f === 'LIVE' && st.live) || (f === 'HIDDEN' && !st.live) || (f === 'OUT' && st.out) || (f === 'NOPIC' && !st.hasPicture);
+  };
+  const statusCount = (f) => items.filter((i) => matchesStatus(i, f)).length;
   const filteredItems = items.filter(i => {
+    if (!matchesStatus(i, statusFilter)) return false;
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
     return i.name?.toLowerCase().includes(s) || i.sku?.toLowerCase().includes(s);
@@ -169,14 +205,16 @@ export default function FurnitureInventoryPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <PageHeader unit="furniture" icon={Package} title={t('furnitureInv.title')} backTo="/entry/furniture" />
+      <PageHeader unit="furniture" icon={Package} title={t('furnitureInv.title')} backTo="/entry/furniture">
+        <BusinessTabs business="furniture" />
+      </PageHeader>
 
       {/* Actions */}
       {isAdmin && (
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
+          className="flex min-h-[44px] items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
         >
           <Plus className="w-5 h-5" />
           {t('furnitureInv.addItem')}
@@ -191,13 +229,25 @@ export default function FurnitureInventoryPage() {
             <button
               key={cat.value}
               onClick={() => setSelectedCategory(cat.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`min-h-[44px] px-4 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === cat.value
                   ? 'bg-furniture-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {t(cat.tKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Status filter */}
+      <div className="px-4 py-2 bg-white border-b overflow-x-auto">
+        <div className="flex gap-2 min-w-max" role="group" aria-label={t('productGrid.status')}>
+          {[['ALL', 'productGrid.all'], ['LIVE', 'productGrid.live'], ['HIDDEN', 'productGrid.hidden'], ['OUT', 'productGrid.soldOutFilter'], ['NOPIC', 'productGrid.needsPicture']].map(([f, key]) => (
+            <button type="button" key={f} onClick={() => setStatusFilter(f)} aria-pressed={statusFilter === f}
+              className={`min-h-[44px] px-4 rounded-full text-sm font-medium ${statusFilter === f ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {t(key)} <span className="opacity-70">{statusCount(f)}</span>
             </button>
           ))}
         </div>
@@ -217,6 +267,13 @@ export default function FurnitureInventoryPage() {
         </div>
       </div>
 
+      {removing && (
+        <ConfirmDialog message={t('furnitureInv.removeConfirm', { name: removing.name })} confirmLabel={t('furnitureInv.removeYes')}
+          cancelLabel={t('furnitureInv.keep')} onConfirm={confirmRemove} onCancel={() => setRemoving(null)} />
+      )}
+
+      {photoItem && <PhotoDialog item={photoItem} onSave={savePhotos} onClose={() => setPhotoItem(null)} />}
+
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-4">
@@ -233,6 +290,9 @@ export default function FurnitureInventoryPage() {
             <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
               {formError && <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-sm">{formError}</div>}
               {formSuccess && <div className="bg-green-100 border border-green-400 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center"><Check className="w-4 h-4 mr-1" />{formSuccess}</div>}
+
+              <ImageUploader id="furn-pictures" label={t('furnitureInv.pictures')} value={formData.imageIds}
+                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('furnitureInv.itemName')} *</label>
@@ -303,9 +363,6 @@ export default function FurnitureInventoryPage() {
                   className="w-full min-h-[44px] px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-furniture-500" />
               </div>
 
-              <ImageUploader id="furn-pictures" label={t('furnitureInv.pictures')} value={formData.imageIds}
-                onChange={(imageIds) => setFormData({ ...formData, imageIds })} />
-
               <label htmlFor="furn-web" className="flex min-h-[44px] items-center gap-3 text-gray-800">
                 <input id="furn-web" type="checkbox" checked={formData.showOnWebsite} className="h-6 w-6"
                   onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })} />
@@ -339,72 +396,18 @@ export default function FurnitureInventoryPage() {
           )}
         </div>
       ) : (
-        <div className="px-4 py-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
           {filteredItems.map((item) => {
-            const isLowStock = item.stockQty <= item.reorderLevel;
-            const profitMargin = item.purchasePrice != null && item.sellingPrice
+            const margin = item.purchasePrice != null && item.sellingPrice
               ? (((item.sellingPrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(0)
               : null;
-
             return (
-              <div key={item.id} className="bg-white rounded-xl shadow-sm p-4">
-                <div className="flex items-start justify-between">
-                  {item.imageUrls?.[0] && (
-                    <img src={resolveMediaUrl(item.imageUrls[0])} alt="" className="mr-3 h-16 w-16 shrink-0 rounded-lg object-cover" />
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-gray-800">{item.name}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{getCategoryLabel(item.category)}</span>
-                    </div>
-                    {item.nameNepali && <p className="text-sm text-gray-500 mb-1">{item.nameNepali}</p>}
-                    <p className="text-xs text-gray-400 mb-2">SKU: {item.sku}</p>
-
-                    <div className="flex items-center gap-4 text-sm">
-                      {item.purchasePrice != null && (
-                        <span className="text-gray-500">{t('furnitureInv.buy')}: {formatCurrency(item.purchasePrice)}</span>
-                      )}
-                      <span className="text-gray-800 font-medium">{t('furnitureInv.sell')}: {formatCurrency(item.sellingPrice)}</span>
-                      {profitMargin && <span className="text-green-600 text-xs">+{profitMargin}%</span>}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2">
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <button onClick={() => openEditForm(item)} aria-label={t('furnitureInv.editItem')}
-                          className="flex h-11 w-11 items-center justify-center text-furniture-600 hover:bg-furniture-50 rounded-lg">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(item)} aria-label={t('common.delete')}
-                          className="flex h-11 w-11 items-center justify-center text-red-600 hover:bg-red-50 rounded-lg">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Stock with +/- buttons */}
-                    <div className="flex items-center gap-1">
-                      {canManage && (
-                      <button onClick={() => handleStockAdjust(item, -1)}
-                        className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200">
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      )}
-                      <span className={`text-lg font-bold px-2 min-w-[2rem] text-center ${isLowStock ? 'text-red-600' : 'text-gray-800'}`}>
-                        {item.stockQty}
-                      </span>
-                      {canManage && (
-                      <button onClick={() => handleStockAdjust(item, 1)}
-                        className="w-11 h-11 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200">
-                        <Plus className="w-3 h-3" />
-                      </button>
-                      )}
-                    </div>
-                    {isLowStock && <span className="text-xs text-red-500 font-medium">{t('furnitureInv.lowStockBadge')}</span>}
-                  </div>
-                </div>
-              </div>
+              <ProductAdminCard key={item.id} item={item} price={`${t('furnitureInv.sell')}: ${formatCurrency(item.sellingPrice)}`}
+                cost={item.purchasePrice != null ? `${t('furnitureInv.buy')}: ${formatCurrency(item.purchasePrice)}` : null}
+                margin={margin ? `+${margin}%` : null} categoryLabel={getCategoryLabel(item.category)}
+                isAdmin={isAdmin} canManage={canManage} accent="bg-furniture-600"
+                labels={{ edit: t('furnitureInv.editItem'), remove: t('common.delete'), low: t('furnitureInv.lowStockBadge') }}
+                onPhoto={setPhotoItem} onEdit={openEditForm} onDelete={handleDelete} onStock={handleStockAdjust} onToggleLive={toggleLive} />
             );
           })}
         </div>

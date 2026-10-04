@@ -43,7 +43,7 @@ function RelatedCard({ product }) {
         <p className="font-sans font-semibold text-dark text-sm leading-tight line-clamp-2 group-hover:text-gold transition-colors">{product.name}</p>
         <div className="flex items-center justify-between mt-auto pt-1">
           <p className="font-serif text-lg text-dark">Rs {price.toLocaleString()}</p>
-          <button onClick={handleAdd} disabled={!product.inStock}
+          <button onClick={handleAdd} disabled={!product.inStock} aria-label={`Add ${product.name} to cart`}
             className="w-8 h-8 rounded-xl bg-warm hover:bg-gold hover:text-white text-dark/50 transition-colors flex items-center justify-center disabled:opacity-30 flex-shrink-0">
             {added ? <Check size={13} className="text-green-600" /> : <ShoppingCart size={13} />}
           </button>
@@ -199,12 +199,12 @@ export default function FurnitureProductPage() {
               <div className="flex items-center gap-4">
                 <span className="text-sm font-semibold text-dark/40 font-sans uppercase tracking-wide text-[11px]">Quantity</span>
                 <div className="flex items-center bg-white border border-warm-border rounded-2xl overflow-hidden shadow-sm">
-                  <button onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Fewer"
                     className="w-11 h-11 flex items-center justify-center hover:bg-warm text-dark/40 hover:text-dark transition-colors">
                     <Minus size={14} />
                   </button>
                   <span className="w-11 text-center font-serif text-lg text-dark">{qty}</span>
-                  <button onClick={() => setQty((q) => Math.min(50, q + 1))}
+                  <button onClick={() => setQty((q) => Math.min(50, q + 1))} aria-label="More"
                     className="w-11 h-11 flex items-center justify-center hover:bg-warm text-dark/40 hover:text-dark transition-colors">
                     <Plus size={14} />
                   </button>

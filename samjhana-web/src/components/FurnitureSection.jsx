@@ -44,7 +44,7 @@ function ProductCard({ product, onView, compact }) {
         <p className="font-sans font-medium text-dark text-sm truncate">{product.name}</p>
         <p className="font-serif text-base text-dark mt-0.5">Rs {price.toLocaleString()}</p>
       </div>
-      <button onClick={handleAdd}
+      <button onClick={handleAdd} aria-label={`Add ${product.name} to cart`}
         className="w-8 h-8 rounded-full bg-warm flex items-center justify-center hover:bg-gold hover:text-white transition-colors text-dark/40 flex-shrink-0">
         {added ? '✓' : <ShoppingCart size={13} />}
       </button>

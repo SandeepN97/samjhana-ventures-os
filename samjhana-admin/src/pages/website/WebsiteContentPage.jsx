@@ -158,15 +158,23 @@ function Field({ field, value, onChange, id }) {
   );
 }
 
-export default function WebsiteContentPage() {
+// These tabs belong to a business and are edited inside it (Furniture / Beekeeping → Website page).
+export const BUSINESS_TAB_IDS = ['furniturePages', 'beekeepingPages'];
+
+/**
+ * The website editor. On its own it shows the shared tabs; `only` shows just those tabs (a business's own
+ * "Website page" tab) and `embedded` leaves the header to the screen that hosts it.
+ */
+export default function WebsiteContentPage({ only = null, embedded = false }) {
   const { t } = useTranslation();
+  const visibleTabs = TABS.filter((x) => (only ? only.includes(x.id) : !BUSINESS_TAB_IDS.includes(x.id)));
   let user = {};
   try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch { user = {}; }
   const allowed = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [content, setContent] = useState(null);
   const [loadError, setLoadError] = useState(false);
-  const [tabId, setTabId] = useState(TABS[0].id);
+  const [tabId, setTabId] = useState(visibleTabs[0].id);
   const [status, setStatus] = useState({});      // key -> { state: 'dirty'|'saving'|'saved'|'error', message }
   const [newOrders, setNewOrders] = useState(0);
 
@@ -202,19 +210,19 @@ export default function WebsiteContentPage() {
     }
   };
 
-  const tab = TABS.find((x) => x.id === tabId);
+  const tab = visibleTabs.find((x) => x.id === tabId) || visibleTabs[0];
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="core" icon={Globe} title={t('siteEditor.title')} />
+    <div className={embedded ? '' : 'min-h-screen bg-gray-100 pb-20'}>
+      {!embedded && <PageHeader unit="core" icon={Globe} title={t('siteEditor.title')} />}
 
       {!allowed ? (
         <p role="alert" className="m-4 rounded-xl bg-white p-4 text-gray-700">{t('siteEditor.noAccess')}</p>
       ) : (
         <>
-          <p className="px-4 pt-4 text-gray-600">{t('siteEditor.intro')}</p>
+          <p className="px-4 pt-4 text-gray-600">{embedded ? t('siteEditor.pageIntro') : t('siteEditor.intro')}</p>
 
-          <div className="grid grid-cols-2 gap-3 px-4 py-3">
+          {!embedded && <div className="grid grid-cols-2 gap-3 px-4 py-3">
             <Link to="/restaurant-menu" className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-3 py-3 font-bold text-core-800 shadow-sm">
               <Utensils className="h-5 w-5" aria-hidden="true" /> {t('siteEditor.menu')}
             </Link>
@@ -222,18 +230,18 @@ export default function WebsiteContentPage() {
               <ShoppingBag className="h-5 w-5" aria-hidden="true" /> {t('siteEditor.orders')}
               {newOrders > 0 && <span className="rounded-full bg-amber-500 px-2 text-xs font-bold text-white">{t('siteEditor.newOrders', { count: newOrders })}</span>}
             </Link>
-          </div>
+          </div>}
 
-          <div className="overflow-x-auto border-y bg-white px-4 py-2">
+          {visibleTabs.length > 1 && <div className="overflow-x-auto border-y bg-white px-4 py-2">
             <div className="flex min-w-max gap-2" role="tablist">
-              {TABS.map((x) => (
+              {visibleTabs.map((x) => (
                 <button type="button" role="tab" key={x.id} aria-selected={tabId === x.id} onClick={() => setTabId(x.id)}
                   className={`min-h-[44px] rounded-full px-4 text-sm font-medium ${tabId === x.id ? 'bg-core-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                   {t(x.labelKey)}
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {loadError ? (
             <div role="alert" className="mx-4 mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center text-red-700">

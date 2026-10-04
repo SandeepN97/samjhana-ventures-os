@@ -182,7 +182,7 @@ export default function FurnitureCataloguePage() {
           {/* Right */}
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/beekeeping" className="hidden sm:inline-flex items-center gap-1 text-xs text-dark/50 hover:text-dark px-2 py-2">Maurighar <ArrowRight size={12} /></Link>
-            <button onClick={() => setOpen(true)} className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
+            <button onClick={() => setOpen(true)} aria-label="Open cart" className="relative p-2.5 text-dark/60 hover:text-dark transition-colors">
               <ShoppingCart size={19} />
               {count > 0 && (
                 <span className="absolute top-0.5 right-0.5 w-[18px] h-[18px] bg-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -291,7 +291,7 @@ export default function FurnitureCataloguePage() {
                 focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/60
                 shadow-sm placeholder:text-dark/30 transition-shadow" />
             {search && (
-              <button onClick={() => setSearch('')}
+              <button onClick={() => setSearch('')} aria-label="Clear search"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-dark/30 hover:text-dark transition-colors">
                 <X size={14} />
               </button>

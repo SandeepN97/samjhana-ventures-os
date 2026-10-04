@@ -66,7 +66,7 @@ export default function ProductCard({ product, onAddToCart }) {
 
         <div className="flex items-center justify-between pt-1">
           <p className="font-serif text-lg text-[#1a1000]">Rs {fmt(product.price)}</p>
-          <button onClick={handleAdd} disabled={product.inStock === false}
+          <button onClick={handleAdd} disabled={product.inStock === false} aria-label={`Add ${product.name} to cart`}
             className="w-8 h-8 rounded-xl bg-[#faeeda] hover:bg-[#e8a400] hover:text-white text-[#8B6914]
               transition-colors flex items-center justify-center disabled:opacity-30 flex-shrink-0">
             {added ? '✓' : <ShoppingCart size={13} />}

@@ -8,6 +8,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import BusinessTabs from '../../components/BusinessTabs';
 import { nepalToday } from '../../utils/businessDay';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 
@@ -128,7 +129,9 @@ export default function BeekeepingSalePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="beekeeping" icon={ShoppingCart} title={t('beeOrd.newSaleTitle')} backTo="/entry/beekeeping" />
+      <PageHeader unit="beekeeping" icon={ShoppingCart} title={t('beeOrd.newSaleTitle')} backTo="/entry/beekeeping" >
+        <BusinessTabs business="beekeeping" />
+      </PageHeader>
 
       {loadError && (
         <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
