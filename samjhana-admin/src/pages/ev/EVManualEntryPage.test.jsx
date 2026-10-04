@@ -77,9 +77,8 @@ describe('EVManualEntryPage', () => {
     renderWithProviders(<EVManualEntryPage />);
 
     expect(screen.getByText('Date & Time')).toBeInTheDocument();
-    const currentDateTime = screen.getByLabelText('Current date and time');
-    expect(currentDateTime).toHaveAttribute('readonly');
-    expect(currentDateTime.value).toMatch(/\d{1,2}:\d{2}/);
+    expect(screen.getByRole('group', { name: 'Current date and time' })).toBeInTheDocument();
+    expect(screen.getByTestId('nepal-time').textContent).toMatch(/\d{1,2}:\d{2}/);
     expect(screen.queryByRole('button', { name: 'Pick date' })).not.toBeInTheDocument();
   });
 
@@ -308,7 +307,7 @@ describe('EVManualEntryPage', () => {
       expect(screen.getByText('चार्जर ३')).toBeInTheDocument();
       expect(screen.getByText('४० kW')).toBeInTheDocument();
       expect(screen.getByText('मिति र समय')).toBeInTheDocument();
-      expect(screen.getByLabelText('हालको मिति र समय')).toHaveAttribute('readonly');
+      expect(screen.getByRole('group', { name: 'हालको मिति र समय' })).toBeInTheDocument();
     });
   });
 

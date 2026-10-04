@@ -120,6 +120,22 @@ describe('EVEntryPage', () => {
       expect(container.querySelector('[class*="bg-[#09110e]"]')).toBeNull();
     });
 
+    it('shows the Nepal date and time instead of an editable date', async () => {
+      const { container } = await renderPage();
+      expect(container.querySelector('input[type="date"]')).toBeNull();
+      expect(screen.getByRole('group', { name: 'Current date and time' })).toBeInTheDocument();
+      expect(screen.getByTestId('nepal-date').textContent).toMatch(/^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+      expect(screen.getByTestId('nepal-time').textContent).toMatch(/^\d{1,2}:\d{2} (AM|PM)$/);
+      expect(screen.getByText('Date & Time')).toBeInTheDocument();
+    });
+
+    it('shows the Nepal date and time in Nepali too', async () => {
+      await renderPage('ne');
+      expect(screen.getByRole('group', { name: 'हालको मिति र समय' })).toBeInTheDocument();
+      expect(screen.getByTestId('nepal-date').textContent).not.toMatch(/[0-9]/);
+      expect(screen.getByTestId('nepal-time').textContent).not.toMatch(/[0-9]/);
+    });
+
     it.each(['ADMIN', 'MANAGER'])('shows the Vehicles button to %s', async (role) => {
       setRole(role);
       await renderPage();
@@ -153,7 +169,7 @@ describe('EVEntryPage', () => {
         screen.getByText(/NEA Rate per Unit/),
         screen.getByText('Select charger'),
         screen.getByLabelText('Charging connector'),
-        screen.getByLabelText(/^Date/),
+        screen.getByRole('group', { name: 'Current date and time' }),
         vehicleField(),
         screen.getByText('Vehicle plate'),
         screen.getByText('Charge target'),
@@ -311,15 +327,6 @@ describe('EVEntryPage', () => {
   // ------------------------------------------------------------ fields
 
   describe('start form fields', () => {
-    it('auto-fills today’s business date and keeps it editable', async () => {
-      await renderPage();
-      const date = screen.getByLabelText(/^Date/);
-      await waitFor(() => expect(date).toHaveValue('2026-09-19'));
-      await userEvent.clear(date);
-      await userEvent.type(date, '2026-09-18');
-      expect(date).toHaveValue('2026-09-18');
-    });
-
     it('shows an optional vehicle field that starts empty', async () => {
       await renderPage();
       expect(vehicleField()).toHaveTextContent('Select vehicle...');
