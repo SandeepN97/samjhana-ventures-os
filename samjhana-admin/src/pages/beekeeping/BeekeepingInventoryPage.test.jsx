@@ -5,6 +5,17 @@ import BeekeepingInventoryPage from './BeekeepingInventoryPage';
 import { renderWithProviders } from '../../test/test-utils';
 import api from '../../utils/api';
 
+// The tab bar also asks for the new-order count. Answer that separately so a one-time failure or
+// the call counts in these tests are about the page's own data.
+const failOnceThen = (data) => {
+  let failed = false;
+  api.get.mockImplementation((url) => {
+    if (url === '/api/shop-orders/summary') return Promise.resolve({ data: {} });
+    if (!failed) { failed = true; return Promise.reject(new Error('down')); }
+    return Promise.resolve({ data });
+  });
+};
+
 vi.mock('../../components/ImageUploader', () => ({
   default: ({ value, onChange }) => <button type="button" onClick={() => onChange(['pic-new'])}>pictures {value.join(',') || 'none'}</button>,
 }));
@@ -134,7 +145,7 @@ describe('BeekeepingInventoryPage', () => {
 
   it('shows an error with a retry when products cannot load', async () => {
     as('STAFF');
-    api.get.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce({ data: [honey(false)] });
+    failOnceThen([honey(false)]);
     renderWithProviders(<BeekeepingInventoryPage />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load products');

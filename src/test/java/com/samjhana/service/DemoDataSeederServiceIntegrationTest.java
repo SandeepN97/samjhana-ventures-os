@@ -21,7 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * What the demo reset does where it is allowed to run (dev/staging). The bean isn't registered under
+ * What the demo reset does where it is allowed to run (dev only). The bean isn't registered under
  * the test profile, so it is built by hand here with the real repositories.
  */
 @SpringBootTest
@@ -46,10 +46,10 @@ class DemoDataSeederServiceIntegrationTest {
     }
 
     @Test
-    void shouldOnlyBeRegisteredInDevAndStaging() {
+    void shouldOnlyBeRegisteredInDev() {
         Profile profile = DemoDataSeederService.class.getAnnotation(Profile.class);
         assertThat(profile).isNotNull();
-        assertThat(profile.value()).containsExactlyInAnyOrder("dev", "staging");
+        assertThat(profile.value()).containsExactly("dev");
     }
 
     @Test

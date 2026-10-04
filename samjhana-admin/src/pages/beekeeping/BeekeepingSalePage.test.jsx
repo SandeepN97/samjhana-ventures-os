@@ -106,7 +106,7 @@ describe('BeekeepingSalePage', () => {
 
     expect(await screen.findByText('Not enough stock for Wild Honey')).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.get.mock.calls.filter(([url]) => url !== '/api/shop-orders/summary')).toHaveLength(2));
   });
 
   it('shows an error with a retry when the products cannot load', async () => {

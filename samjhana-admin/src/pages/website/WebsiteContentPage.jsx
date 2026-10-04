@@ -159,7 +159,7 @@ function Field({ field, value, onChange, id }) {
 }
 
 // These tabs belong to a business and are edited inside it (Furniture / Beekeeping → Website page).
-export const BUSINESS_TAB_IDS = ['furniturePages', 'beekeepingPages'];
+const BUSINESS_TAB_IDS = ['furniturePages', 'beekeepingPages'];
 
 /**
  * The website editor. On its own it shows the shared tabs; `only` shows just those tabs (a business's own

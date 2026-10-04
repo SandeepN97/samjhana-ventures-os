@@ -4,7 +4,7 @@ import { useSection } from '../../site/SiteContext';
 import { mediaPath, mediaUrl } from '../../api/api.js';
 import SmartLink from '../ui/SmartLink';
 
-export const SERVICE_ICONS = { fuel: Fuel, zap: Zap, wrench: Wrench, utensils: Utensils, mappin: MapPin };
+const SERVICE_ICONS = { fuel: Fuel, zap: Zap, wrench: Wrench, utensils: Utensils, mappin: MapPin };
 
 function Lane({ tone, lane, active, onActivate, children }) {
   const image = mediaUrl(mediaPath(lane.image));

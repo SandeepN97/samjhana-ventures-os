@@ -26,7 +26,7 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    /** Empty in prod: the demo reset bean only exists in dev and staging. */
+    /** Empty in staging and prod: the demo reset bean only exists in dev. */
     private final ObjectProvider<DemoDataSeederService> demoDataSeederService;
 
     /**

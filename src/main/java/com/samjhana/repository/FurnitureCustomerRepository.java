@@ -11,6 +11,4 @@ import java.util.UUID;
 public interface FurnitureCustomerRepository extends JpaRepository<FurnitureCustomer, UUID> {
 
     List<FurnitureCustomer> findByIsActiveTrueOrderByNameAsc();
-
-    List<FurnitureCustomer> findByPhoneContaining(String phone);
 }
