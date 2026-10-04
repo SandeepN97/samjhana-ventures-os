@@ -101,7 +101,7 @@ Zustand stores in `samjhana-admin/src/` manage auth token and UI state. Auth tok
 - Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the six business units), `BeekeepingProductSeeder` (the 26 existing beekeeping products, zero stock), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
 - `DataSeeder` (`@Profile("dev")`) seeds dev logins only: on an empty dev database they are `admin/admin`, `manager/manager123`, `staff/staff123`.
 - `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log.
-- The Settings page "Reset demo data" exists in dev and staging only, never prod.
+- The Settings page "Reset demo data" exists in dev only: staging and prod never have it (it would wipe furniture products and test data).
 
 ### Profiles
 - **dev**: H2 file-based DB at `./data/samjhana-db`, H2 console (localhost only), API docs at `/swagger-ui` (dev only: off in every other profile), verbose SQL logging, `DataSeeder` runs
