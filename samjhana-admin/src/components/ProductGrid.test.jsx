@@ -114,6 +114,26 @@ describe('product picture grid (beekeeping)', () => {
     expect(screen.getAllByTestId('product-row')).toHaveLength(4);
   });
 
+  it('closes the photo window and the product form with Escape', async () => {
+    as('ADMIN');
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Change pictures of Bare Frame' }));
+    expect(screen.getByRole('dialog', { name: 'Bare Frame' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Bare Frame' })).toBeNull();
+    await userEvent.click(screen.getAllByRole('button', { name: /Add Product/ })[0]);
+    expect(screen.getByRole('dialog', { name: /Add New Product|Add Product/ })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the language toggle 44px tall', async () => {
+    as('ADMIN');
+    renderWithProviders(<BeekeepingInventoryPage />);
+    await screen.findAllByTestId('product-row');
+    expect(screen.getByRole('button', { name: /नेपालीमा बदल्नुहोस्|Switch to English/ })).toHaveClass('min-h-[44px]');
+  });
+
   it('gives staff and managers no picture, switch or edit controls', async () => {
     as('MANAGER');
     renderWithProviders(<BeekeepingInventoryPage />);

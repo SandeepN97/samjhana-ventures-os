@@ -104,7 +104,7 @@ function SmallHoneyCard({ product, copy, onAddToCart }) {
             <p className="font-serif text-lg text-[#1a1000]">Rs {fmt(product.price)}</p>
             <p className="font-sans text-[10px] text-[#1a1000]/40">{product.unit}</p>
           </div>
-          <button onClick={handleAdd} disabled={!product.inStock}
+          <button onClick={handleAdd} disabled={!product.inStock} aria-label={`Add ${product.name} to cart`}
             className="w-8 h-8 rounded-xl bg-[#faeeda] hover:bg-[#e8a400] hover:text-white text-[#8B6914] transition-colors flex items-center justify-center disabled:opacity-30 min-h-[44px] sm:min-h-[32px]">
             {added ? '✓' : <ShoppingCart size={13} />}
           </button>

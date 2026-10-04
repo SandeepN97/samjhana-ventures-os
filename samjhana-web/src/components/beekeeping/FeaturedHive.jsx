@@ -166,12 +166,12 @@ export default function FeaturedHive({ hives, onAddToCart }) {
               <p className="font-sans text-xs font-semibold uppercase tracking-widest text-[#1a1000]/40 mb-3">{copy.quantityTitle}</p>
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-white border border-[#e8a400]/20 rounded-xl overflow-hidden">
-                  <button onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Fewer"
                     className="w-10 h-10 flex items-center justify-center hover:bg-[#faeeda] text-[#1a1000]/50 transition-colors min-h-[44px]">
                     <Minus size={14} />
                   </button>
                   <span className="w-10 text-center font-semibold text-[#1a1000] font-sans text-sm">{qty}</span>
-                  <button onClick={() => setQty((q) => q + 1)}
+                  <button onClick={() => setQty((q) => q + 1)} aria-label="More"
                     className="w-10 h-10 flex items-center justify-center hover:bg-[#faeeda] text-[#1a1000]/50 transition-colors min-h-[44px]">
                     <Plus size={14} />
                   </button>

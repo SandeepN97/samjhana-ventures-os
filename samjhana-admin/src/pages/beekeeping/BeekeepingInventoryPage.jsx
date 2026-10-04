@@ -8,6 +8,7 @@ import ImageUploader from '../../components/ImageUploader';
 import BusinessTabs from '../../components/BusinessTabs';
 import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
 import PhotoDialog from '../../components/PhotoDialog';
+import useEscape from '../../utils/useEscape';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'beeInv.catAll' },
@@ -78,6 +79,7 @@ export default function BeekeepingInventoryPage() {
     setFormError('');
     setFormSuccess('');
   };
+  useEscape(closeForm, showForm && !photoItem);
 
   const openAddForm = () => {
     setFormData(EMPTY_FORM);

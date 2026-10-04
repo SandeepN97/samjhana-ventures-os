@@ -8,6 +8,7 @@ import ImageUploader from '../../components/ImageUploader';
 import BusinessTabs from '../../components/BusinessTabs';
 import ProductAdminCard, { productStatus } from '../../components/ProductAdminCard';
 import PhotoDialog from '../../components/PhotoDialog';
+import useEscape from '../../utils/useEscape';
 
 const CATEGORIES = [
   { value: 'ALL', tKey: 'furnitureInv.catAll' },
@@ -78,6 +79,8 @@ export default function FurnitureInventoryPage() {
     setFormError('');
     setFormSuccess('');
   };
+
+  useEscape(() => { setShowForm(false); resetForm(); }, showForm && !photoItem);
 
   const openEditForm = (item) => {
     setFormData({
@@ -206,7 +209,7 @@ export default function FurnitureInventoryPage() {
       <div className="px-4 py-3 bg-white border-b flex items-center justify-between">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
+          className="flex min-h-[44px] items-center gap-2 bg-furniture-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-furniture-700"
         >
           <Plus className="w-5 h-5" />
           {t('furnitureInv.addItem')}
@@ -221,7 +224,7 @@ export default function FurnitureInventoryPage() {
             <button
               key={cat.value}
               onClick={() => setSelectedCategory(cat.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`min-h-[44px] px-4 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === cat.value
                   ? 'bg-furniture-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

@@ -54,12 +54,12 @@ function CartStep({ onCheckout }) {
                 {item.unavailable && <p role="alert" className="text-xs text-red-600 font-sans mt-0.5">No longer available — remove it to continue.</p>}
                 {/* Qty controls */}
                 <div className="flex items-center gap-1.5 mt-2">
-                  <button onClick={() => updateQty(item.id, item.qty - 1)}
+                  <button onClick={() => updateQty(item.id, item.qty - 1)} aria-label={`Fewer ${item.name}`}
                     className="w-6 h-6 rounded-lg border border-warm-border flex items-center justify-center hover:bg-warm text-dark/50 transition-colors">
                     <Minus size={10} />
                   </button>
                   <span className="w-7 text-center text-sm font-semibold text-dark">{item.qty}</span>
-                  <button onClick={() => updateQty(item.id, item.qty + 1)}
+                  <button onClick={() => updateQty(item.id, item.qty + 1)} aria-label={`More ${item.name}`}
                     className="w-6 h-6 rounded-lg border border-warm-border flex items-center justify-center hover:bg-warm text-dark/50 transition-colors">
                     <Plus size={10} />
                   </button>
@@ -68,7 +68,7 @@ function CartStep({ onCheckout }) {
 
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <p className="font-serif text-base text-dark">Rs {fmt(item.price * item.qty)}</p>
-                <button onClick={() => removeItem(item.id)}
+                <button onClick={() => removeItem(item.id)} aria-label={`Remove ${item.name}`}
                   className="text-dark/20 hover:text-red-400 transition-colors p-1">
                   <Trash2 size={13} />
                 </button>
@@ -265,7 +265,7 @@ export default function CartDrawer() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-border bg-white">
           <div className="flex items-center gap-3">
             {step !== 'cart' && step !== 'success' && (
-              <button onClick={() => setStep('cart')}
+              <button onClick={() => setStep('cart')} aria-label="Back to cart"
                 className="w-8 h-8 rounded-full hover:bg-warm flex items-center justify-center text-dark/40 hover:text-dark transition-colors">
                 <ArrowLeft size={16} />
               </button>
@@ -277,7 +277,7 @@ export default function CartDrawer() {
               )}
             </div>
           </div>
-          <button onClick={handleClose}
+          <button onClick={handleClose} aria-label="Close cart"
             className="w-8 h-8 rounded-full hover:bg-warm flex items-center justify-center text-dark/40 hover:text-dark transition-colors">
             <X size={17} />
           </button>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import ImageUploader from './ImageUploader';
+import useEscape from '../utils/useEscape';
 
 /** A small window to add, remove and reorder one product's pictures without opening its whole form. */
 export default function PhotoDialog({ item, onSave, onClose }) {
@@ -9,6 +10,7 @@ export default function PhotoDialog({ item, onSave, onClose }) {
   const [ids, setIds] = useState(item.imageIds || []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useEscape(onClose);
 
   const save = async () => {
     setSaving(true);

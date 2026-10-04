@@ -85,7 +85,7 @@ function DarkGearCard({ gear, onAddToCart }) {
       <p className="font-sans text-[10px] text-white/40 line-clamp-2 leading-snug">{gear.description}</p>
       <div className="flex items-center justify-between mt-auto pt-1">
         <p className="font-serif text-base text-[#e8a400]">Rs {Number(gear.price).toLocaleString()}</p>
-        <button onClick={handleAdd}
+        <button onClick={handleAdd} aria-label={`Add ${gear.name} to cart`}
           className="w-8 h-8 rounded-xl bg-[#e8a400]/15 hover:bg-[#e8a400] text-[#e8a400] hover:text-white transition-colors flex items-center justify-center min-h-[44px] sm:min-h-[32px]">
           {added ? '✓' : <ShoppingCart size={13} />}
         </button>

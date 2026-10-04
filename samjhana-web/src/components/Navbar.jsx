@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShoppingCart, MessageCircle, MapPin, Phone } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
@@ -44,6 +44,9 @@ function GridMark() {
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  // Whatever link was followed, the phone menu closes once the new page is showing.
+  useEffect(() => { setOpen(false); }, [pathname]);
   const { count, setOpen: openCart } = useCartStore();
   const identity = useSection('identity');
   const contact = useSection('contact');

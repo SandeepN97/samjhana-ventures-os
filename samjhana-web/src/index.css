@@ -136,10 +136,10 @@
 
 /* Whole-site touch adaptation: preserve the desktop IA, but make dense surfaces thumb-friendly. */
 @media (max-width: 767px) {
-  .site-navbar > div { height: 60px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .site-navbar > div:first-child { height: 60px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
   .site-navbar .leading-tight p:first-child { font-size: .88rem; }
   .site-navbar .leading-tight p:last-child { font-size: 9px; }
-  .site-navbar .md\:hidden { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .site-navbar button.md\:hidden { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
   #fuel-ev, #bike-repair, #restaurant, #furniture { scroll-margin-top: 112px; }
   #fuel-ev, #bike-repair, #restaurant { padding-top: 4rem; padding-bottom: 4rem; }
   #fuel-ev .grid-cols-3 { grid-template-columns: 1fr; }
