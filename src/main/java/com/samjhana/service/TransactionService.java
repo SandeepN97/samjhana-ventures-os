@@ -7,6 +7,7 @@ import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.FurnitureItem;
+import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
 import com.samjhana.exception.BusinessUnitNotFoundException;
@@ -49,6 +50,7 @@ public class TransactionService {
     private final DailyReportRepository dailyReportRepository;
     private final SystemSettingRepository systemSettingRepository;
     private final BeekeepingService beekeepingService;
+    private final LoanReceiptService loanReceiptService;
 
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
 
@@ -59,6 +61,24 @@ public class TransactionService {
     public LocalDate currentBusinessDate() {
         LocalDate today = LocalDate.now(KATHMANDU);
         return dailyReportRepository.findByReportDate(today).isPresent() ? today.plusDays(1) : today;
+    }
+
+    /** Custom fields of a loan payment: the bank's own reference, and the id of the receipt photo. */
+    public static final String BANK_REFERENCE_FIELD = "bankReference";
+    public static final String RECEIPT_FIELD = "receiptId";
+
+    private static boolean isLoanPayment(String businessCode, String transactionType, Map<String, Object> fields) {
+        return "loan".equalsIgnoreCase(businessCode)
+                && Transaction.TransactionType.SALE.name().equalsIgnoreCase(transactionType)
+                && fields != null && "PAYMENT".equals(String.valueOf(fields.get("loanType")));
+    }
+
+    private static String requireBankReference(Map<String, Object> fields) {
+        Object raw = fields.get(BANK_REFERENCE_FIELD);
+        String reference = raw == null ? "" : raw.toString().trim();
+        if (reference.isEmpty()) throw new IllegalArgumentException("Enter the bank's reference number for this payment");
+        if (reference.length() > 100) throw new IllegalArgumentException("The bank reference is too long");
+        return reference;
     }
 
     /** Custom field only {@link #createForOnlineOrder} may set: it marks a sale whose stock was already held back at checkout. */
@@ -130,6 +150,33 @@ public class TransactionService {
             beekeepingService.applyStock(customFields, request.getTransactionType());
         }
 
+        // A payment to the bank needs the bank's own reference and a photo of its receipt. An admin's payment is
+        // approved straight away; a manager's waits, and is not counted anywhere, until an admin approves it.
+        boolean loanPayment = isLoanPayment(business.getCode(), request.getTransactionType(), customFields);
+        LoanReceipt receipt = null;
+        String referenceNumber = request.getReferenceNumber();
+        if (loanPayment) {
+            referenceNumber = requireBankReference(customFields);
+            Object receiptId = customFields.get(RECEIPT_FIELD);
+            if (receiptId != null && !receiptId.toString().isBlank()) {
+                receipt = loanReceiptService.requireAttachable(receiptId, user);
+                customFields.put(RECEIPT_FIELD, receipt.getId().toString());
+            } else if (!user.isAdmin()) {
+                throw new IllegalArgumentException("Add a photo of the bank receipt");
+            } else {
+                customFields.remove(RECEIPT_FIELD);
+            }
+            customFields.put(BANK_REFERENCE_FIELD, referenceNumber);
+            try {
+                customFieldsJson = objectMapper.writeValueAsString(customFields);
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("Invalid custom fields");
+            }
+        }
+        Transaction.TransactionStatus status = loanPayment && !user.isAdmin()
+                ? Transaction.TransactionStatus.PENDING_REVIEW
+                : Transaction.TransactionStatus.APPROVED;
+
         Transaction transaction = Transaction.builder()
                 .business(business)
                 .enteredBy(user)
@@ -137,12 +184,17 @@ public class TransactionService {
                 .transactionDate(date)
                 .amount(request.getAmount())
                 .notes(request.getNotes())
-                .referenceNumber(request.getReferenceNumber())
+                .referenceNumber(referenceNumber)
                 .customFields(customFieldsJson)
-                .status(Transaction.TransactionStatus.APPROVED)
+                .status(status)
                 .build();
+        if (loanPayment && user.isAdmin()) {
+            transaction.setReviewedBy(user);
+            transaction.setReviewedAt(LocalDateTime.now());
+        }
 
         Transaction saved = transactionRepository.save(transaction);
+        if (receipt != null) loanReceiptService.attach(receipt, saved.getId());
 
         auditLogRepository.save(AuditLog.createEvent(user, AuditLog.EntityType.TRANSACTION,
                 saved.getId(), customFieldsJson));
@@ -324,6 +376,10 @@ public class TransactionService {
     public TransactionResponse reject(UUID id, String reason, User user) {
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id.toString()));
+        if (t.getBusiness() != null && "loan".equalsIgnoreCase(t.getBusiness().getCode())
+                && (reason == null || reason.isBlank())) {
+            throw new IllegalArgumentException("Say why this loan entry is rejected");
+        }
         t.setStatus(Transaction.TransactionStatus.REJECTED);
         if (reason != null) t.setReviewNotes(reason);
         if (user != null) {

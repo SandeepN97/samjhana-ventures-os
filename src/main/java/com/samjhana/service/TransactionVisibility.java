@@ -31,6 +31,11 @@ public final class TransactionVisibility {
         return viewer != null && (viewer.canManage() || !isLoan(t));
     }
 
+    /** True when a payment to the bank is still waiting for an admin: it must not be counted in any total yet. */
+    public static boolean isLoanAwaitingReview(Transaction t) {
+        return t.getStatus() == Transaction.TransactionStatus.PENDING_REVIEW && isLoan(t);
+    }
+
     public static TransactionResponse toResponse(Transaction t, User viewer, ObjectMapper objectMapper) {
         TransactionResponse response = TransactionResponse.from(t);
         if (viewer != null && viewer.canManage()) {

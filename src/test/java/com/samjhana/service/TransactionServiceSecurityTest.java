@@ -55,6 +55,7 @@ class TransactionServiceSecurityTest {
     @Mock DailyReportRepository dailyReportRepository;
     @Mock SystemSettingRepository systemSettingRepository;
     @Mock BeekeepingService beekeepingService;
+    @Mock LoanReceiptService loanReceiptService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private TransactionService service;
@@ -70,7 +71,7 @@ class TransactionServiceSecurityTest {
     void setUp() {
         service = new TransactionService(transactionRepository, businessUnitRepository, furnitureItemRepository,
                 auditLogRepository, calculationEngine, objectMapper, dailyReportRepository, systemSettingRepository,
-                beekeepingService);
+                beekeepingService, loanReceiptService);
         lenient().when(businessUnitRepository.findByCode("petrol")).thenReturn(Optional.of(petrol));
         lenient().when(businessUnitRepository.findByCode("ev")).thenReturn(Optional.of(ev));
         lenient().when(calculationEngine.validate(anyString(), anyMap())).thenReturn(ValidationResult.valid());

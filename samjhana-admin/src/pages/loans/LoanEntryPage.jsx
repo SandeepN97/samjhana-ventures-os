@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff } from 'lucide-react';
+import { Landmark, Check, Plus, CreditCard, TrendingDown, Building2, X, ShieldOff, Camera, Clock } from 'lucide-react';
 import api from '../../utils/api';
 import DatePicker from '../../components/DatePicker';
 import SearchableSelect from '../../components/SearchableSelect';
@@ -9,6 +9,9 @@ import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
 import { nepalToday } from '../../utils/businessDay';
+import { prepareImage } from '../../utils/image';
+import ReceiptDialog from '../../components/loans/ReceiptDialog';
+import RejectPaymentDialog from '../../components/loans/RejectPaymentDialog';
 
 export default function LoanEntryPage() {
   const navigate = useNavigate();
@@ -36,8 +39,15 @@ export default function LoanEntryPage() {
     paymentDate: nepalToday(),
     principalAmount: '',
     interestAmount: '',
+    bankReference: '',
     notes: '',
   });
+  // The photo of the bank's receipt, already made smaller, and a preview of it to show.
+  const [receipt, setReceipt] = useState({ file: null, preview: '' });
+  const [waiting, setWaiting] = useState([]);    // payments an admin has not approved yet (not in any total)
+  const [rejected, setRejected] = useState([]);  // payments an admin sent back, with the reason
+  const [viewReceipt, setViewReceipt] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
 
   useEffect(() => {
     if (user.role !== 'STAFF') fetchLoans();
@@ -72,47 +82,58 @@ export default function LoanEntryPage() {
 
       // Process transactions to calculate loan balances
       const loanMap = new Map();
+      const parse = (t) => (typeof t.customFields === 'string' ? JSON.parse(t.customFields) : t.customFields);
 
+      // Loans first: the list is newest first, so a payment can come before the loan it belongs to.
       res.data.forEach(t => {
-        // Parse customFields if it's a string
-        const customFields = typeof t.customFields === 'string'
-          ? JSON.parse(t.customFields)
-          : t.customFields;
-
-        if (customFields?.loanType === 'NEW_LOAN') {
-          // This is a new loan from bank
-          const loanId = t.id;
-          if (!loanMap.has(loanId)) {
-            loanMap.set(loanId, {
-              id: loanId,
-              bankName: customFields.bankName,
-              originalAmount: parseFloat(customFields.loanAmount || t.amount),
-              interestRate: customFields.interestRate || 0,
-              startDate: t.transactionDate,
-              totalPaid: 0,
-              principalPaid: 0,
-              interestPaid: 0,
-              payments: [],
-              status: t.status,
-            });
-          }
-        } else if (customFields?.loanType === 'PAYMENT' && customFields?.loanId) {
-          // This is a payment to a loan
-          const loanId = customFields.loanId;
-          if (loanMap.has(loanId)) {
-            const loan = loanMap.get(loanId);
-            loan.principalPaid += parseFloat(customFields.principalAmount || 0);
-            loan.interestPaid += parseFloat(customFields.interestAmount || 0);
-            loan.totalPaid += parseFloat(t.amount);
-            loan.payments.push({
-              date: t.transactionDate,
-              principal: customFields.principalAmount,
-              interest: customFields.interestAmount,
-              total: t.amount,
-            });
-          }
+        const customFields = parse(t);
+        if (customFields?.loanType === 'NEW_LOAN' && !loanMap.has(t.id)) {
+          loanMap.set(t.id, {
+            id: t.id,
+            bankName: customFields.bankName,
+            originalAmount: parseFloat(customFields.loanAmount || t.amount),
+            interestRate: customFields.interestRate || 0,
+            startDate: t.transactionDate,
+            totalPaid: 0,
+            principalPaid: 0,
+            interestPaid: 0,
+            payments: [],
+            status: t.status,
+          });
         }
       });
+
+      const waitingPayments = [];
+      const rejectedPayments = [];
+      res.data.forEach(t => {
+        const customFields = parse(t);
+        if (customFields?.loanType !== 'PAYMENT' || !customFields?.loanId) return;
+        const loan = loanMap.get(customFields.loanId);
+        const entry = {
+          id: t.id,
+          loanId: customFields.loanId,
+          bankName: loan?.bankName,
+          date: t.transactionDate,
+          principal: customFields.principalAmount,
+          interest: customFields.interestAmount,
+          total: t.amount,
+          bankReference: customFields.bankReference || t.referenceNumber,
+          receiptId: customFields.receiptId,
+          reviewNotes: t.reviewNotes,
+        };
+        if (t.status === 'PENDING_REVIEW') {
+          waitingPayments.push(entry);         // not counted until an admin approves it
+        } else if (t.status === 'REJECTED') {
+          rejectedPayments.push(entry);
+        } else if (loan) {
+          loan.principalPaid += parseFloat(customFields.principalAmount || 0);
+          loan.interestPaid += parseFloat(customFields.interestAmount || 0);
+          loan.totalPaid += parseFloat(t.amount);
+          loan.payments.push(entry);
+        }
+      });
+      setWaiting(waitingPayments);
+      setRejected(rejectedPayments);
 
       // Convert map to array and calculate remaining
       const loansArray = Array.from(loanMap.values()).map(loan => ({
@@ -162,6 +183,8 @@ export default function LoanEntryPage() {
       newErrors.principalAmount = 'Principal amount must be greater than 0';
     }
     if (!payment.paymentDate) newErrors.paymentDate = 'Payment date is required';
+    if (!payment.bankReference.trim()) newErrors.bankReference = t('loan.bankReferenceRequired');
+    if (!receipt.file && user.role !== 'ADMIN') newErrors.receipt = t('loan.receiptRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -214,6 +237,13 @@ export default function LoanEntryPage() {
 
     setIsSubmitting(true);
     try {
+      let receiptId = null;
+      if (receipt.file) {
+        const form = new FormData();
+        form.append('file', receipt.file, 'receipt.jpg');
+        const uploaded = await api.post('/api/loans/receipts', form);
+        receiptId = uploaded.data.receiptId;
+      }
       const payload = {
         businessCode: 'loan',
         transactionType: 'SALE', // Money going OUT to bank
@@ -225,24 +255,74 @@ export default function LoanEntryPage() {
           loanId: payment.loanId,
           principalAmount: principalAmt,
           interestAmount: interestAmt,
+          bankReference: payment.bankReference.trim(),
+          ...(receiptId ? { receiptId } : {}),
         },
       };
 
       await api.post('/api/transactions', payload);
-      showToast(t('rental.savedSuccess'), 'success');
+      // A manager's payment waits for an admin; an admin's is final at once.
+      showToast(user.role === 'ADMIN' ? t('rental.savedSuccess') : t('loan.sentForReview'), 'success');
       setPayment({
         loanId: '',
         paymentDate: nepalToday(),
         principalAmount: '',
         interestAmount: '',
+        bankReference: '',
         notes: '',
       });
+      clearReceipt();
       fetchLoans();
       setMode('summary');
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to save', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const clearReceipt = () => {
+    setReceipt((prev) => {
+      if (prev.preview) URL.revokeObjectURL(prev.preview);
+      return { file: null, preview: '' };
+    });
+  };
+
+  const handleReceiptPicked = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const prepared = await prepareImage(file);
+      setReceipt((prev) => {
+        if (prev.preview) URL.revokeObjectURL(prev.preview);
+        return { file: prepared, preview: URL.createObjectURL(prepared) };
+      });
+      setErrors((prev) => ({ ...prev, receipt: null }));
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, receipt: err.message === 'size' ? t('loan.receiptTooBig') : t('loan.receiptNotPicture') }));
+    }
+  };
+
+  const handleApprove = async (entry) => {
+    try {
+      await api.patch(`/api/transactions/${entry.id}/approve`);
+      showToast(t('loan.paymentApproved'), 'success');
+      fetchLoans();
+    } catch (err) {
+      showToast(err.response?.data?.message || t('loan.reviewFailed'), 'error');
+    }
+  };
+
+  const handleReject = async (reason) => {
+    const entry = rejectTarget;
+    setRejectTarget(null);
+    try {
+      await api.patch(`/api/transactions/${entry.id}/reject`, { reason });
+      showToast(t('loan.paymentRejected'), 'success');
+      fetchLoans();
+    } catch (err) {
+      showToast(err.response?.data?.message || t('loan.reviewFailed'), 'error');
     }
   };
 
@@ -313,6 +393,74 @@ export default function LoanEntryPage() {
               {t('loan.makePayment')}
             </button>
           </div>
+
+          {/* Payments waiting for an admin: not counted in any total above until approved */}
+          {waiting.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border-l-4 border-yellow-400" data-testid="waiting-payments">
+              <div className="px-4 py-3 border-b bg-yellow-50 rounded-tr-xl flex items-center gap-2">
+                <Clock className="w-5 h-5 text-yellow-600" />
+                <h2 className="font-bold text-gray-800">{t('loan.waitingForReview')} ({waiting.length})</h2>
+              </div>
+              <p className="px-4 pt-3 text-sm text-gray-500">
+                {user.role === 'ADMIN' ? t('loan.waitingHintAdmin') : t('loan.waitingHintManager')}
+              </p>
+              <div className="divide-y">
+                {waiting.map((entry) => (
+                  <div key={entry.id} className="p-4 space-y-2">
+                    <div className="flex justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-800 truncate">{entry.bankName || t('business.loan')}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(entry.date).toLocaleDateString()} • {t('loan.bankReference')}: {entry.bankReference}
+                        </p>
+                      </div>
+                      <p className="font-bold text-loans-600 whitespace-nowrap">{formatAmount(entry.total)}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {entry.receiptId && (
+                        <button type="button" onClick={() => setViewReceipt(entry.receiptId)}
+                          className="min-h-[44px] px-4 rounded-lg border-2 border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          {t('loan.viewReceipt')}
+                        </button>
+                      )}
+                      {user.role === 'ADMIN' && (
+                        <>
+                          <button type="button" onClick={() => handleApprove(entry)}
+                            className="min-h-[44px] px-4 rounded-lg bg-green-600 text-sm font-bold text-white hover:bg-green-700">
+                            {t('loan.approve')}
+                          </button>
+                          <button type="button" onClick={() => setRejectTarget(entry)}
+                            className="min-h-[44px] px-4 rounded-lg bg-red-600 text-sm font-bold text-white hover:bg-red-700">
+                            {t('loan.reject')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Payments an admin sent back: shown with the reason so it can be entered again correctly */}
+          {rejected.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border-l-4 border-red-400" data-testid="rejected-payments">
+              <div className="px-4 py-3 border-b bg-red-50 rounded-tr-xl">
+                <h2 className="font-bold text-gray-800">{t('loan.rejectedPayments')} ({rejected.length})</h2>
+              </div>
+              <div className="divide-y">
+                {rejected.map((entry) => (
+                  <div key={entry.id} className="p-4">
+                    <div className="flex justify-between gap-3">
+                      <p className="font-medium text-gray-800 truncate">{entry.bankName || t('business.loan')} • {entry.bankReference}</p>
+                      <p className="font-bold text-gray-500 whitespace-nowrap line-through">{formatAmount(entry.total)}</p>
+                    </div>
+                    <p className="text-sm text-red-600 mt-1">{t('loan.rejectedBecause')}: {entry.reviewNotes}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Active Loans List */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -604,6 +752,44 @@ export default function LoanEntryPage() {
             </p>
           </div>
 
+          {/* Bank reference: the bank's own number for this payment */}
+          <div>
+            <label className="block text-lg font-medium text-gray-700 mb-2" htmlFor="bank-reference">
+              {t('loan.bankReference')} <span className="text-loans-500">*</span>
+            </label>
+            <input
+              id="bank-reference"
+              type="text"
+              maxLength={100}
+              value={payment.bankReference}
+              onChange={(e) => handlePaymentChange('bankReference', e.target.value)}
+              placeholder={t('loan.bankReferencePlaceholder')}
+              className={`w-full min-h-[44px] px-4 py-3 text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.bankReference ? 'border-loans-500' : 'border-gray-300'}`}
+            />
+            {errors.bankReference && <p className="text-loans-500 text-sm mt-1">{errors.bankReference}</p>}
+          </div>
+
+          {/* Photo of the bank's receipt (private: only an admin or manager can open it) */}
+          <div>
+            <p className="block text-lg font-medium text-gray-700 mb-2">
+              {t('loan.receiptPhoto')}{' '}
+              {user.role === 'ADMIN'
+                ? <span className="text-gray-400 text-sm">({t('common.optional')})</span>
+                : <span className="text-loans-500">*</span>}
+            </p>
+            {receipt.preview && (
+              <img src={receipt.preview} alt={t('loan.receiptPhoto')} className="mb-3 max-h-64 w-auto max-w-full rounded-lg border" />
+            )}
+            <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-400 px-4 py-4 text-gray-700 hover:bg-gray-50">
+              <Camera className="w-6 h-6" aria-hidden="true" />
+              <span className="font-medium">{receipt.file ? t('loan.changeReceipt') : t('loan.takeReceiptPhoto')}</span>
+              <input type="file" accept="image/jpeg,image/png" capture="environment" onChange={handleReceiptPicked}
+                aria-label={t('loan.receiptPhoto')} className="sr-only" />
+            </label>
+            {errors.receipt && <p role="alert" className="text-loans-500 text-sm mt-1">{errors.receipt}</p>}
+            <p className="text-xs text-gray-500 mt-1">{t('loan.receiptPrivateNote')}</p>
+          </div>
+
           {/* Notes */}
           <div>
             <label className="block text-lg font-medium text-gray-700 mb-2">
@@ -643,6 +829,8 @@ export default function LoanEntryPage() {
           </button>
         </form>
       )}
+      {viewReceipt && <ReceiptDialog receiptId={viewReceipt} onClose={() => setViewReceipt(null)} />}
+      {rejectTarget && <RejectPaymentDialog onReject={handleReject} onCancel={() => setRejectTarget(null)} />}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );

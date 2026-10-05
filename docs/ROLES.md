@@ -24,9 +24,18 @@ Legend: ✅ allowed · ✖ refused.
 | Feature | Staff | Manager | Admin |
 |---|---|---|---|
 | See loans | ✖ | ✅ | ✅ |
-| Record a payment made to the bank | ✖ | ✅ | ✅ |
+| Record a payment made to the bank (needs the bank's reference and a photo of its receipt) | ✖ | ✅ — waits for an admin | ✅ — approved at once |
+| Open a receipt photo (private; never on the public site) | ✖ | ✅ | ✅ |
+| Approve or reject a waiting payment (rejecting needs a reason) | ✖ | ✖ | ✅ |
+| See how many payments are waiting | ✖ | ✅ | ✅ |
 | Add a new loan | ✖ | ✖ | ✅ |
 | Edit, approve or reject any loan entry | ✖ | ✖ | ✅ |
+
+**How a payment to the bank works:** a manager enters the amount, the bank's own reference number and a photo of the
+receipt. The payment is saved as *waiting* and is **not counted** in loan balances, analytics or the daily report. An admin
+opens the receipt and approves it (it then counts) or rejects it with a reason (the manager sees the reason, and the entry
+is kept, never deleted). A payment entered by an admin is approved at once. Every time a receipt is opened it is written
+to the audit log. Photos are re-saved as plain JPEG on upload, so phone location and camera details are dropped.
 
 ## Petrol and EV
 | Feature | Staff | Manager | Admin |
