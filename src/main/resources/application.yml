@@ -86,6 +86,13 @@ samjhana:
       # The dev fallback below is only for local development; it must never reach prod.
       secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-CHANGE-IN-PRODUCTION}
       expiration-hours: 168  # 7 days for Dad's convenience
+      # Per-address login limits (see LoginAttemptService). OFF until the address the server sees has been
+      # checked: log in as admin, open GET /api/auth/my-address, compare it with your real address, then set
+      # SAMJHANA_LOGIN_IP_LIMITS=true. SAMJHANA_TRUSTED_PROXY_HOPS is how many entries, counted from the right of
+      # X-Forwarded-For, belong to trusted proxies rather than the visitor (0 = the right-most entry is the client).
+    login:
+      ip-limits-enabled: ${SAMJHANA_LOGIN_IP_LIMITS:false}
+    trusted-proxy-hops: ${SAMJHANA_TRUSTED_PROXY_HOPS:0}
 
   storage:
     images:

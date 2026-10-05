@@ -6,13 +6,16 @@ import com.samjhana.dto.LoginResponse;
 import com.samjhana.dto.UserDto;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
+import com.samjhana.security.ClientAddressResolver;
 import com.samjhana.security.JwtUtil;
 import com.samjhana.security.LoginAttemptService;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,6 +38,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttempts;
+    private final ClientAddressResolver clientAddress;
 
     /** What an admin sees when the named user is unknown or the current password is wrong: one answer for both. */
     private static final String INVALID_TARGET_OR_PASSWORD = "Invalid username or current password";
@@ -50,8 +55,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        if (loginAttempts.isBlocked(request.getUsername())) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        String address = clientAddress.resolve(http).orElse(null);
+        if (loginAttempts.isBlocked(request.getUsername(), address)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
         }
@@ -60,10 +66,10 @@ public class AuthController {
             auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (AuthenticationException e) {
-            loginAttempts.recordFailure(request.getUsername());
+            loginAttempts.recordFailure(request.getUsername(), address);
             throw e;
         }
-        loginAttempts.recordSuccess(request.getUsername());
+        loginAttempts.recordSuccess(request.getUsername(), address);
 
         User user = (User) auth.getPrincipal();
         String token = jwtUtil.generateToken(user);
@@ -72,6 +78,23 @@ public class AuthController {
                 .token(token)
                 .user(UserDto.from(user))
                 .build());
+    }
+
+    /**
+     * Shows an admin the address the server believes this request came from, next to what was actually sent,
+     * so the per-address login limits can be checked against the admin's real address before they are switched on.
+     * Only the caller's own request is described; nothing is stored or logged.
+     */
+    @GetMapping("/my-address")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> myAddress(HttpServletRequest http) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("resolvedAddress", clientAddress.resolve(http).orElse(null));
+        body.put("forwardedFor", clientAddress.forwardedFor(http));
+        body.put("remoteAddress", http.getRemoteAddr());
+        body.put("trustedProxyHops", clientAddress.trustedProxyHops());
+        body.put("addressLimitsEnabled", loginAttempts.addressLimitsEnabled());
+        return body;
     }
 
     @GetMapping("/me")
@@ -120,7 +143,8 @@ public class AuthController {
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
             @RequestBody ChangePasswordRequest request,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal User currentUser,
+            HttpServletRequest http) {
 
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -140,7 +164,8 @@ public class AuthController {
         // refuse them. Keyed by the named account whether or not it exists, so the limit itself
         // doesn't reveal which usernames are real.
         String guessedAccount = targetsAnotherUser ? request.getUsername().trim() : currentUser.getUsername();
-        if (loginAttempts.isBlocked(guessedAccount)) {
+        String address = clientAddress.resolve(http).orElse(null);
+        if (loginAttempts.isBlocked(guessedAccount, address)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
         }
@@ -151,7 +176,7 @@ public class AuthController {
         boolean currentPasswordMatches = passwordEncoder.matches(request.getCurrentPassword(), hashToCheck);
 
         if (targetUser == null || !currentPasswordMatches) {
-            loginAttempts.recordFailure(guessedAccount);
+            loginAttempts.recordFailure(guessedAccount, address);
             // Naming another user: one answer for "no such user" and "wrong password".
             // Changing your own password: you already know you exist, so the specific message is fine.
             String message = targetsAnotherUser ? INVALID_TARGET_OR_PASSWORD : "Current password is incorrect";
@@ -166,7 +191,7 @@ public class AuthController {
 
         targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(targetUser);
-        loginAttempts.recordSuccess(guessedAccount);
+        loginAttempts.recordSuccess(guessedAccount, address);
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.
