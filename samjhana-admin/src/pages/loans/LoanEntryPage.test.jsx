@@ -95,6 +95,13 @@ describe('LoanEntryPage', () => {
     });
   });
 
+  it('hides Add Loan from a manager but keeps Make Payment', async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'MANAGER', username: 'manager1' }));
+    renderWithProviders(<LoanEntryPage />);
+    await waitFor(() => expect(screen.getByText('Make Payment')).toBeInTheDocument());
+    expect(screen.queryByText('Add Loan')).not.toBeInTheDocument();
+  });
+
   it('denies access to staff users', () => {
     localStorage.setItem('user', JSON.stringify({ role: 'STAFF', username: 'staff1' }));
     renderWithProviders(<LoanEntryPage />);

@@ -51,9 +51,9 @@ public class FuelPriceController {
             @RequestBody FuelPriceRequest request,
             @AuthenticationPrincipal User user) {
 
-        if (user == null || !user.isAdmin()) {
+        if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Admin access required"));
+                    .body(Map.of("message", "Admin or manager access required"));
         }
         return ResponseEntity.ok(fuelPriceService.setPrice(request, user));
     }
@@ -63,18 +63,18 @@ public class FuelPriceController {
             @RequestBody Map<String, Object> request,
             @AuthenticationPrincipal User user) {
 
-        if (user == null || !user.isAdmin()) {
+        if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Admin access required"));
+                    .body(Map.of("message", "Admin or manager access required"));
         }
         return ResponseEntity.ok(fuelPriceService.setBulkPrices(request, user));
     }
 
     @PostMapping("/fetch-noc")
     public ResponseEntity<?> fetchNocPrices(@AuthenticationPrincipal User user) {
-        if (user == null || !user.isAdmin()) {
+        if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Admin access required"));
+                    .body(Map.of("message", "Admin or manager access required"));
         }
         return ResponseEntity.ok(fuelPriceService.fetchNocPrices());
     }

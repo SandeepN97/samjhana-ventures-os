@@ -21,6 +21,16 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
+    private static final Map<String, String> LOAN_ADMIN_ONLY =
+            Map.of("message", "Only an admin can add a new loan or change loan entries");
+
+    /** The one loan entry a manager may add: money paid to the bank (type SALE) marked as a PAYMENT. */
+    private static boolean isLoanPayment(TransactionRequest request) {
+        if (!"SALE".equalsIgnoreCase(request.getTransactionType())) return false;
+        Map<String, Object> fields = request.getCustomFields();
+        return fields != null && "PAYMENT".equals(String.valueOf(fields.get("loanType")));
+    }
+
     @PostMapping
     public ResponseEntity<?> create(
             @RequestBody TransactionRequest request,
@@ -30,9 +40,15 @@ public class TransactionController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Authentication required"));
         }
-        if ("loan".equalsIgnoreCase(request.getBusinessCode()) && user.getRole() == User.UserRole.STAFF) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Staff members do not have access to loan management"));
+        if ("loan".equalsIgnoreCase(request.getBusinessCode())) {
+            if (user.getRole() == User.UserRole.STAFF) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Staff members do not have access to loan management"));
+            }
+            // A manager records payments made to the bank. A new loan, or anything else on a loan, is the admin's.
+            if (!user.isAdmin() && !isLoanPayment(request)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LOAN_ADMIN_ONLY);
+            }
         }
 
         TransactionResponse response = transactionService.create(request, user);
@@ -61,6 +77,9 @@ public class TransactionController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required"));
         }
+        if (!user.isAdmin() && transactionService.isLoan(UUID.fromString(id))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LOAN_ADMIN_ONLY);
+        }
         return ResponseEntity.ok(transactionService.update(UUID.fromString(id), request, user));
     }
 
@@ -75,6 +94,9 @@ public class TransactionController {
         if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required to approve transactions"));
+        }
+        if (!user.isAdmin() && transactionService.isLoan(UUID.fromString(id))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LOAN_ADMIN_ONLY);
         }
         return ResponseEntity.ok(transactionService.approve(UUID.fromString(id), user));
     }
@@ -91,6 +113,9 @@ public class TransactionController {
         if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required to reject transactions"));
+        }
+        if (!user.isAdmin() && transactionService.isLoan(UUID.fromString(id))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(LOAN_ADMIN_ONLY);
         }
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(transactionService.reject(UUID.fromString(id), reason, user));

@@ -22,6 +22,8 @@ import {
 import api from '../../utils/api';
 import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
 import SearchableSelect from '../../components/SearchableSelect';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import TemporaryPasswordDialog from '../../components/admin/TemporaryPasswordDialog';
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
@@ -84,6 +86,32 @@ export default function SettingsPage() {
         .catch(() => setDemoResetAvailable(false));
     }
   }, [isAdmin]);
+
+  const [resetTarget, setResetTarget] = useState(null);      // person we are asking about
+  const [temporaryPassword, setTemporaryPassword] = useState(null); // { name, password } shown once
+
+  const nameOf = (u) => u.fullName || u.username;
+
+  const handleResetPassword = async () => {
+    const target = resetTarget;
+    setResetTarget(null);
+    try {
+      const res = await api.post(`/api/admin/users/${target.username}/reset-password`, null, { skipAuthRedirect: true });
+      setTemporaryPassword({ name: nameOf(target), password: res.data.temporaryPassword });
+    } catch (err) {
+      showToast(err.response?.data?.message || t('settings.resetPasswordFailed'), 'error');
+    }
+  };
+
+  const handleChangeRole = async (target, role) => {
+    try {
+      await api.put(`/api/admin/users/${target.username}/role`, { role }, { skipAuthRedirect: true });
+      showToast(t('settings.roleChanged'), 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || t('settings.roleChangeFailed'), 'error');
+    }
+    fetchUsers();
+  };
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -534,8 +562,8 @@ export default function SettingsPage() {
 
             {/* User Management - Admin Only */}
             {isAdmin && (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+              <div className="bg-white rounded-xl shadow-sm">
+                <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl flex items-center justify-between">
                   <h2 className="font-bold text-gray-700 text-sm uppercase">
                     {t('settings.userManagement')}
                   </h2>
@@ -744,17 +772,39 @@ export default function SettingsPage() {
                           <p className="font-medium text-gray-800 truncate">{u.fullName || u.username}</p>
                           <p className="text-xs text-gray-500 truncate">@{u.username}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`text-xs px-2 py-1 rounded-full ${getRoleColor(u.role)}`}>
-                            {getRoleLabel(u.role)}
-                          </span>
-                          {u.role !== 'ADMIN' && (
-                            <button
-                              onClick={() => handleDeleteUser(u.username)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                        <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+                          {u.id !== user.id && u.username !== user.username ? (
+                            <>
+                              <select
+                                value={u.role}
+                                onChange={(e) => handleChangeRole(u, e.target.value)}
+                                aria-label={t('settings.changeRole', { name: nameOf(u) })}
+                                className={`min-h-[44px] rounded-lg border px-2 text-sm ${getRoleColor(u.role)}`}
+                              >
+                                {['STAFF', 'MANAGER', 'ADMIN'].map((r) => (
+                                  <option key={r} value={r}>{getRoleLabel(r)}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => setResetTarget(u)}
+                                className="min-h-[44px] rounded-lg border-2 border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                              >
+                                {t('settings.resetPassword')}
+                              </button>
+                              {u.role !== 'ADMIN' && (
+                                <button
+                                  onClick={() => handleDeleteUser(u.username)}
+                                  aria-label={`Deactivate ${u.username}`}
+                                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-red-500 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <span className={`text-xs px-2 py-1 rounded-full ${getRoleColor(u.role)}`}>
+                              {getRoleLabel(u.role)}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -762,6 +812,23 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {resetTarget && (
+              <ConfirmDialog
+                message={t('settings.resetPasswordConfirm', { name: nameOf(resetTarget) })}
+                confirmLabel={t('settings.resetPasswordYes')}
+                cancelLabel={t('settings.keep')}
+                onConfirm={handleResetPassword}
+                onCancel={() => setResetTarget(null)}
+              />
+            )}
+            {temporaryPassword && (
+              <TemporaryPasswordDialog
+                name={temporaryPassword.name}
+                password={temporaryPassword.password}
+                onClose={() => setTemporaryPassword(null)}
+              />
             )}
 
             {/* Support */}

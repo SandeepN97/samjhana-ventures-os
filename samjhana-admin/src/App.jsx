@@ -54,10 +54,28 @@ import RentalTenantsPage from './pages/rental/RentalTenantsPage';
 import LoanEntryPage from './pages/loans/LoanEntryPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
+import ChangePasswordRequiredPage from './pages/shared/ChangePasswordRequiredPage';
 
-function PrivateRoute({ children }) {
+function signedInUser() {
+  try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+}
+
+/**
+ * A page for signed-in people. With `roles`, only those roles may open it by address as well as by button
+ * (the server refuses the data either way). Someone whose password an admin just reset is sent to choose
+ * their own before anything else.
+ */
+export function PrivateRoute({ children, roles }) {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+  const user = signedInUser();
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
+}
+
+function RequireSignIn({ children }) {
+  return localStorage.getItem('token') ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -165,7 +183,7 @@ export default function App() {
         <Route
           path="/furniture/website"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <BusinessWebsitePage business="furniture" />
             </PrivateRoute>
           }
@@ -173,7 +191,7 @@ export default function App() {
         <Route
           path="/beekeeping/website"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <BusinessWebsitePage business="beekeeping" />
             </PrivateRoute>
           }
@@ -181,7 +199,7 @@ export default function App() {
         <Route
           path="/website"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <WebsiteContentPage />
             </PrivateRoute>
           }
@@ -213,7 +231,7 @@ export default function App() {
         <Route
           path="/entry/loan"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <LoanEntryPage />
             </PrivateRoute>
           }
@@ -247,7 +265,7 @@ export default function App() {
         <Route
           path="/pending"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <PendingReviewPage />
             </PrivateRoute>
           }
@@ -263,7 +281,7 @@ export default function App() {
         <Route
           path="/fuel-orders"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <FuelOrderPage />
             </PrivateRoute>
           }
@@ -271,7 +289,7 @@ export default function App() {
         <Route
           path="/staff"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN']}>
               <StaffManagementPage />
             </PrivateRoute>
           }
@@ -279,7 +297,7 @@ export default function App() {
         <Route
           path="/ev-vehicles"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN']}>
               <EvVehiclePage />
             </PrivateRoute>
           }
@@ -295,7 +313,7 @@ export default function App() {
         <Route
           path="/ev-electricity"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN', 'MANAGER']}>
               <EvElectricityPage />
             </PrivateRoute>
           }
@@ -303,7 +321,7 @@ export default function App() {
         <Route
           path="/rental-properties"
           element={
-            <PrivateRoute>
+            <PrivateRoute roles={['ADMIN']}>
               <RentalPropertyPage />
             </PrivateRoute>
           }
@@ -324,6 +342,7 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route path="/change-password" element={<RequireSignIn><ChangePasswordRequiredPage /></RequireSignIn>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>
