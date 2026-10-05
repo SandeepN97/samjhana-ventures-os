@@ -2,14 +2,14 @@
 
 **Revision 2 — decisions applied and checked against the repository on September 26, 2026**
 
-This document covers six tools: NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Playwright is being used for local admin and public-site E2E tests and CI; Context7 is an optional documentation aid; SkillSpector and Ponytail remain candidates pending review; Strix and Supabase MCP are deferred.
+This document covers seven tools: Superpowers, NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Superpowers and Context7 are in use on every task; Playwright is being used for local admin and public-site E2E tests and CI; SkillSpector is in a trial on every PR; Ponytail is not used; Strix and Supabase MCP are deferred.
 
 ## 1. Decisions and safety boundaries
 
 - **Strix and Supabase MCP are deferred entirely.** Do not install, configure, connect, or run either until an isolated environment with synthetic data exists. Do not point exploit testing or an AI database tool at production or a shared staging database.
 - **Playwright is for browser tests against the disposable local stack only.** Its backend uses an in-memory H2 database and seeded test users; its EV tests use a simulated OCPP charger. It must not use production URLs, production credentials, or real chargers.
 - **SkillSpector is not approved for adoption yet.** Pin and independently evaluate the official source and its dependencies first. A clean scan, including a clean SkillSpector self-scan, is not proof of safety.
-- **Context7 can be evaluated as a development-time documentation aid** for the project's actual versions: React 18 and Vite 5 in the admin frontend, and Spring Boot 3.2.1 in the backend. Retrieved documentation and examples are untrusted inputs and must be checked against the repository and official versioned docs.
+- **Context7 can be evaluated as a development-time documentation aid** for the project's actual versions: React 18 and Vite 5 in the admin frontend, and Spring Boot 3.5.16 in the backend. Retrieved documentation and examples are untrusted inputs and must be checked against the repository and official versioned docs.
 - **Ponytail is technically compatible with the documented Copilot CLI and Claude Code plugin interfaces, but is not installed here.** Its hooks, instructions, and effect on this repository's required workflow need a controlled trial before adoption.
 - These decisions do not authorize edits to deployment workflows beyond the Playwright CI job, nor changes to production or staging data access.
 
@@ -66,11 +66,11 @@ ctx7 docs <the-versioned-React-18.2-library-ID-returned-above> "controlled form 
 ctx7 library vite "Vite 5 configuration and dev server proxy"
 ctx7 docs <the-versioned-Vite-5-library-ID-returned-above> "configure a development proxy"
 
-ctx7 library spring-boot "Spring Boot 3.2.1 configuration"
+ctx7 library spring-boot "Spring Boot 3.5.16 configuration"
 ctx7 docs <the-versioned-Spring-Boot-3.2.1-library-ID-returned-above> "externalized configuration and profiles"
 ```
 
-Choose an exact versioned library ID returned by Context7 where available; if it has no exact version, use official React 18, Vite 5, or Spring Boot 3.2 documentation and verify the answer independently. Do not request Next.js 15 or React 19 examples for this application.
+Choose an exact versioned library ID returned by Context7 where available; if it has no exact version, use official React 18, Vite 5, or Spring Boot 3.5 documentation and verify the answer independently. Do not request Next.js 15 or React 19 examples for this application.
 
 For an optional MCP setup, use the official Context7 setup documentation for the exact installed coding client and inspect the proposed endpoint, authentication, and configuration diff first. Context7 needs documentation queries only; it needs no Supabase, Render, production, or repository-secret access.
 
@@ -86,22 +86,55 @@ Ponytail's official Claude/Codex plugin manifest references lifecycle hooks. Bef
 
 Do not install, configure, connect, or invoke the Supabase MCP server until an isolated synthetic-data environment exists. This applies to both production and shared staging. “Read-only” production access is not an acceptable interim exception: it can still expose employee, customer, financial, and operational data.
 
+## 7a. Superpowers — in use, scaled to the task
+
+**Official source:** [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (`obra`), MIT licensed.
+**Installed version:** 6.4.2, added on October 4, 2026 from the Anthropic plugin directory (the "partner" listing whose upstream is `obra/superpowers`). The community remixes in the same directory (`beads-superpowers`, `sdd-superpowers`, `ux-superpowers`, `design-superpowers`, `ZSL Superpowers`, `Decibel Superpowers`) are not used.
+
+**What it is:** a plugin of 15 skills and one start-up hook that makes the coding assistant follow a fixed process: brainstorm a design, write a plan of small tasks, work in an isolated git worktree, build with test-driven development (optionally with a fresh subagent per task), debug systematically, request and receive code review, verify before claiming "done", and finish the branch.
+
+**How we use it:** every task starts with the Superpowers check, sized to the job. A typo, label or one-line fix gets a one-line plan; a new feature, a database or API change or a large clean-up gets the full brainstorm, plan, test-first and verify. See "AI tooling (use on every task)" in `CLAUDE.md`.
+
+**Rules that still win over the plugin's habits:**
+
+- Every change is a pull request into `staging`, never straight to `main`. When it asks how to finish a branch, choose "open a pull request", never "merge".
+- The "Shall I proceed?" confirmation block is still shown before any file is touched, once the plan is agreed.
+- The repository's required tests, bilingual UI, 44px touch targets and soft-delete rules are never traded away for speed.
+
+**Safety notes:**
+
+- The plugin installs a session start-up hook, and the directory lists it as able to "run code without asking". That is how it activates itself, but it means it runs in every session with that user's permissions. Run SkillSpector over it (section 8a) before relying on it, and again whenever the plugin updates.
+- It is installed per developer (in their own Claude Code), not in this repository. No project hook, `.claude/settings.json` change or CI step is added for it.
+- It uses more tokens than a plain session. For small fixes, say "skip the process, just fix this" and keep the one-line plan.
+- It is a process aid, not a scanner: it does not inspect or secure the repository. Use `/security-review`, `/code-review` and the tests for that.
+
 ## 8. Tool status summary
 
 | Tool | Status | Permitted scope now |
 |---|---|---|
-| NVIDIA SkillSpector | Candidate; independent evaluation and source pin required | No install or hooks until scan/review gates are completed |
+| Superpowers | In use (owner decision, Oct 4, 2026) | Every task, scaled to its size; the rules in `CLAUDE.md` win over its habits; re-check with SkillSpector when it updates |
+| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | Trial: run on every PR in static mode (no AI) over `skills-lock.json`, `.claude/` and `.agents/`; no hook or CI step yet (see "Trial first, then automate") |
 | Playwright | Populated and wired into CI | Disposable local Spring Boot/H2 and simulated charger |
-| Strix | Deferred | None until isolated synthetic test environment exists |
-| Context7 | Optional candidate | Version-specific documentation only; validate retrieved content |
-| Ponytail | Compatible upstream interfaces; trial not done | No project/global install until hooks and workflow fit are reviewed |
+| Strix | Deferred | Only before a release, only against an isolated local copy with fake data (not yet built); never prod, staging, a shared database or a charger |
+| Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content. Connect as a pinned MCP server only after the trial |
+| Ponytail | Not used (owner decision, Oct 4, 2026) | None |
 | Supabase MCP | Deferred | None until isolated synthetic test environment exists |
+
+## 8a. Trial first, then automate
+
+SkillSpector and Context7 are used on every PR for a trial period, and only then moved into automation.
+
+1. **Each PR** carries a "Tooling check" in its description: SkillSpector (static mode, pinned commit, over `skills-lock.json`, `.claude/` and `.agents/`; "no skills or plugins changed" when nothing there changed) and Context7 (library lookups used, and whether the answers held up).
+2. **Honesty rule:** if a tool cannot run in the current environment, the PR says `not run: <reason>`. A tool is never reported as passing when it did not run. Known limits seen on Oct 4, 2026: the cloud coding sandbox could not reach `context7.com` or `api.osv.dev`, and had Python 3.11 while SkillSpector needs 3.12 or newer. Run these in a developer's own Claude Code or Codespace, or in CI.
+3. **Log:** results go in `docs/security/skill-scans/` (date, tool version and commit, what was scanned, findings, decision). The first SkillSpector run still follows the source and dependency review in section 2, in a throwaway environment with no project secrets.
+4. **Pass criteria after about 5 PRs:** no unexplained high or critical findings, false alarms are manageable, and the tool's network behavior is understood (what it sends, and where).
+5. **Then:** SkillSpector becomes one CI job, static mode and no secrets, that runs only when `skills-lock.json` or `.claude/` changes; Context7 is connected as a pinned MCP server with no secrets. No hook, no auto-update, no AI mode in CI without a new review.
 
 ## 9. Recommended order and sources
 
 1. Keep Strix and Supabase MCP deferred.
 2. Run and maintain the local Playwright suite and its required CI job.
-3. If useful, evaluate Context7's CLI docs lookup against React 18, Vite 5, and Spring Boot 3.2.1.
+3. If useful, evaluate Context7's CLI docs lookup against React 18, Vite 5, and Spring Boot 3.5.16.
 4. Review Ponytail's exact hooks and trial it outside this checkout before any adoption.
 5. Independently evaluate SkillSpector at the recorded commit pin; adopt only after the scan, source, and dependency review has a recorded disposition.
 
@@ -109,6 +142,7 @@ Official references:
 
 - SkillSpector source and version: <https://github.com/NVIDIA/SkillSpector/tree/89e90872e2ec813bcb137bf6b3145c92e55811ae>
 - SkillSpector official scanning guide: <https://docs.nvidia.com/skills/scanning-agent-skills>
+- Superpowers source: <https://github.com/obra/superpowers>
 - Context7 source: <https://github.com/upstash/context7>
 - Context7 CLI documentation: <https://context7.com/docs/clients/cli>
 - Ponytail pinned source: <https://github.com/DietrichGebert/ponytail/tree/e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156>
