@@ -15,6 +15,7 @@ public class UserDto {
     private String fullNameNepali;
     private String role;
     private String locale;
+    private boolean mustChangePassword;
 
     public static UserDto from(User user) {
         return UserDto.builder()
@@ -24,6 +25,7 @@ public class UserDto {
                 .fullNameNepali(user.getFullNameNepali() != null ? user.getFullNameNepali() : "")
                 .role(user.getRole().name())
                 .locale(user.getLocale())
+                .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
                 .build();
     }
 }

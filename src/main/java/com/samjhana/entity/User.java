@@ -2,6 +2,7 @@ package com.samjhana.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
@@ -65,6 +66,12 @@ public class User implements UserDetails {
     @Column(nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    /** Set when an admin resets the password: the person must choose their own before doing anything else. */
+    @Column(name = "must_change_password", nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private Boolean mustChangePassword = false;
 
     @Column
     private LocalDateTime lastLoginAt;
