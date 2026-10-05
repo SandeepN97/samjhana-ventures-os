@@ -1,0 +1,5 @@
+# False alarms, reviewed: not secrets.
+# The list of letters and digits a temporary password is picked from (AdminController).
+3ecf5189bb9e50eb1a4a1d5ef294aea3cc32fdf9:src/main/java/com/samjhana/controller/AdminController.java:generic-api-key:125
+# A made-up password used only in a unit test.
+f7a28e90ca4ede164af302b1c326a7c8fc17e50a:samjhana-admin/src/pages/admin/SettingsPage.userManagement.test.jsx:generic-api-key:42
