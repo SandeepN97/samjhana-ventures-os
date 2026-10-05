@@ -34,6 +34,7 @@ public class DailyReportService {
                 .findByTransactionDateBetweenOrderByTransactionDateDesc(date, date)
                 .stream()
                 .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
+                .filter(t -> !TransactionVisibility.isLoanAwaitingReview(t))
                 .filter(t -> t.getTransactionType() == Transaction.TransactionType.SALE)
                 .toList();
 

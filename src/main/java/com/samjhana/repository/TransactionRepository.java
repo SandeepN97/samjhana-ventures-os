@@ -16,6 +16,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.business b JOIN FETCH t.enteredBy WHERE b.code = :code ORDER BY t.transactionDate DESC")
     List<Transaction> findByBusinessCodeOrderByTransactionDateDesc(@Param("code") String businessCode);
 
+    long countByBusiness_CodeAndStatus(String businessCode, Transaction.TransactionStatus status);
+
     @Query("SELECT t FROM Transaction t JOIN FETCH t.business JOIN FETCH t.enteredBy ORDER BY t.createdAt DESC")
     List<Transaction> findAllWithDetails();
 

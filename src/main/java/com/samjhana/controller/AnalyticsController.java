@@ -68,6 +68,7 @@ public class AnalyticsController {
         // else, so their totals leave loans out and the loan entry is not in their response at all.
         List<Transaction> transactions = allTransactions.stream()
                 .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
+                .filter(t -> !TransactionVisibility.isLoanAwaitingReview(t))   // a payment to the bank counts only once an admin approves it
                 .filter(t -> TransactionVisibility.canSee(t, user))
                 .toList();
 
@@ -138,6 +139,7 @@ public class AnalyticsController {
 
             List<Transaction> loanTxns = allLoanTxns.stream()
                     .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
+                    .filter(t -> !TransactionVisibility.isLoanAwaitingReview(t))
                     .filter(t -> "loan".equals(t.getBusiness().getCode()))
                     .toList();
 
@@ -379,4 +381,5 @@ public class AnalyticsController {
             return null;
         }
     }
+
 }
