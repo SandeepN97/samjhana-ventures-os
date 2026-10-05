@@ -43,6 +43,7 @@ export default function EVEntryPage() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canManageVehicles = user.role === 'ADMIN';   // only admins change the vehicle catalog
 
   const [tab, setTab] = useState('start');
   const [chargers, setChargers] = useState([]);
@@ -268,7 +269,7 @@ export default function EVEntryPage() {
         unit="ev"
         icon={Zap}
         title={headerTitle}
-        actions={isAdmin && (
+        actions={canManageVehicles && (
           <HeaderAction unit="ev" icon={Settings} label={t('evLive.vehicles')} onClick={() => navigate('/ev-vehicles')} />
         )}
       />

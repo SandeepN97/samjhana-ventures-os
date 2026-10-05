@@ -19,6 +19,7 @@ export default function EVManualEntryPage() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
+  const canManageVehicles = user.role === 'ADMIN';   // only admins change the vehicle catalog
   const canEditNeaRate = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { toasts, showToast, removeToast } = useToast();
 
@@ -217,7 +218,7 @@ export default function EVManualEntryPage() {
         unit="ev"
         icon={Zap}
         title={t('ev.title')}
-        actions={isAdmin && (
+        actions={canManageVehicles && (
           <HeaderAction unit="ev" icon={Settings} label={t('ev.manageVehicles')} onClick={() => navigate('/ev-vehicles')} />
         )}
       />
@@ -287,7 +288,7 @@ export default function EVManualEntryPage() {
       {/* No vehicles warning */}
       {!vehicleLoadError && vehicles.length === 0 && (
         <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
-          {isAdmin ? t('ev.noVehiclesAdmin') : t('ev.noVehiclesStaff')}
+          {canManageVehicles ? t('ev.noVehiclesAdmin') : t('ev.noVehiclesStaff')}
         </div>
       )}
 

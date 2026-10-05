@@ -189,7 +189,13 @@ public class AuthController {
                     .body(Map.of("message", "New password must be at least 8 characters"));
         }
 
+        if (request.getNewPassword().equals(request.getCurrentPassword())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "The new password must be different from the current one"));
+        }
+
         targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        targetUser.setMustChangePassword(false);   // an admin's temporary password is now replaced
         userRepository.save(targetUser);
         loginAttempts.recordSuccess(guessedAccount, address);
 

@@ -2,6 +2,9 @@ package com.samjhana.controller;
 
 import com.samjhana.dto.CreateUserRequest;
 import com.samjhana.dto.UserDto;
+import com.samjhana.entity.AuditLog;
+import com.samjhana.repository.AuditLogRepository;
+import com.samjhana.security.LoginAttemptService;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.service.DemoDataSeederService;
@@ -14,6 +17,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,6 +32,8 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogRepository auditLogRepository;
+    private final LoginAttemptService loginAttempts;
     /** Empty in staging and prod: the demo reset bean only exists in dev. */
     private final ObjectProvider<DemoDataSeederService> demoDataSeederService;
 
@@ -111,6 +119,100 @@ public class AdminController {
                 "message", "User created successfully",
                 "user", UserDto.from(user)
         ));
+    }
+
+    /** Letters and digits without the look-alikes (0/O, 1/l/I), so a temporary password is easy to read out. */
+    private static final String TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    private static final int TEMP_PASSWORD_LENGTH = 16;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    private User findUser(String username) {
+        String trimmed = username == null ? "" : username.trim();
+        return userRepository.findByUsername(trimmed)
+                .or(() -> userRepository.findByUsername(trimmed.toLowerCase(Locale.ROOT)))
+                .orElse(null);
+    }
+
+    /**
+     * Admin resets someone's forgotten password. The server makes a random temporary password and returns it
+     * once; the person must choose their own at their next login (enforced in JwtAuthFilter). Their old
+     * sessions end because the password changed. The password itself is never stored or logged.
+     */
+    @PostMapping("/users/{username}/reset-password")
+    public ResponseEntity<?> resetPassword(@PathVariable String username,
+                                           @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null || !currentUser.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Admin access required"));
+        }
+        User target = findUser(username);
+        if (target == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+        }
+        if (target.getId().equals(currentUser.getId())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Use Change Password to change your own password"));
+        }
+        if (!Boolean.TRUE.equals(target.getIsActive())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "This user is deactivated"));
+        }
+
+        StringBuilder temporary = new StringBuilder();
+        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
+            temporary.append(TEMP_PASSWORD_ALPHABET.charAt(RANDOM.nextInt(TEMP_PASSWORD_ALPHABET.length())));
+        }
+        target.setPasswordHash(passwordEncoder.encode(temporary.toString()));
+        target.setMustChangePassword(true);
+        userRepository.save(target);
+        loginAttempts.recordSuccess(target.getUsername());   // they may have been blocked for too many wrong tries
+
+        AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
+                null, "{\"passwordReset\":true,\"mustChangePassword\":true}");
+        entry.setDescription("Password reset for " + target.getUsername() + " by " + currentUser.getUsername());
+        auditLogRepository.save(entry);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Password reset. Give this temporary password to the user. It is shown only once.");
+        body.put("username", target.getUsername());
+        body.put("temporaryPassword", temporary.toString());
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(body);
+    }
+
+    /** Admin changes another user's role. Takes effect on that user's next request (roles are read per request). */
+    @PutMapping("/users/{username}/role")
+    public ResponseEntity<?> changeRole(@PathVariable String username,
+                                        @RequestBody Map<String, String> body,
+                                        @AuthenticationPrincipal User currentUser) {
+        if (currentUser == null || !currentUser.isAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Admin access required"));
+        }
+        User target = findUser(username);
+        if (target == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+        }
+        if (target.getId().equals(currentUser.getId())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "You cannot change your own role"));
+        }
+        String requested = body == null || body.get("role") == null ? "" : body.get("role").trim().toUpperCase(Locale.ROOT);
+        User.UserRole newRole;
+        try {
+            newRole = User.UserRole.valueOf(requested);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid role. Must be ADMIN, MANAGER, or STAFF"));
+        }
+        User.UserRole oldRole = target.getRole();
+        if (oldRole == newRole) {
+            return ResponseEntity.badRequest().body(Map.of("message", "That user already has this role"));
+        }
+        target.setRole(newRole);
+        userRepository.save(target);
+
+        AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
+                "{\"role\":\"" + oldRole + "\"}", "{\"role\":\"" + newRole + "\"}");
+        entry.setDescription("Role of " + target.getUsername() + " changed from " + oldRole + " to " + newRole
+                + " by " + currentUser.getUsername());
+        auditLogRepository.save(entry);
+
+        return ResponseEntity.ok(Map.of("message", "Role updated", "user", UserDto.from(target)));
     }
 
     @DeleteMapping("/users/{username}")
