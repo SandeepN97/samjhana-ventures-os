@@ -66,13 +66,22 @@ public class DailyReportController {
         return ResponseEntity.ok(dailyReportService.closeDay(closeDate, cashCounted, notes, user));
     }
 
+    /** The whole history of closed days is for managers and admins; staff only close today. */
     @GetMapping
-    public ResponseEntity<?> list() {
+    public ResponseEntity<?> list(@AuthenticationPrincipal User user) {
+        if (user == null || !user.canManage()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin or manager access required"));
+        }
         return ResponseEntity.ok(dailyReportService.listAll());
     }
 
     @GetMapping("/{date}")
-    public ResponseEntity<?> getByDate(@PathVariable String date) {
+    public ResponseEntity<?> getByDate(@PathVariable String date, @AuthenticationPrincipal User user) {
+        if (user == null || !user.canManage()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Admin or manager access required"));
+        }
         return dailyReportService.getByDate(LocalDate.parse(date))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

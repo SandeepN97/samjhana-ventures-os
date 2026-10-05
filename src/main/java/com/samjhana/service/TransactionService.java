@@ -253,6 +253,13 @@ public class TransactionService {
                 .toList();
     }
 
+    /** True when this entry belongs to the bank-loan business. Used to keep loan changes admin-only. */
+    public boolean isLoan(UUID id) {
+        return transactionRepository.findById(id)
+                .map(t -> t.getBusiness() != null && "loan".equalsIgnoreCase(t.getBusiness().getCode()))
+                .orElse(false);
+    }
+
     public TransactionResponse get(UUID id, User viewer) {
         return transactionRepository.findById(id)
                 .filter(t -> TransactionVisibility.canSee(t, viewer))   // 404, not 403: don't confirm it exists
