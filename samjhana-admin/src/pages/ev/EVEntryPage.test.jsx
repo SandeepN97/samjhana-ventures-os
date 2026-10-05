@@ -136,15 +136,15 @@ describe('EVEntryPage', () => {
       expect(screen.getByTestId('nepal-time').textContent).not.toMatch(/[0-9]/);
     });
 
-    it.each(['ADMIN', 'MANAGER'])('shows the Vehicles button to %s', async (role) => {
-      setRole(role);
+    it('shows the Vehicles button to an admin', async () => {
+      setRole('ADMIN');
       await renderPage();
       await userEvent.click(screen.getByRole('button', { name: /Vehicles/ }));
       expect(mockNavigate).toHaveBeenCalledWith('/ev-vehicles');
     });
 
-    it('hides the Vehicles button from staff', async () => {
-      setRole('STAFF');
+    it.each(['MANAGER', 'STAFF'])('hides the Vehicles button from %s (admin only)', async (role) => {
+      setRole(role);
       await renderPage();
       expect(screen.queryByRole('button', { name: /Vehicles/ })).toBeNull();
     });

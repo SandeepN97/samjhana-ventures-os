@@ -290,14 +290,16 @@ export default function LoanEntryPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setMode('add_loan')}
-              className="bg-loans-500 hover:bg-loans-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              {t('loan.addLoan')}
-            </button>
+          <div className={`grid gap-3 ${user.role === 'ADMIN' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {user.role === 'ADMIN' && (
+              <button
+                onClick={() => setMode('add_loan')}
+                className="bg-loans-500 hover:bg-loans-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                {t('loan.addLoan')}
+              </button>
+            )}
             <button
               onClick={() => setMode('make_payment')}
               disabled={loans.length === 0}
