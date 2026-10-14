@@ -9,6 +9,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,11 +28,25 @@ import static org.mockito.Mockito.mock;
  */
 class PublishedCredentialGuardConfigurationTest {
 
+    /**
+     * An environment that sees only what the test gives it. CI runs every backend job with
+     * {@code SPRING_PROFILES_ACTIVE=test}, and the guard is deliberately not loaded in the test profile, so the real
+     * system properties and environment variables must not leak in.
+     */
+    private static StandardEnvironment isolatedEnvironment(Map<String, Object> environmentVariables) {
+        StandardEnvironment environment = new StandardEnvironment();
+        environment.getPropertySources().replace(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME,
+                new MapPropertySource(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME, Map.of()));
+        environment.getPropertySources().replace(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                new SystemEnvironmentPropertySource(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                        environmentVariables));
+        return environment;
+    }
+
     @Test
     void shouldReadTheExtraPublishedPasswords_fromTheRenderEnvironmentVariable() {
-        StandardEnvironment environment = new StandardEnvironment();
-        environment.getPropertySources().replace("systemEnvironment", new SystemEnvironmentPropertySource(
-                "systemEnvironment", Map.of("SAMJHANA_SECURITY_PUBLISHEDPASSWORDS", "x1-legacy,x2-legacy")));
+        StandardEnvironment environment =
+                isolatedEnvironment(Map.of("SAMJHANA_SECURITY_PUBLISHEDPASSWORDS", "x1-legacy,x2-legacy"));
 
         try (ConfigurableApplicationContext context = new SpringApplicationBuilder(Wiring.class)
                 .web(WebApplicationType.NONE).bannerMode(Banner.Mode.OFF).environment(environment).run()) {
@@ -44,7 +59,7 @@ class PublishedCredentialGuardConfigurationTest {
     @Test
     void shouldTreatTheExtraPublishedPasswordsAsEmpty_whenNothingIsConfigured() {
         try (ConfigurableApplicationContext context = new SpringApplicationBuilder(Wiring.class)
-                .web(WebApplicationType.NONE).bannerMode(Banner.Mode.OFF).environment(new StandardEnvironment()).run()) {
+                .web(WebApplicationType.NONE).bannerMode(Banner.Mode.OFF).environment(isolatedEnvironment(Map.of())).run()) {
             PublishedCredentialGuard guard = context.getBean(PublishedCredentialGuard.class);
 
             assertEquals("", ReflectionTestUtils.getField(guard, "extraPublishedPasswords"));
