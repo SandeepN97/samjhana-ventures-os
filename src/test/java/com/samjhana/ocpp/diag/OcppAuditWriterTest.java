@@ -147,6 +147,46 @@ class OcppAuditWriterTest {
         assertThat(writer.flush()).isEqualTo(1);
     }
 
+    @Test
+    void shouldMakeAManualFlushWaitForAnInsertAlreadyInFlight_andNeverBlockEnqueue() throws Exception {
+        java.util.concurrent.CountDownLatch insertStarted = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch releaseInsert = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicBoolean insertCommitted = new java.util.concurrent.atomic.AtomicBoolean();
+        when(messages.saveAll(anyList())).thenAnswer(invocation -> {
+            insertStarted.countDown();
+            releaseInsert.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            insertCommitted.set(true);
+            return invocation.getArgument(0);
+        });
+        writer.enqueue(message("TransactionEvent"));
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            // the "background thread": takes the batch off the queue and starts a slow insert
+            java.util.concurrent.Future<Integer> background = pool.submit(writer::flush);
+            assertThat(insertStarted.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            assertThat(writer.queueSize()).as("the batch is out of the queue, the insert is still running").isZero();
+
+            // a caller that enqueues meanwhile is not held up by the in-flight insert
+            long started = System.nanoTime();
+            writer.enqueue(message("Heartbeat"));
+            assertThat((System.nanoTime() - started) / 1_000_000).isLessThan(500);
+
+            // a manual flush (a test, or shutdown) must wait for that insert instead of returning early
+            java.util.concurrent.Future<Integer> manual = pool.submit(writer::flush);
+            Thread.sleep(300);
+            assertThat(manual.isDone()).as("manual flush must wait while an insert is in flight").isFalse();
+            assertThat(insertCommitted).isFalse();
+
+            releaseInsert.countDown();
+            manual.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(background.get(5, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(1);
+            assertThat(insertCommitted).isTrue();
+        } finally {
+            releaseInsert.countDown();
+            pool.shutdownNow();
+        }
+    }
+
     private static OcppMessageLog message(String action) {
         return OcppMessageLog.builder().chargePointId("CP").direction("IN").action(action).payload("[]")
                 .payloadSize(2).receivedAt(Instant.now()).build();
