@@ -121,6 +121,25 @@ samjhana:
       HD-D140-E-01: ${OCPP_SECRET_HD_D140_E_01:dev-HD-D140-E-01-change-me}
 
 # =============================================================================
+# OCPP diagnostic logging and audit trail (see docs/ocpp-first-connection-runbook.md)
+# Every value can be overridden by an environment variable on the host, e.g. OCPP_LOGGING_COMMAND_TIMEOUT=45s.
+# =============================================================================
+ocpp:
+  logging:
+    heartbeat-full-frames: ${OCPP_LOGGING_HEARTBEAT_FULL_FRAMES:20}
+    heartbeat-summary-every: ${OCPP_LOGGING_HEARTBEAT_SUMMARY_EVERY:10}
+    command-timeout: ${OCPP_LOGGING_COMMAND_TIMEOUT:30s}
+    ping-interval: ${OCPP_LOGGING_PING_INTERVAL:0s}          # 0 = server pings off
+    idle-factor: ${OCPP_LOGGING_IDLE_FACTOR:2.0}
+    heartbeat-interval: ${OCPP_LOGGING_HEARTBEAT_INTERVAL:30s}
+    web-socket-max-message-bytes: ${OCPP_LOGGING_WEB_SOCKET_MAX_MESSAGE_BYTES:131072}
+    persistence:
+      enabled: ${OCPP_LOGGING_PERSISTENCE_ENABLED:true}
+      retention-days: ${OCPP_LOGGING_RETENTION_DAYS:30}
+      queue-capacity: ${OCPP_LOGGING_QUEUE_CAPACITY:10000}
+      db-budget-mb: ${OCPP_LOGGING_DB_BUDGET_MB:500}
+
+# =============================================================================
 # Logging Configuration
 # =============================================================================
 logging:
@@ -129,11 +148,21 @@ logging:
     com.samjhana: INFO
     org.springframework.security: INFO
     org.hibernate.SQL: WARN
+    # OCPP diagnostic loggers: all INFO by default so the first charger test is fully recoverable.
+    # Dial down on the host without a deploy, e.g. LOGGING_LEVEL_COM_SAMJHANA_OCPP_FRAMES=WARN.
+    com.samjhana.ocpp.frames: INFO
+    com.samjhana.ocpp.lifecycle: INFO
+    com.samjhana.ocpp.commands: INFO
+    com.samjhana.ocpp.lockevidence: INFO
+    com.samjhana.ocpp.handshake: INFO
   file:
     name: ./logs/samjhana-os.log
+  # ISO-8601 with milliseconds and UTC offset; the MDC block carries the OCPP context
+  # (cp = charge point id, ws = WebSocket session, msg = OCPP messageId, act = action,
+  # cs = charge session id) and is empty on non-OCPP lines.
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %msg%n"
 
 # =============================================================================
 # Springdoc OpenAPI Configuration

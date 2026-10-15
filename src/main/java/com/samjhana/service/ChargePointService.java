@@ -9,6 +9,8 @@ import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ChargePointService {
+
+    private static final Logger LIFECYCLE = LoggerFactory.getLogger("com.samjhana.ocpp.lifecycle");
 
     private final ChargePointRepository chargePointRepository;
     private final EvLiveWebSocketHandler liveEvents;
@@ -37,6 +41,7 @@ public class ChargePointService {
     @Transactional
     public void markConnected(String code) {
         ChargePoint point = find(code);
+        logConnection(point, ChargePoint.ConnectionStatus.ONLINE, "connected");
         point.setConnectionStatus(ChargePoint.ConnectionStatus.ONLINE);
         point.setLastConnectedAt(LocalDateTime.now());
         point.setLastHeartbeatAt(LocalDateTime.now());
@@ -46,6 +51,7 @@ public class ChargePointService {
     @Transactional
     public void markDisconnected(String code) {
         ChargePoint point = find(code);
+        logConnection(point, ChargePoint.ConnectionStatus.OFFLINE, "disconnected");
         point.setConnectionStatus(ChargePoint.ConnectionStatus.OFFLINE);
         publish(chargePointRepository.save(point));
     }
@@ -53,7 +59,13 @@ public class ChargePointService {
     @Transactional
     public void recordBoot(String code, String serialNumber) {
         ChargePoint point = find(code);
-        if (serialNumber != null && !serialNumber.isBlank()) point.setSerialNumber(serialNumber);
+        if (serialNumber != null && !serialNumber.isBlank()) {
+            if (!serialNumber.equals(point.getSerialNumber())) {
+                LIFECYCLE.info("CHARGE POINT {} serial_number: {} -> {}", code, point.getSerialNumber(), serialNumber);
+            }
+            point.setSerialNumber(serialNumber);
+        }
+        logConnection(point, ChargePoint.ConnectionStatus.ONLINE, "boot");
         point.setConnectionStatus(ChargePoint.ConnectionStatus.ONLINE);
         point.setLastHeartbeatAt(LocalDateTime.now());
         publish(chargePointRepository.save(point));
@@ -62,6 +74,7 @@ public class ChargePointService {
     @Transactional
     public void recordHeartbeat(String code) {
         ChargePoint point = find(code);
+        logConnection(point, ChargePoint.ConnectionStatus.ONLINE, "heartbeat");
         point.setConnectionStatus(ChargePoint.ConnectionStatus.ONLINE);
         point.setLastHeartbeatAt(LocalDateTime.now());
         publish(chargePointRepository.save(point));
@@ -70,9 +83,20 @@ public class ChargePointService {
     @Transactional
     public void recordStatus(String code, String connectorStatus) {
         ChargePoint point = find(code);
+        if (!java.util.Objects.equals(point.getConnectorStatus(), connectorStatus)) {
+            LIFECYCLE.info("CHARGE POINT {} connector_status: {} -> {}", code, point.getConnectorStatus(), connectorStatus);
+        }
         point.setConnectorStatus(connectorStatus);
         point.setLastHeartbeatAt(LocalDateTime.now());
         publish(chargePointRepository.save(point));
+    }
+
+    /** Logs the charge_point connection_status change old -> new (no line when nothing changes). */
+    private void logConnection(ChargePoint point, ChargePoint.ConnectionStatus next, String cause) {
+        if (point.getConnectionStatus() != next) {
+            LIFECYCLE.info("CHARGE POINT {} connection_status: {} -> {} ({})", point.getCode(),
+                    point.getConnectionStatus(), next, cause);
+        }
     }
 
     private ChargePoint find(String code) {
