@@ -57,6 +57,12 @@ public class LoanStrategy implements BusinessCalculationStrategy {
 
     @Override
     public ValidationResult validate(Map<String, Object> customFields) {
+        // The Loans screen sends entries marked with a loanType (a new loan, or a payment to the bank).
+        // Entries without one keep the original rules below.
+        Object loanType = customFields.get("loanType");
+        if ("NEW_LOAN".equals(loanType)) return validateNewLoan(customFields);
+        if ("PAYMENT".equals(loanType)) return validatePayment(customFields);
+
         Map<String, String> errors = new HashMap<>();
         BigDecimal principal = getBigDecimal(customFields, "principal");
         if (principal == null || principal.compareTo(BigDecimal.ZERO) <= 0) {
@@ -73,6 +79,35 @@ public class LoanStrategy implements BusinessCalculationStrategy {
         if (startDate == null) errors.put("startDate", "Loan start date is required");
         String borrowerName = (String) customFields.get("borrowerName");
         if (borrowerName == null || borrowerName.isBlank()) errors.put("borrowerName", "Borrower name is required");
+        return errors.isEmpty() ? ValidationResult.valid() : ValidationResult.invalid(errors);
+    }
+
+    private ValidationResult validateNewLoan(Map<String, Object> customFields) {
+        Map<String, String> errors = new HashMap<>();
+        Object bank = customFields.get("bankName");
+        if (bank == null || bank.toString().isBlank()) errors.put("bankName", "Bank name is required");
+        BigDecimal amount = getBigDecimal(customFields, "loanAmount");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            errors.put("loanAmount", "Loan amount must be greater than 0");
+        }
+        BigDecimal rate = getBigDecimal(customFields, "interestRate");   // optional on the screen
+        if (rate != null && rate.compareTo(BigDecimal.ZERO) < 0) errors.put("interestRate", "Interest rate cannot be negative");
+        if (rate != null && rate.compareTo(new BigDecimal("50")) > 0) errors.put("interestRate", "Interest rate seems too high (>50%)");
+        return errors.isEmpty() ? ValidationResult.valid() : ValidationResult.invalid(errors);
+    }
+
+    private ValidationResult validatePayment(Map<String, Object> customFields) {
+        Map<String, String> errors = new HashMap<>();
+        Object loanId = customFields.get("loanId");
+        if (loanId == null || loanId.toString().isBlank()) errors.put("loanId", "Choose the loan this payment is for");
+        BigDecimal principal = getBigDecimal(customFields, "principalAmount");
+        if (principal == null || principal.compareTo(BigDecimal.ZERO) <= 0) {
+            errors.put("principalAmount", "Principal amount must be greater than 0");
+        }
+        BigDecimal interest = getBigDecimal(customFields, "interestAmount");
+        if (interest != null && interest.compareTo(BigDecimal.ZERO) < 0) {
+            errors.put("interestAmount", "Interest amount cannot be negative");
+        }
         return errors.isEmpty() ? ValidationResult.valid() : ValidationResult.invalid(errors);
     }
 

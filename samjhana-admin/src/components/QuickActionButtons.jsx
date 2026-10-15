@@ -88,6 +88,20 @@ function useNewOrderCount() {
   return count;
 }
 
+/** How many loan payments are waiting for an admin to approve (admin only), or 0 while loading or if it can't be read. */
+function usePendingLoanPayments(enabled) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    api.get('/api/loans/pending-payments')
+      .then((res) => { if (!cancelled) setCount(Number(res.data?.count) || 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [enabled]);
+  return count;
+}
+
 /**
  * Cash taken so far on the current business date (the same figure the End of Day page
  * starts from). Returns null while loading or if the server can't be reached, so the
@@ -123,6 +137,7 @@ export default function QuickActionButtons() {
   const canViewAnalytics = canManage;
   const todayCash = useTodayCash();
   const newOrders = useNewOrderCount();
+  const waitingLoanPayments = usePendingLoanPayments(isAdmin);
   const { money } = useLocaleFormat();
 
   const visibleButtons = isStaff
@@ -162,6 +177,7 @@ export default function QuickActionButtons() {
             button={button}
             // An odd tile out fills the last row instead of sitting alone in half of it
             wide={visibleButtons.length % 2 === 1 && i === visibleButtons.length - 1}
+            badge={button.code === 'loan' && waitingLoanPayments > 0 ? waitingLoanPayments : undefined}
             onClick={() => navigate(button.path)}
           />
         ))}
@@ -235,7 +251,7 @@ export default function QuickActionButtons() {
 // Sub-components
 // =============================================================================
 
-function QuickButton({ button, wide = false, onClick }) {
+function QuickButton({ button, wide = false, badge, onClick }) {
   const { t } = useTranslation();
   const Icon = button.icon;
   const label = t(button.tKey);
@@ -247,13 +263,19 @@ function QuickButton({ button, wide = false, onClick }) {
       className={`
         ${unitTheme(button.unit).tile}
         ${wide ? 'col-span-2' : ''}
-        flex flex-col items-center justify-center
+        relative flex flex-col items-center justify-center
         h-32 rounded-2xl shadow-lg
         transform transition-all duration-150
         active:scale-95 active:shadow-md
         text-white
       `}
     >
+      {badge && (
+        <span data-testid="waiting-badge" aria-label={t('loan.waitingForReview')}
+          className="absolute top-2 right-2 min-w-[28px] h-7 px-2 rounded-full bg-yellow-400 text-gray-900 text-sm font-bold flex items-center justify-center">
+          {badge}
+        </span>
+      )}
       <Icon className="w-12 h-12 mb-2" strokeWidth={2} />
       <span className="text-lg font-bold text-center px-2 leading-tight">
         {label}

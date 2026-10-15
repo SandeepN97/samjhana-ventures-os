@@ -5,7 +5,7 @@ import QuickActionButtons from './QuickActionButtons';
 import { renderWithProviders } from '../test/test-utils';
 import api from '../utils/api';
 
-const summary = { cash: '154500.00', fail: false, newOrders: 0, ordersFail: false };
+const summary = { cash: '154500.00', fail: false, newOrders: 0, ordersFail: false, waitingLoans: 0 };
 vi.mock('../utils/api', () => ({
   default: {
     get: vi.fn((url) => {
@@ -16,6 +16,7 @@ vi.mock('../utils/api', () => ({
       if (url.startsWith('/api/daily-reports/today-summary')) {
         return Promise.resolve({ data: { totalCashSales: summary.cash } });
       }
+      if (url === '/api/loans/pending-payments') return Promise.resolve({ data: { count: summary.waitingLoans } });
       if (url === '/api/shop-orders/summary') {
         if (summary.ordersFail) return Promise.reject(new Error('down'));
         return Promise.resolve({ data: { NEW: summary.newOrders } });
@@ -38,6 +39,7 @@ describe('QuickActionButtons', () => {
     summary.fail = false;
     summary.newOrders = 0;
     summary.ordersFail = false;
+    summary.waitingLoans = 0;
     localStorage.setItem('user', JSON.stringify({ role: 'ADMIN', username: 'admin' }));
   });
 
@@ -179,5 +181,29 @@ describe('QuickActionButtons', () => {
     renderWithProviders(<QuickActionButtons />);
     expect(screen.queryByRole('button', { name: 'Website' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Online Orders/ })).toBeInTheDocument();
+  });
+
+  describe('payments waiting for an admin (Bank Loan badge)', () => {
+    it('shows the count on the Bank Loan tile for an admin', async () => {
+      summary.waitingLoans = 3;
+      renderWithProviders(<QuickActionButtons />);
+      expect(await screen.findByTestId('waiting-badge')).toHaveTextContent('3');
+    });
+
+    it('shows no badge when nothing is waiting', async () => {
+      renderWithProviders(<QuickActionButtons />);
+      await screen.findByText('Bank Loan');
+      await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/loans/pending-payments'));
+      expect(screen.queryByTestId('waiting-badge')).not.toBeInTheDocument();
+    });
+
+    it('does not even ask for the count when the user is a manager', async () => {
+      summary.waitingLoans = 3;
+      localStorage.setItem('user', JSON.stringify({ role: 'MANAGER', username: 'm' }));
+      renderWithProviders(<QuickActionButtons />);
+      await screen.findByText('Bank Loan');
+      expect(api.get).not.toHaveBeenCalledWith('/api/loans/pending-payments');
+      expect(screen.queryByTestId('waiting-badge')).not.toBeInTheDocument();
+    });
   });
 });

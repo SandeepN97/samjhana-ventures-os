@@ -86,7 +86,7 @@ class LoanAccessIntegrationTest {
 
     private static final String PAYMENT = "{\"businessCode\":\"loan\",\"transactionType\":\"SALE\","
             + "\"transactionDate\":\"" + LocalDate.now() + "\",\"amount\":25000,\"notes\":\"\","
-            + "\"customFields\":{\"loanType\":\"PAYMENT\",\"loanId\":\"abc\",\"principalAmount\":20000,\"interestAmount\":5000,"
+            + "\"customFields\":{\"loanType\":\"PAYMENT\",\"loanId\":\"abc\",\"principalAmount\":20000,\"interestAmount\":5000,\"bankReference\":\"NIC-1001\","
             + "\"principal\":500000,\"interestRate\":11,\"startDate\":\"" + LocalDate.now() + "\",\"borrowerName\":\"Samjhana\"}}";
 
     private Transaction loanEntry() {
@@ -111,8 +111,17 @@ class LoanAccessIntegrationTest {
     }
 
     @Test
-    void shouldLetAManagerRecordAPaymentToTheBank() throws Exception {
-        createTransaction(manager, PAYMENT).andExpect(status().isOk());
+    void shouldLetAManagerRecordAPaymentToTheBank_withItsReceiptPhoto() throws Exception {
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(20, 20, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.io.ByteArrayOutputStream jpg = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "jpg", jpg);
+        String uploaded = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/loans/receipts")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "r.jpg", "image/jpeg", jpg.toByteArray()))
+                        .header("Authorization", manager))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String receiptId = objectMapper.readTree(uploaded).get("receiptId").asText();
+        String withReceipt = PAYMENT.replace("\"bankReference\":\"NIC-1001\"", "\"bankReference\":\"NIC-1001\",\"receiptId\":\"" + receiptId + "\"");
+        createTransaction(manager, withReceipt).andExpect(status().isOk());
     }
 
     @Test
