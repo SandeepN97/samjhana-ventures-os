@@ -42,7 +42,7 @@ Open <http://localhost:5175>. The website reads public catalogue, fuel-price, an
 
 ### Quick check that everything works
 
-1. Open <http://localhost:5173> and log in as `admin` / `admin` (see below).
+1. Open <http://localhost:5173> and log in with a development account (see below).
 2. In **Beekeeping** or **Furniture → Products**, add a product, give it a price and stock, add a picture, and switch it to **Live**. A product with no stock shows as sold out and cannot be ordered.
 3. Open <http://localhost:5175>. The product appears in the shop, and the cart can place an order. Staff see the order in the admin.
 4. Website text, contact details and pictures are edited in the admin (**Website** page, or the **Website page** tab inside Furniture and Beekeeping). The public site has no built-in content of its own.
@@ -51,15 +51,7 @@ Stop a part with `Ctrl+C` in its terminal. The dev database is a file at `./data
 
 ### Development login
 
-On a **new, empty dev database**, the dev profile seeds these accounts:
-
-| Username | Password | Role |
-|---|---|---|
-| `admin` | `admin` | Admin |
-| `manager` | `manager123` | Manager |
-| `staff` | `staff123` | Staff |
-
-The seeder skips user creation if the database already contains users. These are development-only credentials; do not use them for a real deployment.
+On a **new, empty dev database**, the dev profile creates a few development-only accounts (admin, manager and staff). Their usernames and passwords are defined in `src/main/java/com/samjhana/seed/DataSeeder.java`; they are deliberately not repeated here. The seeder skips user creation if the database already contains users. Do not use these accounts for a real deployment: staging and prod never run the seeder.
 
 ## Run in a GitHub Codespace
 
