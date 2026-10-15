@@ -127,8 +127,13 @@ public class OcppAuditWriter {
         }
     }
 
-    /** Writes up to one batch; returns how many rows were taken from the queue. Public for tests and shutdown. */
-    public int flush() {
+    /**
+     * Writes up to one batch; returns how many rows were taken from the queue. Public for tests and shutdown.
+     * Synchronized so a caller that finds the queue empty because the background thread has just taken the
+     * batch waits for that insert to commit, instead of returning while the rows are still in flight.
+     * {@link #enqueue(Object)} does not use this lock, so charger traffic never waits for the database.
+     */
+    public synchronized int flush() {
         List<Object> batch = new ArrayList<>();
         long droppedNow;
         synchronized (lock) {
