@@ -3,7 +3,23 @@ package com.samjhana.ocpp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import ch.qos.logback.classic.Level;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.samjhana.config.OcppProperties;
+import com.samjhana.entity.OcppCommandLog;
+import com.samjhana.entity.OcppConnectionLog;
+import com.samjhana.entity.OcppMessageLog;
+import com.samjhana.entity.OcppSessionEvidence;
+import com.samjhana.ocpp.diag.LockEvidenceTracker;
+import com.samjhana.ocpp.diag.LogCapture;
+import com.samjhana.ocpp.diag.OcppAuditRetention;
+import com.samjhana.ocpp.diag.OcppAuditWriter;
+import com.samjhana.ocpp.diag.OcppLoggers;
+import com.samjhana.ocpp.diag.RecordingAuditWriter;
+import com.samjhana.repository.OcppCommandLogRepository;
+import com.samjhana.repository.OcppConnectionLogRepository;
+import com.samjhana.repository.OcppMessageLogRepository;
+import com.samjhana.repository.OcppSessionEvidenceRepository;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.ChargePoint;
 import com.samjhana.entity.EvVehicle;
@@ -81,6 +97,13 @@ class ChargerSessionFlowIntegrationTest {
     @Autowired EvVehicleRepository evVehicleRepository;
     @Autowired TransactionRepository transactionRepository;
     @Autowired OcppProperties ocppProperties;
+    @Autowired OcppAuditWriter auditWriter;
+    @Autowired LockEvidenceTracker lockEvidence;
+    @Autowired OcppAuditRetention retention;
+    @Autowired OcppMessageLogRepository messageLogs;
+    @Autowired OcppConnectionLogRepository connectionLogs;
+    @Autowired OcppCommandLogRepository commandLogs;
+    @Autowired OcppSessionEvidenceRepository evidenceLogs;
 
     private String token;
     private String dfacId; // catalog vehicle priced Rs 14 per 1% charged
@@ -118,11 +141,20 @@ class ChargerSessionFlowIntegrationTest {
 
     @AfterEach
     void cleanup() throws Exception {
+        boolean hadSockets = !sockets.isEmpty();
         for (WebSocketSession socket : sockets) {
             if (socket.isOpen()) socket.close();
         }
         sockets.clear();
         handlers.clear();
+        if (hadSockets) {
+            // The server marks the charger OFFLINE asynchronously after the close. Saving the charger below with a
+            // stale ONLINE status would otherwise overwrite that and leak ONLINE into other test classes.
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+                assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE");
+                assertThat(chargerStatus(CHARGER_2)).isEqualTo("OFFLINE");
+            });
+        }
         chargeSessionRepository.deleteAll();
         setLockBehavior(CHARGER_1, ChargePoint.LockBehavior.EXPLICIT_UNLOCK);
     }
@@ -615,6 +647,326 @@ class ChargerSessionFlowIntegrationTest {
 
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(
                 () -> assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE"));
+    }
+
+
+    // ------------------------------------------------------------------ diagnostics: logs + audit trail
+
+    @Test
+    void shouldRecordTheFullAuditTrail_whenAnExplicitUnlockSessionRunsEndToEnd() throws Exception {
+        java.time.Instant testStart = java.time.Instant.now();
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            SimulatedCharger charger = connectAndBoot(CHARGER_1);
+            charger.call("StatusNotification", statusPayload("Occupied"));
+            String id = startSession(CHARGER_1, "BA 1 PA 4521", 80, dfacId).get("id").asText();
+            charger.reply(charger.awaitCall("RequestStartTransaction"), "Accepted");
+            charger.call("TransactionEvent", txEvent("Started", 0, "TX-AUD", 32, 1_000_000));
+            awaitStatus(id, "ACTIVE");
+            charger.call("TransactionEvent", withoutSoc(txEvent("Updated", 1, "TX-AUD", 40, 1_002_000)));
+
+            assertThat(post("/api/ev/sessions/" + id + "/stop", null).getStatusCode()).isEqualTo(HttpStatus.OK);
+            charger.reply(charger.awaitCall("RequestStopTransaction"), "Accepted");
+            charger.call("TransactionEvent", txEvent("Ended", 2, "TX-AUD", 50, 1_004_000));
+            awaitStatus(id, "AWAITING_PAYMENT");
+            charger.call("StatusNotification", statusPayload("Available")); // released by itself, before payment
+
+            assertThat(post("/api/ev/sessions/" + id + "/mark-paid",
+                    Map.of("method", "CASH", "amount", 600)).getStatusCode()).isEqualTo(HttpStatus.OK);
+            charger.reply(charger.awaitCall("UnlockConnector"), "Unlocked");
+            awaitStatus(id, "CLOSED");
+            lockEvidence.emitAll();
+            charger.session.close();
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(capture.matching("DISCONNECTED chargePointId=")).isNotEmpty());
+
+            // ---- log lines
+            assertThat(capture.matching("HANDSHAKE ACCEPTED")).isNotEmpty();
+            assertThat(capture.matching("BOOT reason=PowerUp vendor=Sim model=TEST serial=SN-HD-D180-CC-01")).hasSize(1);
+            assertThat(capture.matching("CONNECTOR STATUS CHANGE evse=1 connector=1: Available -> Occupied")).hasSize(1);
+            assertThat(capture.matching("COMMAND SENT RequestStartTransaction")).hasSize(1);
+            assertThat(capture.matching("COMMAND SENT RequestStopTransaction")).hasSize(1);
+            assertThat(capture.matching("COMMAND SENT UnlockConnector")).hasSize(1);
+            assertThat(capture.matching("COMMAND RESULT UnlockConnector")).singleElement().asString()
+                    .contains("status=Unlocked").containsPattern("latency=\\d+ms").contains("chargeSessionId=" + id);
+            assertThat(capture.matching("SoC present=true value=32%")).hasSize(1);
+            assertThat(capture.matching("SoC present=false (meterValue has no SoC sampledValue)")).hasSize(1);
+            assertThat(capture.matching("CHARGE SESSION " + id + " on " + CHARGER_1 + ": STARTING -> ACTIVE")).hasSize(1);
+            assertThat(capture.matching("CHARGE SESSION " + id + " on " + CHARGER_1 + ": AWAITING_PAYMENT -> UNLOCK_REQUESTED")).hasSize(1);
+            assertThat(capture.matching("CHARGE SESSION " + id + " on " + CHARGER_1 + ": UNLOCK_REQUESTED -> CLOSED")).hasSize(1);
+            assertThat(capture.matching("CHARGE POINT " + CHARGER_1 + " connector_status: ")).isNotEmpty();
+            assertThat(capture.textsFrom(OcppLoggers.LOCK_EVIDENCE_NAME)).filteredOn(l -> l.contains("session=" + id))
+                    .singleElement().asString()
+                    .contains("TX_ENDED").contains("Occupied->Available")
+                    .contains("UNLOCK_SENT").contains("UNLOCK_REPLY Unlocked").contains("verdict=RELEASED_BEFORE_OUR_UNLOCK");
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.startsWith("FRAME IN") && l.contains("TransactionEvent"));
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.startsWith("FRAME OUT") && l.contains("UnlockConnector"));
+            assertThat(capture.anyContains("BA1PA4521")).as("plate (idToken) must be masked everywhere").isFalse();
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.contains("BA***21"));
+
+            // ---- database rows
+            drainAuditQueue();
+            List<OcppMessageLog> frames = messageLogs.findAll().stream()
+                    .filter(r -> CHARGER_1.equals(r.getChargePointId()) && !r.getReceivedAt().isBefore(testStart)).toList();
+            assertThat(frames).extracting(OcppMessageLog::getAction).contains("BootNotification", "StatusNotification",
+                    "RequestStartTransaction", "TransactionEvent", "RequestStopTransaction", "UnlockConnector");
+            assertThat(frames).filteredOn(r -> "TransactionEvent".equals(r.getAction()) && "IN".equals(r.getDirection())
+                    && Integer.valueOf(2).equals(r.getMessageType())).hasSize(3);
+            assertThat(frames).filteredOn(r -> "UnlockConnector".equals(r.getAction()) && Integer.valueOf(3).equals(r.getMessageType()))
+                    .as("the CALLRESULT is tagged with the action it answers").hasSize(1);
+            assertThat(RecordingAuditWriter.dumpRows(frames)).doesNotContain("BA1PA4521").contains("BA***21");
+            assertThat(frames).allSatisfy(r -> {
+                assertThat(r.getWsSessionId()).isNotBlank();
+                assertThat(r.getPayloadSize()).isPositive();
+                assertThat(r.isDiscovery()).isFalse();
+            });
+
+            List<OcppCommandLog> commands = commandLogs.findAll().stream()
+                    .filter(r -> id.equals(String.valueOf(r.getChargeSessionId()))).toList();
+            assertThat(commands).extracting(OcppCommandLog::getAction)
+                    .containsExactlyInAnyOrder("RequestStartTransaction", "RequestStopTransaction", "UnlockConnector");
+            assertThat(commands).allSatisfy(c -> {
+                assertThat(c.getOutcome()).isEqualTo(OcppCommandLog.Outcome.RESULT);
+                assertThat(c.getResponseStatus()).isIn("Accepted", "Unlocked");
+                assertThat(c.getLatencyMs()).isNotNull().isGreaterThanOrEqualTo(0);
+                assertThat(c.getReason()).isNotBlank().isNotEqualTo("unspecified");
+            });
+
+            List<OcppSessionEvidence> evidence = evidenceLogs.findAll().stream()
+                    .filter(e -> id.equals(String.valueOf(e.getChargeSessionId()))).toList();
+            assertThat(evidence).singleElement().satisfies(e -> {
+                assertThat(e.getOcppTransactionId()).isEqualTo("TX-AUD");
+                assertThat(e.getSummary()).contains("verdict=RELEASED_BEFORE_OUR_UNLOCK");
+                assertThat(e.getEvents()).contains("STOP_SENT").contains("UNLOCK_SENT");
+            });
+
+            List<OcppConnectionLog> connection = connectionLogs.findAll().stream()
+                    .filter(r -> CHARGER_1.equals(r.getChargePointId()) && !r.getCreatedAt().isBefore(testStart)).toList();
+            assertThat(connection).extracting(OcppConnectionLog::getEvent).contains(
+                    OcppConnectionLog.Event.HANDSHAKE_ACCEPTED, OcppConnectionLog.Event.CONNECTED,
+                    OcppConnectionLog.Event.DISCONNECTED);
+        }
+    }
+
+    @Test
+    void shouldNeverPutAPasswordOrAuthorizationValueInAnyLogLevelOrTable_whenChargersConnectAndFail() throws Exception {
+        String secret = ocppProperties.secretFor(CHARGER_1);
+        String wrong = "wrong-" + java.util.UUID.randomUUID();
+        String queryPassword = "query-" + java.util.UUID.randomUUID();
+        List<String> forbidden = new ArrayList<>();
+        for (String user : List.of(CHARGER_1, "someone")) {
+            for (String password : List.of(secret, wrong)) {
+                String base64 = java.util.Base64.getEncoder().encodeToString((user + ":" + password).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                forbidden.add(base64);
+                forbidden.add("Basic " + base64);
+            }
+        }
+        forbidden.addAll(List.of(secret, wrong, queryPassword));
+
+        java.time.Instant testStart = java.time.Instant.now();
+        // Root at TRACE captures every statement of every library (Tomcat, Spring, Hibernate...).
+        // Two libraries print request headers/URLs when their loggers are at DEBUG/TRACE: Tomcat's request dump
+        // (org.apache.coyote) and Spring (org.springframework.web: AbstractHandshakeHandler and the URI parser).
+        // The app warns at startup if either is enabled (ForbiddenLogSettings), so they are pinned to INFO like in
+        // every real profile; everything else is captured at TRACE.
+        try (LogCapture capture = LogCapture.atEveryLevel().with("org.apache.coyote", Level.INFO)
+                .with("org.springframework.web", Level.INFO).with("_org.springframework.web", Level.INFO)) {
+            assertThatThrownBy(() -> connect(CHARGER_1, wrong)).isInstanceOf(ExecutionException.class);
+            assertThatThrownBy(() -> connect("NOT-A-CHARGER-01", wrong)).isInstanceOf(ExecutionException.class);
+            SimulatedCharger charger = connectAndBoot(CHARGER_1);
+            charger.call("Heartbeat", mapper.createObjectNode());
+            // a near-miss URL carrying credentials in its query and header, answered 404 before our interceptor
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBasicAuth(CHARGER_1, secret);
+            rest.exchange("/ocpp/" + CHARGER_1 + "/" + CHARGER_1 + "?password=" + queryPassword, HttpMethod.GET,
+                    new HttpEntity<>(headers), String.class);
+            charger.session.close();
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(
+                    () -> assertThat(capture.matching("DISCONNECTED chargePointId=" + CHARGER_1)).isNotEmpty());
+
+            assertThat(capture.events()).as("TRACE-level capture is really on").isNotEmpty();
+            // Only server-side output is under test: the test's own HTTP client may log the headers it sends.
+            List<String> serverSide = capture.events().stream()
+                    .filter(e -> !e.getLoggerName().startsWith("org.springframework.web.client")
+                            && !e.getLoggerName().startsWith("org.springframework.http.client")
+                            && !e.getLoggerName().startsWith("org.apache.hc"))
+                    .map(e -> e.getLoggerName() + " - " + e.getFormattedMessage() + " " + e.getMDCPropertyMap()
+                            + (e.getThrowableProxy() == null ? "" : ch.qos.logback.classic.spi.ThrowableProxyUtil.asString(e.getThrowableProxy())))
+                    .toList();
+            assertThat(serverSide).isNotEmpty();
+            for (String text : serverSide) {
+                for (String value : forbidden) {
+                    assertThat(text).as("log line must not contain a password / Authorization value").doesNotContain(value);
+                }
+            }
+            // the charger's stored hash must not appear in any application log line either
+            String hash = chargePointRepository.findByCodeAndDeletedAtIsNull(CHARGER_1).orElseThrow().getOcppAuthSecretHash();
+            assertThat(capture.events().stream().filter(e -> e.getLoggerName().startsWith("com.samjhana"))
+                    .map(e -> e.getFormattedMessage()).toList()).noneMatch(m -> m.contains(hash));
+
+            drainAuditQueue();
+            String tables = RecordingAuditWriter.dumpRows(messageLogs.findAll().stream().filter(r -> !r.getReceivedAt().isBefore(testStart)).toList())
+                    + RecordingAuditWriter.dumpRows(connectionLogs.findAll().stream().filter(r -> !r.getCreatedAt().isBefore(testStart)).toList());
+            for (String value : forbidden) assertThat(tables).doesNotContain(value);
+            assertThat(tables).doesNotContain(hash);
+            // and the rows are not empty, so the check above is meaningful
+            assertThat(connectionLogs.findAll().stream().filter(r -> !r.getCreatedAt().isBefore(testStart)).map(OcppConnectionLog::getReason))
+                    .contains("BAD_PASSWORD", "UNKNOWN_CHARGER", "ACCEPTED", "DOUBLED_CHARGE_POINT_ID");
+        }
+    }
+
+    @Test
+    void shouldLogAndStoreRequestsThatNeverReachTheHandshakeInterceptor_includingNearMissUrls() throws Exception {
+        java.time.Instant testStart = java.time.Instant.now();
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            ResponseEntity<String> trailing = rest.getForEntity("/ocpp/" + CHARGER_1 + "/", String.class);
+            ResponseEntity<String> extra = rest.getForEntity("/ocpp/" + CHARGER_1 + "/extra", String.class);
+            ResponseEntity<String> doubled = rest.getForEntity("/ocpp/" + CHARGER_1 + "/" + CHARGER_1, String.class);
+            ResponseEntity<String> prefix = rest.getForEntity("/ocpp2.0.1/" + CHARGER_1, String.class);
+            ResponseEntity<String> plain = rest.getForEntity("/ocpp/" + CHARGER_1, String.class); // no upgrade, no subprotocol
+
+            // The accepted URL shapes are exactly what they were: only /ocpp/<id> reaches the interceptor. Near-miss
+            // URLs under /ocpp/ are answered 200 by the single-page-app fallback (index.html), not 404; a charger
+            // would see a non-101 answer. Anything outside the permitted paths hits Spring Security first (401).
+            assertThat(trailing.getStatusCode().value()).isEqualTo(200);
+            assertThat(plain.getStatusCode().value()).isEqualTo(426);
+            assertThat(capture.matching("REQUEST GET /ocpp/" + CHARGER_1 + "/ ")).singleElement().asString()
+                    .contains("shape=TRAILING_SLASH").contains("-> " + trailing.getStatusCode().value());
+            assertThat(capture.matching("shape=EXTRA_SEGMENT")).hasSize(1);
+            assertThat(capture.matching("shape=DOUBLED_CHARGE_POINT_ID")).hasSize(1);
+            assertThat(capture.matching("shape=UNKNOWN_PREFIX")).hasSize(1);
+            assertThat(capture.matching("HANDSHAKE NO_SUBPROTOCOL")).hasSize(1);
+            assertThat(capture.matching("REQUEST GET /ocpp/" + CHARGER_1 + " -> 426")).hasSize(1);
+            // the near-miss URLs were answered before our interceptor, yet are in the log
+            assertThat(extra.getStatusCode().value()).isEqualTo(200);
+            assertThat(doubled.getStatusCode().value()).isEqualTo(200);
+            assertThat(prefix.getStatusCode().value()).isEqualTo(401);
+            assertThat(capture.matching("shape=EXTRA_SEGMENT").get(0)).contains("responseContentType=text/html");
+            assertThat(capture.matching("shape=UNKNOWN_PREFIX").get(0)).contains("-> 401");
+
+            drainAuditQueue();
+            List<OcppConnectionLog> rows = connectionLogs.findAll().stream()
+                    .filter(r -> !r.getCreatedAt().isBefore(testStart)).toList();
+            assertThat(rows).extracting(OcppConnectionLog::getReason).contains("TRAILING_SLASH", "EXTRA_SEGMENT",
+                    "DOUBLED_CHARGE_POINT_ID", "UNKNOWN_PREFIX", "NO_SUBPROTOCOL");
+            assertThat(rows).filteredOn(r -> "EXTRA_SEGMENT".equals(r.getReason())).singleElement().satisfies(r -> {
+                assertThat(r.getEvent()).isEqualTo(OcppConnectionLog.Event.REQUEST_NEAR_MISS);
+                assertThat(r.getRequestUri()).isEqualTo("/ocpp/" + CHARGER_1 + "/extra");
+                assertThat(r.getHttpStatus()).isEqualTo(extra.getStatusCode().value());
+                assertThat(r.getRemoteAddr()).isNotBlank();
+            });
+        }
+    }
+
+    @Test
+    void shouldKeepTheChargerOnlineAndItsCommandsPending_whenAStaleConnectionClosesAfterAQuickReconnect() throws Exception {
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            SimulatedCharger first = connectAndBoot(CHARGER_1);
+            SimulatedCharger second = connect(CHARGER_1, ocppProperties.secretFor(CHARGER_1)); // reconnect, old socket still open
+            second.call("Heartbeat", mapper.createObjectNode());
+
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(first.session.isOpen()).isFalse());
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(
+                    () -> assertThat(capture.matching("STALE session")).hasSize(1));
+
+            assertThat(capture.matching("RECONNECT chargePointId=" + CHARGER_1)).hasSize(1);
+            assertThat(chargerStatus(CHARGER_1)).as("a stale close must not mark the charger offline").isEqualTo("ONLINE");
+
+            // the new connection is the one commands go to
+            String id = startSession(CHARGER_1, "BA 8 PA 8888", 80).get("id").asText();
+            second.reply(second.awaitCall("RequestStartTransaction"), "Accepted");
+            second.call("TransactionEvent", txEvent("Started", 0, "TX-RC", 20, 0));
+            awaitStatus(id, "ACTIVE");
+
+            second.session.close();
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE"));
+        }
+    }
+
+    @Test
+    void shouldAcceptALargeFrame_becauseTheContainerLimitIsRaisedAboveTomcatsEightKilobyteDefault() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        ObjectNode payload = mapper.createObjectNode();
+        payload.put("vendorId", "Hardhitter");
+        payload.put("data", "x".repeat(40_000));
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            JsonNode reply = charger.call("DataTransfer", payload);
+
+            assertThat(reply.get(0).asInt()).isEqualTo(4);
+            assertThat(reply.get(2).asText()).isEqualTo("NotSupported");
+            assertThat(chargerStatus(CHARGER_1)).isEqualTo("ONLINE");
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.startsWith("FRAME IN") && l.contains("size=40"));
+        }
+    }
+
+    @Autowired org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor scheduledTasks;
+
+    @Test
+    void shouldHaveTheHousekeepingJobsRegisteredWithTheScheduler() {
+        List<String> registered = scheduledTasks.getScheduledTasks().stream().map(task -> task.getTask().toString()).toList();
+
+        assertThat(registered).anyMatch(t -> t.endsWith("OcppHousekeeping.tick"))
+                .anyMatch(t -> t.endsWith("LockEvidenceTracker.emitQuietSessions"))
+                .anyMatch(t -> t.endsWith("OcppAuditRetention.dailyJob"));
+    }
+
+    @Test
+    void shouldPersistFramesWithoutManualFlush_becauseTheWriterRunsInTheBackground() throws Exception {
+        java.time.Instant testStart = java.time.Instant.now();
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        charger.call("Heartbeat", mapper.createObjectNode());
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> assertThat(messageLogs.findAll().stream()
+                .filter(r -> CHARGER_1.equals(r.getChargePointId()) && !r.getReceivedAt().isBefore(testStart))
+                .map(OcppMessageLog::getAction)).contains("BootNotification", "Heartbeat"));
+    }
+
+    @Test
+    void shouldPurgeRowsOlderThanTheRetentionWindow_andReportTheTableSizes() {
+        java.time.Instant old = java.time.Instant.now().minus(java.time.Duration.ofDays(45));
+        java.time.Instant recent = java.time.Instant.now().minus(java.time.Duration.ofDays(2));
+        messageLogs.save(OcppMessageLog.builder().chargePointId("RET-TEST").direction("IN").action("OldFrame")
+                .payload("[]").payloadSize(2).receivedAt(old).build());
+        messageLogs.save(OcppMessageLog.builder().chargePointId("RET-TEST").direction("IN").action("RecentFrame")
+                .payload("[]").payloadSize(2).receivedAt(recent).build());
+        connectionLogs.save(OcppConnectionLog.builder().chargePointId("RET-TEST").event(OcppConnectionLog.Event.CONNECTED)
+                .createdAt(old).build());
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            long deleted = retention.purge();
+            long bytes = retention.reportSize();
+
+            assertThat(deleted).isGreaterThanOrEqualTo(2);
+            assertThat(messageLogs.findAll()).extracting(OcppMessageLog::getAction).doesNotContain("OldFrame").contains("RecentFrame");
+            assertThat(connectionLogs.findAll()).extracting(OcppConnectionLog::getChargePointId).doesNotContain("RET-TEST");
+            assertThat(bytes).isPositive();
+            assertThat(capture.matching("OCPP audit size:")).singleElement().asString()
+                    .contains("ocpp_message_log=").contains("% of the 500 MB database budget");
+            assertThat(capture.matching("OCPP retention: deleted")).hasSize(1);
+        }
+    }
+
+    private void drainAuditQueue() {
+        int guard = 0;
+        while (auditWriter.flush() > 0 && guard++ < 1000) {
+            // keep going until the queue is empty
+        }
+    }
+
+    private ObjectNode statusPayload(String connectorStatus) {
+        ObjectNode status = mapper.createObjectNode();
+        status.put("timestamp", OffsetDateTime.now().toString());
+        status.put("connectorStatus", connectorStatus);
+        status.put("evseId", 1);
+        status.put("connectorId", 1);
+        return status;
+    }
+
+    private ObjectNode withoutSoc(ObjectNode event) {
+        ArrayNode samples = (ArrayNode) event.get("meterValue").get(0).get("sampledValue");
+        for (int i = samples.size() - 1; i >= 0; i--) {
+            if ("SoC".equals(samples.get(i).get("measurand").asText())) samples.remove(i);
+        }
+        return event;
     }
 
     // ------------------------------------------------------------------ helpers: REST

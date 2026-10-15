@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.samjhana.ocpp.diag.CommandReason;
+import com.samjhana.ocpp.diag.JsonMasker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -37,29 +39,34 @@ public class OcppCommandService {
         ObjectNode idToken = payload.putObject("idToken");
         idToken.put("idToken", truncate(plateNumber, 36));
         idToken.put("type", "Central");
-        return send(chargePointCode, "RequestStartTransaction", sessionId, payload);
+        return send(chargePointCode, "RequestStartTransaction", sessionId, payload,
+                new OcppConnectionRegistry.CommandInfo(evseId, null, JsonMasker.maskToken(idToken.get("idToken").asText()),
+                        CommandReason.current(), null));
     }
 
     public String requestStop(String chargePointCode, UUID sessionId, String ocppTransactionId) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("transactionId", ocppTransactionId);
-        return send(chargePointCode, "RequestStopTransaction", sessionId, payload);
+        return send(chargePointCode, "RequestStopTransaction", sessionId, payload,
+                new OcppConnectionRegistry.CommandInfo(null, null, null, CommandReason.current(), ocppTransactionId));
     }
 
     public String unlockConnector(String chargePointCode, UUID sessionId, int evseId, int connectorId) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("evseId", evseId);
         payload.put("connectorId", connectorId);
-        return send(chargePointCode, "UnlockConnector", sessionId, payload);
+        return send(chargePointCode, "UnlockConnector", sessionId, payload,
+                new OcppConnectionRegistry.CommandInfo(evseId, connectorId, null, CommandReason.current(), null));
     }
 
-    private String send(String chargePointCode, String action, UUID sessionId, JsonNode payload) {
+    private String send(String chargePointCode, String action, UUID sessionId, JsonNode payload,
+                        OcppConnectionRegistry.CommandInfo info) {
         ArrayNode frame = objectMapper.createArrayNode();
         frame.add(2);
         frame.add("__MESSAGE_ID__");
         frame.add(action);
         frame.add(payload);
-        return connectionRegistry.send(chargePointCode, action, sessionId, frame.toString());
+        return connectionRegistry.send(chargePointCode, action, sessionId, frame.toString(), info);
     }
 
     private String truncate(String value, int max) {

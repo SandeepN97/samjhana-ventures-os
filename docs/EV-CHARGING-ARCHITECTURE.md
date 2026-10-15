@@ -42,6 +42,12 @@ Incoming `TransactionEvent` messages must report both IDs in OCPP's `evse` objec
 
 The `evse_id` column and its supporting index are added by `docs/migrations/2026-09-26-add-evse-id-to-charge-sessions.sql`. **Apply that SQL to the staging and production databases before deploying this version:** staging uses `ddl-auto: validate` and will refuse to start without the column.
 
+## Diagnostics and audit trail
+
+Every OCPP frame, handshake attempt, command and connection event is logged (loggers `com.samjhana.ocpp.{frames,handshake,lifecycle,commands,lockevidence}`) and stored in the `ocpp_message_log`, `ocpp_connection_log`, `ocpp_command_log` and `ocpp_session_evidence` tables. See [the first-connection runbook](ocpp-first-connection-runbook.md) for the settings, how to read the logs and the SQL for common questions.
+
+The tables are created by `docs/sql/2026-10-ocpp-diagnostics.sql`. **Apply that SQL to the staging and production databases before deploying this version:** staging uses `ddl-auto: validate` and will refuse to start without them.
+
 ## Security and deployment notes
 
 - Charger WebSocket authentication uses the per-charge-point secret configured for the backend.
