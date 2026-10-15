@@ -10,6 +10,7 @@ import com.samjhana.exception.EvSessionStateException;
 import com.samjhana.exception.ResourceNotFoundException;
 import com.samjhana.ocpp.OcppCommandService;
 import com.samjhana.ocpp.OcppConnectionRegistry;
+import com.samjhana.ocpp.diag.CommandReason;
 import com.samjhana.repository.*;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
 import lombok.RequiredArgsConstructor;
@@ -113,7 +114,8 @@ public class ChargeSessionService {
         String code = chargePoint.getCode();
         int sessionEvseId = session.getEvseId();
         return publish(session, new Dispatch(
-                () -> ocppCommands.requestStart(code, sessionId, sessionEvseId, plate),
+                () -> CommandReason.run("staff started a charging session",
+                        () -> ocppCommands.requestStart(code, sessionId, sessionEvseId, plate)),
                 (failed, reason) -> {
                     failed.setStatus(ChargeSession.Status.FAILED);
                     failed.setStatusMessage("Could not send the start command: " + reason);
@@ -217,13 +219,17 @@ public class ChargeSessionService {
         Integer connectorId = evse.hasNonNull("connectorId") ? evse.path("connectorId").asInt() : null;
         String eventType = payload.path("eventType").asText();
         if ((evseId != null && evseId < 1) || (connectorId != null && connectorId < 1)) {
-            log.warn("Ignoring TransactionEvent from {} with invalid EVSE/connector identity", chargePointCode);
+            log.warn("Ignoring TransactionEvent from {} with invalid EVSE/connector identity "
+                    + "(eventType={} transactionId={} evseId={} connectorId={})",
+                    chargePointCode, eventType, transactionId, evseId, connectorId);
             return;
         }
         ChargeSession session = findForEvent(
                 chargePointCode, evseId, connectorId, transactionId, remoteStartId, eventType);
         if (session == null) {
-            log.warn("Ignoring TransactionEvent from {} because no matching session exists", chargePointCode);
+            log.warn("Ignoring TransactionEvent from {} because no matching session exists "
+                    + "(eventType={} transactionId={} remoteStartId={} evseId={} connectorId={})",
+                    chargePointCode, eventType, transactionId, remoteStartId, evseId, connectorId);
             return;
         }
         if (session.getStatus() == ChargeSession.Status.STARTING && evseId != null && connectorId != null
@@ -239,6 +245,10 @@ public class ChargeSessionService {
         int sequence = payload.path("seqNo").asInt(-1);
         if (sequence >= 0 && session.getLastSequenceNumber() != null
                 && sequence <= session.getLastSequenceNumber()) {
+            log.warn("Dropping replayed or out-of-order TransactionEvent from {}: eventType={} transactionId={} "
+                    + "seqNo={} lastSeen={} evseId={} connectorId={} chargeSessionId={}",
+                    chargePointCode, eventType, transactionId, sequence, session.getLastSequenceNumber(),
+                    evseId, connectorId, session.getId());
             return; // Idempotent handling of replayed OCPP events.
         }
         if (sequence >= 0) session.setLastSequenceNumber(sequence);
@@ -447,8 +457,9 @@ public class ChargeSessionService {
                 .findByChargePointCodeAndEvseIdAndConnectorIdAndStatusIn(
                         chargePointCode, evseId, connectorId, OPEN_STATUSES);
         if (matches.size() > 1) {
-            log.error("Ignoring ambiguous Started event from {} on EVSE {} connector {}: {} open sessions",
-                    chargePointCode, evseId, connectorId, matches.size());
+            log.error("Ignoring ambiguous Started event from {} on EVSE {} connector {}: {} open sessions "
+                    + "(eventType={} transactionId={})",
+                    chargePointCode, evseId, connectorId, matches.size(), eventType, transactionId);
             return null;
         }
         return matches.isEmpty() ? null : matches.get(0);
@@ -500,7 +511,8 @@ public class ChargeSessionService {
         UUID sessionId = session.getId();
         String transactionId = session.getOcppTransactionId();
         return new Dispatch(
-                () -> ocppCommands.requestStop(code, sessionId, transactionId),
+                () -> CommandReason.run(label + " requested for the session",
+                        () -> ocppCommands.requestStop(code, sessionId, transactionId)),
                 (failed, reason) -> {
                     failed.setStatus(revertTo);
                     failed.setStatusMessage("Could not send the " + label + " command: " + reason);
@@ -513,7 +525,8 @@ public class ChargeSessionService {
         int evseId = session.getEvseId();
         int connectorId = session.getConnectorId();
         return new Dispatch(
-                () -> ocppCommands.unlockConnector(code, sessionId, evseId, connectorId),
+                () -> CommandReason.run("unlock the connector after payment",
+                        () -> ocppCommands.unlockConnector(code, sessionId, evseId, connectorId)),
                 (failed, reason) -> {
                     failed.setStatus(ChargeSession.Status.PAID);
                     failed.setStatusMessage("Could not send the unlock command; retry required: " + reason);

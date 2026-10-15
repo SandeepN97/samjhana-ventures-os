@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
+@EntityListeners(ChargeSessionTransitionLogger.class)
 @Table(name = "charge_sessions", indexes = {
         @Index(name = "idx_charge_session_status", columnList = "status"),
         @Index(name = "idx_charge_session_charge_point", columnList = "charge_point_id"),
