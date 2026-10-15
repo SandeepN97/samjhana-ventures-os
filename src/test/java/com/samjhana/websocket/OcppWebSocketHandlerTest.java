@@ -1,0 +1,478 @@
+package com.samjhana.websocket;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samjhana.entity.OcppCommandLog;
+import com.samjhana.entity.OcppConnectionLog;
+import com.samjhana.entity.OcppMessageLog;
+import com.samjhana.ocpp.OcppConnectionRegistry;
+import com.samjhana.ocpp.diag.JsonMasker;
+import com.samjhana.ocpp.diag.LockEvidenceTracker;
+import com.samjhana.ocpp.diag.LogCapture;
+import com.samjhana.ocpp.diag.OcppCommandAudit;
+import com.samjhana.ocpp.diag.OcppConnectionState;
+import com.samjhana.ocpp.diag.OcppFrameLogger;
+import com.samjhana.ocpp.diag.OcppFrameSender;
+import com.samjhana.ocpp.diag.OcppLoggers;
+import com.samjhana.ocpp.diag.OcppLoggingProperties;
+import com.samjhana.ocpp.diag.OcppMessageLogger;
+import com.samjhana.ocpp.diag.RecordingAuditWriter;
+import com.samjhana.repository.ChargePointRepository;
+import com.samjhana.repository.ChargeSessionRepository;
+import com.samjhana.service.ChargePointService;
+import com.samjhana.service.ChargeSessionService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.web.socket.BinaryMessage;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PongMessage;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
+import org.springframework.web.socket.WebSocketSession;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/** The handler with real logging/auditing collaborators and mocked business services. */
+class OcppWebSocketHandlerTest {
+
+    private static final String CP = "HD-D180-CC-01";
+
+    private final ObjectMapper mapper = new ObjectMapper();
+    private OcppLoggingProperties properties;
+    private RecordingAuditWriter writer;
+    private ChargePointService chargePointService;
+    private ChargeSessionService chargeSessionService;
+    private OcppConnectionRegistry registry;
+    private OcppWebSocketHandler handler;
+    private final List<String> sent = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() throws Exception {
+        properties = new OcppLoggingProperties();
+        writer = new RecordingAuditWriter(properties);
+        chargePointService = mock(ChargePointService.class);
+        chargeSessionService = mock(ChargeSessionService.class);
+        JsonMasker masker = new JsonMasker(mapper);
+        OcppFrameLogger frames = new OcppFrameLogger(properties, masker, writer);
+        OcppFrameSender sender = new OcppFrameSender(frames);
+        LockEvidenceTracker evidence = new LockEvidenceTracker(writer, mock(ChargeSessionRepository.class), properties, mapper);
+        OcppCommandAudit commandAudit = new OcppCommandAudit(writer, evidence);
+        registry = new OcppConnectionRegistry(sender, commandAudit);
+        OcppMessageLogger messageLogger = new OcppMessageLogger(properties, mock(ChargePointRepository.class), evidence, masker);
+        handler = new OcppWebSocketHandler(mapper, registry, chargePointService, chargeSessionService, frames, sender,
+                messageLogger, commandAudit, writer, properties, masker);
+    }
+
+    private WebSocketSession open(String id) throws Exception {
+        WebSocketSession session = mock(WebSocketSession.class);
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put(OcppHandshakeInterceptor.CHARGE_POINT_CODE, CP);
+        attributes.put(OcppHandshakeInterceptor.ATTR_REMOTE, "203.0.113.9");
+        attributes.put(OcppHandshakeInterceptor.ATTR_FORWARDED_FOR, "198.51.100.7");
+        attributes.put(OcppHandshakeInterceptor.ATTR_USER_AGENT, "HardhitterFirmware/1.0");
+        attributes.put(OcppHandshakeInterceptor.ATTR_OFFERED, "ocpp2.0.1");
+        when(session.getId()).thenReturn(id);
+        when(session.isOpen()).thenReturn(true);
+        when(session.getAttributes()).thenReturn(attributes);
+        when(session.getAcceptedProtocol()).thenReturn("ocpp2.0.1");
+        when(session.getRemoteAddress()).thenReturn(new InetSocketAddress("203.0.113.9", 50000));
+        org.mockito.Mockito.doAnswer(invocation -> {
+            sent.add(((TextMessage) invocation.getArgument(0)).getPayload());
+            return null;
+        }).when(session).sendMessage(any(WebSocketMessage.class));
+        handler.afterConnectionEstablished(session);
+        return session;
+    }
+
+    private void receive(WebSocketSession session, String payload) throws Exception {
+        handler.handleTextMessage(session, new TextMessage(payload));
+    }
+
+    private JsonNode lastSent() throws Exception {
+        return mapper.readTree(sent.get(sent.size() - 1));
+    }
+
+    // ---------------------------------------------------------------- failures
+
+    @Test
+    void shouldLogMalformedJsonWithRawPayloadStackAndChargePoint_andAnswerFormationViolation() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "{this is :: not json");
+
+            List<ILoggingEvent> warns = capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN);
+            assertThat(warns).hasSize(1);
+            ILoggingEvent warn = warns.get(0);
+            assertThat(warn.getFormattedMessage()).contains("MALFORMED JSON from " + CP).contains("{this is :: not json");
+            assertThat(warn.getThrowableProxy()).as("stack trace attached").isNotNull();
+            assertThat(warn.getMDCPropertyMap()).containsEntry("chargePointId", CP).containsEntry("sessionId", "ws-1");
+            // the raw frame was logged before parsing
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.startsWith("FRAME IN") && l.endsWith("{this is :: not json"));
+        }
+        assertThat(lastSent().get(0).asInt()).isEqualTo(4);
+        assertThat(lastSent().get(2).asText()).isEqualTo("FormationViolation");
+    }
+
+    @Test
+    void shouldWarnAboutInvalidFrames_andAnswerFormationViolation() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "{\"not\":\"an array\"}");
+            receive(session, "[2,\"short\"]");
+            receive(session, "[\"two\",\"id\",\"Heartbeat\",{}]");
+
+            assertThat(capture.matching("INVALID OCPP-J FRAME from " + CP)).hasSize(3);
+            assertThat(capture.matching("INVALID OCPP-J FRAME").get(0)).contains("{\"not\":\"an array\"}");
+        }
+        assertThat(sent).filteredOn(s -> s.contains("FormationViolation")).hasSize(3);
+    }
+
+    @Test
+    void shouldWarnAboutUnknownMessageType_andNotReply() throws Exception {
+        WebSocketSession session = open("ws-1");
+        int before = sent.size();
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[9,\"id-9\",\"Heartbeat\",{}]");
+
+            assertThat(capture.matching("UNKNOWN MESSAGE TYPE 9 from " + CP)).hasSize(1);
+        }
+        assertThat(sent).hasSize(before);
+    }
+
+    @Test
+    void shouldWarnWithFullPayload_andAnswerNotSupported_forAnUnknownAction() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[2,\"id-1\",\"DataTransfer\",{\"vendorId\":\"Hardhitter\",\"data\":\"abc\"}]");
+
+            assertThat(capture.matching("UNKNOWN ACTION 'DataTransfer' from " + CP)).singleElement().asString()
+                    .contains("\"vendorId\":\"Hardhitter\"").contains("\"data\":\"abc\"");
+        }
+        assertThat(lastSent().get(2).asText()).isEqualTo("NotSupported");
+        assertThat(lastSent().get(1).asText()).isEqualTo("id-1");
+    }
+
+    @Test
+    void shouldLogStackAndSendInternalError_whenTheHandlerThrows_withoutClosingTheSocket() throws Exception {
+        WebSocketSession session = open("ws-1");
+        doThrow(new IllegalStateException("database exploded")).when(chargePointService).recordHeartbeat(CP);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[2,\"hb-1\",\"Heartbeat\",{}]");
+
+            List<ILoggingEvent> errors = capture.events(OcppWebSocketHandler.class.getName(), Level.ERROR);
+            assertThat(errors).hasSize(1);
+            assertThat(errors.get(0).getFormattedMessage()).contains("action Heartbeat").contains(CP)
+                    .contains("messageId=hb-1").contains("sessionId=ws-1");
+            assertThat(errors.get(0).getThrowableProxy().getMessage()).isEqualTo("database exploded");
+            assertThat(errors.get(0).getMDCPropertyMap()).containsEntry("chargePointId", CP).containsEntry("messageId", "hb-1")
+                    .containsEntry("action", "Heartbeat");
+        }
+        assertThat(lastSent().get(0).asInt()).isEqualTo(4);
+        assertThat(lastSent().get(1).asText()).isEqualTo("hb-1");
+        assertThat(lastSent().get(2).asText()).isEqualTo("InternalError");
+        verify(session, never()).close(any());
+    }
+
+    @Test
+    void shouldWarnAboutMissingRequiredFields_butStillProcessTheFrame() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[2,\"b-1\",\"BootNotification\",{}]");
+
+            assertThat(capture.matching("MISSING REQUIRED FIELD(S) in BootNotification from " + CP)).hasSize(1);
+        }
+        verify(chargePointService).recordBoot(CP, null);
+        assertThat(lastSent().get(2).get("status").asText()).isEqualTo("Accepted");
+        assertThat(lastSent().get(2).get("interval").asInt()).isEqualTo(30);
+    }
+
+    @Test
+    void shouldLogBinaryFrames_andCloseTheSession() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.handleBinaryMessage(session, new BinaryMessage(new byte[]{1, 2, 3}));
+
+            assertThat(capture.matching("BINARY FRAME from " + CP)).hasSize(1);
+            assertThat(capture.textsFrom(OcppLoggers.FRAMES_NAME)).anyMatch(l -> l.contains("BINARY size=3B"));
+        }
+        verify(session).close(any(CloseStatus.class));
+    }
+
+    @Test
+    void shouldLogTransportErrorsWithFullThrowableChargePointAndSessionId_thenClose() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.handleTransportError(session, new java.io.EOFException("peer reset"));
+
+            ILoggingEvent event = capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN).get(0);
+            assertThat(event.getFormattedMessage()).contains("TRANSPORT ERROR chargePointId=" + CP).contains("sessionId=ws-1");
+            assertThat(event.getThrowableProxy().getClassName()).isEqualTo("java.io.EOFException");
+        }
+        verify(session).close(CloseStatus.SERVER_ERROR);
+    }
+
+    // ---------------------------------------------------------------- command results
+
+    private String sendCommand(UUID chargeSessionId, String action) {
+        return registry.send(CP, action, chargeSessionId, "[2,\"__MESSAGE_ID__\",\"" + action + "\",{\"evseId\":1}]",
+                new OcppConnectionRegistry.CommandInfo(1, 1, null, "test reason", null));
+    }
+
+    @Test
+    void shouldMatchCallResultByMessageId_withLatencyStatusAndReasonCode() throws Exception {
+        WebSocketSession session = open("ws-1");
+        UUID chargeSessionId = UUID.randomUUID();
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            String messageId = sendCommand(chargeSessionId, "RequestStartTransaction");
+            Thread.sleep(20);
+            receive(session, "[3,\"" + messageId + "\",{\"status\":\"Rejected\",\"statusInfo\":{\"reasonCode\":\"NoCable\",\"additionalInfo\":\"plug in first\"}}]");
+
+            String line = capture.matching("COMMAND RESULT RequestStartTransaction").get(0);
+            assertThat(line).contains("messageId=" + messageId).contains("chargeSessionId=" + chargeSessionId)
+                    .contains("status=Rejected").contains("reasonCode=NoCable").contains("additionalInfo=plug in first");
+            assertThat(line).containsPattern("latency=\\d+ms");
+            assertThat(capture.matching("COMMAND SENT RequestStartTransaction")).singleElement().asString()
+                    .contains("evse=1").contains("connector=1").contains("reason=\"test reason\"");
+            ArgumentCaptor<OcppConnectionRegistry.PendingCommand> command = ArgumentCaptor.forClass(OcppConnectionRegistry.PendingCommand.class);
+            verify(chargeSessionService).handleCommandResult(command.capture(), any(JsonNode.class), eq(null));
+            assertThat(command.getValue().messageId()).isEqualTo(messageId);
+        }
+        OcppCommandLog row = writer.rows(OcppCommandLog.class).get(0);
+        assertThat(row.getOutcome()).isEqualTo(OcppCommandLog.Outcome.RESULT);
+        assertThat(row.getResponseStatus()).isEqualTo("Rejected");
+        assertThat(row.getReasonCode()).isEqualTo("NoCable");
+        assertThat(row.getLatencyMs()).isGreaterThanOrEqualTo(15);
+        assertThat(row.getChargeSessionId()).isEqualTo(chargeSessionId);
+    }
+
+    @Test
+    void shouldCaptureCallErrorCodeDescriptionAndDetails() throws Exception {
+        WebSocketSession session = open("ws-1");
+        UUID chargeSessionId = UUID.randomUUID();
+        String messageId = sendCommand(chargeSessionId, "UnlockConnector");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[4,\"" + messageId + "\",\"GenericError\",\"lock motor jammed\",{\"motor\":\"stuck\"}]");
+
+            String line = capture.matching("COMMAND ERROR UnlockConnector").get(0);
+            assertThat(line).contains("errorCode=GenericError").contains("errorDescription=\"lock motor jammed\"")
+                    .contains("errorDetails={\"motor\":\"stuck\"}").contains("messageId=" + messageId);
+            assertThat(capture.events(OcppLoggers.COMMANDS_NAME, Level.WARN)).hasSize(1);
+        }
+        // business behaviour unchanged: the description is what the session service receives
+        verify(chargeSessionService).handleCommandResult(any(), eq(null), eq("lock motor jammed"));
+        OcppCommandLog row = writer.rows(OcppCommandLog.class).get(0);
+        assertThat(row.getOutcome()).isEqualTo(OcppCommandLog.Outcome.ERROR);
+        assertThat(row.getErrorCode()).isEqualTo("GenericError");
+        assertThat(row.getErrorDescription()).isEqualTo("lock motor jammed");
+        assertThat(row.getDetail()).contains("stuck");
+    }
+
+    @Test
+    void shouldWarnWithPayload_whenAReplyMatchesNoPendingCommand() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[3,\"ghost-1\",{\"status\":\"Accepted\"}]");
+            receive(session, "[4,\"ghost-2\",\"InternalError\",\"x\",{}]");
+
+            assertThat(capture.matching("UNMATCHED CALLRESULT messageId=ghost-1")).singleElement().asString()
+                    .contains("{\"status\":\"Accepted\"}");
+            assertThat(capture.matching("UNMATCHED CALLERROR messageId=ghost-2")).hasSize(1);
+            assertThat(capture.events(OcppLoggers.COMMANDS_NAME, Level.WARN)).hasSize(2);
+        }
+        verify(chargeSessionService, never()).handleCommandResult(any(), any(), any());
+    }
+
+    @Test
+    void shouldRecognizeALateReply_afterTheCommandTimedOut() throws Exception {
+        WebSocketSession session = open("ws-1");
+        String messageId = sendCommand(UUID.randomUUID(), "RequestStopTransaction");
+        registry.expire(Duration.ZERO);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[3,\"" + messageId + "\",{\"status\":\"Accepted\"}]");
+
+            assertThat(capture.matching("LATE REPLY to RequestStopTransaction messageId=" + messageId)).hasSize(1);
+        }
+        verify(chargeSessionService, never()).handleCommandResult(any(), any(), any());
+    }
+
+    @Test
+    void shouldLogAndSurvive_whenApplyingAReplyFails() throws Exception {
+        WebSocketSession session = open("ws-1");
+        String messageId = sendCommand(UUID.randomUUID(), "UnlockConnector");
+        doThrow(new IllegalStateException("cannot save")).when(chargeSessionService).handleCommandResult(any(), any(), any());
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[3,\"" + messageId + "\",{\"status\":\"Unlocked\"}]");
+
+            assertThat(capture.events(OcppWebSocketHandler.class.getName(), Level.ERROR)).hasSize(1);
+        }
+        verify(session, never()).close(any());
+    }
+
+    // ---------------------------------------------------------------- lifecycle and the reconnect fix
+
+    @Test
+    void shouldLogConnectWithSessionRemoteSubprotocolAndBothClocks_andStoreIt() throws Exception {
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            open("ws-1");
+
+            String line = capture.matching("CONNECTED chargePointId=" + CP).get(0);
+            assertThat(line).contains("sessionId=ws-1").contains("remote=203.0.113.9").contains("negotiatedSubprotocol=ocpp2.0.1")
+                    .contains("serverTimeUtc=").contains("serverTimeNepal=").contains("+05:45");
+        }
+        verify(chargePointService).markConnected(CP);
+        OcppConnectionLog row = writer.rows(OcppConnectionLog.class).get(0);
+        assertThat(row.getEvent()).isEqualTo(OcppConnectionLog.Event.CONNECTED);
+        assertThat(row.getWsSessionId()).isEqualTo("ws-1");
+        assertThat(row.getRemoteAddr()).isEqualTo("203.0.113.9");
+        assertThat(row.getForwardedFor()).isEqualTo("198.51.100.7");
+    }
+
+    @Test
+    void shouldLogDisconnectWithCloseCodeReasonDurationFramesAndIdleTime() throws Exception {
+        WebSocketSession session = open("ws-1");
+        receive(session, "[2,\"hb-1\",\"Heartbeat\",{}]");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.afterConnectionClosed(session, new CloseStatus(1006, "no close frame"));
+
+            String line = capture.matching("DISCONNECTED chargePointId=" + CP).get(0);
+            assertThat(line).contains("sessionId=ws-1").contains("closeCode=1006").contains("abnormal closure")
+                    .contains("reason=\"no close frame\"").contains("framesIn=1").contains("framesOut=1")
+                    .contains("sinceLastFrame=").contains("duration=").contains("wasCurrentSession=true");
+            assertThat(capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN)).hasSize(1);
+        }
+        verify(chargePointService).markDisconnected(CP);
+        OcppConnectionLog row = writer.rows(OcppConnectionLog.class).stream()
+                .filter(r -> r.getEvent() == OcppConnectionLog.Event.DISCONNECTED).findFirst().orElseThrow();
+        assertThat(row.getCloseCode()).isEqualTo(1006);
+        assertThat(row.getDetail()).contains("framesIn=1").contains("closeReason=no close frame");
+    }
+
+    @Test
+    void shouldLogANormalCloseAtInfo() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+
+            assertThat(capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN)).isEmpty();
+            assertThat(capture.matching("closeCode=1000 (normal closure)")).hasSize(1);
+        }
+    }
+
+    @Test
+    void shouldKeepTheChargerOnline_whenAStaleSessionClosesAfterAQuickReconnect() throws Exception {
+        WebSocketSession stale = open("ws-old");
+        String pendingOnOldConnection = sendCommand(UUID.randomUUID(), "UnlockConnector");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            WebSocketSession fresh = open("ws-new"); // the charger reconnected before the old close arrived
+
+            assertThat(capture.matching("RECONNECT chargePointId=" + CP)).singleElement().asString()
+                    .contains("newSessionId=ws-new").contains("oldSessionId=ws-old").contains("last frame");
+            verify(stale).close(any(CloseStatus.class)); // the replaced socket is closed
+
+            handler.afterConnectionClosed(stale, new CloseStatus(1006));
+
+            assertThat(capture.matching("STALE session ws-old")).hasSize(1);
+            assertThat(capture.matching("wasCurrentSession=false")).hasSize(1);
+            verify(chargePointService, never()).markDisconnected(CP);
+            assertThat(registry.isConnected(CP)).isTrue();
+            // the new connection's own pending commands were not wiped
+            String onNew = sendCommand(UUID.randomUUID(), "RequestStopTransaction");
+            handler.afterConnectionClosed(stale, new CloseStatus(1006));
+            assertThat(registry.pendingCount(CP)).isEqualTo(2);
+            assertThat(onNew).isNotEqualTo(pendingOnOldConnection);
+
+            // when the CURRENT session finally closes, the charger goes offline and its commands are reported lost
+            handler.afterConnectionClosed(fresh, CloseStatus.GOING_AWAY);
+            verify(chargePointService, times(1)).markDisconnected(CP);
+            assertThat(registry.isConnected(CP)).isFalse();
+            assertThat(capture.matching("COMMAND LOST")).hasSize(2);
+        }
+        assertThat(writer.rows(OcppConnectionLog.class)).extracting(OcppConnectionLog::getEvent)
+                .contains(OcppConnectionLog.Event.RECONNECT);
+        assertThat(writer.rows(OcppCommandLog.class)).extracting(OcppCommandLog::getOutcome)
+                .containsOnly(OcppCommandLog.Outcome.DISCONNECTED);
+    }
+
+    @Test
+    void shouldLogEveryPong_atDebugWithTheDelaySinceOurPing() throws Exception {
+        WebSocketSession session = open("ws-1");
+        OcppConnectionState state = (OcppConnectionState) session.getAttributes().get(OcppConnectionState.ATTRIBUTE);
+        state.lastPingAt(java.time.Instant.now().minusMillis(40));
+
+        try (LogCapture capture = LogCapture.atEveryLevel().with(OcppLoggers.LIFECYCLE_NAME, Level.DEBUG)) {
+            handler.handlePongMessage(session, new PongMessage(ByteBuffer.allocate(0)));
+
+            assertThat(capture.matching("PONG received from " + CP)).hasSize(1);
+        }
+        assertThat(state.lastPongAt()).isNotNull();
+    }
+
+    // ---------------------------------------------------------------- frames end to end through the handler
+
+    @Test
+    void shouldLogAndStoreEveryInboundAndOutboundFrame_includingTheReplies() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, "[2,\"s-1\",\"StatusNotification\",{\"timestamp\":\"2026-10-15T10:00:00Z\",\"connectorStatus\":\"Occupied\",\"evseId\":1,\"connectorId\":1}]");
+
+            List<String> frames = capture.textsFrom(OcppLoggers.FRAMES_NAME);
+            assertThat(frames).hasSize(2);
+            assertThat(frames.get(0)).startsWith("FRAME IN ");
+            assertThat(frames.get(1)).startsWith("FRAME OUT").endsWith("[3,\"s-1\",{}]");
+        }
+        assertThat(writer.rows(OcppMessageLog.class)).extracting(OcppMessageLog::getDirection, OcppMessageLog::getAction)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("IN", "StatusNotification"),
+                        org.assertj.core.groups.Tuple.tuple("OUT", "StatusNotification"));
+        verify(chargePointService).recordStatus(CP, "Occupied");
+    }
+
+    @Test
+    void shouldGoThroughOneChokePoint_forEveryOutboundFrame() throws Exception {
+        WebSocketSession session = open("ws-1");
+        receive(session, "[2,\"x\",\"Nope\",{}]");                      // CALLERROR NotSupported
+        receive(session, "garbage");                                    // CALLERROR FormationViolation
+        receive(session, "[2,\"h\",\"Heartbeat\",{}]");                 // CALLRESULT
+        sendCommand(UUID.randomUUID(), "UnlockConnector");              // command
+
+        assertThat(sent).hasSize(4);
+        long outRows = writer.rows(OcppMessageLog.class).stream().filter(r -> r.getDirection().equals("OUT")).count();
+        assertThat(outRows).as("every frame handed to the socket has an OUT row").isEqualTo(sent.size());
+    }
+}
