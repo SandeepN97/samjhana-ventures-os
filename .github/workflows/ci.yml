@@ -63,6 +63,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-admin/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-admin
       - run: npm run lint
@@ -80,6 +84,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-web/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-web
       - run: npm run lint
@@ -97,6 +105,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-admin/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-admin
       - name: npm audit (production deps, moderate and above blocks the merge)
@@ -115,6 +127,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-web/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-web
       - name: npm audit (production deps, moderate and above blocks the merge)
@@ -225,6 +241,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-admin/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-admin
       - name: Vitest — unit + component tests
@@ -250,6 +270,10 @@ jobs:
           cache-dependency-path: |
             samjhana-admin/package-lock.json
             samjhana-web/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-admin
       - run: npm ci
@@ -278,6 +302,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: samjhana-web/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - run: npm ci
         working-directory: samjhana-web
       - name: Vitest — component tests
@@ -307,6 +335,10 @@ jobs:
           cache-dependency-path: |
             samjhana-admin/package-lock.json
             samjhana-web/package-lock.json
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - name: Build admin frontend
         run: npm ci && npm run build
         working-directory: samjhana-admin
@@ -357,6 +389,10 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '20'
+      # Node 20.20 ships npm 10.8, whose "npm ci" crashes on this dependency tree
+      # ("Cannot read properties of null (reading 'edgesOut')"). npm 11 installs it fine.
+      - name: Use npm 11
+        run: npm install -g npm@11.6.2
       - name: npm audit — admin frontend
         run: npm ci && npm audit --audit-level=moderate
         working-directory: samjhana-admin
