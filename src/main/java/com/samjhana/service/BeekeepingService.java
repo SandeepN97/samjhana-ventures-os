@@ -13,6 +13,7 @@ import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BeekeepingProductRepository;
 import com.samjhana.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,17 @@ public class BeekeepingService {
 
     public static final String BUSINESS_CODE = "beekeeping";
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
+
+    /** How many of the newest orders the dashboard shows. */
+    static final int RECENT_ORDERS = 5;
+    /** The order list is read a page at a time: this many when the caller does not say, and never more than the maximum. */
+    public static final int ORDERS_PAGE_SIZE = 50;
+    static final int ORDERS_MAX_PAGE_SIZE = 200;
+    /** A search through the order list looks at the newest this many orders. */
+    static final int ORDER_SEARCH_WINDOW = 500;
+    /** Limits on what one stored sale can put into a response, whatever its stored JSON holds. */
+    private static final int MAX_LINES_SHOWN = 100;
+    private static final int MAX_TEXT_SHOWN = 200;
 
     public enum StockStatus { IN_STOCK, LOW_STOCK, OUT_OF_STOCK }
 
@@ -60,23 +72,23 @@ public class BeekeepingService {
                 .filter(p -> p.getStockQty() <= p.getReorderLevel())
                 .collect(Collectors.toList());
 
-        List<Transaction> all = transactionRepository.findByBusinessCodeOrderByTransactionDateDesc(BUSINESS_CODE);
+        // Today's tiles are counted and added up by the database, and only the newest few orders are read:
+        // the dashboard must not load the shop's whole history (finding K-02).
         LocalDate today = LocalDate.now(KATHMANDU);
-        List<Transaction> todaySales = all.stream()
-                .filter(t -> today.equals(t.getTransactionDate()))
-                .filter(t -> t.getTransactionType() == Transaction.TransactionType.SALE)
-                .collect(Collectors.toList());
-        BigDecimal todayRevenue = todaySales.stream()
-                .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long todaySalesCount = transactionRepository
+                .countByBusiness_CodeAndTransactionDateAndTransactionType(BUSINESS_CODE, today, Transaction.TransactionType.SALE);
+        BigDecimal todayRevenue = Optional.ofNullable(transactionRepository
+                .sumAmountByBusinessCodeAndDateAndType(BUSINESS_CODE, today, Transaction.TransactionType.SALE)).orElse(BigDecimal.ZERO);
+        List<Transaction> recent = transactionRepository.findNewestByBusinessCode(BUSINESS_CODE, PageRequest.of(0, RECENT_ORDERS));
 
         Map<String, Object> dashboard = new LinkedHashMap<>();
         dashboard.put("totalItems", products.size());
         dashboard.put("totalStockValue", stockValue);
         dashboard.put("lowStockCount", lowStock.size());
         dashboard.put("lowStockItems", lowStock.stream().map(p -> productToMap(p, includeCost)).collect(Collectors.toList()));
-        dashboard.put("todaySalesCount", todaySales.size());
+        dashboard.put("todaySalesCount", Math.toIntExact(todaySalesCount));
         dashboard.put("todayRevenue", todayRevenue);
-        dashboard.put("recentOrders", all.stream().limit(5).map(this::transactionToOrderMap).collect(Collectors.toList()));
+        dashboard.put("recentOrders", recent.stream().map(this::transactionToOrderMap).collect(Collectors.toList()));
         return dashboard;
     }
 
@@ -263,18 +275,26 @@ public class BeekeepingService {
 
     // ===================== ORDERS =====================
 
-    public List<Map<String, Object>> listOrders(String search) {
-        List<Map<String, Object>> orders = transactionRepository
-                .findByBusinessCodeOrderByTransactionDateDesc(BUSINESS_CODE).stream()
-                .map(this::transactionToOrderMap).collect(Collectors.toList());
-        if (search != null && !search.isBlank()) {
-            String s = search.toLowerCase();
-            orders = orders.stream().filter(o -> {
-                String name = (String) o.get("customerName");
-                return name != null && name.toLowerCase().contains(s);
-            }).collect(Collectors.toList());
+    /**
+     * One page of sales, newest first. {@code page} counts from 0; {@code size} is kept between 1 and
+     * {@link #ORDERS_MAX_PAGE_SIZE} (and is {@link #ORDERS_PAGE_SIZE} when it is not a usable number). With a search, the
+     * customer name is looked for among the newest {@link #ORDER_SEARCH_WINDOW} sales and the matches are paged.
+     */
+    public List<Map<String, Object>> listOrders(String search, int page, int size) {
+        int pageSize = size < 1 ? ORDERS_PAGE_SIZE : Math.min(size, ORDERS_MAX_PAGE_SIZE);
+        int pageNumber = Math.max(page, 0);
+        if (search == null || search.isBlank()) {
+            return transactionRepository.findNewestByBusinessCode(BUSINESS_CODE, PageRequest.of(pageNumber, pageSize)).stream()
+                    .map(this::transactionToOrderMap).collect(Collectors.toList());
         }
-        return orders;
+        String wanted = search.toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> matches = transactionRepository
+                .findNewestByBusinessCode(BUSINESS_CODE, PageRequest.of(0, ORDER_SEARCH_WINDOW)).stream()
+                .map(this::transactionToOrderMap)
+                .filter(o -> o.get("customerName") instanceof String name && name.toLowerCase(Locale.ROOT).contains(wanted))
+                .collect(Collectors.toList());
+        int from = (int) Math.min((long) pageNumber * pageSize, matches.size());
+        return matches.subList(from, Math.min(from + pageSize, matches.size()));
     }
 
     // ===================== PUBLIC VIEW =====================
@@ -325,12 +345,38 @@ public class BeekeepingService {
         map.put("notes", t.getNotes());
         map.put("enteredByName", t.getEnteredBy() != null ? t.getEnteredBy().getFullName() : null);
         map.put("createdAt", t.getCreatedAt());
+        // Only the fields the screens use are copied out of the stored JSON, each cut to a sensible length, so a sale
+        // with extra or oversized data in it cannot make a response large (findings K-02 and F-06).
         Map<String, Object> cf = parseCustomFields(t.getCustomFields());
-        map.put("customerName", cf.get("customerName"));
-        map.put("customerPhone", cf.get("customerPhone"));
-        map.put("items", cf.get("items"));
-        map.put("paymentMethod", cf.get("paymentMethod"));
+        map.put("customerName", shortText(cf.get("customerName"), MAX_TEXT_SHOWN));
+        map.put("customerPhone", shortText(cf.get("customerPhone"), 40));
+        map.put("items", orderLines(cf.get("items")));
+        map.put("paymentMethod", shortText(cf.get("paymentMethod"), 20));
         return map;
+    }
+
+    private static List<Map<String, Object>> orderLines(Object stored) {
+        List<Map<String, Object>> shown = new ArrayList<>();
+        if (!(stored instanceof List<?> lines)) return shown;
+        for (Object entry : lines) {
+            if (shown.size() >= MAX_LINES_SHOWN) break;
+            if (!(entry instanceof Map<?, ?> line)) continue;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("itemId", shortText(line.get("itemId"), 64));
+            item.put("itemName", shortText(line.get("itemName"), MAX_TEXT_SHOWN));
+            item.put("quantity", line.get("quantity") instanceof Number n ? n : null);
+            item.put("unitPrice", line.get("unitPrice") instanceof Number n ? n : null);
+            item.put("total", line.get("total") instanceof Number n ? n : null);
+            shown.add(item);
+        }
+        return shown;
+    }
+
+    /** The value as text, cut to {@code max} characters; null for anything that is not plain text, a number or true/false. */
+    private static String shortText(Object value, int max) {
+        if (!(value instanceof CharSequence || value instanceof Number || value instanceof Boolean)) return null;
+        String text = value.toString();
+        return text.length() > max ? text.substring(0, max) : text;
     }
 
     private Map<String, Object> parseCustomFields(String json) {

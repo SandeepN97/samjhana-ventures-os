@@ -78,8 +78,21 @@ public class BeekeepingController {
                 "item", beekeepingService.adjustStock(UUID.fromString(id), adjustment, user)));
     }
 
+    /** One page of sales, newest first: {@code page} counts from 0 and {@code size} is at most 200 (50 when not given). */
     @GetMapping("/orders")
-    public ResponseEntity<?> listOrders(@RequestParam(required = false) String search) {
-        return ResponseEntity.ok(beekeepingService.listOrders(search));
+    public ResponseEntity<?> listOrders(@RequestParam(required = false) String search,
+                                        @RequestParam(required = false) String page,
+                                        @RequestParam(required = false) String size) {
+        return ResponseEntity.ok(beekeepingService.listOrders(search,
+                wholeNumber(page, 0), wholeNumber(size, BeekeepingService.ORDERS_PAGE_SIZE)));
+    }
+
+    /** A whole number from the address; the fallback when it is missing or is not one (so a mistyped address is not an error). */
+    private static int wholeNumber(String value, int fallback) {
+        try {
+            return value == null ? fallback : Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 }

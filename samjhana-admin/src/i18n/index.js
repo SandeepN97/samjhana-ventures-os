@@ -1265,6 +1265,8 @@ export const resources = {
         noOrdersFound: 'No sales found',
         createFirstOrder: 'Record First Sale',
         more: 'more',
+        showOlder: 'Show older sales',
+        failedToLoadOlder: 'Could not load older sales. Please try again.',
       },
 
       // Furniture Customers
@@ -2920,6 +2922,8 @@ export const resources = {
         noOrdersFound: 'कुनै बिक्री छैन',
         createFirstOrder: 'पहिलो बिक्री दर्ता गर्नुहोस्',
         more: 'थप',
+        showOlder: 'पुराना बिक्री देखाउनुहोस्',
+        failedToLoadOlder: 'पुराना बिक्री लोड गर्न सकिएन। फेरि प्रयास गर्नुहोस्।',
       },
 
       // Furniture Customers
