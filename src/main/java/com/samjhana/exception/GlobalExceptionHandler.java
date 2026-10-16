@@ -1,5 +1,6 @@
 package com.samjhana.exception;
 
+import com.samjhana.ocpp.diag.LogSafe;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -94,8 +95,24 @@ public class GlobalExceptionHandler {
     /** E.g. two people closing the same day at once: the second hits the unique date and gets a clear 409. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleConflict(DataIntegrityViolationException ex) {
-        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        // The database's own message repeats the values of the row that clashed (a number plate, a username), so it
+        // is not logged: only which rule was broken and the SQL state (finding L-01).
+        log.warn("Data integrity violation: constraint={} sqlState={}", LogSafe.clean(constraintOf(ex), 100), sqlStateOf(ex));
         return ResponseEntity.status(409).body(new ErrorResponse("CONFLICT", "This conflicts with a record that already exists"));
+    }
+
+    private static String constraintOf(Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof org.hibernate.exception.ConstraintViolationException violation) return violation.getConstraintName();
+        }
+        return null;
+    }
+
+    private static String sqlStateOf(Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof java.sql.SQLException sql) return sql.getSQLState();
+        }
+        return null;
     }
 
     @ExceptionHandler(DateTimeParseException.class)
