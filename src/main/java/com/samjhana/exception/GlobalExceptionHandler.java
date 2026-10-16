@@ -1,7 +1,10 @@
 package com.samjhana.exception;
 
+import com.samjhana.ocpp.diag.LogSafe;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -126,7 +129,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+        // A caller's mistake (a query value that is not a number, the wrong content type, a missing header) is
+        // theirs to fix: it gets the 4xx Spring chose, and the log gets one short line instead of a stack trace
+        // (finding I-01). Only a real fault is a 500 that is logged in full.
+        if (ex instanceof org.springframework.web.ErrorResponse spring && spring.getStatusCode().is4xxClientError()) {
+            return clientMistake(spring.getStatusCode().value(), ex);
+        }
+        if (ex instanceof TypeMismatchException) {
+            return clientMistake(400, ex);
+        }
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(500).body(new ErrorResponse("SERVER_ERROR", "Something went wrong."));
+    }
+
+    private ResponseEntity<ErrorResponse> clientMistake(int status, Exception ex) {
+        // The text may hold what the caller typed, so it is made safe for the log: no line breaks, bounded length.
+        log.debug("Request refused with {}: {}", status, LogSafe.clean(ex.getMessage(), 200));
+        HttpStatus known = HttpStatus.resolve(status);
+        String code = known == null ? "BAD_REQUEST" : known.name();
+        return ResponseEntity.status(status).body(new ErrorResponse(code, "That request could not be processed."));
     }
 }
