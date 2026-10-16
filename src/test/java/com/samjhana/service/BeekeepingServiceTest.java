@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BeekeepingProduct;
 import com.samjhana.entity.BeekeepingProduct.BeekeepingCategory;
+import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
 import com.samjhana.exception.InsufficientStockException;
 import com.samjhana.repository.AuditLogRepository;
@@ -12,11 +13,16 @@ import com.samjhana.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -81,7 +87,6 @@ class BeekeepingServiceTest {
         BeekeepingProduct honey = product("Honey", "850", "500", 10, 2);
         BeekeepingProduct hive = product("Hive", "4500", null, 1, 2);
         when(productRepository.findByDeletedAtIsNullOrderByNameAsc()).thenReturn(List.of(honey, hive));
-        when(transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("beekeeping")).thenReturn(List.of());
 
         Map<String, Object> dashboard = service.getDashboard(false);
 
@@ -89,6 +94,123 @@ class BeekeepingServiceTest {
         assertThat(dashboard.get("lowStockCount")).isEqualTo(1);
         assertThat((BigDecimal) dashboard.get("totalStockValue")).isEqualByComparingTo("13000");
         assertThat(dashboard.get("todaySalesCount")).isEqualTo(0);
+        assertThat((BigDecimal) dashboard.get("todayRevenue")).isEqualByComparingTo("0");
+        assertThat((List<?>) dashboard.get("recentOrders")).isEmpty();
+    }
+
+    // ---- dashboard and order list read a few rows, not the whole history (finding K-02) -------------
+
+    private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
+
+    private Transaction sale(String customFields) {
+        return Transaction.builder().id(UUID.randomUUID()).transactionType(Transaction.TransactionType.SALE)
+                .transactionDate(LocalDate.of(2026, 10, 3)).amount(new BigDecimal("850")).customFields(customFields).build();
+    }
+
+    private Transaction saleFor(String customerName) {
+        return sale("{\"customerName\":\"" + customerName + "\",\"paymentMethod\":\"CASH\",\"items\":[]}");
+    }
+
+    @Test
+    void shouldTakeTodaysTotalsFromTheDatabase_andNeverLoadTheWholeHistory() {
+        LocalDate today = LocalDate.now(KATHMANDU);
+        when(productRepository.findByDeletedAtIsNullOrderByNameAsc()).thenReturn(List.of());
+        when(transactionRepository.countByBusiness_CodeAndTransactionDateAndTransactionType("beekeeping", today, Transaction.TransactionType.SALE))
+                .thenReturn(3L);
+        when(transactionRepository.sumAmountByBusinessCodeAndDateAndType("beekeeping", today, Transaction.TransactionType.SALE))
+                .thenReturn(new BigDecimal("2550"));
+
+        Map<String, Object> dashboard = service.getDashboard(false);
+
+        assertThat(dashboard.get("todaySalesCount")).isEqualTo(3);
+        assertThat((BigDecimal) dashboard.get("todayRevenue")).isEqualByComparingTo("2550");
+        verify(transactionRepository, never()).findByBusinessCodeOrderByTransactionDateDesc(any());
+    }
+
+    @Test
+    void shouldShowTheFiveNewestOrdersOnTheDashboard_readingOnlyFiveRows() {
+        when(productRepository.findByDeletedAtIsNullOrderByNameAsc()).thenReturn(List.of());
+        when(transactionRepository.findNewestByBusinessCode("beekeeping", PageRequest.of(0, 5)))
+                .thenReturn(List.of(saleFor("Hari"), saleFor("Sita")));
+
+        List<Map<String, Object>> recent = castOrders(service.getDashboard(false).get("recentOrders"));
+
+        assertThat(recent).extracting(o -> o.get("customerName")).containsExactly("Hari", "Sita");
+        verify(transactionRepository).findNewestByBusinessCode("beekeeping", PageRequest.of(0, 5));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> castOrders(Object orders) {
+        return (List<Map<String, Object>>) orders;
+    }
+
+    @Test
+    void shouldReadOnePageOfOrders_newestFirst() {
+        when(transactionRepository.findNewestByBusinessCode("beekeeping", PageRequest.of(1, 25)))
+                .thenReturn(List.of(saleFor("Hari")));
+
+        List<Map<String, Object>> orders = service.listOrders(null, 1, 25);
+
+        assertThat(orders).extracting(o -> o.get("customerName")).containsExactly("Hari");
+        verify(transactionRepository).findNewestByBusinessCode("beekeeping", PageRequest.of(1, 25));
+        verify(transactionRepository, never()).findByBusinessCodeOrderByTransactionDateDesc(any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,0,0,50", "-4,50,0,50", "0,-5,0,50", "2,25,2,25", "0,1000,0,200", "1,200,1,200", "0,1,0,1"})
+    void shouldKeepThePageAndItsSizeInRange(int page, int size, int expectedPage, int expectedSize) {
+        service.listOrders(null, page, size);
+        verify(transactionRepository).findNewestByBusinessCode("beekeeping", PageRequest.of(expectedPage, expectedSize));
+    }
+
+    @Test
+    void shouldSearchTheNewest500Orders_andPageTheMatches() {
+        when(transactionRepository.findNewestByBusinessCode("beekeeping", PageRequest.of(0, 500)))
+                .thenReturn(List.of(saleFor("Hari"), saleFor("Sita"), saleFor("Sitaram"), saleFor("Gita")));
+
+        assertThat(service.listOrders("SIT", 0, 50)).extracting(o -> o.get("customerName")).containsExactly("Sita", "Sitaram");
+        assertThat(service.listOrders("sit", 1, 1)).extracting(o -> o.get("customerName")).containsExactly("Sitaram");
+        assertThat(service.listOrders("nobody", 0, 50)).isEmpty();
+        verify(transactionRepository, never()).findByBusinessCodeOrderByTransactionDateDesc(any());
+    }
+
+    @Test
+    void shouldCopyOnlyKnownFieldsIntoAnOrder() {
+        String junk = "x".repeat(2000);
+        Transaction t = sale("{\"customerName\":\"Hari\",\"customerPhone\":\"9801234567\",\"paymentMethod\":\"BANK\","
+                + "\"junk\":\"" + junk + "\",\"items\":[{\"itemId\":\"a1\",\"itemName\":\"Wild Honey\",\"quantity\":2,"
+                + "\"unitPrice\":850,\"total\":1700,\"junk\":\"" + junk + "\",\"nested\":{\"deep\":[1,2,3]}}]}");
+
+        Map<String, Object> order = service.transactionToOrderMap(t);
+
+        assertThat(order).doesNotContainKey("junk");
+        assertThat(order.get("customerName")).isEqualTo("Hari");
+        assertThat(order.get("paymentMethod")).isEqualTo("BANK");
+        List<Map<String, Object>> items = castOrders(order.get("items"));
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0)).containsOnlyKeys("itemId", "itemName", "quantity", "unitPrice", "total");
+        assertThat(items.get(0)).containsEntry("itemName", "Wild Honey").containsEntry("quantity", 2).containsEntry("unitPrice", 850);
+    }
+
+    @Test
+    void shouldCutLongTextAndManyLines_inAnOrder() {
+        StringBuilder lines = new StringBuilder();
+        for (int i = 0; i < 250; i++) lines.append(i == 0 ? "" : ",").append("{\"itemName\":\"P").append(i).append("\",\"quantity\":1}");
+        Transaction t = sale("{\"customerName\":\"" + "N".repeat(5000) + "\",\"items\":[" + lines + "]}");
+
+        Map<String, Object> order = service.transactionToOrderMap(t);
+
+        assertThat((String) order.get("customerName")).hasSize(200);
+        assertThat(castOrders(order.get("items"))).hasSize(100);
+    }
+
+    @Test
+    void shouldShowNoItems_whenTheStoredLinesAreMissingOrBroken() {
+        assertThat(castOrders(service.transactionToOrderMap(sale(null)).get("items"))).isEmpty();
+        assertThat(castOrders(service.transactionToOrderMap(sale("{\"items\":\"not a list\"}")).get("items"))).isEmpty();
+        assertThat(castOrders(service.transactionToOrderMap(sale("{\"items\":[1,\"two\",null,{\"itemName\":\"Honey\",\"quantity\":\"lots\"}]}")).get("items")))
+                .hasSize(1).first().satisfies(item -> assertThat(item.get("quantity")).isNull());
+        assertThat(castOrders(service.transactionToOrderMap(sale("not json at all")).get("items"))).isEmpty();
     }
 
     // ---- products ---------------------------------------------------------------------------------
