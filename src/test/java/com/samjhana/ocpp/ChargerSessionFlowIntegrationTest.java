@@ -98,6 +98,7 @@ class ChargerSessionFlowIntegrationTest {
     @Autowired TransactionRepository transactionRepository;
     @Autowired OcppProperties ocppProperties;
     @Autowired OcppAuditWriter auditWriter;
+    @Autowired com.samjhana.repository.AuditLogRepository auditLogRepository;
     @Autowired LockEvidenceTracker lockEvidence;
     @Autowired OcppAuditRetention retention;
     @Autowired OcppMessageLogRepository messageLogs;
@@ -225,6 +226,36 @@ class ChargerSessionFlowIntegrationTest {
 
         // The charger is free again for the next customer.
         assertThat(get("/api/ev/sessions/active").getBody().size()).isZero();
+    }
+
+    // ---- finding P1b-08: who stopped a charge and who sent the unlock is on record ----
+
+    @Test
+    void shouldRecordWhoStoppedTheChargeAndWhoSentTheUnlock() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 7 PA 0077", 80, dfacId).get("id").asText();
+        charger.reply(charger.awaitCall("RequestStartTransaction"), "Accepted");
+        charger.call("TransactionEvent", txEvent("Started", 0, "TX-AUD", 32, 0));
+        awaitStatus(id, "ACTIVE");
+
+        assertThat(post("/api/ev/sessions/" + id + "/stop", null).getStatusCode()).isEqualTo(HttpStatus.OK);
+        charger.reply(charger.awaitCall("RequestStopTransaction"), "Accepted");
+        charger.call("TransactionEvent", txEvent("Ended", 1, "TX-AUD", 40, 1_000));
+        awaitStatus(id, "AWAITING_PAYMENT");
+        assertThat(post("/api/ev/sessions/" + id + "/mark-paid", Map.of("method", "CASH", "amount", 112)).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        charger.awaitCall("UnlockConnector");   // not answered yet: the session waits for the unlock
+        assertThat(post("/api/ev/sessions/" + id + "/unlock", null).getStatusCode()).isEqualTo(HttpStatus.OK);
+        charger.awaitCall("UnlockConnector");
+
+        List<com.samjhana.entity.AuditLog> rows = auditLogRepository.findAll().stream()
+                .filter(a -> id.equals(String.valueOf(a.getEntityId())) && a.getAction() == com.samjhana.entity.AuditLog.AuditAction.UPDATE)
+                .toList();
+        assertThat(rows).extracting(com.samjhana.entity.AuditLog::getDescription).containsExactlyInAnyOrder(
+                "Stop requested by ev-flow-admin for charger " + CHARGER_1,
+                "Unlock requested by ev-flow-admin for charger " + CHARGER_1);
+        UUID adminId = userRepository.findByUsername("ev-flow-admin").orElseThrow().getId();
+        assertThat(rows).allSatisfy(r -> assertThat(r.getUser().getId()).isEqualTo(adminId));
     }
 
     @Test

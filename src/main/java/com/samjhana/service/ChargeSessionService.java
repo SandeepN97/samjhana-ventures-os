@@ -140,7 +140,7 @@ public class ChargeSessionService {
     }
 
     @Transactional
-    public ChargeSessionResponse stop(UUID id) {
+    public ChargeSessionResponse stop(UUID id, User user) {
         ChargeSession session = find(id);
         requireStatus(session, ChargeSession.Status.ACTIVE);
         boolean autoUnlock = session.getChargePoint().getLockBehavior() == ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP;
@@ -148,6 +148,7 @@ public class ChargeSessionService {
             requireOcppTransaction(session);
             requireConnected(session);
         }
+        ChargeSession.Status before = session.getStatus();
         session.setStopRequestedAt(LocalDateTime.now());
 
         Dispatch stopCommand = null;
@@ -159,7 +160,17 @@ public class ChargeSessionService {
             session.setStatusMessage("Stop command sent; connector remains locked");
             stopCommand = requestStopDispatch(session, ChargeSession.Status.ACTIVE, "stop");
         }
-        return publish(chargeSessionRepository.save(session), stopCommand);
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Stop requested");
+        return publish(saved, stopCommand);
+    }
+
+    /** Who sent a command to a charger, and what it did to the session (finding P1b-08). */
+    private void recordCommand(User user, ChargeSession session, ChargeSession.Status before, String what) {
+        AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.CHARGE_SESSION, session.getId(),
+                "{\"status\":\"" + before + "\"}", "{\"status\":\"" + session.getStatus() + "\"}");
+        entry.setDescription(what + " by " + user.getUsername() + " for charger " + session.getChargePoint().getCode());
+        auditLogRepository.save(entry);
     }
 
     @Transactional
@@ -192,7 +203,7 @@ public class ChargeSessionService {
     }
 
     @Transactional
-    public ChargeSessionResponse retryUnlock(UUID id) {
+    public ChargeSessionResponse retryUnlock(UUID id, User user) {
         ChargeSession session = find(id);
         if (session.getPaidAt() == null || session.getChargePoint().getLockBehavior() != ChargePoint.LockBehavior.EXPLICIT_UNLOCK) {
             throw new EvSessionStateException("Only a paid session with explicit connector locking can be unlocked");
@@ -202,9 +213,12 @@ public class ChargeSessionService {
             throw new EvSessionStateException("Session is not waiting for connector unlock");
         }
         requireConnected(session);
+        ChargeSession.Status before = session.getStatus();
         session.setStatus(ChargeSession.Status.UNLOCK_REQUESTED);
         session.setStatusMessage("Unlock command resent");
-        return publish(chargeSessionRepository.save(session), unlockDispatch(session));
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Unlock requested");
+        return publish(saved, unlockDispatch(session));
     }
 
     @Transactional
