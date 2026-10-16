@@ -57,6 +57,8 @@ public class ShopOrderService {
     static final int MAX_QTY_PER_LINE = 50;
     private static final String ORDER_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final Pattern PHONE = Pattern.compile("\\+?[0-9]{7,15}");
+    /** What {@link #newOrderNumber()} makes: SV-, the date as six digits, then four characters (a looser alphabet than ours). */
+    private static final Pattern ORDER_NUMBER = Pattern.compile("SV-[0-9]{6}-[A-Z0-9]{4}");
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -90,8 +92,9 @@ public class ShopOrderService {
         }
         String notes = optionalText(r.notes(), 1000, "Notes");
 
-        if (!throttle.tryAcquire("order:phone:" + phone, 5, Duration.ofHours(1))
-                || !throttle.tryAcquire("order:all", 120, Duration.ofHours(1))) {
+        // The shared bucket first: a request it refuses must not leave a per-phone entry behind (finding P0-16).
+        if (!throttle.tryAcquire("order:all", 120, Duration.ofHours(1))
+                || !throttle.tryAcquire("order:phone:" + phone, 5, Duration.ofHours(1))) {
             throw new TooManyRequestsException("Too many orders just now. Please call us to place this order.");
         }
 
@@ -152,8 +155,12 @@ public class ShopOrderService {
     @Transactional(readOnly = true)
     public Optional<Map<String, Object>> track(String orderNumber, String phone) {
         String number = orderNumber == null ? "" : orderNumber.trim().toUpperCase(Locale.ROOT);
-        if (!throttle.tryAcquire("track:" + number, 10, Duration.ofMinutes(15))
-                || !throttle.tryAcquire("track:all", 300, Duration.ofMinutes(1))) {
+        // Something that could never be one of our numbers gets the usual "not found" and uses no allowance, so a
+        // stranger can't fill the throttle with made-up numbers (finding P0-16).
+        if (!ORDER_NUMBER.matcher(number).matches()) return Optional.empty();
+        // The shared bucket first: a request it refuses must not leave a per-number entry behind.
+        if (!throttle.tryAcquire("track:all", 300, Duration.ofMinutes(1))
+                || !throttle.tryAcquire("track:" + number, 10, Duration.ofMinutes(15))) {
             throw new TooManyRequestsException("Too many tries. Please wait a few minutes.");
         }
         Optional<ShopOrder> order = orderRepository.findByOrderNumber(number);
