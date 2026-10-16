@@ -1,6 +1,6 @@
 # Status of all 118 audit findings
 
-Written 2026-10-16, refreshed later the same day. Counts: **40 findings fixed** (10 merged into `staging`, 30 in open PRs), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **32 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **13 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
+Written 2026-10-16, refreshed later the same day. Counts: **44 findings fixed** (10 merged into `staging`, 34 in open PRs), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **32 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **9 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
 
 The authoritative record of each fix is its pull request (body = what was wrong, what changed, tests, mutation checks). To find the PR for a finding: GitHub search `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`.
 
@@ -72,10 +72,10 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | K-04 | Low | The uptime signals are weaker than they look: the keep-alive example points at an endpoint this app does… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | L-02 | Low | Customer data retention and erasure | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | L-03 | Low | Who may read online customers' contact details | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| M-01 | Low | Price scraper must not overwrite a manager's manual price | To do (no decision needed) | see QUEUE.md |
-| M-02 | Low | Price scraper: tie the price to the configured depot | To do (no decision needed) | see QUEUE.md |
-| M-03 | Low | Price fetch: report failures and show staleness | To do (no decision needed) | see QUEUE.md |
-| M-04 | Low | Manual price fetch: no open transaction across the HTTP call, one fetch at a time | To do (no decision needed) | see QUEUE.md |
+| M-01 | Low | Price scraper must not overwrite a manager's manual price | Fixed, PR open (awaiting the owner's merge) | #167 (no longer applies: the owner had the NOC price scraper removed; stacked on #143) |
+| M-02 | Low | Price scraper: tie the price to the configured depot | Fixed, PR open (awaiting the owner's merge) | #167 (no longer applies: the scraper is removed; stacked on #143) |
+| M-03 | Low | Price fetch: report failures and show staleness | Fixed, PR open (awaiting the owner's merge) | #167 (no longer applies: the scraper is removed; stacked on #143) |
+| M-04 | Low | Manual price fetch: no open transaction across the HTTP call, one fetch at a time | Fixed, PR open (awaiting the owner's merge) | #167 (no longer applies: the scraper is removed; stacked on #143) |
 | N-01 | Low | The database enforces none of the money and stock rules the code depends on, and the few backstops that… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | N-02 | Low | A bank reference is not unique anywhere: the same reference can be booked as many loan payments, in two… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | N-05 | Low | There is no baseline schema, no rollback script and no documented backup or restore for the only copy of… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
@@ -131,5 +131,5 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 
 - **High** (5): 3 fixed, merged into staging; 1 Ops / CI / docs / architecture; 1 waiting for the owner's decision
 - **Medium** (30): 11 fixed, PR open (awaiting the owner's merge); 7 fixed, merged into staging; 3 Ops / CI / docs / architecture; 3 partly fixed; 6 waiting for the owner's decision
-- **Low** (66): 2 already fixed before this series; 15 fixed, PR open (awaiting the owner's merge); 13 Ops / CI / docs / architecture; 11 to do (no decision needed); 25 waiting for the owner's decision
+- **Low** (66): 2 already fixed before this series; 19 fixed, PR open (awaiting the owner's merge); 13 Ops / CI / docs / architecture; 7 to do (no decision needed); 25 waiting for the owner's decision
 - **Info** (17): 4 fixed, PR open (awaiting the owner's merge); 11 Ops / CI / docs / architecture; 2 to do (no decision needed)
