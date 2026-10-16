@@ -57,19 +57,20 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String address = clientAddress.resolve(http).orElse(null);
-        if (loginAttempts.isBlocked(request.getUsername(), address)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
-        }
+        // The attempt is counted as it starts, so a burst of guesses cannot all slip past a counter that is still at zero.
+        ResponseEntity<?> refusal = refusalFor(loginAttempts.tryBegin(request.getUsername(), address));
+        if (refusal != null) return refusal;
         Authentication auth;
         try {
             auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (AuthenticationException e) {
-            loginAttempts.recordFailure(request.getUsername(), address);
+            throw e;   // a wrong password (or a disabled account): the attempt stays counted
+        } catch (RuntimeException e) {
+            loginAttempts.attemptNotCounted(request.getUsername(), address);   // something broke: not the user's doing
             throw e;
         }
-        loginAttempts.recordSuccess(request.getUsername(), address);
+        loginAttempts.attemptSucceeded(request.getUsername(), address);
 
         User user = (User) auth.getPrincipal();
         String token = jwtUtil.generateToken(user);
@@ -78,6 +79,16 @@ public class AuthController {
                 .token(token)
                 .user(UserDto.from(user))
                 .build());
+    }
+
+    private static ResponseEntity<?> refusalFor(LoginAttemptService.Decision decision) {
+        return switch (decision) {
+            case ALLOWED -> null;
+            case TOO_MANY_WRONG_PASSWORDS -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
+            case BUSY -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many sign-in attempts right now. Please wait a minute and try again."));
+        };
     }
 
     /**
@@ -165,7 +176,7 @@ public class AuthController {
         // doesn't reveal which usernames are real.
         String guessedAccount = targetsAnotherUser ? request.getUsername().trim() : currentUser.getUsername();
         String address = clientAddress.resolve(http).orElse(null);
-        if (loginAttempts.isBlocked(guessedAccount, address)) {
+        if (loginAttempts.tryBegin(guessedAccount, address, false) != LoginAttemptService.Decision.ALLOWED) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
         }
@@ -176,12 +187,14 @@ public class AuthController {
         boolean currentPasswordMatches = passwordEncoder.matches(request.getCurrentPassword(), hashToCheck);
 
         if (targetUser == null || !currentPasswordMatches) {
-            loginAttempts.recordFailure(guessedAccount, address);
+            // the attempt was counted as a wrong password when it started
             // Naming another user: one answer for "no such user" and "wrong password".
             // Changing your own password: you already know you exist, so the specific message is fine.
             String message = targetsAnotherUser ? INVALID_TARGET_OR_PASSWORD : "Current password is incorrect";
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
+
+        loginAttempts.attemptSucceeded(guessedAccount, address);   // the current password was right
 
         // Validate new password strength
         if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
@@ -197,7 +210,6 @@ public class AuthController {
         targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         targetUser.setMustChangePassword(false);   // an admin's temporary password is now replaced
         userRepository.save(targetUser);
-        loginAttempts.recordSuccess(guessedAccount, address);
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.
