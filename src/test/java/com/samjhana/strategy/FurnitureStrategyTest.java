@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -155,5 +157,86 @@ class FurnitureStrategyTest {
     void shouldTreatUnparsableStringValues_asMissing() {
         Map<String, Object> fields = Map.of("quantity", "not-a-number", "sellingPrice", new BigDecimal("100"));
         assertThat(strategy.calculateAmount(fields)).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    // ---- finding P0-11: how many of each item a sale line takes off the stock ----
+
+    private Map<String, Object> saleWithLines(Object... lines) {
+        return Map.of("itemName", "Sofa Set", "quantity", 1, "items", List.of(lines));
+    }
+
+    private Map<String, Object> line(Object quantity) {
+        Map<String, Object> line = new HashMap<>();
+        line.put("itemId", UUID.randomUUID().toString());
+        line.put("quantity", quantity);
+        return line;
+    }
+
+    @Test
+    void shouldAcceptSaleLinesWithAWholeQuantity() {
+        assertThat(strategy.validate(saleWithLines(line(1), line(5), line(10_000), line(3.0), line(2L))).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldAcceptALineWithNoQuantity_whichMeansOne() {
+        Map<String, Object> noQuantity = new HashMap<>();
+        noQuantity.put("itemId", UUID.randomUUID().toString());
+
+        assertThat(strategy.validate(saleWithLines(noQuantity)).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldAcceptASaleWithNoLinesAtAll() {
+        assertThat(strategy.validate(Map.of("itemName", "Sofa Set", "quantity", 1)).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldRejectALineWithANegativeQuantity_whichWouldAddToTheStock() {
+        var result = strategy.validate(saleWithLines(line(-5)));
+
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.errors()).containsKey("items[0].quantity");
+    }
+
+    @Test
+    void shouldRejectALineWithAZeroQuantity() {
+        assertThat(strategy.validate(saleWithLines(line(0))).errors()).containsKey("items[0].quantity");
+    }
+
+    @Test
+    void shouldRejectALineWithAFractionalQuantity() {
+        assertThat(strategy.validate(saleWithLines(line(2.5))).errors()).containsKey("items[0].quantity");
+    }
+
+    @Test
+    void shouldRejectALineAboveTheLargestQuantity() {
+        assertThat(strategy.validate(saleWithLines(line(10_001))).errors()).containsKey("items[0].quantity");
+    }
+
+    @Test
+    void shouldRejectALineWhoseQuantityIsNotANumber() {
+        assertThat(strategy.validate(saleWithLines(line("5"))).errors()).containsKey("items[0].quantity");
+        assertThat(strategy.validate(saleWithLines(line(true))).errors()).containsKey("items[0].quantity");
+    }
+
+    @Test
+    void shouldNameTheLineThatIsWrong() {
+        var result = strategy.validate(saleWithLines(line(1), line(-1), line(2)));
+
+        assertThat(result.errors()).containsOnlyKeys("items[1].quantity");
+    }
+
+    @Test
+    void shouldRejectItemsThatAreNotAList() {
+        var result = strategy.validate(Map.of("itemName", "Sofa Set", "quantity", 1, "items", "many"));
+
+        assertThat(result.errors()).containsKey("items");
+    }
+
+    @Test
+    void shouldRejectALineThatIsNotAnObject() {
+        var result = strategy.validate(saleWithLines("a sofa"));
+
+        assertThat(result.errors()).containsKey("items[0]");
     }
 }

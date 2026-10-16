@@ -8,10 +8,26 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
 public class FurnitureStrategy implements BusinessCalculationStrategy {
+
+    /** The most of one item a single line of a sale or purchase may take off (or put on) the stock. */
+    public static final int MAX_LINE_QUANTITY = 10_000;
+
+    /**
+     * The whole number a line's quantity stands for, or null when it is not a whole number from 1 to
+     * {@link #MAX_LINE_QUANTITY} (a negative quantity would add to the stock, finding P0-11).
+     */
+    public static Integer lineQuantity(Object value) {
+        if (!(value instanceof Number number)) return null;
+        double quantity = number.doubleValue();
+        if (Double.isNaN(quantity) || quantity != Math.rint(quantity)) return null;
+        if (quantity < 1 || quantity > MAX_LINE_QUANTITY) return null;
+        return (int) quantity;
+    }
 
     @Override
     public String getBusinessCode() {
@@ -63,7 +79,27 @@ public class FurnitureStrategy implements BusinessCalculationStrategy {
         if (sellingPrice != null && sellingPrice.compareTo(BigDecimal.ZERO) < 0) {
             errors.put("sellingPrice", "Selling price cannot be negative");
         }
+        validateLines(customFields.get("items"), errors);
         return errors.isEmpty() ? ValidationResult.valid() : ValidationResult.invalid(errors);
+    }
+
+    /** The lines of a sale or purchase each name an item and a quantity; the quantity moves the stock, so it is checked. */
+    private void validateLines(Object items, Map<String, String> errors) {
+        if (items == null) return;
+        if (!(items instanceof List<?> lines)) {
+            errors.put("items", "Items must be a list");
+            return;
+        }
+        for (int i = 0; i < lines.size(); i++) {
+            if (!(lines.get(i) instanceof Map<?, ?> line)) {
+                errors.put("items[" + i + "]", "Each item must be an object");
+                continue;
+            }
+            Object quantity = line.get("quantity");   // no quantity means one
+            if (quantity != null && lineQuantity(quantity) == null) {
+                errors.put("items[" + i + "].quantity", "Quantity must be a whole number from 1 to " + MAX_LINE_QUANTITY);
+            }
+        }
     }
 
     @Override
