@@ -311,6 +311,17 @@ class ShopStoreIntegrationTest {
         mockMvc.perform(get("/api/public/shop/orders/" + number).param("phone", "9800000009")).andExpect(status().isTooManyRequests());
     }
 
+    @Test
+    void shouldAnswer404WithoutUsingUpTheTrackingAllowance_forNumbersThatCouldNeverBeOurs() throws Exception {
+        String junk = "X".repeat(4000);
+        for (int i = 0; i < 400; i++) {                       // more than the 300 a minute that everyone shares
+            mockMvc.perform(get("/api/public/shop/orders/" + junk + i).param("phone", "9800000001")).andExpect(status().isNotFound());
+        }
+        String number = placeOk(orderJson(phone(), "PICKUP", "t-hny-1", "1"));
+        // a 429 here would mean the junk had used up the allowance that real customers need
+        mockMvc.perform(get("/api/public/shop/orders/" + number).param("phone", "9800000001")).andExpect(status().isNotFound());
+    }
+
     // ==================================== staff side ====================================
 
     @Test
