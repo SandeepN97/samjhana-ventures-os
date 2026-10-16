@@ -1,11 +1,11 @@
 {
   "identity": {
-    "name": "Samjhana Ventures",
+    "name": "Samjhana Multiproduct",
     "tagline": "Gulmi, Nepal · Est. 2008",
     "established": 2008,
     "footerBlurb": "Where craft meets community, in the hills. Four businesses, one family, one vision.",
     "footerNote": "गुल्मीको गर्वका साथ — Proudly from Gulmi",
-    "copyrightName": "Maurighar Ventures"
+    "copyrightName": "Samjhana Multiproduct"
   },
   "contact": {
     "phone": "+977 9363147818",
@@ -151,7 +151,7 @@
         "nepali": "बाइकका सामग्री",
         "image": "@hub-bike",
         "storyTitle": "Keep the road moving.",
-        "storyBody": "For bike essentials, send a photo, a part name, or a short list. We will check what is available at Samjhana Ventures and help you choose the practical next step.",
+        "storyBody": "For bike essentials, send a photo, a part name, or a short list. We will check what is available at Samjhana Multiproduct and help you choose the practical next step.",
         "action": "Ask on WhatsApp",
         "href": "@whatsapp"
       },
@@ -306,7 +306,7 @@
   },
   "shop": {
     "heading": "Shop",
-    "intro": "Honey, beekeeping gear and furniture from the Samjhana Ventures shop in Gulmi.",
+    "intro": "Honey, beekeeping gear and furniture from the Samjhana Multiproduct shop in Gulmi.",
     "deliveryFee": 150,
     "freeDeliveryOver": 5000,
     "deliveryNote": "We deliver in Gulmi and nearby. We will call you to confirm the delivery time.",
@@ -317,7 +317,7 @@
     "customOrderCta": "Ask for a quote"
   },
   "shopHub": {
-    "eyebrow": "Samjhana Ventures · Shop & order",
+    "eyebrow": "Samjhana Multiproduct · Shop & order",
     "titleLine1": "Useful things,",
     "titleLine2": "made to stay.",
     "nepali": "घरका लागि, यात्राका लागि, गुल्मीबाट।",
@@ -365,7 +365,7 @@
     "vehicleStory": {
       "eyebrow": "A quick road story",
       "title": "Tell us what the road needs.",
-      "text": "Your bike or car does not need to fit a catalogue category. Send a photo, a part name, or a short list. We’ll check what is available at Samjhana Ventures and reply with the next practical option.",
+      "text": "Your bike or car does not need to fit a catalogue category. Send a photo, a part name, or a short list. We’ll check what is available at Samjhana Multiproduct and reply with the next practical option.",
       "steps": [
         "Send a photo or list",
         "We check availability",
@@ -375,7 +375,7 @@
     }
   },
   "furniture": {
-    "eyebrow": "Samjhana Ventures · Gulmi, Nepal",
+    "eyebrow": "Samjhana Multiproduct · Gulmi, Nepal",
     "titleLine1": "Furniture for",
     "titleLine2": "real homes.",
     "intro": "A considered collection for homes in the hills — browse what is available, then call us when you need a custom conversation.",

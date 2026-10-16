@@ -170,14 +170,27 @@ describe('Home page, header and footer', () => {
     expect(screen.getByText('Come for the journey.')).toBeInTheDocument();
     expect(await screen.findAllByText('Teak Sofa')).not.toHaveLength(0);
     expect(screen.getByText('Petrol Pump & EV')).toBeInTheDocument();
-    expect(screen.getAllByText(/Samjhana Ventures/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Samjhana Multiproduct/).length).toBeGreaterThan(0);
+  });
+
+  it('uses the Samjhana Multiproduct name everywhere the site names itself', () => {
+    expect(SITE.identity.name).toBe('Samjhana Multiproduct');
+    expect(SITE.identity.copyrightName).toBe('Samjhana Multiproduct');
+    expect(JSON.stringify(SITE)).not.toMatch(/Samjhana Ventures|Maurighar Ventures/);
+  });
+
+  it('shows the new name in both English and Nepali footers', () => {
+    renderPage(<Footer />);
+    expect(screen.getAllByText(new RegExp(SITE.identity.copyrightName)).length).toBeGreaterThan(0);
+    // The Nepali footer note is separate content and must still render beside the renamed name.
+    expect(screen.getByText(SITE.identity.footerNote)).toBeInTheDocument();
   });
 
   it('header and footer take the name, phone and links from the content', () => {
     renderPage(<><Navbar /><Footer /></>);
     expect(screen.getAllByText(SITE.identity.name).length).toBeGreaterThan(1);
     expect(screen.getAllByRole('link', { name: /Call/ })[0]).toHaveAttribute('href', expect.stringContaining('tel:'));
-    expect(screen.getByText(new RegExp(SITE.identity.copyrightName))).toBeInTheDocument();
+    expect(screen.getAllByText(new RegExp(SITE.identity.copyrightName)).length).toBeGreaterThan(0);
   });
 
   it('shows the number of items in the header cart and opens the drawer', async () => {
