@@ -103,6 +103,10 @@ samjhana:
       path: ./data/images
       max-size-mb: 10
       allowed-extensions: jpg,jpeg,png,gif,webp
+    # The most picture / receipt-photo bytes kept in the shared database (see UploadQuota). Pictures and receipts live
+    # in the same database as every sale, so a full database stops all data entry. Raise only if the plan has room.
+    media-max-total-mb: ${SAMJHANA_MEDIA_MAX_TOTAL_MB:150}
+    receipt-max-total-mb: ${SAMJHANA_RECEIPT_MAX_TOTAL_MB:150}
 
   business:
     default-timezone: Asia/Kathmandu
