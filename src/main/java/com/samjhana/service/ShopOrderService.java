@@ -17,6 +17,8 @@ import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.ShopOrderRepository;
 import com.samjhana.security.RequestThrottle;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -172,24 +174,43 @@ public class ShopOrderService {
 
     // ===================== staff =====================
 
+    /** The most orders the staff list shows: the newest ones. */
+    static final int LIST_LIMIT = 300;
+
+    /**
+     * The newest {@link #LIST_LIMIT} orders (of one status, when given) whose number, customer name or phone contains
+     * the search text. The database does the cutting and the searching, so a long history is never loaded to be thrown
+     * away, and a search still reaches orders older than the newest 300.
+     */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(String status, String search) {
-        List<ShopOrder> orders;
+        Status wanted = null;
         if (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) {
             try {
-                orders = orderRepository.findByStatusOrderByCreatedAtDesc(Status.valueOf(status.toUpperCase(Locale.ROOT)));
+                wanted = Status.valueOf(status.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Unknown status: " + status);
             }
-        } else {
-            orders = orderRepository.findAllByOrderByCreatedAtDesc();
         }
+        Pageable newest = PageRequest.of(0, LIST_LIMIT);
         String q = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
-        return orders.stream()
-                .filter(o -> q.isEmpty() || o.getOrderNumber().toLowerCase(Locale.ROOT).contains(q)
-                        || o.getCustomerName().toLowerCase(Locale.ROOT).contains(q) || o.getCustomerPhone().contains(q))
-                .limit(300)
-                .map(this::toAdmin).toList();
+        List<ShopOrder> orders;
+        if (q.isEmpty()) {
+            orders = wanted == null
+                    ? orderRepository.findAllByOrderByCreatedAtDesc(newest)
+                    : orderRepository.findByStatusOrderByCreatedAtDesc(wanted, newest);
+        } else {
+            String pattern = likePattern(q);
+            orders = wanted == null
+                    ? orderRepository.search(pattern, newest)
+                    : orderRepository.searchByStatus(wanted, pattern, newest);
+        }
+        return orders.stream().map(this::toAdmin).toList();
+    }
+
+    /** {@code %text%} for a SQL LIKE, with {@code %}, {@code _} and the escape character {@code !} taken as plain text. */
+    static String likePattern(String text) {
+        return "%" + text.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 
     @Transactional(readOnly = true)
