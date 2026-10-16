@@ -36,7 +36,7 @@ export default function ShopOrderPage() {
             {tel && <a href={tel} className="btn-outline"><Phone size={16} /> {contact.phone}</a>}
           </div>
         </div>
-        <div className="shop-hub-visual" aria-label="Samjhana Ventures products from Gulmi">
+        <div className="shop-hub-visual" aria-label="Samjhana Multiproduct products from Gulmi">
           {hub.image && <img className="shop-hub-scene" src={pic(hub.image)} alt="" />}
           <div className="shop-hub-visual-caption"><strong>{hub.captionTitle}</strong><span>{hub.captionNote}</span></div>
         </div>

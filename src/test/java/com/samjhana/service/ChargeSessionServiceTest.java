@@ -16,6 +16,7 @@ import com.samjhana.exception.EvSessionStateException;
 import com.samjhana.exception.ResourceNotFoundException;
 import com.samjhana.ocpp.OcppCommandService;
 import com.samjhana.ocpp.OcppConnectionRegistry;
+import com.samjhana.ocpp.diag.LogCapture;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.ChargePointRepository;
 import com.samjhana.repository.ChargeSessionRepository;
@@ -484,6 +485,46 @@ class ChargeSessionServiceTest {
         service.handleTransactionEvent(CODE, event("Updated", 1, 99, 99_000L));
 
         assertEquals(50, session.getCurrentSoc());
+    }
+
+    @Test
+    void shouldLogTheReplayedEventsIdentity_whenSequenceNumberIsNotNewer() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.STARTING);
+        service.handleTransactionEvent(CODE, event("Started", 0, 32, 0L));
+        service.handleTransactionEvent(CODE, event("Updated", 1, 50, 5_000L));
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            service.handleTransactionEvent(CODE, event("Updated", 1, 99, 99_000L));
+
+            assertEquals(1, capture.matching("Dropping replayed or out-of-order TransactionEvent from " + CODE).size());
+            assertTrue(capture.matching("Dropping replayed").get(0).contains(
+                    "eventType=Updated transactionId=TX-1 seqNo=1 lastSeen=1 evseId=1 connectorId=1 chargeSessionId="
+                            + session.getId()));
+        }
+    }
+
+    @Test
+    void shouldLogEventContext_whenNoMatchingSessionExists() throws Exception {
+        when(chargeSessionRepository.findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(
+                "TX-1", CODE)).thenReturn(Optional.empty());
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            service.handleTransactionEvent(CODE, event("Updated", 3, 50, 5_000L));
+
+            assertTrue(capture.matching("because no matching session exists").get(0)
+                    .contains("eventType=Updated transactionId=TX-1 remoteStartId=null evseId=1 connectorId=1"));
+        }
+    }
+
+    @Test
+    void shouldLogEventContext_whenEvseOrConnectorIdentityIsInvalid() throws Exception {
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Started\",\"seqNo\":0,"
+                    + "\"evse\":{\"id\":0,\"connectorId\":1},\"transactionInfo\":{\"transactionId\":\"TX-7\"}}"));
+
+            assertTrue(capture.matching("invalid EVSE/connector identity").get(0)
+                    .contains("eventType=Started transactionId=TX-7 evseId=0 connectorId=1"));
+        }
     }
 
     @Test
