@@ -59,15 +59,23 @@ class LiveTicketServiceTest {
     // ---- finding D-02: asking for tickets is limited ----
 
     @Test
-    void shouldRefuseTheEleventhTicketWithinAMinuteForOnePerson() {
-        for (int n = 1; n <= 10; n++) tickets.issue("sita");
+    void shouldRefuseTheNextTicketWithinAMinute_afterOnePersonHasUsedTheirAllowance() {
+        for (int n = 1; n <= LiveTicketService.MAX_TICKETS_PER_PERSON; n++) tickets.issue("sita");
 
         assertThatThrownBy(() -> tickets.issue("sita")).isInstanceOf(TooManyRequestsException.class);
     }
 
     @Test
+    void shouldNotRefuseAPersonWhoReloadsTheLiveScreenEveryTwoSecondsForAMinute() {
+        // The browser tests load the screen about this often as one account, and a development build asks twice per load.
+        for (int load = 1; load <= 30; load++) {
+            assertThat(tickets.redeem(tickets.issue("sita"))).as("ticket %d", load).contains("sita");
+        }
+    }
+
+    @Test
     void shouldNotLetOnePersonUseUpAnotherPersonsAllowance() {
-        for (int n = 1; n <= 10; n++) tickets.issue("sita");
+        for (int n = 1; n <= LiveTicketService.MAX_TICKETS_PER_PERSON; n++) tickets.issue("sita");
 
         assertThat(tickets.redeem(tickets.issue("ram"))).contains("ram");
     }

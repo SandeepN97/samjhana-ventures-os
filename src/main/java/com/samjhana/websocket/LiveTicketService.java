@@ -23,16 +23,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * there would leak it; a ticket that works once, within 30 seconds, is worthless by the time
  * anyone reads a log.
  *
- * <p>Asking for tickets is limited (finding D-02): one person gets {@value #MAX_TICKETS_PER_PERSON} a minute (a
- * screen asks once each time it connects) and only {@value #MAX_WAITING} can be waiting to be used at any moment,
- * so a signed-in account cannot make the server hold an unlimited number of them.
+ * <p>Asking for tickets is limited (finding D-02): one person gets {@value #MAX_TICKETS_PER_PERSON} a minute and only
+ * {@value #MAX_WAITING} can be waiting to be used at any moment, so a signed-in account cannot make the server hold an
+ * unlimited number of them. A screen asks once each time it connects (a development build asks twice), and staff share
+ * accounts and reload pages, so the allowance is far above what one screen needs: it only stops a flood.
  */
 @Component
 public class LiveTicketService {
 
     static final Duration TICKET_LIFETIME = Duration.ofSeconds(30);
     /** Tickets one person may ask for within {@link #TICKET_WINDOW}. */
-    static final int MAX_TICKETS_PER_PERSON = 10;
+    static final int MAX_TICKETS_PER_PERSON = 60;
     static final Duration TICKET_WINDOW = Duration.ofMinutes(1);
     /** Tickets that can be waiting to be used, whoever asked for them. */
     static final int MAX_WAITING = 1_000;

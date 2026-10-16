@@ -217,9 +217,9 @@ class EvLiveFeedIntegrationTest {
     }
 
     @Test
-    void shouldRefuseTheEleventhTicketRequestWithinAMinute() {
+    void shouldRefuseTheNextTicketRequestWithinAMinute_afterTheAllowanceIsUsed() {
         User person = newPerson(User.UserRole.STAFF);
-        for (int n = 1; n <= 10; n++) {
+        for (int n = 1; n <= LiveTicketService.MAX_TICKETS_PER_PERSON; n++) {
             assertThat(askForTicket(person).getStatusCode()).as("request %d", n).isEqualTo(HttpStatus.OK);
         }
 
@@ -230,7 +230,7 @@ class EvLiveFeedIntegrationTest {
     void shouldStillGiveAnotherPersonATicket_whenOnePersonHasUsedUpTheirs() {
         User busy = newPerson(User.UserRole.STAFF);
         User calm = newPerson(User.UserRole.STAFF);
-        for (int n = 1; n <= 11; n++) askForTicket(busy);
+        for (int n = 1; n <= LiveTicketService.MAX_TICKETS_PER_PERSON + 1; n++) askForTicket(busy);
 
         assertThat(askForTicket(calm).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
