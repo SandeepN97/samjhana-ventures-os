@@ -1,0 +1,133 @@
+# How the fixes are made (method, commands, gotchas)
+
+This is the routine that produced PRs #124–#149. Follow it so new work looks and checks the same way.
+
+## 1. The loop for one finding
+
+1. **Pick** the next entry in `QUEUE.md`. Read the code it names (line numbers have drifted) and the finding's fix idea.
+2. **Branch** from the latest `origin/staging` (or from an open PR's branch if you must touch the same code, see "Stacked PRs"):
+   ```bash
+   git fetch origin
+   git worktree add ../wt-<short-name> -b fix/<what-it-does-in-kebab-case> origin/staging
+   ```
+   Branch name format is in `CLAUDE.md` (`fix/`, `api/`, `docs/` ...); the name says what the change does, not "security fix 3".
+3. **Test first (RED).** Write the tests that describe the correct behaviour, run them, and watch them fail for the right reason on the unchanged code. Include a happy path, at least one edge case and one failure case (CLAUDE.md "Testing").
+4. **Implement (GREEN)** the smallest change that makes them pass. Do not widen the PR.
+5. **Run the whole backend suite** (see commands). Everything must pass.
+6. **Deliberate-break check ("mutation check").** Break the new code on purpose in several ways, one at a time, and confirm a test fails each time (section 3). A break that no test notices means a missing test: add it.
+7. **Commit** (`<category>: <what changed>`), push the branch, open a PR **into `staging`** with the body described in section 4.
+8. **Watch CI.** If a check goes red, read the job log, fix it on the same branch with a new commit (never force-push, never skip or disable a test, never push an empty commit to re-run).
+
+One finding (or a tight group) per PR. Do not touch the "owner decision" items in `DECISIONS-AND-OPS.md`.
+
+## 2. Commands
+
+Backend (Java 21, Spring Boot 3.5, Maven). Run from the worktree root:
+
+```bash
+# one or a few test classes (fast, ~1-2 min)
+SPRING_PROFILES_ACTIVE=test mvn -B -q test -Pdev -Dtest=ClassOneTest,ClassTwoTest
+
+# the whole backend suite (10-15 min; CI runs the same thing in "Backend Coverage Gate")
+SPRING_PROFILES_ACTIVE=test mvn -B -q verify -Pdev > /tmp/verify.log 2>&1; echo EXIT=$?
+```
+
+Count the tests that ran (put the number in the PR body):
+
+```bash
+python3 - <<'EOF'
+import glob, re
+tot=err=fail=skip=0
+for f in glob.glob('target/surefire-reports/TEST-*.xml'):
+    m=re.search(r'tests="(\d+)" errors="(\d+)" skipped="(\d+)" failures="(\d+)"', open(f,encoding='utf-8',errors='ignore').read(2000))
+    if m:
+        t,e,s,fl=map(int,m.groups()); tot+=t; err+=e; skip+=s; fail+=fl
+print('tests',tot,'errors',err,'failures',fail,'skipped',skip)
+EOF
+```
+
+Frontend (only if you change `samjhana-admin` or `samjhana-web`): `npm ci`, `npm test`, `npm run lint` inside the folder (see `CONTRIBUTING.md` "Verification" and `.github/workflows/ci.yml`). Every UI string needs `en` and `ne` text in `samjhana-admin/src/i18n/index.js`.
+
+CI per PR (13 checks): Backend Unit Tests, Backend Integration Tests, Backend Coverage Gate (the whole suite), Production Build (needs the gate), Admin Frontend Tests, Public Frontend Tests, Lint (admin, web), Dependency Audit (admin, web), Admin + Public End-to-End Tests (Playwright), Secret Scan (Gitleaks), Weekly Security Scan (skipped on PRs).
+
+## 3. Deliberate-break ("mutation") checks
+
+`tools/mutate.py` applies each break from a JSON file to the working tree, runs the named tests, restores the file, and records `CAUGHT` or `SURVIVED`:
+
+```bash
+python3 docs/security-handoff/tools/mutate.py <worktree-dir> <output-dir> <default-test-classes> <spec.json>
+# summary: <output-dir>/summary.txt   one line per break, "DONE" at the end
+```
+
+Spec format (see `tools/example-mutations.json`, the real one used for PR #149):
+
+```json
+[{"name": "X01-no-cleanup-registered",
+  "file": "src/main/java/com/samjhana/service/ChargeSessionService.java",
+  "old": "            removeIfTheStartIsRolledBack(photoPath);\n",
+  "new": "",
+  "tests": "ChargeSessionServiceTest"}]
+```
+
+Rules that matter:
+
+- `old` must occur **exactly once** in the file, otherwise the script reports `SETUP-ERROR`.
+- Every break must still **compile**. A break that does not compile makes the test run fail and looks like `CAUGHT` but proves nothing. Look in `<output-dir>/<name>.log` for `COMPILATION ERROR`, and redo that break in a form that compiles. (This bit us twice.)
+- Think of the breaks as "what would a careless future edit do": remove the check, flip a comparison, use the wrong field, drop the user from the audit row, forget the after-commit hook.
+- All breaks must be `CAUGHT` before you open the PR. State the count in the PR ("Seven deliberate breaks ... each made a test fail").
+- After the run, `git status` must be clean apart from your own changes.
+
+## 4. The PR
+
+Open it **into `staging`**. Title: `fix: <what now works>` in plain words. Body (copy the shape of PR #145 or #149):
+
+```
+## Summary            one paragraph: the finding ID and what it protected
+## What was wrong     how it could go wrong, in plain words (no step-by-step recipe)
+## What changed       bullets
+## Not changed        what you deliberately left alone
+## Tests              new tests, "written test-first and watched failing", N deliberate breaks, `mvn verify -Pdev`: N tests, 0 failures
+## Deploy notes       "Code only: no SQL, no settings." or the SQL file and what to set
+## Tooling check      SkillSpector: not run: <reason> (or the result)
+                      Context7: not run: <reason> (or the lookups and whether they held up)
+```
+
+The Tooling check heading is required by `CLAUDE.md`. Never write that a tool passed when it did not run.
+
+Attribution lines are whatever your tool requires; the Claude Code commits carry a `Co-Authored-By` trailer.
+
+### Stacked PRs
+
+If your change touches code that an **open** PR also changes, branch from that PR's branch instead of `staging`, and say "stacked on #NNN" at the top of the PR. Existing stacks: #135 on #133, #139 on #135, #137 on #131, #143 on #134. When the base PR is merged, merge `origin/staging` into your branch (a normal merge commit, no rebase) and the PR shrinks to its own change. The owner merges PRs in number order and uses "Update branch" on the rest.
+
+## 5. Hard rules (from the owner)
+
+- Never merge or approve any PR. Never open, approve or merge a `staging` → `main` PR (the owner releases).
+- Never rewrite history on a pushed branch (no rebase, amend or force-push); merge `staging` in instead.
+- Never skip, disable or quarantine a test to get green; never push an empty commit to re-run CI.
+- No hard deletes of business data (`deletedAt` soft delete). Deleting a file the service itself just wrote for a failed request is fine (PR #149).
+- `/api/public/**` must never expose cost, profit, stock levels, staff data or internal IDs.
+- If a fix needs a new table, column or enum value, stop: schema changes need SQL under `docs/sql/` run on Supabase **before** the deploy (staging uses `ddl-auto: validate`) and are the owner's call. Audit rows must use existing `AuditLog.EntityType` values and a non-null user (Postgres check constraints).
+- Do not commit the private audit report (README section 6).
+
+## 6. Gotchas we hit (read before writing tests)
+
+- **Stale write-back.** Saving a whole detached entity can undo a concurrent change to a different column (found for `User` in PR #139 and `ChargePoint` in PR #138). Use a targeted `@Modifying @Query` update (with `clearAutomatically`/`flushAutomatically`, `@Transactional`) or `@DynamicUpdate`.
+- **After-commit work.** Use `AfterCommit.run(...)`. If that work needs its own database write, mark the method `@Transactional(propagation = REQUIRES_NEW)`: the outer transaction is already committed, and joining it silently loses the write (this made a charger stay ONLINE in PR #138 until a real-WebSocket test showed it).
+- **MockMvc does not serialize multipart or chunked bodies.** To test upload and body-size limits use a real server (`@SpringBootTest(webEnvironment = RANDOM_PORT)` with `java.net.http.HttpClient`), as `RequestBodyLimitRealServerIntegrationTest` does (PR #136).
+- **`@Transactional` integration tests:** call `entityManager.clear()` before re-reading; a lazy `User` proxy used outside a session throws `LazyInitializationException`, so compare ids.
+- **`@SpyBean` on a Spring Data repository with `callRealMethod`** fails ("Cannot call abstract real method"). Run an `EntityManager` query inside the `doAnswer` instead (`StaleAccountWriteBackIntegrationTest`, PR #139).
+- **Mockito strict stubs.** An unused stub fails the test. Use `lenient()` in shared setup, or `verify(..., never())` instead of stubbing.
+- **Adding a constructor argument to a service** breaks tests that build it by hand (`ChargePointServiceLoggingTest`, `FuelPriceServiceNumbersTest`, `FurnitureServiceTest` ...). Append new fields at the end and fix those call sites.
+- **Races hide locally.** A green local run does not prove a race is gone. PR #138's first CI run failed because server threads wrote a stale row over the secret hash the test had just restored; tests that restore state must close sockets, wait for the charger to be OFFLINE, and write a single column with JDBC.
+- **Real-charger flow tests** exist: `ChargerSessionFlowIntegrationTest` drives simulated chargers over real WebSockets. Extend it for charger-side changes. `tools/ocpp-simulator/` is the manual equivalent.
+- **Seeders** (`BusinessUnitSeeder`, `ChargePointSeeder`, ...) run on every profile except `test`. `DataSeeder` runs only in `dev`.
+- **H2 (tests) is more forgiving than PostgreSQL (prod).** Watch enum values, check constraints and JSON columns.
+- **Log files can contain binary characters:** use `grep -a`.
+- **Merge conflicts** between PRs were adjacent import lines in `TransactionService`. When branches overlap, prefer a fully-qualified name (`java.util.Objects.equals`) over a new import line.
+- **Helpers worth reusing:** `AfterCommit` (`service`), `LogSafe.clean(text, max)` (`ocpp.diag`; neutralise text before logging), `RequestThrottle` (`security`; bounded table), `LoginAttemptService` (`security`), `TransactionVisibility` (`service`), and the audit factories on `AuditLog` (`createEvent`, `updateEvent`, `approvalEvent`).
+- **Numbers from outside** (requests, stored JSON, chargers) must go through `SafeDecimal` (`util`, added in PR #134) before they reach `BigDecimal` arithmetic.
+
+## 7. If you run out of budget mid-fix
+
+Finish or abandon cleanly. Either push a branch whose tests pass and open the PR, or leave nothing half-pushed. Then add one line to your final message naming the finding, the branch and what is left, so the next agent (or the owner) can continue; and refresh `STATUS.md` in a small docs PR.
