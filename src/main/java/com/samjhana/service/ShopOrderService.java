@@ -55,6 +55,8 @@ public class ShopOrderService {
 
     static final int MAX_LINES = 30;
     static final int MAX_QTY_PER_LINE = 50;
+    /** Entries in the cart as sent, before the same product's entries are added together. */
+    static final int MAX_CART_ENTRIES = 100;
     private static final String ORDER_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final Pattern PHONE = Pattern.compile("\\+?[0-9]{7,15}");
     /** What {@link #newOrderNumber()} makes: SV-, the date as six digits, then four characters (a looser alphabet than ours). */
@@ -91,14 +93,14 @@ public class ShopOrderService {
             landmark = optionalText(r.landmark(), 200, "Landmark");
         }
         String notes = optionalText(r.notes(), 1000, "Notes");
+        // The cart is checked in full before any allowance is used: an empty or broken cart must not count as an order.
+        Map<String, Integer> wanted = mergeItems(r.items());
 
         // The shared bucket first: a request it refuses must not leave a per-phone entry behind (finding P0-16).
         if (!throttle.tryAcquire("order:all", 120, Duration.ofHours(1))
                 || !throttle.tryAcquire("order:phone:" + phone, 5, Duration.ofHours(1))) {
             throw new TooManyRequestsException("Too many orders just now. Please call us to place this order.");
         }
-
-        Map<String, Integer> wanted = mergeItems(r.items());
 
         ShopOrder order = new ShopOrder();
         order.setCustomerName(name);
@@ -325,18 +327,24 @@ public class ShopOrderService {
 
     private static Map<String, Integer> mergeItems(List<Item> items) {
         if (items == null || items.isEmpty()) throw new IllegalArgumentException("Your cart is empty");
+        if (items.size() > MAX_CART_ENTRIES) throw new IllegalArgumentException("Too many items in one order");
         Map<String, Integer> merged = new LinkedHashMap<>();
         for (Item item : items) {
             if (item == null || item.slug() == null || item.slug().isBlank()) throw new IllegalArgumentException("A product in your cart is not valid");
             int qty = item.quantity() == null ? 0 : item.quantity();
             if (qty < 1) throw new IllegalArgumentException("Quantity must be at least 1");
+            // Each entry is limited before any are added together, so the sum can't wrap round to a negative number
+            // (finding P0-01): at most MAX_CART_ENTRIES entries of at most MAX_QTY_PER_LINE each.
+            if (qty > MAX_QTY_PER_LINE) throw tooManyOfOneProduct();
             merged.merge(item.slug().trim(), qty, Integer::sum);
         }
         if (merged.size() > MAX_LINES) throw new IllegalArgumentException("Too many different products in one order");
-        if (merged.values().stream().anyMatch(q -> q > MAX_QTY_PER_LINE)) {
-            throw new IllegalArgumentException("For more than " + MAX_QTY_PER_LINE + " of one product, please call us");
-        }
+        if (merged.values().stream().anyMatch(q -> q > MAX_QTY_PER_LINE)) throw tooManyOfOneProduct();
         return merged;
+    }
+
+    private static IllegalArgumentException tooManyOfOneProduct() {
+        return new IllegalArgumentException("For more than " + MAX_QTY_PER_LINE + " of one product, please call us");
     }
 
     private Fulfilment parseFulfilment(String raw) {

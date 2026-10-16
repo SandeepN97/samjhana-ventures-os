@@ -270,6 +270,35 @@ class ShopStoreIntegrationTest {
     }
 
     @Test
+    void shouldRefuseLinesThatWouldAddUpPastTheLargestNumber_andChangeNothing() throws Exception {
+        String max = String.valueOf(Integer.MAX_VALUE);
+        place(orderJson(phone(), "PICKUP", "t-hny-1", max, "t-hny-1", max))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value(containsString("more than 50")));
+        place(orderJson(phone(), "PICKUP", "t-hny-1", max, "t-hny-1", "1")).andExpect(status().isBadRequest());
+        assertThat(stock(honey.getId(), false)).isEqualTo(10);   // an overflow used to push this up
+    }
+
+    @Test
+    void shouldNeverMoveStockByAZeroOrNegativeAmount() {
+        assertThat(furnitureRepository.removeStock(sofa.getId(), -5)).isZero();
+        assertThat(furnitureRepository.removeStock(sofa.getId(), 0)).isZero();
+        assertThat(furnitureRepository.addStock(sofa.getId(), -5)).isZero();
+        assertThat(beekeepingRepository.removeStock(honey.getId(), -5)).isZero();
+        assertThat(beekeepingRepository.removeStock(honey.getId(), 0)).isZero();
+        assertThat(beekeepingRepository.addStock(honey.getId(), -5)).isZero();
+        assertThat(stock(sofa.getId(), true)).isEqualTo(3);
+        assertThat(stock(honey.getId(), false)).isEqualTo(10);
+    }
+
+    @Test
+    void shouldNotUseUpTheOrderAllowance_onCartsThatAreRefused() throws Exception {
+        for (int i = 0; i < 130; i++) {                        // more than the 120 an hour that everyone shares
+            place(orderJson(phone(), "PICKUP")).andExpect(status().isBadRequest());   // an empty cart each time
+        }
+        place(orderJson(phone(), "PICKUP", "t-hny-1", "1")).andExpect(status().isCreated());   // a real order still fits
+    }
+
+    @Test
     void shouldStopTheSixthOrderFromOnePhoneInAnHour() throws Exception {
         String p = phone();
         for (int i = 0; i < 5; i++) place(orderJson(p, "PICKUP", "t-hny-1", "1")).andExpect(status().isCreated());
