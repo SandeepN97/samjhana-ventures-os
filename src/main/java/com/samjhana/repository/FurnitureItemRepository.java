@@ -27,10 +27,10 @@ public interface FurnitureItemRepository extends JpaRepository<FurnitureItem, UU
     /** Takes {@code qty} off the stock in one guarded statement; returns 0 and changes nothing when there is not enough. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update FurnitureItem i set i.stockQty = i.stockQty - :qty "
-            + "where i.id = :id and i.isActive = true and i.stockQty >= :qty")
+            + "where i.id = :id and i.isActive = true and :qty > 0 and i.stockQty >= :qty")
     int removeStock(@Param("id") UUID id, @Param("qty") int qty);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update FurnitureItem i set i.stockQty = i.stockQty + :qty where i.id = :id")
+    @Query("update FurnitureItem i set i.stockQty = i.stockQty + :qty where i.id = :id and :qty > 0")
     int addStock(@Param("id") UUID id, @Param("qty") int qty);
 }
