@@ -130,4 +130,23 @@ class MediaServiceTest {
         assertThat(service.fromJson("garbage")).isEmpty();
         assertThat(MediaService.urlOf(a)).isEqualTo("/api/public/media/" + a);
     }
+
+    // ---- finding P0-13: knowing a picture is there must not mean reading it ----
+
+    @Test
+    void shouldSayAPictureExists_withoutReadingItsBytes() {
+        UUID id = UUID.randomUUID();
+        when(mediaRepository.findLiveIds(List.of(id))).thenReturn(List.of(id));
+
+        assertThat(service.exists(id)).isTrue();
+        verify(mediaRepository, never()).findByIdAndDeletedAtIsNull(any());
+    }
+
+    @Test
+    void shouldSayAPictureDoesNotExist_whenItWasRemovedOrNeverStored() {
+        UUID id = UUID.randomUUID();
+        when(mediaRepository.findLiveIds(List.of(id))).thenReturn(List.of());
+
+        assertThat(service.exists(id)).isFalse();
+    }
 }
