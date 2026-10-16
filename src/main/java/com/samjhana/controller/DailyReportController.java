@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,8 @@ import java.util.Map;
 @RequestMapping("/api/daily-reports")
 @RequiredArgsConstructor
 public class DailyReportController {
+
+    private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
 
     private final DailyReportService dailyReportService;
 
@@ -44,10 +47,12 @@ public class DailyReportController {
 
         // The day being worked on (today, or tomorrow once today is closed). Nobody closes a day that
         // hasn't happened yet, and closing an earlier, missed day is a manager's job: a closed day
-        // is final, so a wrong close would lock a day's takings.
+        // is final, so a wrong close would lock a day's takings. Tomorrow, which becomes the day being worked
+        // on once today is closed, has not happened either: closing it early would freeze every staff entry
+        // until midnight (finding P1a-04).
         LocalDate businessDate = LocalDate.parse(dailyReportService.getBusinessDate().get("date").toString());
         LocalDate closeDate = body.get("date") != null ? LocalDate.parse(body.get("date").toString()) : businessDate;
-        if (closeDate.isAfter(businessDate)) {
+        if (closeDate.isAfter(LocalDate.now(KATHMANDU))) {
             return ResponseEntity.badRequest().body(Map.of("message", "Cannot close a day that hasn't happened yet"));
         }
         if (closeDate.isBefore(businessDate) && (user == null || !user.canManage())) {
