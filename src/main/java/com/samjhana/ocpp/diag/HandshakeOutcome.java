@@ -12,6 +12,8 @@ public enum HandshakeOutcome {
     MALFORMED_BASIC,
     USER_MISMATCH,
     BAD_PASSWORD,
+    /** Too many wrong passwords from this address for this charger lately: refused before any password is checked. */
+    TOO_MANY_FAILURES,
     /** Decided by Spring before our interceptor runs; detected by the request filter (403 with an Origin header). */
     ORIGIN_REJECTED
 }
