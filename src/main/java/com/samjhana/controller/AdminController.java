@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
@@ -160,9 +161,7 @@ public class AdminController {
         for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
             temporary.append(TEMP_PASSWORD_ALPHABET.charAt(RANDOM.nextInt(TEMP_PASSWORD_ALPHABET.length())));
         }
-        target.setPasswordHash(passwordEncoder.encode(temporary.toString()));
-        target.setMustChangePassword(true);
-        userRepository.save(target);
+        userRepository.resetPassword(target.getId(), passwordEncoder.encode(temporary.toString()), LocalDateTime.now());
         loginAttempts.recordSuccess(target.getUsername());   // they may have been blocked for too many wrong tries
 
         AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
@@ -203,8 +202,7 @@ public class AdminController {
         if (oldRole == newRole) {
             return ResponseEntity.badRequest().body(Map.of("message", "That user already has this role"));
         }
-        target.setRole(newRole);
-        userRepository.save(target);
+        userRepository.updateRole(target.getId(), newRole, LocalDateTime.now());
 
         AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
                 "{\"role\":\"" + oldRole + "\"}", "{\"role\":\"" + newRole + "\"}");
@@ -212,7 +210,8 @@ public class AdminController {
                 + " by " + currentUser.getUsername());
         auditLogRepository.save(entry);
 
-        return ResponseEntity.ok(Map.of("message", "Role updated", "user", UserDto.from(target)));
+        return ResponseEntity.ok(Map.of("message", "Role updated",
+                "user", UserDto.from(userRepository.findById(target.getId()).orElse(target))));
     }
 
     @DeleteMapping("/users/{username}")
@@ -239,8 +238,7 @@ public class AdminController {
                     .body(Map.of("message", "Cannot delete admin user"));
         }
 
-        user.setIsActive(false);
-        userRepository.save(user);
+        userRepository.deactivate(user.getId(), LocalDateTime.now());
 
         return ResponseEntity.ok(Map.of("message", "User deactivated successfully"));
     }

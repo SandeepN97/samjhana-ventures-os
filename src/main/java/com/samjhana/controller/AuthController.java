@@ -24,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -128,17 +129,20 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Full name is required"));
         }
 
-        user.setFullName(fullName.trim());
+        // Only the names are written (finding P1b-01). The account object here is the copy read when the request
+        // started; saving it back whole would undo a role change, deactivation or password reset made since.
         String fullNameNepali = body.get("fullNameNepali");
+        LocalDateTime now = LocalDateTime.now();
         if (fullNameNepali != null && !fullNameNepali.trim().isEmpty()) {
-            user.setFullNameNepali(fullNameNepali.trim());
+            userRepository.updateNames(user.getId(), fullName.trim(), fullNameNepali.trim(), now);
+        } else {
+            userRepository.updateFullName(user.getId(), fullName.trim(), now);
         }
-
-        userRepository.save(user);
+        User current = userRepository.findById(user.getId()).orElse(user);
 
         return ResponseEntity.ok(Map.of(
                 "message", "Profile updated successfully",
-                "user", UserDto.from(user)
+                "user", UserDto.from(current)
         ));
     }
 
@@ -207,17 +211,17 @@ public class AuthController {
                     .body(Map.of("message", "The new password must be different from the current one"));
         }
 
-        targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        targetUser.setMustChangePassword(false);   // an admin's temporary password is now replaced
-        userRepository.save(targetUser);
+        // Only the password is written (finding P1b-01), and an admin's temporary password is now replaced.
+        userRepository.updatePassword(targetUser.getId(), passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.
         if (targetsAnotherUser) {
             return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
         }
+        User updated = userRepository.findById(targetUser.getId()).orElse(targetUser);
         return ResponseEntity.ok(Map.of(
                 "message", "Password changed successfully",
-                "token", jwtUtil.generateToken(targetUser)));
+                "token", jwtUtil.generateToken(updated)));
     }
 }
