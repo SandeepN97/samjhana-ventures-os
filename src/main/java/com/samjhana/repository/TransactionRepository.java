@@ -18,6 +18,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.business b JOIN FETCH t.enteredBy WHERE b.code = :code ORDER BY t.transactionDate DESC")
     List<Transaction> findByBusinessCodeOrderByTransactionDateDesc(@Param("code") String businessCode);
 
+    /**
+     * One page of a business's newest transactions of one type, leaving out one status, newest first. No JOIN FETCH:
+     * callers that only read the stored fields need neither the business nor the user (finding K-01).
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.business.code = :code AND t.transactionType = :type "
+            + "AND t.status <> :excluded ORDER BY t.transactionDate DESC, t.createdAt DESC")
+    List<Transaction> findRecentByBusinessCodeAndTypeExcludingStatus(@Param("code") String businessCode,
+            @Param("type") Transaction.TransactionType type,
+            @Param("excluded") Transaction.TransactionStatus excluded, Pageable pageable);
+
     long countByBusiness_CodeAndStatus(String businessCode, Transaction.TransactionStatus status);
 
     /** How many transactions of one type a business has on one day: counted by the database, nothing loaded. */

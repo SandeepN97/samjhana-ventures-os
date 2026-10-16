@@ -350,15 +350,31 @@ public class TransactionService {
         }
     }
 
+    /** The lookup below reads the pump's newest purchases one small page at a time, and at most this many pages. */
+    private static final int PURCHASE_RATE_PAGE_SIZE = 25;
+    private static final int PURCHASE_RATE_MAX_PAGES = 8;
+
+    /**
+     * What the pump last paid per litre for this fuel: the newest purchase (not rejected) of that fuel that has a rate.
+     * The database hands over the purchases newest first, a page at a time, so a sale never loads the pump's whole
+     * history (finding K-01). Purchases are rare (one per delivery), so the newest
+     * {@value #PURCHASE_RATE_PAGE_SIZE} x {@value #PURCHASE_RATE_MAX_PAGES} are far more than needed; if none of them
+     * is of this fuel the sale is saved without a purchase rate.
+     */
     private java.util.Optional<BigDecimal> latestPurchaseRate(String fuelType) {
-        return transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("petrol").stream()
-                .filter(t -> t.getTransactionType() == Transaction.TransactionType.PURCHASE)
-                .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
-                .map(t -> readFields(t.getCustomFields()))
-                .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
-                .map(cf -> toNumber(cf.get("ratePerLiter")))
-                .filter(rate -> rate != null && rate.signum() > 0)
-                .findFirst();
+        for (int page = 0; page < PURCHASE_RATE_MAX_PAGES; page++) {
+            List<Transaction> purchases = transactionRepository.findRecentByBusinessCodeAndTypeExcludingStatus(
+                    "petrol", Transaction.TransactionType.PURCHASE, Transaction.TransactionStatus.REJECTED,
+                    org.springframework.data.domain.PageRequest.of(page, PURCHASE_RATE_PAGE_SIZE));
+            java.util.Optional<BigDecimal> found = purchases.stream()
+                    .map(t -> readFields(t.getCustomFields()))
+                    .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
+                    .map(cf -> toNumber(cf.get("ratePerLiter")))
+                    .filter(rate -> rate != null && rate.signum() > 0)
+                    .findFirst();
+            if (found.isPresent() || purchases.size() < PURCHASE_RATE_PAGE_SIZE) return found;
+        }
+        return java.util.Optional.empty();
     }
 
     private Map<String, Object> readFields(String json) {

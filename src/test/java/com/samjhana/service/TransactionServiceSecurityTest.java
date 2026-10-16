@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,8 +40,10 @@ import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -198,7 +201,7 @@ class TransactionServiceSecurityTest {
 
     @Test
     void shouldIgnoreAProfitFigureSentByStaff_andWorkOutThePurchaseRateItself() throws Exception {
-        when(transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("petrol")).thenReturn(List.of(
+        stubPurchases(0, List.of(
                 txn(petrol, Transaction.TransactionType.PURCHASE, "{\"fuelType\":\"petrol\",\"ratePerLiter\":158.5}")));
 
         service.create(request("petrol", "SALE", "1700", today,
@@ -207,6 +210,109 @@ class TransactionServiceSecurityTest {
         Map<String, Object> fields = savedFields();
         assertThat(new BigDecimal(fields.get("purchaseRate").toString())).isEqualByComparingTo("158.5");
         assertThat(fields).doesNotContainKey("profit");
+    }
+
+    // ---- the purchase-rate lookup reads a page of purchases, not the whole petrol history (finding K-01) ----
+
+    private void stubPurchases(int page, List<Transaction> rows) {
+        when(transactionRepository.findRecentByBusinessCodeAndTypeExcludingStatus(
+                eq("petrol"), eq(Transaction.TransactionType.PURCHASE), eq(Transaction.TransactionStatus.REJECTED),
+                eq(org.springframework.data.domain.PageRequest.of(page, 25)))).thenReturn(rows);
+    }
+
+    private Transaction purchase(String fuelType, String rate) {
+        return txn(petrol, Transaction.TransactionType.PURCHASE,
+                "{\"fuelType\":\"" + fuelType + "\"" + (rate == null ? "" : ",\"ratePerLiter\":" + rate) + "}");
+    }
+
+    private List<Transaction> fullPageOfDieselPurchases() {
+        return java.util.Collections.nCopies(25, purchase("diesel", "150"));
+    }
+
+    private void sellPetrol() {
+        service.create(request("petrol", "SALE", "1700", today, Map.of("fuelType", "petrol", "liters", 10)), staff);
+    }
+
+    @Test
+    void shouldAskForOnePageOfPurchases_andNeverLoadTheWholePetrolHistory() {
+        stubPurchases(0, List.of(purchase("petrol", "158.5")));
+
+        sellPetrol();
+
+        verify(transactionRepository, never()).findByBusinessCodeOrderByTransactionDateDesc(any());
+        verify(transactionRepository, times(1)).findRecentByBusinessCodeAndTypeExcludingStatus(
+                eq("petrol"), eq(Transaction.TransactionType.PURCHASE), eq(Transaction.TransactionStatus.REJECTED), any(Pageable.class));
+    }
+
+    @Test
+    void shouldReadTheNextPage_whenTheFirstPageHasNoPurchaseOfThatFuel() throws Exception {
+        stubPurchases(0, fullPageOfDieselPurchases());
+        stubPurchases(1, List.of(purchase("petrol", "158.5")));
+
+        sellPetrol();
+
+        assertThat(new BigDecimal(savedFields().get("purchaseRate").toString())).isEqualByComparingTo("158.5");
+    }
+
+    @Test
+    void shouldStopAfterEightPages_andLeaveTheCostOut_whenNoPurchaseMatches() throws Exception {
+        for (int page = 0; page < 8; page++) stubPurchases(page, fullPageOfDieselPurchases());
+
+        sellPetrol();
+
+        verify(transactionRepository, times(8)).findRecentByBusinessCodeAndTypeExcludingStatus(
+                eq("petrol"), eq(Transaction.TransactionType.PURCHASE), eq(Transaction.TransactionStatus.REJECTED), any(Pageable.class));
+        assertThat(savedFields()).doesNotContainKey("purchaseRate");
+    }
+
+    @Test
+    void shouldStopAtTheFirstMatch_withoutReadingMorePages() throws Exception {
+        List<Transaction> page = new java.util.ArrayList<>(fullPageOfDieselPurchases());
+        page.set(3, purchase("petrol", "158.5"));
+        stubPurchases(0, page);
+
+        sellPetrol();
+
+        verify(transactionRepository, times(1)).findRecentByBusinessCodeAndTypeExcludingStatus(
+                eq("petrol"), eq(Transaction.TransactionType.PURCHASE), eq(Transaction.TransactionStatus.REJECTED), any(Pageable.class));
+        assertThat(new BigDecimal(savedFields().get("purchaseRate").toString())).isEqualByComparingTo("158.5");
+    }
+
+    @Test
+    void shouldStopAtAShortPage_becauseThereAreNoMorePurchases() throws Exception {
+        stubPurchases(0, List.of(purchase("diesel", "150"), purchase("diesel", "151")));
+
+        sellPetrol();
+
+        verify(transactionRepository, times(1)).findRecentByBusinessCodeAndTypeExcludingStatus(
+                eq("petrol"), eq(Transaction.TransactionType.PURCHASE), eq(Transaction.TransactionStatus.REJECTED), any(Pageable.class));
+        assertThat(savedFields()).doesNotContainKey("purchaseRate");
+    }
+
+    @Test
+    void shouldSkipPurchasesWithoutAUsableRate_andMatchTheFuelWhateverItsCase() throws Exception {
+        stubPurchases(0, List.of(purchase("petrol", null), purchase("petrol", "0"), purchase("PETROL", "158.5"), purchase("petrol", "140")));
+
+        sellPetrol();
+
+        assertThat(new BigDecimal(savedFields().get("purchaseRate").toString())).isEqualByComparingTo("158.5");
+    }
+
+    @Test
+    void shouldNotLookUpAPurchaseRate_whenTheSaleNamesNoFuel() {
+        service.create(request("petrol", "SALE", "1700", today, Map.of("liters", 10)), staff);
+
+        verify(transactionRepository, never()).findRecentByBusinessCodeAndTypeExcludingStatus(any(), any(), any(), any());
+        verify(transactionRepository, never()).findByBusinessCodeOrderByTransactionDateDesc(any());
+    }
+
+    @Test
+    void shouldKeepAPurchaseRateSentByAManager_withoutLookingOneUp() throws Exception {
+        service.create(request("petrol", "SALE", "1700", today,
+                Map.of("fuelType", "petrol", "liters", 10, "purchaseRate", 140)), manager);
+
+        verify(transactionRepository, never()).findRecentByBusinessCodeAndTypeExcludingStatus(any(), any(), any(), any());
+        assertThat(new BigDecimal(savedFields().get("purchaseRate").toString())).isEqualByComparingTo("140");
     }
 
     @Test
