@@ -10,8 +10,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
+import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -19,6 +22,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +37,8 @@ public class LoanReceiptService {
 
     public static final int MAX_BYTES = MediaService.MAX_BYTES;
     private static final int MAX_PIXELS_PER_SIDE = MediaService.MAX_PIXELS_PER_SIDE;
+    /** The longest side a saved receipt photo keeps: plenty to read a bank receipt, and small enough to keep. */
+    private static final int MAX_SAVED_SIDE = 1600;
     private static final float JPEG_QUALITY = 0.85f;
 
     private final LoanReceiptRepository receiptRepository;
@@ -92,13 +98,31 @@ public class LoanReceiptService {
         receiptRepository.save(receipt);
     }
 
-    /** Decodes the picture and writes it back as a plain JPEG (alpha flattened onto white). */
+    /**
+     * Writes the picture back as a plain JPEG (alpha flattened onto white). Its size is read from the file header
+     * first, and a picture that claims to be too large is refused before anything is decoded (finding P0-04); one
+     * that is larger than {@link #MAX_SAVED_SIDE} is decoded keeping only every few pixels, so the memory used
+     * follows the saved picture and not whatever size the file says it is.
+     */
     private static byte[] resave(byte[] bytes) {
-        try {
-            BufferedImage source = ImageIO.read(new ByteArrayInputStream(bytes));
-            if (source == null) throw new IllegalArgumentException("That file is not a valid picture");
-            if (source.getWidth() > MAX_PIXELS_PER_SIDE || source.getHeight() > MAX_PIXELS_PER_SIDE) {
-                throw new IllegalArgumentException("The photo is too large; use one under 8000 pixels wide");
+        try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
+            if (!readers.hasNext()) throw new IllegalArgumentException("That file is not a valid picture");
+            ImageReader reader = readers.next();
+            BufferedImage source;
+            try {
+                reader.setInput(in, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width > MAX_PIXELS_PER_SIDE || height > MAX_PIXELS_PER_SIDE) {
+                    throw new IllegalArgumentException("The photo is too large; use one under 8000 pixels wide");
+                }
+                int step = Math.max(1, (int) Math.ceil(Math.max(width, height) / (double) MAX_SAVED_SIDE));
+                ImageReadParam read = reader.getDefaultReadParam();
+                read.setSourceSubsampling(step, step, 0, 0);
+                source = reader.read(0, read);
+            } finally {
+                reader.dispose();
             }
             BufferedImage rgb = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
             Graphics2D g = rgb.createGraphics();
