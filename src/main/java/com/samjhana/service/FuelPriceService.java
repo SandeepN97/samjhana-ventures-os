@@ -5,6 +5,7 @@ import com.samjhana.dto.FuelPriceResponse;
 import com.samjhana.entity.FuelPrice;
 import com.samjhana.entity.User;
 import com.samjhana.repository.FuelPriceRepository;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,15 +65,22 @@ public class FuelPriceService {
         Map<String, FuelPriceResponse> results = new HashMap<>();
         if (request.containsKey("petrolPrice")) {
             FuelPrice fp = saveOrUpdatePrice(FuelPrice.FuelType.PETROL,
-                    new BigDecimal(request.get("petrolPrice").toString()), effectiveDate, user);
+                    priceFrom(request.get("petrolPrice"), "Petrol price"), effectiveDate, user);
             results.put("petrol", FuelPriceResponse.from(fp));
         }
         if (request.containsKey("dieselPrice")) {
             FuelPrice fp = saveOrUpdatePrice(FuelPrice.FuelType.DIESEL,
-                    new BigDecimal(request.get("dieselPrice").toString()), effectiveDate, user);
+                    priceFrom(request.get("dieselPrice"), "Diesel price"), effectiveDate, user);
             results.put("diesel", FuelPriceResponse.from(fp));
         }
         return results;
+    }
+
+    /** A price typed into the form; refused when it is missing or not an ordinary number (finding G-01). */
+    private static BigDecimal priceFrom(Object value, String label) {
+        BigDecimal price = value == null ? null : SafeDecimal.parse(value.toString());
+        if (price == null) throw new IllegalArgumentException(label + " must be a number");
+        return price;
     }
 
     @Transactional

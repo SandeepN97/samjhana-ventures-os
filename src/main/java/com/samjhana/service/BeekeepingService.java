@@ -12,6 +12,7 @@ import com.samjhana.exception.InsufficientStockException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BeekeepingProductRepository;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -387,12 +388,8 @@ public class BeekeepingService {
 
     private static BigDecimal nonNegativeMoney(Object value, String label) {
         if (value == null || value.toString().isBlank()) return null;
-        BigDecimal amount;
-        try {
-            amount = new BigDecimal(value.toString());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(label + " must be a number");
-        }
+        BigDecimal amount = SafeDecimal.parse(value.toString());
+        if (amount == null) throw new IllegalArgumentException(label + " must be a number");
         if (amount.signum() < 0) throw new IllegalArgumentException(label + " cannot be negative");
         return amount;
     }

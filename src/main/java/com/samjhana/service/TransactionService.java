@@ -20,6 +20,7 @@ import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
 import com.samjhana.strategy.BusinessCalculationStrategy.ValidationResult;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -283,12 +284,7 @@ public class TransactionService {
     }
 
     private static BigDecimal toNumber(Object value) {
-        if (value == null) return null;
-        try {
-            return new BigDecimal(value.toString().trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return value == null ? null : SafeDecimal.parse(value.toString());
     }
 
     /** Every transaction the viewer may see, loans hidden from staff and cost stripped for them. */

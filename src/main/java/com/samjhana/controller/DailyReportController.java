@@ -3,6 +3,7 @@ package com.samjhana.controller;
 import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.User;
 import com.samjhana.service.DailyReportService;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,10 +56,8 @@ public class DailyReportController {
                     .body(Map.of("message", "Only an admin or manager can close an earlier day"));
         }
 
-        BigDecimal cashCounted;
-        try {
-            cashCounted = new BigDecimal(body.get("cashCounted").toString());
-        } catch (Exception e) {
+        BigDecimal cashCounted = body.get("cashCounted") == null ? null : SafeDecimal.parse(body.get("cashCounted").toString());
+        if (cashCounted == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid cashCounted value"));
         }
 
