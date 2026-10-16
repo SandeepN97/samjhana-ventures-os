@@ -4,7 +4,9 @@ import com.samjhana.dto.ChangePasswordRequest;
 import com.samjhana.dto.LoginRequest;
 import com.samjhana.dto.LoginResponse;
 import com.samjhana.dto.UserDto;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.User;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.ClientAddressResolver;
 import com.samjhana.security.JwtUtil;
@@ -40,6 +42,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttempts;
     private final ClientAddressResolver clientAddress;
+    private final AuditLogRepository auditLogRepository;
 
     /** What an admin sees when the named user is unknown or the current password is wrong: one answer for both. */
     private static final String INVALID_TARGET_OR_PASSWORD = "Invalid username or current password";
@@ -200,6 +203,13 @@ public class AuthController {
 
         loginAttempts.attemptSucceeded(guessedAccount, address);   // the current password was right
 
+        // An admin's temporary password for someone else is for that person to replace (finding P1b-02). If the admin
+        // who handed it out could replace it too, they - not the person - would choose the password.
+        if (targetsAnotherUser && Boolean.TRUE.equals(targetUser.getMustChangePassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "This user has a temporary password and must choose their own the next time they sign in"));
+        }
+
         // Validate new password strength
         if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
             return ResponseEntity.badRequest()
@@ -213,6 +223,14 @@ public class AuthController {
 
         // Only the password is written (finding P1b-01), and an admin's temporary password is now replaced.
         userRepository.updatePassword(targetUser.getId(), passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
+
+        // Who changed whose password, never the passwords themselves.
+        AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, targetUser.getId(),
+                null, "{\"passwordChanged\":true}");
+        entry.setDescription(targetsAnotherUser
+                ? "Password changed for " + targetUser.getUsername() + " by " + currentUser.getUsername()
+                : "Password changed by " + currentUser.getUsername());
+        auditLogRepository.save(entry);
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.

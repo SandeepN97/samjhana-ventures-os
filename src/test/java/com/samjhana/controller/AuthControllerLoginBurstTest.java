@@ -45,6 +45,7 @@ class AuthControllerLoginBurstTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtUtil jwtUtil;
     @Mock UserRepository userRepository;
+    @Mock com.samjhana.repository.AuditLogRepository auditLogRepository;
     @Mock PasswordEncoder passwordEncoder;
 
     private LoginAttemptService attempts;
@@ -54,7 +55,7 @@ class AuthControllerLoginBurstTest {
     void setUp() {
         attempts = new LoginAttemptService(false);
         controller = new AuthController(authenticationManager, jwtUtil, userRepository, passwordEncoder, attempts,
-                new ClientAddressResolver(0));
+                new ClientAddressResolver(0), auditLogRepository);
     }
 
     private static LoginRequest request(String username, String password) {

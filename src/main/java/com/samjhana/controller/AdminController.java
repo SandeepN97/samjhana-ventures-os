@@ -7,6 +7,7 @@ import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.security.LoginAttemptService;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
+import com.samjhana.service.AccountRoleService;
 import com.samjhana.service.DemoDataSeederService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogRepository auditLogRepository;
     private final LoginAttemptService loginAttempts;
+    private final AccountRoleService accountRoleService;
     /** Empty in staging and prod: the demo reset bean only exists in dev. */
     private final ObjectProvider<DemoDataSeederService> demoDataSeederService;
 
@@ -202,7 +204,16 @@ public class AdminController {
         if (oldRole == newRole) {
             return ResponseEntity.badRequest().body(Map.of("message", "That user already has this role"));
         }
-        userRepository.updateRole(target.getId(), newRole, LocalDateTime.now());
+        switch (accountRoleService.changeRole(currentUser.getId(), target.getId(), newRole)) {
+            case ACTOR_IS_NOT_AN_ADMIN -> {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Admin access required"));
+            }
+            case WOULD_LEAVE_NO_ADMIN -> {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "There must always be at least one active admin"));
+            }
+            case CHANGED -> { /* recorded below */ }
+        }
 
         AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
                 "{\"role\":\"" + oldRole + "\"}", "{\"role\":\"" + newRole + "\"}");
