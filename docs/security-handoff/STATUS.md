@@ -1,6 +1,6 @@
 # Status of all 118 audit findings
 
-Written 2026-10-16. Counts: **24 findings fixed** (5 merged into `staging`, 19 in open PRs), **3 partly fixed**, **1 in progress**, **31 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **31 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
+Written 2026-10-16, refreshed later the same day. Counts: **32 findings fixed** (8 merged into `staging`, 24 in open PRs), **3 partly fixed**, **2 already fine before this series**, **2 in progress**, **32 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **19 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
 
 The authoritative record of each fix is its pull request (body = what was wrong, what changed, tests, mutation checks). To find the PR for a finding: GitHub search `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`.
 
@@ -8,8 +8,8 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 
 | ID | Severity | Topic | Status | Where |
 |---|---|---|---|---|
-| K-01 | High | Every petrol sale entry first loads the pump's ENTIRE petrol transaction history (all columns, all rows… | Fixed, PR open (awaiting the owner's merge) | #130 |
-| P0-02 | High | Server trusts the client's amount (and rate, litres, quantities) for every sale — attendant can… | Fixed, PR open (awaiting the owner's merge) | #128 |
+| K-01 | High | Every petrol sale entry first loads the pump's ENTIRE petrol transaction history (all columns, all rows… | Fixed, merged into staging | #130 |
+| P0-02 | High | Server trusts the client's amount (and rate, litres, quantities) for every sale — attendant can… | Fixed, merged into staging | #128 |
 | P0-16 | High | Public throttle keeps one in-memory entry per attacker-chosen key for 2 hours and re-scans the whole… | Fixed, merged into staging | #124 |
 | P1BX-01 | High | Check the live databases for accounts that still use published passwords (owner/ops check) | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | P1a-01 | High | EV staff price-floor rule | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
@@ -21,7 +21,7 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | F-06 | Medium | customFields is an unlimited upload channel for the lowest role: a STAFF login can store megabyte-sized… | Fixed, PR open (awaiting the owner's merge) | #131 |
 | G-01 | Medium | A STAFF login can make the server build a number with up to ~2 billion digits: unbounded-exponent… | Fixed, PR open (awaiting the owner's merge) | #134 |
 | J-01 | Medium | No Java dependency-vulnerability check runs on pull requests, and the one scheduled check scans the… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| K-02 | Medium | The new beekeeping dashboard and order list (PR #98) read the shop's whole transaction history, JSON and… | Fixed, PR open (awaiting the owner's merge) | #129 |
+| K-02 | Medium | The new beekeeping dashboard and order list (PR #98) read the shop's whole transaction history, JSON and… | Fixed, merged into staging | #129 |
 | K-03 | Medium | The staff online-orders list loads the whole orders table, cuts it to 300 afterwards, then runs one… | Fixed, merged into staging | #127 |
 | P0-01 | Medium | Anonymous shop order: int overflow when merging quantities makes negative order lines (stock inflation… | Fixed, merged into staging | #125 |
 | P0-03 | Medium | Manager edit of a transaction is unvalidated, ignores closed days and the audit row omits… | Fixed, PR open (awaiting the owner's merge) | #137 |
@@ -29,17 +29,17 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P0-10 | Medium | Username lock-out policy (security vs availability) | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P0-12 | Medium | Public order throttle can be exhausted anonymously and stock can be locked up with fake orders | Partly fixed | #125 fixed the cart overflow and allowance; the rest (public order throttle and stock-hold policy) needs the owner |
 | P0-17 | Medium | Login failure counter stores the full attacker-supplied username as a key with no length limit and no… | Fixed, PR open (awaiting the owner's merge) | #133 |
-| P1B1-01 | Medium | Replace a charger secret that was stored from the published default | In progress | in progress: branch fix/charger-secret-stored-from-the-published-default-is-replaced-at-startup (see QUEUE.md) |
+| P1B1-01 | Medium | Replace a charger secret that was stored from the published default | Fixed, PR open (awaiting the owner's merge) | #151 (core fix; making the environment always win is the owner's call) |
 | P1B2-01 | Medium | The login and change-password lock-outs are check-then-act: a parallel burst of guesses is judged… | Fixed, PR open (awaiting the owner's merge) | #135 |
 | P1B3-01 | Medium | Who may raise stock through ordinary entries | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1BX-02 | Medium | Tracked Claude Code project settings pre-approve package installs, build/test runs and find/cat for… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| P1a-02 | Medium | Charger-side authorisation: unknown transactions and Authorize requests | To do (no decision needed) | see QUEUE.md |
+| P1a-02 | Medium | Charger-side authorisation: unknown transactions and Authorize requests | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1a-03 | Medium | Rotating a charger's secret (or deactivating it) does not disconnect a connection made with the old… | Fixed, PR open (awaiting the owner's merge) | #138 |
 | P1a-04 | Medium | Any STAFF user can close tomorrow's books in advance; staff entries are then refused until midnight and… | Fixed, PR open (awaiting the owner's merge) | #132 |
 | P1a-06 | Medium | Approve/reject allowed transitions | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1a-09 | Medium | Charger unlock-before-payment flow | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1b-01 | Medium | A user's own profile save writes back a stale copy of their whole account row, so a concurrent demotion… | Fixed, PR open (awaiting the owner's merge) | #139 |
-| P1b-02 | Medium | Admin account changes: last-admin guard, audit every password change, no finalising another admin's reset | To do (no decision needed) | see QUEUE.md |
+| P1b-02 | Medium | Admin account changes: last-admin guard, audit every password change, no finalising another admin's reset | Fixed, PR open (awaiting the owner's merge) | #154 (decision-free part; the rest is the owner's call, see DECISIONS-AND-OPS.md) |
 | P1b-03 | Medium | Approve/reject state machine (audit part done) | Partly fixed | #137 fixed the audit trail and re-checks on edits; the approve/reject state machine needs the owner |
 | P1b-08 | Medium | Price, rate, website, picture, stock, HR and charger stop/unlock actions leave no audit row (stop/unlock… | Partly fixed | #143 (fuel prices) and #145 (charger stop/unlock) added audit rows; still unaudited: website text and pictures, EV vehicle rates, furniture items and stock, rental, staff HR, restaurant, customer delete, daily close and verify |
 | P3-01 | Medium | The charger command plane (OCPP WebSocket) and the live kiosk feed run inside the same single JVM and… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
@@ -48,8 +48,8 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | A-04 | Low | Per-address login limits read whatever X-Forwarded-For list is left when the request reaches the app: if… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | C-02 | Low | Loan repayments to the bank are booked as cash SALES: once approved they raise the day's expected drawer… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | C-03 | Low | On an auto-unlocking charger the EV sale is booked only by the charger's later "Ended" event: when the… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| D-02 | Low | Live EV feed: per-user socket and ticket caps, non-blocking broadcast | To do (no decision needed) | see QUEUE.md |
-| D-03 | Low | OCPP connection registry: duplicate-connection handling and clean-up | To do (no decision needed) | see QUEUE.md |
+| D-02 | Low | Live EV feed: per-user socket and ticket caps, non-blocking broadcast | In progress | PR to follow: branch fix/live-ev-feed-has-limits-and-closes-sockets-of-revoked-accounts (tests written and passing; checks running) |
+| D-03 | Low | OCPP connection registry: duplicate-connection handling and clean-up | Already fixed before this series | already handled on staging before this series: a newer connection closes the older one, and a stale socket closing cannot mark the charger offline (covered by OcppWebSocketHandlerTest and ChargerSessionFlowIntegrationTest) |
 | D-04 | Low | WebSocket liveness: heartbeat sweep, idle limits, frame-size and message-rate limits | To do (no decision needed) | see QUEUE.md |
 | F-02 | Low | A refused EV session start still leaves its plate photo on disk: any STAFF login can write an unlimited… | Fixed, PR open (awaiting the owner's merge) | #149 |
 | F-04 | Low | Plate photos (the only evidence of which car charged) live on the container's own disk: on a host… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
@@ -85,20 +85,20 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P0-08 | Low | No sanity bounds on fuel prices (manual entry and the NOC scraper) | Fixed, PR open (awaiting the owner's merge) | #143 |
 | P0-09 | Low | PATCH /api/furniture/orders/{id}/delivery-status accepts any transaction id from any signed-in user | Fixed, PR open (awaiting the owner's merge) | #140 |
 | P0-11 | Low | Furniture stock changes: validate line quantities, use guarded updates | To do (no decision needed) | see QUEUE.md |
-| P0-13 | Low | Public media: answer conditional requests without loading the image | To do (no decision needed) | see QUEUE.md |
+| P0-13 | Low | Public media: answer conditional requests without loading the image | Fixed, PR open (awaiting the owner's merge) | #153 |
 | P0-15 | Low | Authentication events and admin actions in the audit trail | To do (no decision needed) | see QUEUE.md |
 | P1B1-02 | Low | Rent and furniture order screens vs server validation | To do (no decision needed) | see QUEUE.md |
 | P1B1-03 | Low | Original read endpoints load whole tables into memory on every call and are open to every signed-in… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1B1-04 | Low | Rejected entries must not count on the module screens | To do (no decision needed) | see QUEUE.md |
 | P1B3-02 | Low | Who may post fuel purchase entries | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1B3-03 | Low | Switching on PR #109's per-address login limits raises the per-account guess budget from 10 to 50 per 15… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| P1B3-04 | Low | Recovery runbook: no literal temporary password | To do (no decision needed) | see QUEUE.md |
+| P1B3-04 | Low | Recovery runbook: no literal temporary password | Already fixed before this series | already fixed on staging: docs/RECOVERY.md now uses a placeholder and tells the reader never to reuse a published password |
 | P1B3-05 | Low | Who may read recent daily reports | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1BX-03 | Low | Production base images are digest-pinned with no update path: the Dependabot docker ecosystem promised… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | P1a-05 | Low | Online-order status changes made atomic | To do (no decision needed) | see QUEUE.md |
 | P1a-07 | Low | Loan payment: the booked amount, the principalAmount and the interestAmount are three unrelated client… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1a-08 | Low | Who may raise furniture and honey stock through ordinary entries | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| P1a-10 | Low | Throttle failed charger handshakes per address and per charger code | To do (no decision needed) | see QUEUE.md |
+| P1a-10 | Low | Throttle failed charger handshakes per address and per charger code | Fixed, PR open (awaiting the owner's merge) | #152 (core fix; refusing short secrets at startup is the owner's call) |
 | P1a-11 | Low | Charge sessions have no cancel, void or timeout transition: a session that never charged can only leave… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1a-13 | Low | Furniture stock changes made atomic | To do (no decision needed) | see QUEUE.md |
 | P1a-14 | Low | Maker/checker on the daily close | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
@@ -106,30 +106,30 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P1a-16 | Low | Charger events: allowed session-state transitions | To do (no decision needed) | see QUEUE.md |
 | P1b-04 | Low | Maker/checker on daily-close verification | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1b-05 | Low | Approval of an admin's own bank payment | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| P1b-06 | Low | Live EV feed: re-check the account while a socket is open | To do (no decision needed) | see QUEUE.md |
+| P1b-06 | Low | Live EV feed: re-check the account while a socket is open | In progress | PR to follow: same branch as D-02 |
 | P1b-07 | Low | Plate-photo evidence is kept per vehicle, not per session: any staff member who starts a session with an… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | P1b-09 | Low | Every "entered by / reviewed by / closed by / verified by" shown in the app is a free-text name each… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
-| B-01 | Info | Settings read access: allow-list instead of deny-list | To do (no decision needed) | see QUEUE.md |
+| B-01 | Info | Settings read access: allow-list instead of deny-list | Fixed, PR open (awaiting the owner's merge) | #156 |
 | D-05 | Info | Charger messages: validate field formats and lengths | To do (no decision needed) | see QUEUE.md |
 | D-06 | Info | TLS-only transport is not enforced by the application on either WebSocket: the charger's Basic secret… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | D-07 | Info | Design-versus-code gaps in docs/EV-CHARGING-ARCHITECTURE.md and the entity Javadoc: event matching is… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| E-01 | Info | Log hygiene: neutralise line breaks, validate SKU | To do (no decision needed) | see QUEUE.md |
+| E-01 | Info | Log hygiene: neutralise line breaks, validate SKU | Fixed, PR open (awaiting the owner's merge) | #158 |
 | H-02 | Info | Order tracking: keep the phone number out of the URL | To do (no decision needed) | see QUEUE.md |
 | I-06 | Info | Security-looking configuration and comments the code does not honour: two dead upload limits that… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-05 | Info | The weekly scan job runs third-party install scripts and Maven plugin code while holding a… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-07 | Info | The only coverage rule in the build is a bundle-wide floor of 50% lines / 40% branches, enforced by one… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-08 | Info | There is no .dockerignore: the Docker build context is the whole checkout, and COPY samjhana-admin and… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-10 | Info | The public repository has no CODEOWNERS, SECURITY.md or pull-request template: nobody is designated to… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| L-01 | Info | Log hygiene: do not log database error messages | To do (no decision needed) | see QUEUE.md |
+| L-01 | Info | Log hygiene: do not log database error messages | Fixed, PR open (awaiting the owner's merge) | #158 |
 | L-04 | Info | Hard-delete cross-check: no hard delete is reachable outside the dev profile, but 6 of the 10 DELETE… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | N-03 | Info | audit_logs is not append-only: the entity is mutable, the repository exposes update and delete, and the… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | N-04 | Info | The server logs into the database as the project owner and, in prod, is expected to change the schema at… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| P0-14 | Info | Admin app route /change-password on the server allow-list | To do (no decision needed) | see QUEUE.md |
+| P0-14 | Info | Admin app route /change-password on the server allow-list | Fixed, PR open (awaiting the owner's merge) | #157 |
 | P1a-12 | Info | Dev startup silently approves every waiting review, including loan payments awaiting the admin (no… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 
 ## Counts by severity
 
-- **High** (5): 2 fixed, PR open (awaiting the owner's merge); 1 fixed, merged into staging; 1 Ops / CI / docs / architecture; 1 waiting for the owner's decision
-- **Medium** (30): 12 fixed, PR open (awaiting the owner's merge); 4 fixed, merged into staging; 1 in progress; 3 Ops / CI / docs / architecture; 3 partly fixed; 2 to do (no decision needed); 5 waiting for the owner's decision
-- **Low** (66): 5 fixed, PR open (awaiting the owner's merge); 13 Ops / CI / docs / architecture; 23 to do (no decision needed); 25 waiting for the owner's decision
-- **Info** (17): 11 Ops / CI / docs / architecture; 6 to do (no decision needed)
+- **High** (5): 3 fixed, merged into staging; 1 Ops / CI / docs / architecture; 1 waiting for the owner's decision
+- **Medium** (30): 13 fixed, PR open (awaiting the owner's merge); 5 fixed, merged into staging; 3 Ops / CI / docs / architecture; 3 partly fixed; 6 waiting for the owner's decision
+- **Low** (66): 2 already fixed before this series; 7 fixed, PR open (awaiting the owner's merge); 2 in progress; 13 Ops / CI / docs / architecture; 17 to do (no decision needed); 25 waiting for the owner's decision
+- **Info** (17): 4 fixed, PR open (awaiting the owner's merge); 11 Ops / CI / docs / architecture; 2 to do (no decision needed)

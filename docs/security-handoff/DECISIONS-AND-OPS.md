@@ -6,10 +6,11 @@ The second part is hosting, database, CI and documentation work. Some of it can 
 
 This repository is public, so the questions are worded neutrally. The full text of every finding is in the private report (README section 6).
 
-## 1. Decisions only the owner can make (31)
+## 1. Decisions only the owner can make (32)
 
 | ID | Sev | The question for the owner |
 |---|---|---|
+| P1a-02 | Medium | Charger-initiated sessions: how strictly should the server treat a charging session that a charger starts by itself (no staff request)? Options: stop it, hold it for payment, or only flag it. |
 | P1a-01 | High | EV charging price floor: which inputs may staff override, and what must the floor be calculated from? |
 | C-01 | Medium | Which payment methods count as cash in the drawer when the day is closed, and who chooses the method on a sale? |
 | P0-10 | Medium | Lock-out policy for a username that is being guessed: how long, and is it acceptable that the real user is locked out while it lasts? |
@@ -46,7 +47,7 @@ This repository is public, so the questions are worded neutrally. The full text 
 
 - **P0-12** (rest): policy for how long stock is held for an unpaid online order and how the public order throttle should behave.
 - **P1b-03** (rest): the approve/reject state machine (same decision as P1a-06). The audit-trail part is done in PR #137.
-- **P1b-02**: re-entering the acting admin's password, second-admin confirmation or a delay for admin-on-admin actions, and expiry of temporary passwords. The rest of P1b-02 is in `QUEUE.md`.
+- **P1b-02**: re-entering the acting admin's password, second-admin confirmation or a delay for admin-on-admin actions, and expiry of temporary passwords. The decision-free parts of P1b-02 (last-admin guard, no finalising another admin's reset, audit row for every password change) are done in PR #154.
 - **P1a-10** and **P1B1-01**: whether the app should refuse to start for charger secrets shorter than 24 characters, and whether the environment variable should always overwrite the stored charger secret (it would undo `rotate-secret`).
 - **A-02**: the minimum password length (the audit suggests 12; today 8).
 

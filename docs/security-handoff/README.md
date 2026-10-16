@@ -5,9 +5,9 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 ## 0. The 60-second version
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
-- **Done:** 24 findings fixed with tests — 5 merged into `staging`, 19 in open PRs waiting for the owner to merge. 3 more are partly fixed. Table: [`STATUS.md`](STATUS.md).
-- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 32 findings that need no decision from the owner (start at the first one nobody has done yet).
-- **Not yours to start:** [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md) — 31 rules/trade-offs only the owner can decide, and 28 ops/CI/database items.
+- **Done:** 32 findings fixed with tests — 8 merged into `staging`, 24 in open PRs waiting for the owner to merge. 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md).
+- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 21 findings that need no decision from the owner (start at the first one nobody has done yet; the first two, D-02 and P1b-06, are in progress on one branch, see section 2).
+- **Not yours to start:** [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md) — 32 rules/trade-offs only the owner can decide, and 28 ops/CI/database items.
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
 
@@ -20,17 +20,14 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 5. Never commit the private report to this public repository.
 6. Never skip, disable or quarantine a test to get green. Never rewrite history on a pushed branch.
 
-## 2. Where things stand (2026-10-16, about 15:30 UTC)
+## 2. Where things stand (2026-10-16, about 17:00 UTC)
 
-**Merged into `staging` by the owner:** #124 (P0-16), #125 (P0-01 and part of P0-12), #126 (P0-04, F-03), #127 (K-03).
+**Merged into `staging` by the owner:** #124 (P0-16), #125 (P0-01 and part of P0-12), #126 (P0-04, F-03), #127 (K-03), #128 (P0-02), #129 (K-02), #130 (K-01).
 
 **Open PRs into `staging`** (CI had no failing checks at the last look; the owner merges in number order and uses "Update branch" on the rest):
 
 | PR | Findings | Branch |
 |---|---|---|
-| #128 | P0-02 | `fix/server-checks-sale-amount-against-litres-and-price` |
-| #129 | K-02 | `fix/beekeeping-dashboard-and-order-list-load-only-what-they-show` |
-| #130 | K-01 | `fix/petrol-sale-looks-up-the-purchase-rate-without-loading-all-history` |
 | #131 | F-06 | `fix/sale-extra-details-cannot-be-megabytes-large` |
 | #132 | P1a-04 | `fix/staff-cannot-close-tomorrows-books-in-advance` |
 | #133 | P0-17 | `fix/login-failure-counter-cannot-be-filled-with-giant-usernames` |
@@ -46,10 +43,19 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 | #143 | P0-08, P1b-08 fuel part (stacked on #134) | `fix/fuel-prices-are-range-checked-and-price-changes-leave-an-audit-row` |
 | #145 | P1b-08 charger stop/unlock part | `fix/charger-stop-and-unlock-commands-are-recorded-with-the-person-who-sent-them` |
 | #149 | F-02 | `fix/refused-ev-start-does-not-leave-its-plate-photo-on-disk` |
+| #151 | P1B1-01 | `fix/charger-secret-stored-from-the-published-default-is-replaced-at-startup` |
+| #152 | P1a-10 | `fix/failed-charger-handshakes-are-limited-before-the-password-check` |
+| #153 | P0-13 | `fix/picture-revalidation-does-not-read-the-picture-from-the-database` |
+| #154 | P1b-02 decision-free part (stacked on #139) | `fix/admin-account-changes-keep-an-admin-and-leave-a-record` |
+| #156 | B-01 | `fix/settings-can-only-be-read-by-managers-and-admins` |
+| #157 | P0-14 | `fix/change-password-page-loads-when-the-browser-is-reloaded` |
+| #158 | E-01, L-01 | `fix/log-lines-cannot-be-forged-and-database-error-text-stays-out-of-the-log` |
 
-**Owner's own PRs (not part of this series):** #148 is a `staging` → `main` release PR. It shows "out-of-date with the base branch" because `main` holds four release merge commits (#118, #123, #144, #147) that `staging` does not. The usual cure is a PR into `staging` that merges `main` in (precedent: #121). That needs the owner's go-ahead; do not do it unasked.
+#150 is this handoff folder itself (a docs-only PR). #155 (database and security production-readiness checklists, into `main`) is not part of this series.
 
-**In progress when this was written:** P1B1-01 (queue item 1). Design is in `QUEUE.md`; nothing is pushed yet, start from `origin/staging`.
+**Owner's own PRs (not part of this series):** the `staging` → `main` release PRs (#118, #123, #144, #147, #148) are the owner's. When one shows "out-of-date with the base branch", the usual cure is a PR into `staging` that merges `main` in (precedent: #121). That needs the owner's go-ahead; do not do it unasked.
+
+**In progress when this was written:** D-02 and P1b-06 (the live EV feed) on branch `fix/live-ev-feed-has-limits-and-closes-sockets-of-revoked-accounts`: per-person and total socket caps, a ticket throttle and cap, a non-blocking broadcast that a slow or failing socket cannot hold up, and a periodic re-check that closes the sockets of accounts that were switched off or changed. The code and its tests are written and the whole suite passed (1105 tests); the deliberate-break checks were still running and no PR existed yet. If the branch is on GitHub, open the PR from it; if not, redo it from `QUEUE.md` item 1.
 
 **Quick start**
 

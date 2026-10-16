@@ -1,6 +1,6 @@
 # How the fixes are made (method, commands, gotchas)
 
-This is the routine that produced PRs #124–#149. Follow it so new work looks and checks the same way.
+This is the routine that produced PRs #124–#158 (and the live-feed branch after them). Follow it so new work looks and checks the same way.
 
 ## 1. The loop for one finding
 
@@ -125,6 +125,14 @@ If your change touches code that an **open** PR also changes, branch from that P
 - **H2 (tests) is more forgiving than PostgreSQL (prod).** Watch enum values, check constraints and JSON columns.
 - **Log files can contain binary characters:** use `grep -a`.
 - **Merge conflicts** between PRs were adjacent import lines in `TransactionService`. When branches overlap, prefer a fully-qualified name (`java.util.Objects.equals`) over a new import line.
+- **Break checks in a copy of the tree:** to run the deliberate breaks while the full suite runs in the real worktree, copy the tree to a new folder (`tar`, without `.git`, `target`, `node_modules`) but **keep `samjhana-admin/` and `samjhana-web/`** (without their `node_modules`): the Maven frontend plugin fails without those folders even under `-Pdev`, and then every break looks "CAUGHT" for the wrong reason. Run one unbroken test class in the copy first.
+- **Load:** the container has 4 cores. One full `verify` plus one break-check run at a time is fine; more makes the timing-based tests slow and noisy.
+- **Do not `pkill -f <worktree-name>`:** the name is also in your own shell command, so you kill your own shell.
+- **Tests of blocking behaviour need a timeout.** The RED run of a test such as "a stalled socket must not block the publisher" hangs on the old code unless the class has `@Timeout` (see `EvLiveWebSocketHandlerTest`).
+- **An older test may pin the behaviour you are changing on purpose** (B-01: staff reading an ordinary setting). Change it deliberately, rename it to say the new rule, and say so in the PR.
+- **`@Scheduled` methods share one scheduler thread.** Never block in them (a socket close can block); hand slow work to an executor, as `EvLiveWebSocketHandler` does.
+- **In-memory throttles are shared by every test in a cached Spring context.** A test that calls a throttled endpoint repeatedly with the same user can get a `429` (the live-ticket throttle allows 10 a minute per user): use a fresh user per test.
+- **Driver and logger settings are part of the fix.** Changing one log call is not enough when the library logs the same text itself (L-01: Hibernate prints the PostgreSQL driver's message; the fix includes `logServerErrorDetail=false` in the JDBC URLs).
 - **Helpers worth reusing:** `AfterCommit` (`service`), `LogSafe.clean(text, max)` (`ocpp.diag`; neutralise text before logging), `RequestThrottle` (`security`; bounded table), `LoginAttemptService` (`security`), `TransactionVisibility` (`service`), and the audit factories on `AuditLog` (`createEvent`, `updateEvent`, `approvalEvent`).
 - **Numbers from outside** (requests, stored JSON, chargers) must go through `SafeDecimal` (`util`, added in PR #134) before they reach `BigDecimal` arithmetic.
 
