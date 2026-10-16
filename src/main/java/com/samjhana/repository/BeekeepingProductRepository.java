@@ -35,11 +35,11 @@ public interface BeekeepingProductRepository extends JpaRepository<BeekeepingPro
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update BeekeepingProduct p set p.stockQty = p.stockQty - :qty "
-            + "where p.id = :id and p.deletedAt is null and p.stockQty >= :qty")
+            + "where p.id = :id and p.deletedAt is null and :qty > 0 and p.stockQty >= :qty")
     int removeStock(@Param("id") UUID id, @Param("qty") int qty);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update BeekeepingProduct p set p.stockQty = p.stockQty + :qty "
-            + "where p.id = :id and p.deletedAt is null")
+            + "where p.id = :id and p.deletedAt is null and :qty > 0")
     int addStock(@Param("id") UUID id, @Param("qty") int qty);
 }
