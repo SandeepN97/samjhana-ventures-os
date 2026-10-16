@@ -22,6 +22,8 @@ public interface FurnitureItemRepository extends JpaRepository<FurnitureItem, UU
 
     boolean existsBySlug(String slug);
 
+    java.util.Optional<FurnitureItem> findBySlug(String slug);
+
     /** Takes {@code qty} off the stock in one guarded statement; returns 0 and changes nothing when there is not enough. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update FurnitureItem i set i.stockQty = i.stockQty - :qty "
