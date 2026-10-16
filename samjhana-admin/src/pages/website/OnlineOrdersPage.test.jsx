@@ -147,6 +147,28 @@ describe('OnlineOrdersPage', () => {
     expect(api.get.mock.calls.length).toBeGreaterThan(before);
   });
 
+  it('does not start another refresh while the last one is still waiting for the server', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    await screen.findByText('SV-261003-AB2C');
+    const before = api.get.mock.calls.length;
+    api.get.mockImplementation(() => new Promise(() => {}));   // the server stops answering
+    await act(async () => { await vi.advanceTimersByTimeAsync(150_000); });   // five refresh times go by
+    expect(api.get.mock.calls.length - before).toBe(2);   // one refresh (orders and counts) was started, and no more
+  });
+
+  it('starts the next refresh as soon as the last one has finished', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    await screen.findByText('SV-261003-AB2C');
+    const before = api.get.mock.calls.length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_500); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(api.get.mock.calls.length - before).toBe(4);   // two refreshes, each asking for orders and counts
+  });
+
   it('shows Nepali labels and Devanagari numerals', async () => {
     mockApi([order()], { NEW: 3, CONFIRMED: 0, READY: 0, COMPLETED: 0, CANCELLED: 0 });
     renderWithProviders(<OnlineOrdersPage />, { locale: 'ne' });
