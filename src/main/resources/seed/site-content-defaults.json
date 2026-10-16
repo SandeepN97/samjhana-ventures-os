@@ -82,12 +82,14 @@
       "cards": [
         {
           "label": "Honey & beekeeping",
+          "icon": "honey",
           "nepali": "मह र मौरीपालन",
           "image": "@tile-honey",
           "href": "/beekeeping"
         },
         {
           "label": "Furniture",
+          "icon": "chair",
           "nepali": "फर्निचर",
           "image": "@tile-chair",
           "href": "/furniture"
