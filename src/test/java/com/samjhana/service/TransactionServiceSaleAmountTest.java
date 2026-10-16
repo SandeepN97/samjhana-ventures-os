@@ -127,6 +127,19 @@ class TransactionServiceSaleAmountTest {
     // ---- petrol: staff ------------------------------------------------------------------------------
 
     @Test
+    void shouldAllowAStaffFuelSale_aRupeeOffTheWorkedAmount_butNotAPaisaMore() {
+        petrolPriceFor(today, "170");   // 10 litres x 170 = 1700: a rupee either way is rounding, more than that is not
+
+        service.create(request("petrol", "SALE", "1701.00", petrolFields("10", "170")), staff);
+        service.create(request("petrol", "SALE", "1699.00", petrolFields("10", "170")), staff);
+
+        assertThatThrownBy(() -> service.create(request("petrol", "SALE", "1701.01", petrolFields("10", "170")), staff))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("does not add up");
+        assertThatThrownBy(() -> service.create(request("petrol", "SALE", "1698.99", petrolFields("10", "170")), staff))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("does not add up");
+    }
+
+    @Test
     void shouldRefuseAStaffFuelSale_whenTheAmountIsNotLitresTimesRate() {
         petrolPriceFor(today, "170");
 
