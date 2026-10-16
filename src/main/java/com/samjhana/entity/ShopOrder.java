@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -90,8 +91,10 @@ public class ShopOrder {
 
     private LocalDateTime completedAt;
 
+    /** {@code @BatchSize}: listing 300 orders asks for their lines 100 orders at a time, not one order at a time. */
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("productName ASC")
+    @BatchSize(size = 100)
     private List<ShopOrderLine> lines = new ArrayList<>();
 
     @CreationTimestamp
