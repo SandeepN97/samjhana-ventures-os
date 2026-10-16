@@ -55,4 +55,69 @@ class RequestThrottleTest {
         clock.advance(Duration.ofMinutes(6));                                        // first hit now 11 min old
         assertThat(throttle.tryAcquire("k", 1, Duration.ofMinutes(10))).isTrue();
     }
+
+    // ---- finding P0-16: a stranger must not be able to make the table grow without limit ----
+
+    @Test
+    void shouldHoldAtMostMaxKeys_whenFloodedWithUniqueKeys() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        for (int i = 0; i < 100_000; i++) throttle.tryAcquire("flood:" + i, 1, Duration.ofHours(2));
+        assertThat(throttle.trackedKeys()).isLessThanOrEqualTo(RequestThrottle.MAX_KEYS);
+    }
+
+    @Test
+    void shouldForgetTheLeastRecentlyUsedKey_whenTheTableIsFull() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        assertThat(throttle.tryAcquire("victim", 1, Duration.ofHours(2))).isTrue();
+        for (int i = 0; i < RequestThrottle.MAX_KEYS; i++) throttle.tryAcquire("other:" + i, 1, Duration.ofHours(2));
+        assertThat(throttle.tryAcquire("victim", 1, Duration.ofHours(2))).isTrue();   // its count was dropped to make room
+    }
+
+    @Test
+    void shouldKeepAKeyThatIsStillBeingUsed_whenTheTableFills() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        assertThat(throttle.tryAcquire("busy", 1, Duration.ofHours(2))).isTrue();
+        for (int batch = 0; batch < 11; batch++) {                                    // 11,000 other keys in all
+            for (int i = 0; i < 1_000; i++) throttle.tryAcquire("other:" + batch + ":" + i, 1, Duration.ofHours(2));
+            assertThat(throttle.tryAcquire("busy", 1, Duration.ofHours(2))).isFalse();   // refused, and so used again
+        }
+    }
+
+    @Test
+    void shouldRefuseAKey_whenItIsLongerThanTheLimit_andRecordNothing() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        assertThat(throttle.tryAcquire("k".repeat(RequestThrottle.MAX_KEY_LENGTH + 1), 5, Duration.ofMinutes(10))).isFalse();
+        assertThat(throttle.trackedKeys()).isZero();
+        assertThat(throttle.tryAcquire("k".repeat(RequestThrottle.MAX_KEY_LENGTH), 5, Duration.ofMinutes(10))).isTrue();
+    }
+
+    @Test
+    void shouldCountLongKeysSeparately_whenTheyDifferOnlyAtTheEnd() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        String stem = "a".repeat(RequestThrottle.MAX_KEY_LENGTH - 1);
+        assertThat(throttle.tryAcquire(stem + "1", 1, Duration.ofMinutes(10))).isTrue();
+        assertThat(throttle.tryAcquire(stem + "2", 1, Duration.ofMinutes(10))).isTrue();
+        assertThat(throttle.tryAcquire(stem + "1", 1, Duration.ofMinutes(10))).isFalse();
+    }
+
+    @Test
+    void shouldForgetKeysWhoseWindowHasPassed_whenTheSweepRuns() {
+        MovableClock clock = new MovableClock();
+        RequestThrottle throttle = new RequestThrottle(clock);
+        for (int i = 0; i < 50; i++) throttle.tryAcquire("old:" + i, 1, Duration.ofMinutes(10));
+        clock.advance(Duration.ofMinutes(11));
+        throttle.forgetExpired();
+        assertThat(throttle.trackedKeys()).isZero();
+    }
+
+    @Test
+    void shouldKeepKeysThatAreStillCounting_whenTheSweepRuns() {
+        MovableClock clock = new MovableClock();
+        RequestThrottle throttle = new RequestThrottle(clock);
+        assertThat(throttle.tryAcquire("long", 1, Duration.ofHours(2))).isTrue();
+        clock.advance(Duration.ofHours(1));
+        throttle.forgetExpired();
+        assertThat(throttle.trackedKeys()).isEqualTo(1);
+        assertThat(throttle.tryAcquire("long", 1, Duration.ofHours(2))).isFalse();     // still limited
+    }
 }

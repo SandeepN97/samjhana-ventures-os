@@ -3,6 +3,7 @@ package com.samjhana.controller;
 import com.samjhana.entity.MediaAsset;
 import com.samjhana.entity.User;
 import com.samjhana.service.MediaService;
+import com.samjhana.service.UploadQuota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final UploadQuota uploadQuota;
 
     @GetMapping("/api/public/media/{id}")
     public ResponseEntity<byte[]> view(@PathVariable String id,
@@ -55,6 +57,7 @@ public class MediaController {
     @PostMapping("/api/media")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal User user) {
+        uploadQuota.checkMediaUpload(user, file.getSize());
         MediaAsset asset = mediaService.store(file, user.getUsername());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", asset.getId().toString());

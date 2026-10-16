@@ -21,4 +21,8 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
     /** Which of these ids are real, live pictures: checks references without loading any picture bytes. */
     @Query("select m.id from MediaAsset m where m.id in :ids and m.deletedAt is null")
     List<UUID> findLiveIds(@Param("ids") Collection<UUID> ids);
+
+    /** Bytes held by pictures that have not been removed. */
+    @Query("select coalesce(sum(m.sizeBytes), 0L) from MediaAsset m where m.deletedAt is null")
+    long sumLiveBytes();
 }
