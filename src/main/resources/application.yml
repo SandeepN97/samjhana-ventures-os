@@ -92,6 +92,10 @@ samjhana:
       # X-Forwarded-For, belong to trusted proxies rather than the visitor (0 = the right-most entry is the client).
     login:
       ip-limits-enabled: ${SAMJHANA_LOGIN_IP_LIMITS:false}
+      # The most sign-in attempts the whole server accepts in one minute, whoever they come from (0 = no ceiling).
+      # It stops one stranger from using up the server's password checking; the price is that a flood of made-up
+      # logins can make real ones wait a minute. Staff already signed in can still change their password.
+      global-per-minute: ${SAMJHANA_LOGIN_GLOBAL_PER_MINUTE:120}
     trusted-proxy-hops: ${SAMJHANA_TRUSTED_PROXY_HOPS:0}
 
   storage:
