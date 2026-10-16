@@ -30,6 +30,7 @@ class FuelPriceServiceNumbersTest {
 
     @Mock FuelPriceRepository fuelPriceRepository;
     @Mock NocPriceScraperService nocPriceScraperService;
+    @Mock com.samjhana.repository.AuditLogRepository auditLogRepository;
     @InjectMocks FuelPriceService service;
 
     private final User admin = User.builder().username("admin").role(User.UserRole.ADMIN).build();
