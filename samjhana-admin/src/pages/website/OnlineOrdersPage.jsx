@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShoppingBag, Search, X, Phone, MapPin, Package } from 'lucide-react';
 import api from '../../utils/api';
@@ -39,7 +39,13 @@ export default function OnlineOrdersPage() {
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState(null);
 
+  // True while a request for the list is out. The 30-second check skips its turn instead of piling a second
+  // request on a server that is already slow to answer the first.
+  const requestOut = useRef(false);
+
   const load = useCallback(async (quiet = false) => {
+    if (quiet && requestOut.current) return;
+    requestOut.current = true;
     if (!quiet) setLoading(true);
     try {
       const [list, summary] = await Promise.all([
@@ -52,6 +58,7 @@ export default function OnlineOrdersPage() {
     } catch {
       if (!quiet) setLoadError(true);
     } finally {
+      requestOut.current = false;
       if (!quiet) setLoading(false);
     }
   }, [tab]);
