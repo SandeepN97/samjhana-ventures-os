@@ -7,6 +7,7 @@ import com.samjhana.entity.User;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.TransactionRepository;
 import com.samjhana.service.LoanReceiptService;
+import com.samjhana.service.UploadQuota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -33,10 +34,12 @@ public class LoanReceiptController {
     private final LoanReceiptService receiptService;
     private final TransactionRepository transactionRepository;
     private final AuditLogRepository auditLogRepository;
+    private final UploadQuota uploadQuota;
 
     @PostMapping("/receipts")
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal User user) {
         if (user == null || !user.canManage()) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(FORBIDDEN);
+        uploadQuota.checkReceiptUpload(user, file.getSize());
         LoanReceipt receipt = receiptService.store(file, user);
         return ResponseEntity.ok(Map.of("receiptId", receipt.getId().toString()));
     }
