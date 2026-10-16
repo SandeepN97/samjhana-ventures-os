@@ -5,8 +5,8 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 ## 0. The 60-second version
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
-- **Done:** 32 findings fixed with tests — 8 merged into `staging`, 24 in open PRs waiting for the owner to merge. 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md).
-- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 21 findings that need no decision from the owner (start at the first one nobody has done yet; the first two, D-02 and P1b-06, are in progress on one branch, see section 2).
+- **Done:** 40 findings fixed with tests — 10 merged into `staging`, 30 in open PRs waiting for the owner to merge. 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md).
+- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 13 findings that still need no decision from the owner (start at the first one nobody has done yet; the price-scraper group M-04, M-01, M-02, M-03 goes first and should be one PR that branches from the #143 branch).
 - **Not yours to start:** [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md) — 32 rules/trade-offs only the owner can decide, and 28 ops/CI/database items.
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
@@ -20,21 +20,19 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 5. Never commit the private report to this public repository.
 6. Never skip, disable or quarantine a test to get green. Never rewrite history on a pushed branch.
 
-## 2. Where things stand (2026-10-16, about 17:00 UTC)
+## 2. Where things stand (2026-10-16, about 23:30 UTC)
 
-**Merged into `staging` by the owner:** #124 (P0-16), #125 (P0-01 and part of P0-12), #126 (P0-04, F-03), #127 (K-03), #128 (P0-02), #129 (K-02), #130 (K-01).
+**Merged into `staging` by the owner:** #124 (P0-16), #125 (P0-01 and part of P0-12), #126 (P0-04, F-03), #127 (K-03), #128 (P0-02), #129 (K-02), #130 (K-01), #131 (F-06), #132 (P1a-04).
 
 **Open PRs into `staging`** (CI had no failing checks at the last look; the owner merges in number order and uses "Update branch" on the rest):
 
 | PR | Findings | Branch |
 |---|---|---|
-| #131 | F-06 | `fix/sale-extra-details-cannot-be-megabytes-large` |
-| #132 | P1a-04 | `fix/staff-cannot-close-tomorrows-books-in-advance` |
 | #133 | P0-17 | `fix/login-failure-counter-cannot-be-filled-with-giant-usernames` |
 | #134 | G-01, D-01 | `fix/numbers-sent-from-outside-cannot-have-huge-exponents` |
 | #135 | A-01, P1B2-01 (stacked on #133) | `fix/login-burst-cannot-bypass-the-wrong-password-limit` |
 | #136 | F-01 | `fix/oversized-request-bodies-are-refused-before-they-are-read` |
-| #137 | P0-03, P1b-03 audit part (stacked on #131) | `fix/manager-edits-and-reviews-leave-a-full-before-and-after-record` |
+| #137 | P0-03, P1b-03 audit part (was stacked on #131, now merged) | `fix/manager-edits-and-reviews-leave-a-full-before-and-after-record` |
 | #138 | P1a-03 | `fix/rotating-a-charger-secret-disconnects-the-connection-using-the-old-one` |
 | #139 | P1b-01 (stacked on #135) | `fix/own-profile-save-cannot-undo-a-demotion-deactivation-or-password-reset` |
 | #140 | P0-09 | `fix/delivery-status-only-changes-furniture-orders-to-a-real-status` |
@@ -50,12 +48,20 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 | #156 | B-01 | `fix/settings-can-only-be-read-by-managers-and-admins` |
 | #157 | P0-14 | `fix/change-password-page-loads-when-the-browser-is-reloaded` |
 | #158 | E-01, L-01 | `fix/log-lines-cannot-be-forged-and-database-error-text-stays-out-of-the-log` |
+| #160 | D-02, P1b-06 | `fix/live-ev-feed-has-limits-and-closes-sockets-of-revoked-accounts` |
+| #161 | P0-11, P1a-13 | `fix/furniture-sales-take-stock-off-atomically-and-reject-bad-line-quantities` |
+| #162 | P1a-16 | `fix/charger-events-cannot-reopen-or-change-a-closed-session` |
+| #164 | P1a-05 | `fix/online-order-status-changes-cannot-book-or-return-stock-twice` |
+| #165 | P1B1-02 (stacked on #161) | `fix/rent-payments-and-furniture-orders-from-the-app-pass-the-sale-checks` |
+| #166 | F-05 | `fix/loan-receipt-can-only-be-attached-to-one-payment` |
 
 #150 is this handoff folder itself (a docs-only PR). #155 (database and security production-readiness checklists, into `main`) is not part of this series.
 
-**Owner's own PRs (not part of this series):** the `staging` → `main` release PRs (#118, #123, #144, #147, #148) are the owner's. When one shows "out-of-date with the base branch", the usual cure is a PR into `staging` that merges `main` in (precedent: #121). That needs the owner's go-ahead; do not do it unasked.
+**Owner's own PRs (not part of this series):** the `staging` → `main` release PRs (#118, #123, #144, #147, #148, #159, #163) are the owner's. When one shows "out-of-date with the base branch", the usual cure is a PR into `staging` that merges `main` in (precedent: #121). That needs the owner's go-ahead; do not do it unasked.
 
-**In progress when this was written:** D-02 and P1b-06 (the live EV feed) on branch `fix/live-ev-feed-has-limits-and-closes-sockets-of-revoked-accounts`: per-person and total socket caps, a ticket throttle and cap, a non-blocking broadcast that a slow or failing socket cannot hold up, and a periodic re-check that closes the sockets of accounts that were switched off or changed. The code and its tests are written and the whole suite passed (1105 tests); the deliberate-break checks were still running and no PR existed yet. If the branch is on GitHub, open the PR from it; if not, redo it from `QUEUE.md` item 1.
+**Notes on the open PRs.** The owner has been merging in number order and using "Update branch" on the rest, so most remote branches are ahead of any local copy by a merge commit from `staging`: `git fetch` and merge `origin/<branch>` before you push to one. #160 first failed the browser tests in CI because its ticket limit (10 a minute per person) was too tight for them; that was fixed (60 a minute, commit `e9e909d`) and the whole CI run is green. #165 contains #161's commit because it edits the same validator: merge #161 first.
+
+**In progress when this was written:** nothing is half-done and nothing is unpushed: every branch has its PR. Next is the price-scraper group (M-04, M-01, M-02, M-03; see `QUEUE.md`). Two things in that group need a person, not an agent: the real NOC web page has to be saved once from a browser to make fixtures for M-02 (this container cannot reach it), and the connection-pool limits in M-04 are a hosting setting.
 
 **Quick start**
 
