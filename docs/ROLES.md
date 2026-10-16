@@ -41,7 +41,7 @@ to the audit log. Photos are re-saved as plain JPEG on upload, so phone location
 | Feature | Staff | Manager | Admin |
 |---|---|---|---|
 | Fuel entries; see fuel prices | ✅ | ✅ | ✅ |
-| Set fuel prices, fetch the NOC price | ✖ | ✅ | ✅ |
+| Set fuel prices | ✖ | ✅ | ✅ |
 | EV sessions: start, stop, unlock, take payment (a discount below the price needs a manager) | ✅ | ✅ | ✅ |
 | Charger lock mode | ✖ | ✅ | ✅ |
 | Rotate a charger's secret | ✖ | ✖ | ✅ |

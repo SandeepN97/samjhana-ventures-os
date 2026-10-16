@@ -108,7 +108,6 @@ class RoleMatrixIntegrationTest {
             row("GET", "/api/fuel-prices", Min.STAFF),
             row("POST", "/api/fuel-prices", Min.MANAGER),
             row("POST", "/api/fuel-prices/bulk", Min.MANAGER),
-            row("POST", "/api/fuel-prices/fetch-noc", Min.MANAGER),
             // EV
             row("GET", "/api/charge-points", Min.STAFF),
             row("POST", "/api/charge-points/{id}/rotate-secret", Min.ADMIN),

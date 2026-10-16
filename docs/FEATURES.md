@@ -9,8 +9,7 @@ Daily fuel sales tracking with Weighted Average Cost (WAC) profit calculation.
 - **Daily Sales Entry** — Record liters sold, fuel type (Petrol/Diesel), rate per liter, and transaction amount
 - **WAC Profit Calculation** — Automatically computes profit using `(Sell Rate - WAC) x Liters`
 - **Fuel Orders** — Track incoming fuel purchases (tanker deliveries) with liters, rate, and supplier details
-- **Fuel Price Management** — View and update current petrol/diesel selling prices
-- **NOC Auto-Price Scraper** — Automatically fetches latest prices from [noc.org.np](https://noc.org.np) at 12:15 AM and 6:00 AM NPT daily. Prices can also be fetched manually via `POST /api/fuel-prices/fetch-noc` (admin only). System-scraped prices show "NOC Auto-Update" as the source
+- **Fuel Price Management** — View and update current petrol/diesel selling prices. Prices are entered by hand by a manager or admin; there is no automatic fetch from NOC (it was removed on 2026-10-16). Older prices saved by the former automatic fetch show "NOC Auto-Update" as the source
 
 ### EV Charging Station
 
@@ -107,7 +106,7 @@ Loan tracking with principal/interest split on payments.
 | `AdminController` | `/api/admin` | User management (create, list, change password) |
 | `TransactionController` | `/api/transactions` | CRUD for all business unit transactions |
 | `DailyReportController` | `/api/daily-reports` | Daily close reports |
-| `FuelPriceController` | `/api/fuel-prices` | Fuel price management + NOC scraper trigger |
+| `FuelPriceController` | `/api/fuel-prices` | Fuel price management |
 | `FurnitureController` | `/api/furniture` | Inventory, customers, orders |
 | `EvVehicleController` | `/api/ev-vehicles` | EV vehicle type and rate management |
 | `ChargePointController` | `/api/charge-points` | Charge-point status and configuration |

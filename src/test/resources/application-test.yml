@@ -21,8 +21,6 @@ samjhana:
     jwt:
       secret: test-jwt-secret-key-for-ci-only-32-chars-min
       expiration-hours: 1
-  fuel-price-scraper:
-    enabled: false
 
 logging:
   level:
