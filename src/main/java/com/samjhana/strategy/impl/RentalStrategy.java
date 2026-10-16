@@ -56,10 +56,11 @@ public class RentalStrategy implements BusinessCalculationStrategy {
     @Override
     public ValidationResult validate(Map<String, Object> customFields) {
         Map<String, String> errors = new HashMap<>();
-        String roomNo = (String) customFields.get("roomNo");
-        if (roomNo == null || roomNo.isBlank()) errors.put("roomNo", "Room number is required");
-        String tenantName = (String) customFields.get("tenantName");
-        if (tenantName == null || tenantName.isBlank()) errors.put("tenantName", "Tenant name is required");
+        // A rent payment names a room (the older form) or a property (the rent screen, which sends the property's id
+        // and name, and no tenant when the property has none on record): finding P1B1-02.
+        boolean property = text(customFields.get("propertyId")) != null || text(customFields.get("propertyName")) != null;
+        if (!property && text(customFields.get("roomNo")) == null) errors.put("roomNo", "Room number or property is required");
+        if (!property && text(customFields.get("tenantName")) == null) errors.put("tenantName", "Tenant name is required");
         BigDecimal monthlyRent = getBigDecimal(customFields, "monthlyRent");
         if (monthlyRent == null || monthlyRent.compareTo(BigDecimal.ZERO) <= 0) {
             errors.put("monthlyRent", "Monthly rent must be greater than 0");
@@ -69,15 +70,23 @@ public class RentalStrategy implements BusinessCalculationStrategy {
 
     @Override
     public String getSummary(Transaction transaction, Map<String, Object> customFields) {
-        String roomNo = (String) customFields.get("roomNo");
-        String tenantName = (String) customFields.get("tenantName");
+        String roomNo = text(customFields.get("roomNo"));
+        String propertyName = text(customFields.get("propertyName"));
+        String tenantName = text(customFields.get("tenantName"));
         Integer monthsPaid = getInteger(customFields, "monthsPaid");
         String months = monthsPaid != null && monthsPaid > 1 ? monthsPaid + " महिना" : "१ महिना";
-        return String.format("कोठा %s - %s: %s भाडा रु %.2f",
-                roomNo != null ? roomNo : "?",
+        // The rent screen names a property, not a room number.
+        String place = roomNo != null ? "कोठा " + roomNo : (propertyName != null ? propertyName : "कोठा ?");
+        return String.format("%s - %s: %s भाडा रु %.2f",
+                place,
                 tenantName != null ? tenantName : "भाडावाल",
                 months,
                 transaction.getAmount() != null ? transaction.getAmount() : BigDecimal.ZERO);
+    }
+
+    /** The text if it is a non-blank string, otherwise null (a number or a list where a name belongs is just "not given"). */
+    private static String text(Object value) {
+        return value instanceof String string && !string.isBlank() ? string : null;
     }
 
     private BigDecimal getBigDecimal(Map<String, Object> map, String key) {

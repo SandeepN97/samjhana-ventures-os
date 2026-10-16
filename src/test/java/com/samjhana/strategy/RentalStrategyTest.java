@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -126,5 +129,116 @@ class RentalStrategyTest {
     void shouldSummariseSingleMonth_whenMonthsPaidMissingOrOne() {
         Transaction transaction = Transaction.builder().amount(new BigDecimal("10000")).build();
         assertThat(strategy.getSummary(transaction, Map.of())).contains("१ महिना").contains("?").contains("भाडावाल");
+    }
+
+    // ---- finding P1B1-02: the rent screen names a property, not a room number ----
+
+    private Map<String, Object> rentFromTheScreen(String tenantName) {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("propertyId", UUID.randomUUID().toString());
+        fields.put("propertyName", "Shop 2, Tamghas Bazaar");
+        fields.put("tenantName", tenantName);
+        fields.put("monthlyRent", 12000);
+        return fields;
+    }
+
+    @Test
+    void shouldPassValidation_whenThePaymentNamesAPropertyAndATenant() {
+        assertThat(strategy.validate(rentFromTheScreen("Hari Bahadur")).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldPassValidation_whenThePropertyHasNoTenantOnRecord() {
+        assertThat(strategy.validate(rentFromTheScreen(null)).isValid()).isTrue();
+        Map<String, Object> blank = rentFromTheScreen("  ");
+        assertThat(strategy.validate(blank).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldPassValidation_whenOnlyThePropertyIdOrOnlyItsNameIsGiven() {
+        Map<String, Object> onlyId = rentFromTheScreen("Hari");
+        onlyId.remove("propertyName");
+        Map<String, Object> onlyName = rentFromTheScreen("Hari");
+        onlyName.remove("propertyId");
+
+        assertThat(strategy.validate(onlyId).isValid()).isTrue();
+        assertThat(strategy.validate(onlyName).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldFailValidation_whenNeitherARoomNorAPropertyIsNamed() {
+        Map<String, Object> fields = Map.of("tenantName", "Hari", "monthlyRent", 12000);
+
+        assertThat(strategy.validate(fields).errors()).containsKey("roomNo");
+    }
+
+    @Test
+    void shouldFailValidation_whenThePropertyIsNamedButTheRentIsMissingOrZero() {
+        Map<String, Object> missing = rentFromTheScreen("Hari");
+        missing.remove("monthlyRent");
+        Map<String, Object> zero = rentFromTheScreen("Hari");
+        zero.put("monthlyRent", 0);
+
+        assertThat(strategy.validate(missing).errors()).containsKey("monthlyRent");
+        assertThat(strategy.validate(zero).errors()).containsKey("monthlyRent");
+    }
+
+    @Test
+    void shouldStillRequireATenant_whenTheRoomFormIsUsed() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("roomNo", "A-101");
+        fields.put("tenantName", null);
+        fields.put("monthlyRent", 12000);
+
+        assertThat(strategy.validate(fields).errors()).containsKey("tenantName");
+    }
+
+    @Test
+    void shouldFailValidation_notThrow_whenARoomNumberOrNameIsNotText() {
+        Map<String, Object> numericRoom = Map.of("roomNo", 101, "tenantName", "Hari", "monthlyRent", 12000);
+        Map<String, Object> listAsName = new HashMap<>(rentFromTheScreen("Hari"));
+        listAsName.put("propertyId", List.of("x"));
+        listAsName.put("propertyName", 42);
+
+        assertThat(strategy.validate(numericRoom).errors()).containsKey("roomNo");
+        assertThat(strategy.validate(listAsName).errors()).containsKey("roomNo");
+    }
+
+    @Test
+    void shouldFailValidation_whenTheRoomNumberAndTenantAreOnlyBlankText() {
+        Map<String, Object> fields = Map.of("roomNo", "  ", "tenantName", " ", "monthlyRent", 12000);
+
+        assertThat(strategy.validate(fields).errors()).containsKeys("roomNo", "tenantName");
+    }
+
+    @Test
+    void shouldNotTreatBlankPropertyFieldsAsAProperty() {
+        Map<String, Object> fields = Map.of("propertyId", " ", "propertyName", "", "tenantName", "Hari", "monthlyRent", 12000);
+
+        assertThat(strategy.validate(fields).errors()).containsKey("roomNo");
+    }
+
+    @Test
+    void shouldSummariseWithThePropertyName_whenNoRoomNumberIsGiven() {
+        Transaction transaction = Transaction.builder().amount(new BigDecimal("12000")).build();
+
+        String summary = strategy.getSummary(transaction, rentFromTheScreen("Hari Bahadur"));
+
+        assertThat(summary).contains("Shop 2, Tamghas Bazaar").contains("Hari Bahadur").doesNotContain("कोठा").doesNotContain("?");
+    }
+
+    @Test
+    void shouldSummariseWithTheRoomNumber_whenOneIsGiven() {
+        Transaction transaction = Transaction.builder().amount(new BigDecimal("12000")).build();
+        Map<String, Object> fields = Map.of("roomNo", "A-101", "tenantName", "Hari", "propertyName", "Shop 2");
+
+        assertThat(strategy.getSummary(transaction, fields)).contains("कोठा A-101").doesNotContain("Shop 2");
+    }
+
+    @Test
+    void shouldSummariseWithoutThrowing_whenTheNamesAreNotText() {
+        Transaction transaction = Transaction.builder().amount(new BigDecimal("12000")).build();
+
+        assertThat(strategy.getSummary(transaction, Map.of("roomNo", 101, "tenantName", List.of("x")))).contains("कोठा ?").contains("भाडावाल");
     }
 }

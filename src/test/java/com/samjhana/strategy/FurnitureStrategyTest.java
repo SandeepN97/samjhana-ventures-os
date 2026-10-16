@@ -239,4 +239,106 @@ class FurnitureStrategyTest {
 
         assertThat(result.errors()).containsKey("items[0]");
     }
+
+    // ---- finding P1B1-02: the order screen sends a line per item and no item name or quantity at the top ----
+
+    private Map<String, Object> orderLine(String itemName, Object quantity, Object unitPrice) {
+        Map<String, Object> line = new HashMap<>();
+        line.put("itemId", UUID.randomUUID().toString());
+        line.put("itemName", itemName);
+        line.put("quantity", quantity);
+        line.put("unitPrice", unitPrice);
+        return line;
+    }
+
+    private Map<String, Object> order(Object... lines) {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("customerName", "Hari Thapa");
+        fields.put("paymentMethod", "CASH");
+        fields.put("items", List.of(lines));
+        return fields;
+    }
+
+    @Test
+    void shouldPassValidation_whenTheOrderHasALinePerItemAndNothingAtTheTop() {
+        assertThat(strategy.validate(order(orderLine("Teak Sofa", 2, 45000), orderLine("Chair", 4, 3500))).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldStillRequireTheItemNameAndQuantity_whenTheOrderHasNoLines() {
+        var result = strategy.validate(order());
+
+        assertThat(result.errors()).containsKeys("itemName", "quantity");
+    }
+
+    @Test
+    void shouldFailValidation_whenALineNamesNoItemAtAll() {
+        Map<String, Object> nameless = new HashMap<>();
+        nameless.put("quantity", 1);
+        nameless.put("unitPrice", 1000);
+
+        assertThat(strategy.validate(order(nameless)).errors()).containsOnlyKeys("items[0].itemName");
+    }
+
+    @Test
+    void shouldPassValidation_whenALineIsNamedByIdOnlyOrByNameOnly() {
+        Map<String, Object> byId = new HashMap<>();
+        byId.put("itemId", UUID.randomUUID().toString());
+        Map<String, Object> byName = new HashMap<>();
+        byName.put("itemName", "Custom-made wardrobe");
+
+        assertThat(strategy.validate(order(byId, byName)).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldFailValidation_whenALineHasANegativeOrNonNumericUnitPrice() {
+        assertThat(strategy.validate(order(orderLine("Chair", 1, -5))).errors()).containsKey("items[0].unitPrice");
+        assertThat(strategy.validate(order(orderLine("Chair", 1, "free"))).errors()).containsKey("items[0].unitPrice");
+        assertThat(strategy.validate(order(orderLine("Chair", 1, true))).errors()).containsKey("items[0].unitPrice");
+    }
+
+    @Test
+    void shouldFailValidation_whenALineUnitPriceIsNotAFiniteNumber() {
+        assertThat(strategy.validate(order(orderLine("Chair", 1, Double.POSITIVE_INFINITY))).errors()).containsKey("items[0].unitPrice");
+        assertThat(strategy.validate(order(orderLine("Chair", 1, Double.NaN))).errors()).containsKey("items[0].unitPrice");
+    }
+
+    @Test
+    void shouldPassValidation_whenALineIsFreeOrPricedWithDecimals() {
+        assertThat(strategy.validate(order(orderLine("Gift stool", 1, 0), orderLine("Table", 1, 12500.5))).isValid()).isTrue();
+    }
+
+    @Test
+    void shouldFailValidation_notThrow_whenTheItemNameIsNotText() {
+        Map<String, Object> fields = Map.of("itemName", 123, "quantity", 1);
+
+        assertThat(strategy.validate(fields).errors()).containsKey("itemName");
+    }
+
+    @Test
+    void shouldSummariseAnOrderByItsFirstItemTheNumberOfOthersAndThePiecesInAll() {
+        Transaction transaction = Transaction.builder().amount(new BigDecimal("104000")).build();
+
+        String summary = strategy.getSummary(transaction, order(orderLine("Teak Sofa", 2, 45000), orderLine("Chair", 4, 3500)));
+
+        assertThat(summary).contains("Teak Sofa +1").contains("× 6").contains("104000.00");
+    }
+
+    @Test
+    void shouldSummariseAOneLineOrderWithoutAnExtraCountAndCountAMissingQuantityAsOne() {
+        Transaction transaction = Transaction.builder().amount(new BigDecimal("45000")).build();
+        Map<String, Object> noQuantity = new HashMap<>();
+        noQuantity.put("itemName", "Teak Sofa");
+
+        String summary = strategy.getSummary(transaction, order(noQuantity));
+
+        assertThat(summary).contains("Teak Sofa (").doesNotContain("+").contains("× 1");
+    }
+
+    @Test
+    void shouldSummariseWithoutThrowing_whenTheItemNameOrCategoryIsNotText() {
+        Transaction transaction = Transaction.builder().amount(BigDecimal.ZERO).build();
+
+        assertThat(strategy.getSummary(transaction, Map.of("itemName", 123, "category", List.of("x")))).contains("फर्निचर").contains("अन्य");
+    }
 }
