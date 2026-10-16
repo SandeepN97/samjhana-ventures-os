@@ -35,7 +35,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -447,7 +446,7 @@ public class TransactionService {
             Object now = field.getValue();
             boolean same = "amount".equals(field.getKey()) && was != null && now != null
                     ? new BigDecimal(was.toString()).compareTo(new BigDecimal(now.toString())) == 0
-                    : Objects.equals(was, now);
+                    : java.util.Objects.equals(was, now);
             if (!same) changed.add(field.getKey());
         }
         return changed.isEmpty() ? "nothing" : String.join(", ", changed);
