@@ -228,4 +228,79 @@ class TransactionServiceSecurityTest {
 
         assertThat(objectMapper.readValue(response.getCustomFields(), Map.class)).doesNotContainKeys("neaCost", "profit");
     }
+
+    // ---- the extra details on an entry have a size limit (finding F-06) ----
+
+    /** A value that makes the extra details {@code {"note":"..."}} exactly {@code jsonChars} characters long as JSON. */
+    private static String noteMakingJsonExactly(int jsonChars) {
+        return "x".repeat(jsonChars - "{\"note\":\"\"}".length());
+    }
+
+    @Test
+    void shouldRefuseAnEntryWhoseExtraDetailsAreTooLarge_andSaveNothing() {
+        TransactionRequest tooBig = request("petrol", "PURCHASE", "100", today,
+                Map.of("note", noteMakingJsonExactly(TransactionService.MAX_CUSTOM_FIELDS_CHARS + 1)));
+
+        assertThatThrownBy(() -> service.create(tooBig, staff))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("too large");
+
+        verify(transactionRepository, never()).save(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldAcceptAnEntryWhoseExtraDetailsAreExactlyAtTheLimit() {
+        service.create(request("petrol", "PURCHASE", "100", today,
+                Map.of("note", noteMakingJsonExactly(TransactionService.MAX_CUSTOM_FIELDS_CHARS))), staff);
+
+        verify(transactionRepository).save(any(Transaction.class));
+    }
+
+    @Test
+    void shouldKeepTheLimitBetween60000And70000Characters() {
+        service.create(request("petrol", "PURCHASE", "100", today, Map.of("note", noteMakingJsonExactly(60_000))), staff);
+        verify(transactionRepository).save(any(Transaction.class));
+
+        assertThatThrownBy(() -> service.create(
+                request("petrol", "PURCHASE", "100", today, Map.of("note", noteMakingJsonExactly(70_000))), staff))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("too large");
+    }
+
+    @Test
+    void shouldRefuseTooLargeExtraDetails_beforeMovingAnyBeekeepingStock() {
+        BusinessUnit beekeeping = BusinessUnit.builder().code("beekeeping").name("Beekeeping").build();
+        when(businessUnitRepository.findByCode("beekeeping")).thenReturn(Optional.of(beekeeping));
+        TransactionRequest tooBig = request("beekeeping", "SALE", "100", today,
+                Map.of("note", noteMakingJsonExactly(TransactionService.MAX_CUSTOM_FIELDS_CHARS + 1)));
+
+        assertThatThrownBy(() -> service.create(tooBig, staff)).isInstanceOf(IllegalArgumentException.class);
+
+        verify(beekeepingService, never()).applyStock(any(), any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRefuseAnEditThatMakesTheExtraDetailsTooLarge_andChangeNothing() {
+        Transaction existing = txn(petrol, Transaction.TransactionType.PURCHASE, "{}");
+        when(transactionRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        TransactionRequest edit = request("petrol", "PURCHASE", "100", today,
+                Map.of("note", noteMakingJsonExactly(TransactionService.MAX_CUSTOM_FIELDS_CHARS + 1)));
+
+        assertThatThrownBy(() -> service.update(existing.getId(), edit, manager))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("too large");
+
+        assertThat(existing.getCustomFields()).isEqualTo("{}");
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldAllowAnEditWithinTheLimit() {
+        Transaction existing = txn(petrol, Transaction.TransactionType.PURCHASE, "{}");
+        when(transactionRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+
+        service.update(existing.getId(), request("petrol", "PURCHASE", "100", today, Map.of("note", "ok")), manager);
+
+        assertThat(existing.getCustomFields()).isEqualTo("{\"note\":\"ok\"}");
+        verify(transactionRepository).save(existing);
+    }
 }

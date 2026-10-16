@@ -55,6 +55,20 @@ public class TransactionService {
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
 
     /**
+     * The most characters of extra details ({@code customFields}, as JSON) one entry may carry. Real entries are a few
+     * hundred characters; a 100-line order about 20,000.
+     */
+    static final int MAX_CUSTOM_FIELDS_CHARS = 65_536;
+
+    /** Refuses extra details that are too large to keep: nothing is saved and no stock moves (finding F-06). */
+    private static void requireExtraDetailsSmallEnough(String customFieldsJson) {
+        if (customFieldsJson != null && customFieldsJson.length() > MAX_CUSTOM_FIELDS_CHARS) {
+            throw new IllegalArgumentException("The extra details on this entry are too large (more than "
+                    + MAX_CUSTOM_FIELDS_CHARS + " characters)");
+        }
+    }
+
+    /**
      * Today in Nepal, or tomorrow once today has been closed: entries made after the day is closed
      * belong to the next day (the same rule as the admin app's business date).
      */
@@ -143,6 +157,7 @@ public class TransactionService {
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Invalid custom fields");
         }
+        requireExtraDetailsSmallEnough(customFieldsJson);
 
         // Beekeeping stock moves in this same transaction, before the sale is saved: a line the shop
         // can't cover fails the whole sale and nothing is changed.
@@ -327,12 +342,19 @@ public class TransactionService {
         String oldValues = t.getCustomFields();
 
         // Server-side validation on updated custom fields
+        String editedFields = null;
         if (request.getCustomFields() != null) {
             ValidationResult validation = calculationEngine.validate(
                     t.getBusiness().getCode(), request.getCustomFields());
             if (!validation.isValid()) {
                 throw new IllegalArgumentException("Validation failed: " + validation.errors());
             }
+            try {
+                editedFields = objectMapper.writeValueAsString(request.getCustomFields());
+            } catch (JsonProcessingException ignored) {
+                // left as it was
+            }
+            requireExtraDetailsSmallEnough(editedFields);
         }
 
         if (request.getAmount() != null) t.setAmount(request.getAmount());
@@ -342,11 +364,7 @@ public class TransactionService {
         if (request.getNotes() != null) t.setNotes(request.getNotes());
         if (request.getReferenceNumber() != null) t.setReferenceNumber(request.getReferenceNumber());
         if (request.getTransactionDate() != null) t.setTransactionDate(request.getTransactionDate());
-        if (request.getCustomFields() != null) {
-            try {
-                t.setCustomFields(objectMapper.writeValueAsString(request.getCustomFields()));
-            } catch (JsonProcessingException ignored) {}
-        }
+        if (editedFields != null) t.setCustomFields(editedFields);
         t.setReviewedBy(user);
         t.setReviewedAt(LocalDateTime.now());
 
