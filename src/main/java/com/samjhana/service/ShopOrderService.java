@@ -17,6 +17,8 @@ import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.ShopOrderRepository;
 import com.samjhana.security.RequestThrottle;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,8 +57,12 @@ public class ShopOrderService {
 
     static final int MAX_LINES = 30;
     static final int MAX_QTY_PER_LINE = 50;
+    /** Entries in the cart as sent, before the same product's entries are added together. */
+    static final int MAX_CART_ENTRIES = 100;
     private static final String ORDER_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final Pattern PHONE = Pattern.compile("\\+?[0-9]{7,15}");
+    /** What {@link #newOrderNumber()} makes: SV-, the date as six digits, then four characters (a looser alphabet than ours). */
+    private static final Pattern ORDER_NUMBER = Pattern.compile("SV-[0-9]{6}-[A-Z0-9]{4}");
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -89,13 +95,14 @@ public class ShopOrderService {
             landmark = optionalText(r.landmark(), 200, "Landmark");
         }
         String notes = optionalText(r.notes(), 1000, "Notes");
+        // The cart is checked in full before any allowance is used: an empty or broken cart must not count as an order.
+        Map<String, Integer> wanted = mergeItems(r.items());
 
-        if (!throttle.tryAcquire("order:phone:" + phone, 5, Duration.ofHours(1))
-                || !throttle.tryAcquire("order:all", 120, Duration.ofHours(1))) {
+        // The shared bucket first: a request it refuses must not leave a per-phone entry behind (finding P0-16).
+        if (!throttle.tryAcquire("order:all", 120, Duration.ofHours(1))
+                || !throttle.tryAcquire("order:phone:" + phone, 5, Duration.ofHours(1))) {
             throw new TooManyRequestsException("Too many orders just now. Please call us to place this order.");
         }
-
-        Map<String, Integer> wanted = mergeItems(r.items());
 
         ShopOrder order = new ShopOrder();
         order.setCustomerName(name);
@@ -152,8 +159,12 @@ public class ShopOrderService {
     @Transactional(readOnly = true)
     public Optional<Map<String, Object>> track(String orderNumber, String phone) {
         String number = orderNumber == null ? "" : orderNumber.trim().toUpperCase(Locale.ROOT);
-        if (!throttle.tryAcquire("track:" + number, 10, Duration.ofMinutes(15))
-                || !throttle.tryAcquire("track:all", 300, Duration.ofMinutes(1))) {
+        // Something that could never be one of our numbers gets the usual "not found" and uses no allowance, so a
+        // stranger can't fill the throttle with made-up numbers (finding P0-16).
+        if (!ORDER_NUMBER.matcher(number).matches()) return Optional.empty();
+        // The shared bucket first: a request it refuses must not leave a per-number entry behind.
+        if (!throttle.tryAcquire("track:all", 300, Duration.ofMinutes(1))
+                || !throttle.tryAcquire("track:" + number, 10, Duration.ofMinutes(15))) {
             throw new TooManyRequestsException("Too many tries. Please wait a few minutes.");
         }
         Optional<ShopOrder> order = orderRepository.findByOrderNumber(number);
@@ -163,24 +174,43 @@ public class ShopOrderService {
 
     // ===================== staff =====================
 
+    /** The most orders the staff list shows: the newest ones. */
+    static final int LIST_LIMIT = 300;
+
+    /**
+     * The newest {@link #LIST_LIMIT} orders (of one status, when given) whose number, customer name or phone contains
+     * the search text. The database does the cutting and the searching, so a long history is never loaded to be thrown
+     * away, and a search still reaches orders older than the newest 300.
+     */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(String status, String search) {
-        List<ShopOrder> orders;
+        Status wanted = null;
         if (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) {
             try {
-                orders = orderRepository.findByStatusOrderByCreatedAtDesc(Status.valueOf(status.toUpperCase(Locale.ROOT)));
+                wanted = Status.valueOf(status.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Unknown status: " + status);
             }
-        } else {
-            orders = orderRepository.findAllByOrderByCreatedAtDesc();
         }
+        Pageable newest = PageRequest.of(0, LIST_LIMIT);
         String q = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
-        return orders.stream()
-                .filter(o -> q.isEmpty() || o.getOrderNumber().toLowerCase(Locale.ROOT).contains(q)
-                        || o.getCustomerName().toLowerCase(Locale.ROOT).contains(q) || o.getCustomerPhone().contains(q))
-                .limit(300)
-                .map(this::toAdmin).toList();
+        List<ShopOrder> orders;
+        if (q.isEmpty()) {
+            orders = wanted == null
+                    ? orderRepository.findAllByOrderByCreatedAtDesc(newest)
+                    : orderRepository.findByStatusOrderByCreatedAtDesc(wanted, newest);
+        } else {
+            String pattern = likePattern(q);
+            orders = wanted == null
+                    ? orderRepository.search(pattern, newest)
+                    : orderRepository.searchByStatus(wanted, pattern, newest);
+        }
+        return orders.stream().map(this::toAdmin).toList();
+    }
+
+    /** {@code %text%} for a SQL LIKE, with {@code %}, {@code _} and the escape character {@code !} taken as plain text. */
+    static String likePattern(String text) {
+        return "%" + text.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 
     @Transactional(readOnly = true)
@@ -318,18 +348,24 @@ public class ShopOrderService {
 
     private static Map<String, Integer> mergeItems(List<Item> items) {
         if (items == null || items.isEmpty()) throw new IllegalArgumentException("Your cart is empty");
+        if (items.size() > MAX_CART_ENTRIES) throw new IllegalArgumentException("Too many items in one order");
         Map<String, Integer> merged = new LinkedHashMap<>();
         for (Item item : items) {
             if (item == null || item.slug() == null || item.slug().isBlank()) throw new IllegalArgumentException("A product in your cart is not valid");
             int qty = item.quantity() == null ? 0 : item.quantity();
             if (qty < 1) throw new IllegalArgumentException("Quantity must be at least 1");
+            // Each entry is limited before any are added together, so the sum can't wrap round to a negative number
+            // (finding P0-01): at most MAX_CART_ENTRIES entries of at most MAX_QTY_PER_LINE each.
+            if (qty > MAX_QTY_PER_LINE) throw tooManyOfOneProduct();
             merged.merge(item.slug().trim(), qty, Integer::sum);
         }
         if (merged.size() > MAX_LINES) throw new IllegalArgumentException("Too many different products in one order");
-        if (merged.values().stream().anyMatch(q -> q > MAX_QTY_PER_LINE)) {
-            throw new IllegalArgumentException("For more than " + MAX_QTY_PER_LINE + " of one product, please call us");
-        }
+        if (merged.values().stream().anyMatch(q -> q > MAX_QTY_PER_LINE)) throw tooManyOfOneProduct();
         return merged;
+    }
+
+    private static IllegalArgumentException tooManyOfOneProduct() {
+        return new IllegalArgumentException("For more than " + MAX_QTY_PER_LINE + " of one product, please call us");
     }
 
     private Fulfilment parseFulfilment(String raw) {
