@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -77,17 +79,19 @@ public class ChargeSessionService {
                 .orElseGet(() -> EvCustomerVehicle.builder().plateNumber(plate).build());
         if (request.getCustomerName() != null) vehicle.setCustomerName(clean(request.getCustomerName()));
         if (request.getPhoneNumber() != null) vehicle.setPhoneNumber(clean(request.getPhoneNumber()));
-        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
-            vehicle.setPlatePhotoPath(photoStorageService.store(request.getPlatePhotoDataUrl(), plate));
-        }
-        vehicle = customerVehicleRepository.save(vehicle);
-
+        // Everything that can refuse the start comes before the photo is written to the disk (finding F-02).
         EvVehicle catalog = null;
         if (request.getVehicleCatalogId() != null && !request.getVehicleCatalogId().isBlank()) {
             catalog = evVehicleRepository.findById(parseUuid(request.getVehicleCatalogId(), "vehicle type"))
                     .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                     .orElseThrow(() -> new ResourceNotFoundException("EV vehicle type not found"));
         }
+        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
+            String photoPath = photoStorageService.store(request.getPlatePhotoDataUrl(), plate);
+            removeIfTheStartIsRolledBack(photoPath);
+            vehicle.setPlatePhotoPath(photoPath);
+        }
+        vehicle = customerVehicleRepository.save(vehicle);
 
         ChargeSession session = ChargeSession.builder()
                 .chargePoint(chargePoint)
@@ -132,6 +136,17 @@ public class ChargeSessionService {
     public List<ChargeSessionResponse> recent() {
         return chargeSessionRepository.findTop50ByOrderByRequestedAtDesc()
                 .stream().map(ChargeSessionResponse::from).toList();
+    }
+
+    /** The photo is a file, which a database rollback does not undo: if the start fails after it was written, remove it. */
+    private void removeIfTheStartIsRolledBack(String photoPath) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) photoStorageService.delete(photoPath);
+            }
+        });
     }
 
     @Transactional(readOnly = true)
