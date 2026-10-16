@@ -98,6 +98,7 @@ class ChargerSessionFlowIntegrationTest {
     @Autowired TransactionRepository transactionRepository;
     @Autowired OcppProperties ocppProperties;
     @Autowired OcppAuditWriter auditWriter;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     @Autowired LockEvidenceTracker lockEvidence;
     @Autowired OcppAuditRetention retention;
     @Autowired OcppMessageLogRepository messageLogs;
@@ -1003,11 +1004,21 @@ class ChargerSessionFlowIntegrationTest {
         assertThat(chargerStatus(CHARGER_1)).isEqualTo("ONLINE");
     }
 
-    /** Puts the charger's stored secret back, so the other tests (which connect with the configured secret) still get in. */
-    private void restoreSecretHash(String code, String hash) {
-        ChargePoint point = chargePointRepository.findByCodeAndDeletedAtIsNull(code).orElseThrow();
-        point.setOcppAuthSecretHash(hash);
-        chargePointRepository.save(point);
+    /**
+     * Puts the charger's stored secret back, so the other tests (which connect with the configured secret) still get in.
+     * It waits until every socket is closed and both chargers are OFFLINE first, and then writes just that one column:
+     * a server thread that is still finishing a connect or disconnect would otherwise save its older copy of the whole
+     * row over the restored secret.
+     */
+    private void restoreSecretHash(String code, String hash) throws Exception {
+        for (WebSocketSession socket : sockets) {
+            if (socket.isOpen()) socket.close();
+        }
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE");
+            assertThat(chargerStatus(CHARGER_2)).isEqualTo("OFFLINE");
+        });
+        jdbcTemplate.update("update charge_points set ocpp_auth_secret_hash = ? where code = ?", hash, code);
     }
 
     private void drainAuditQueue() {
