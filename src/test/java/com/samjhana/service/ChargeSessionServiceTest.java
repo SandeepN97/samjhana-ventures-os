@@ -27,6 +27,8 @@ import com.samjhana.repository.TransactionRepository;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -664,6 +666,72 @@ class ChargeSessionServiceTest {
 
         assertEquals(45, session.getCurrentSoc());
         assertEquals(0, new BigDecimal("3.000").compareTo(session.getEnergyDeliveredKwh()));
+    }
+
+    // ---- finding D-01: a charger-supplied number with an extreme exponent or multiplier is ignored ----
+
+    private JsonNode energyEvent(int seq, String value, String multiplier) throws Exception {
+        String unit = multiplier == null ? "" : ",\"unitOfMeasure\":{\"unit\":\"Wh\",\"multiplier\":" + multiplier + "}";
+        return mapper.readTree("{\"eventType\":\"Updated\",\"seqNo\":" + seq + ",\"transactionInfo\":{\"transactionId\":\"TX-1\"},"
+                + "\"meterValue\":[{\"sampledValue\":[{\"measurand\":\"Energy.Active.Import.Register\",\"value\":" + value + unit + "}]}]}");
+    }
+
+    @Test
+    void shouldIgnoreAnEnergyReadingWithAnExtremeExponent() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "\"1e100\"", null));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(session.getEnergyDeliveredKwh()));
+    }
+
+    @Test
+    void shouldIgnoreAnEnergyReadingWithAnExtremeMultiplier() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", "100000"));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+    }
+
+    @Test
+    void shouldIgnoreABatteryReadingWithAnExtremeExponent() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        assertEquals(40, session.getCurrentSoc());
+
+        service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Updated\",\"seqNo\":2,"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-1\"},\"meterValue\":[{\"sampledValue\":["
+                + "{\"measurand\":\"SoC\",\"value\":\"1e100000\"}]}]}"));
+
+        assertEquals(40, session.getCurrentSoc());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2147483647", "-2147483648", "10", "-10"})
+    void shouldIgnoreAnEnergyReadingWhoseMultiplierIsNotAPlausibleUnit(String multiplier) throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", multiplier));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+    }
+
+    @Test
+    void shouldStillUseAnOrdinaryEnergyReadingWithAMultiplier() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", "3"));   // 5 x 10^3 = 5000 Wh
+
+        assertEquals(0, new BigDecimal("5000").compareTo(session.getLastMeterWh()));
     }
 
     @Test
