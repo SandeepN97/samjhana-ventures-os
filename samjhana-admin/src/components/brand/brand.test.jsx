@@ -146,9 +146,15 @@ describe('Card, StatusBadge and Wordmark', () => {
 
   it('shows the company name in English and Nepali', () => {
     const { unmount } = renderWithProviders(<Wordmark />);
-    expect(screen.getByText('Samjhana Ventures')).toBeInTheDocument();
+    expect(screen.getByText('Samjhana Multiproduct Pvt. Ltd.')).toBeInTheDocument();
     unmount();
     renderWithProviders(<Wordmark />, { locale: 'ne' });
-    expect(screen.getByText('सम्झना भेन्चर्स')).toBeInTheDocument();
+    expect(screen.getByText('सम्झना मल्टिप्रोडक्ट प्रा. लि.')).toBeInTheDocument();
+  });
+
+  it('uses a compact wordmark at the desktop sidebar size', () => {
+    renderWithProviders(<Wordmark size="sm" />);
+    expect(screen.getByText('Samjhana Multiproduct Pvt. Ltd.').parentElement).toHaveClass('text-base', 'leading-tight');
+    expect(screen.getByText('Samjhana Multiproduct Pvt. Ltd.')).toHaveClass('min-w-0', 'text-left');
   });
 });

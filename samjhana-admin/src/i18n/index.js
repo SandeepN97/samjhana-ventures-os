@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 /**
- * i18n Configuration for Samjhana Ventures OS
+ * i18n Configuration for Samjhana Multiproduct Pvt. Ltd.
  *
  * Supports:
  * - English (en) - for Son in USA
@@ -92,6 +92,9 @@ export const resources = {
         analytics: 'Analytics',
         settings: 'Settings',
         logout: 'Logout',
+        resizeSidebar: 'Resize sidebar',
+        switchToEnglish: 'Switch language to English',
+        switchToNepali: 'Switch language to Nepali',
       },
 
       // Business Names
@@ -106,7 +109,7 @@ export const resources = {
 
       // Home / QuickActionButtons
       home: {
-        title: 'Samjhana Ventures',
+        title: 'Samjhana Multiproduct Pvt. Ltd.',
         welcome: 'Welcome!',
         todayCash: "Today's Cash",
         businessesHeading: 'Businesses',
@@ -1692,8 +1695,8 @@ export const resources = {
 
       // Login
       login: {
-        title: 'Samjhana Ventures',
-        subtitle: 'Samjhana Ventures',
+        title: 'Samjhana Multiproduct Pvt. Ltd.',
+        subtitle: 'Samjhana Multiproduct Pvt. Ltd.',
         changePasswordTitle: 'Change Password',
         changePasswordSubtitle: 'Set a new password',
         backToLogin: 'Back to Login',
@@ -1814,6 +1817,9 @@ export const resources = {
         analytics: 'विश्लेषण',
         settings: 'सेटिंग्स',
         logout: 'लग आउट',
+        resizeSidebar: 'साइडबारको आकार बदल्नुहोस्',
+        switchToEnglish: 'अङ्ग्रेजीमा बदल्नुहोस्',
+        switchToNepali: 'नेपालीमा बदल्नुहोस्',
       },
 
       // Business Names
@@ -1828,7 +1834,7 @@ export const resources = {
 
       // Home / QuickActionButtons
       home: {
-        title: 'सम्झना भेन्चर्स',
+        title: 'सम्झना मल्टिप्रोडक्ट प्रा. लि.',
         welcome: 'स्वागत छ, बुवा!',
         todayCash: 'आजको कुल नगद',
         businessesHeading: 'व्यवसायहरू',
@@ -3414,8 +3420,8 @@ export const resources = {
 
       // Login
       login: {
-        title: 'सम्झना भेन्चर्स',
-        subtitle: 'Samjhana Ventures',
+        title: 'सम्झना मल्टिप्रोडक्ट प्रा. लि.',
+        subtitle: 'Samjhana Multiproduct Pvt. Ltd.',
         changePasswordTitle: 'पासवर्ड परिवर्तन',
         changePasswordSubtitle: 'नयाँ पासवर्ड सेट गर्नुहोस्',
         backToLogin: 'लगइनमा फर्कनुहोस्',

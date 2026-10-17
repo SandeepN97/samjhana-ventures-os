@@ -1,6 +1,6 @@
 # AdminWordmark
 
-The name mark of the admin: a building icon and "Samjhana Ventures" (or "सम्झना भेन्चर्स"), shown on the login screen and at the top of the home screen.
+The name mark of the admin: a building icon and company name, shown on the login screen, the home screen, and the expanded desktop sidebar. In the collapsed sidebar, the brand link becomes a Home icon.
 
 Source: `samjhana-admin/src/components/brand/Wordmark.jsx`; the text is the translation `home.title`.
 

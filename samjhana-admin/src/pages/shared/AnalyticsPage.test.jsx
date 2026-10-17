@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AnalyticsPage from './AnalyticsPage';
 import { renderWithProviders } from '../../test/test-utils';
@@ -27,12 +27,43 @@ const txn = (id, status) => ({
   transactionDate: new Date().toISOString(),
 });
 
+const setDesktop = (on) => {
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: on,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+};
+
 describe('AnalyticsPage pending button', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
     mock.transactions = [];
     mock.summary = {};
+  });
+
+  afterEach(() => delete window.matchMedia);
+
+  it('does not repeat the summary title or language switch beside the desktop sidebar', async () => {
+    setDesktop(true);
+    renderWithProviders(<AnalyticsPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Business Summary' })).toHaveClass('sr-only');
+    expect(screen.queryByRole('group', { name: 'Choose language' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+  });
+
+  it('groups the period controls into the same card treatment as the dashboard', async () => {
+    setDesktop(true);
+    renderWithProviders(<AnalyticsPage />);
+
+    const panel = await screen.findByRole('region', { name: 'Time period' });
+    expect(panel).toHaveClass('rounded-2xl', 'bg-white', 'shadow-sm', 'ring-1');
+    ['Today', 'Week', 'Month', 'Prev', 'Next'].forEach((name) => {
+      expect(within(panel).getByRole('button', { name: new RegExp(name) })).toBeInTheDocument();
+    });
   });
 
   it('opens the pending review page at /pending when the pending pill is tapped', async () => {
