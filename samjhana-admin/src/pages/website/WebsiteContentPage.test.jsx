@@ -144,7 +144,8 @@ describe('WebsiteContentPage', () => {
 
   it('keeps the three meals fixed: no add, remove or reorder', async () => {
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Restaurant' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose an area to edit: Contact & hours' }));
+    await userEvent.click(screen.getByRole('menuitemradio', { name: /Restaurant/ }));
     const meals = await screen.findByRole('group', { name: 'Meals (breakfast, lunch, dinner)' });
     expect(within(meals).queryByRole('button', { name: /Remove|Move|Add$/ })).not.toBeInTheDocument();
     expect(within(meals).getByText('Picture for this meal: img-b')).toBeInTheDocument();
