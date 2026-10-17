@@ -84,10 +84,15 @@ describe('DesktopShell', () => {
 
     const separator = screen.getByRole('separator', { name: 'Resize sidebar' });
     fireEvent.pointerDown(separator, { pointerId: 1, button: 0, buttons: 1, clientX: 256 });
-    fireEvent.pointerMove(separator, { pointerId: 1, buttons: 1, clientX: 50 });
+    fireEvent.pointerMove(separator, { pointerId: 1, buttons: 1, clientX: 200 });
+    const sidebar = screen.getByTestId('desktop-sidebar');
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
+    expect(screen.getByText('Samjhana Multiproduct Pvt. Ltd.')).toHaveClass('break-words');
+    fireEvent.pointerMove(separator, { pointerId: 1, buttons: 1, clientX: 160 });
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.queryByText('Samjhana Multiproduct Pvt. Ltd.')).not.toBeInTheDocument();
     fireEvent.pointerUp(separator, { pointerId: 1, clientX: 50 });
 
-    const sidebar = screen.getByTestId('desktop-sidebar');
     const menu = screen.getByRole('navigation', { name: 'Main menu' });
     expect(sidebar).toHaveAttribute('data-collapsed', 'true');
     expect(sidebar).toHaveStyle({ width: '76px' });

@@ -27,6 +27,7 @@ const BUSINESS_PATHS = {
   rental: ['/entry/rental', '/rental-'],
   loan: ['/entry/loan'],
 };
+const SIDEBAR_COLLAPSE_THRESHOLD = 166;
 
 const startsWithAny = (pathname, prefixes) => prefixes.some((prefix) => pathname.startsWith(prefix));
 
@@ -47,9 +48,9 @@ export default function DesktopShell({ children }) {
   const [resizing, setResizing] = useState(false);
   if (!desktop) return children;
 
-  const collapsed = sidebarWidth <= 76;
+  const collapsed = sidebarWidth < SIDEBAR_COLLAPSE_THRESHOLD;
   const saveWidth = (width) => {
-    const nextWidth = width < 166 ? 76 : 256;
+    const nextWidth = width < SIDEBAR_COLLAPSE_THRESHOLD ? 76 : 256;
     setSidebarWidth(nextWidth);
     localStorage.setItem('desktopSidebarCollapsed', String(nextWidth === 76));
   };
@@ -116,11 +117,11 @@ function Sidebar({ collapsed, width, resizing, onResizeStart, onResize, onResize
           aria-label={t('nav.home')}
           title={collapsed ? t('nav.home') : undefined}
           aria-current={pathname === '/' ? 'page' : undefined}
-          className={`flex min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${collapsed ? 'h-11 w-11 items-center justify-center' : ''} ${pathname === '/' ? 'text-white' : 'text-white/90 hover:text-white'}`}
+          className={`flex min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${collapsed ? 'h-11 w-11 items-center justify-center' : 'w-full max-w-full'} ${pathname === '/' ? 'text-white' : 'text-white/90 hover:text-white'}`}
         >
           {collapsed
             ? <Home className="h-6 w-6" aria-hidden="true" />
-            : <Wordmark size="sm" />}
+            : <Wordmark size="sm" className="w-full min-w-0" />}
         </Link>
       </div>
 
