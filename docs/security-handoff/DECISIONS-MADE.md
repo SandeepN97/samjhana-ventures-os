@@ -147,6 +147,31 @@ The owner's words: *"if there are proven Nepali license plate classifiers [that 
 6. **Privacy.** Recognition runs on the phone or on our server, never at a third party. Plate text is personal data and follows the retention and anonymise rules (G7, G10).
 7. **Tests.** Plate-rule unit tests (Devanagari digits, easily confused glyph pairs), fuzzy match, the confirm flow in English and Nepali, an evaluation script that prints exact-match and a confusion matrix.
 
+### G11 in detail: pipeline, tools, phases
+
+**Pipeline (all on the staff phone, nothing sent to a third party).** Camera screen with a plate frame and a quality warning (too dark, blurry) -> crop to the frame and scale to 960 px (G10) -> clean-up with OpenCV.js (grayscale, straighten, contrast, split a two-line plate into lines) -> a recogniser model run with ONNX Runtime Web -> our plate rules (G8: Latin key, original text kept, Nepali plate pattern, easily confused characters) -> top 3 guesses, plus a fuzzy match (edit distance 1) against known cars to fill name, phone and vehicle type -> staff confirm or correct with the plate keypad -> a text-only log of suggested versus confirmed text. Fallback for old phones: the same ONNX model on the server (ONNX Runtime for Java).
+
+**Candidate tools (licences from the survey; verify each `LICENSE` file before use).**
+
+| Tool | Role | Licence | Verdict |
+|---|---|---|---|
+| Tesseract and Tesseract.js | Baseline reader; Devanagari and Nepali data exist | Apache-2.0 | Use for the pilot |
+| PaddleOCR (PP-OCR) | Small recogniser with Devanagari in its language lists; training code for fine-tuning; ONNX export | Apache-2.0 | Second candidate and likely base for fine-tuning |
+| EasyOCR | Nepali model since 2020; heavy (PyTorch) | Apache-2.0 | Offline comparison only |
+| fast-plate-ocr, fast-alpr | Plate-specific reader and pipeline, ONNX; trained on Latin plates | MIT (per listings) | Design reference, possible base for training |
+| OpenCV.js, ONNX Runtime (Web, Java) | Clean-up; running models | Apache-2.0, MIT | Use |
+| YOLOX, RT-DETR | Plate finder, only if the frame is not enough | Apache-2.0 | Optional later |
+| Ultralytics YOLO, OpenALPR | Popular plate tools | AGPL-3.0 | Avoid |
+| Khadka et al. code, Nepali datasets | Nepali-specific | Unknown | Ask the authors (the owner wrote to RAVI Lab, Kathmandu University); record the answer in the survey |
+
+**Phases and exit criteria (effort is a rough guess).**
+1. *No OCR yet.* Frame, crop, quality warning, plate keypad, plate rules, known-car matching, suggested-versus-confirmed log. Staff type less at once, and every confirmed plate becomes a label. Exit: the screen is in use and the log fills.
+2. *Benchmark.* Run Tesseract.js and PaddleOCR (ONNX) on the 100 to 200 test photos (OwnerQ C7); EasyOCR offline for comparison. Exit: one candidate chosen with its exact-match rate and confusion table in the survey file.
+3. *Fine-tune.* Train the chosen recogniser on a restricted alphabet (Devanagari digits, plate letters, Latin A to Z and 0 to 9) with licensed public data, staff-confirmed crops and synthetic plates (Nepali fonts, glare, blur, dirt, perspective). Test on real photos only. Training runs offline (a laptop or free Colab, not Render). Export ONNX; target a model under 10 MB, loaded on first use. Exit: a better exact-match rate than the benchmark on the untouched test set.
+4. *Shadow mode, then suggestions.* The reader runs silently beside staff entry for a few weeks. Show suggestions at 85 % exact match or better; remove the confirm step only at 95 % or better over 500 live reads in a row, and only for plates that match a known car. Retrain when plate formats change.
+
+Training photos are plate-only crops with the confirmed text, no vehicle or person context, with the owner's approval and a retention rule (G10, G7).
+
 ## 5. Real-charger test (needed for G5)
 
 The owner will test with one real charger and a real car. To make the test useful:
