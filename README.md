@@ -103,12 +103,15 @@ npm run test:e2e
 
 ## Documentation
 
+Start with the [documentation index](docs/README.md). Main entries:
+
 - [Architecture](docs/ARCHITECTURE.md)
 - [Features and API overview](docs/FEATURES.md)
+- [Roles and permissions](docs/ROLES.md)
 - [EV charging implementation and current limitations](docs/EV-CHARGING-ARCHITECTURE.md)
+- [SQL to run on Supabase before a deploy](docs/sql/README.md)
+- [Security fixes: status, decisions and open questions](docs/security-handoff/README.md)
 - [AI development tooling decisions](docs/AI-TOOLING-ADDITIONS.md)
-- [Optional Claude Code tooling notes](docs/samjhana-ventures-plugin-integration.md)
 - [Set up signed Git commits on macOS](docs/GIT-COMMIT-SIGNING.md)
-- [Retired Dad setup guide notice](docs/DAD-PROOF-SETUP-GUIDE.md)
 
 For production configuration, database requirements, and secrets, consult `src/main/resources/application.yml` and the deployment configuration. Do not reuse development credentials or expose the admin app to the public internet.

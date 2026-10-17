@@ -147,6 +147,40 @@ The owner's words: *"if there are proven Nepali license plate classifiers [that 
 6. **Privacy.** Recognition runs on the phone or on our server, never at a third party. Plate text is personal data and follows the retention and anonymise rules (G7, G10).
 7. **Tests.** Plate-rule unit tests (Devanagari digits, easily confused glyph pairs), fuzzy match, the confirm flow in English and Nepali, an evaluation script that prints exact-match and a confusion matrix.
 
+### G11 in detail: pipeline, tools, phases
+
+**Pipeline (all on the staff phone, nothing sent to a third party).** Camera screen with a plate frame and a quality warning (too dark, blurry) -> crop to the frame and scale to 960 px (G10) -> clean-up with OpenCV.js (grayscale, straighten, contrast, split a two-line plate into lines) -> a recogniser model run with ONNX Runtime Web -> our plate rules (G8: Latin key, original text kept, Nepali plate pattern, easily confused characters) -> top 3 guesses, plus a fuzzy match (edit distance 1) against known cars to fill name, phone and vehicle type -> staff confirm or correct with the plate keypad -> a text-only log of suggested versus confirmed text. Fallback for old phones: the same ONNX model on the server (ONNX Runtime for Java).
+
+**Candidate tools (licences from the survey; verify each `LICENSE` file before use).**
+
+| Tool | Role | Licence | Verdict |
+|---|---|---|---|
+| Tesseract and Tesseract.js | Baseline reader; Devanagari and Nepali data exist | Apache-2.0 | Use for the pilot |
+| PaddleOCR (PP-OCR) | Small recogniser with Devanagari in its language lists; training code for fine-tuning; ONNX export | Apache-2.0 | Second candidate and likely base for fine-tuning |
+| EasyOCR | Nepali model since 2020; heavy (PyTorch) | Apache-2.0 | Offline comparison only |
+| fast-plate-ocr, fast-alpr | Plate-specific reader and pipeline, ONNX; trained on Latin plates | MIT (per listings) | Design reference, possible base for training |
+| OpenCV.js, ONNX Runtime (Web, Java) | Clean-up; running models | Apache-2.0, MIT | Use |
+| YOLOX, RT-DETR | Plate finder, only if the frame is not enough | Apache-2.0 | Optional later |
+| Ultralytics YOLO, OpenALPR | Popular plate tools | AGPL-3.0 | Avoid |
+| Khadka et al. code, Nepali datasets | Nepali-specific | Unknown | Ask the authors (the owner wrote to RAVI Lab, Kathmandu University); record the answer in the survey |
+
+**Phases and exit criteria (effort is a rough guess).**
+1. *No OCR yet.* Frame, crop, quality warning, plate keypad, plate rules, known-car matching, suggested-versus-confirmed log. Staff type less at once, and every confirmed plate becomes a label. Exit: the screen is in use and the log fills.
+2. *Benchmark.* Run Tesseract.js and PaddleOCR (ONNX) on the 100 to 200 test photos (OwnerQ C7); EasyOCR offline for comparison. Exit: one candidate chosen with its exact-match rate and confusion table in the survey file.
+3. *Fine-tune.* Train the chosen recogniser on a restricted alphabet (Devanagari digits, plate letters, Latin A to Z and 0 to 9) with licensed public data, staff-confirmed crops and synthetic plates (Nepali fonts, glare, blur, dirt, perspective). Test on real photos only. Training runs offline (a laptop or free Colab, not Render). Export ONNX; target a model under 10 MB, loaded on first use. Exit: a better exact-match rate than the benchmark on the untouched test set.
+4. *Shadow mode, then suggestions.* The reader runs silently beside staff entry for a few weeks. Show suggestions at 85 % exact match or better; remove the confirm step only at 95 % or better over 500 live reads in a row, and only for plates that match a known car. Retrain when plate formats change.
+
+Training photos are plate-only crops with the confirmed text, no vehicle or person context, with the owner's approval and a retention rule (G10, G7).
+
+**Where it lives: a self-contained module, not a separate service or repository.** The repo is a single Maven module with layer-based packages, plus `samjhana-admin`, `samjhana-web` and a `tools/` folder (it already holds `ocpp-simulator`). Follow that:
+
+- `tools/plate-reader/` (not shipped in the JAR or the web bundle): the Python training and evaluation tooling (dataset preparation, synthetic plate generator, fine-tuning, evaluation script that prints exact-match and a confusion matrix, ONNX export), its pinned requirements, a `THIRD_PARTY.md` (each dependency, version, licence, date of review) and the **shared plate-rule test fixtures** (`fixtures/plate-rules.json`) that both the Java and the JavaScript tests read, so the two implementations cannot drift. It produces a versioned model, `alphabet.json`, `SHA256SUMS` and a `MODEL_CARD.md` (data and licences, metrics, date).
+- `samjhana-admin/src/plateReader/`: the browser logic (clean-up, ONNX Runtime Web inference in a Web Worker so the screen does not freeze, plate rules, `readPlate(blob)` returning candidates with confidences), code-split so it loads only on the EV start screen. The camera and confirm UI stays with the other EV components (`components/ev/PlateCapture.jsx`). The final model (under 10 MB) goes in `samjhana-admin/public/models/plate-reader/` and is checked against its hash at load; commit only released models, because every retrain adds to the git history.
+- Backend, in the existing layers (no new Maven module): `util/PlateNormalizer` (the Java twin of the rules), `service/VehicleMatchService` (fuzzy match), `entity/PlateReadLog` (suggested versus confirmed text, no photo), and the G10 image classes. Add a server-side ONNX fallback only if some phones cannot run the model.
+- CI: a separate workflow `plate-reader.yml` with a path filter (`tools/plate-reader/**`, `samjhana-admin/src/plateReader/**`, the model folder) for Python lint and tests and an evaluation on a small committed sample. The full evaluation on the private test photos is run on demand and never in CI. Workflow files need a token with the `workflow` permission, so the owner or such a token pushes it.
+- Never in git: training photos, the private test set, large weights or datasets. Keep them in the owner's private storage and record where in the model card.
+- Extract into its own service or repository only if: a second app needs it, the model passes about 20 MB, a server GPU is needed, or the lab or dataset licences require separation.
+
 ## 5. Real-charger test (needed for G5)
 
 The owner will test with one real charger and a real car. To make the test useful:

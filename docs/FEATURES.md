@@ -32,6 +32,15 @@ Inventory management with customer tracking and order history.
 - **Order History** — View past orders with filtering and search
 - **Furniture Dashboard** — Overview of stock levels, recent orders, and sales summary
 
+### Beekeeping Shop
+
+Honey and other beekeeping products with real stock counts.
+
+- **Inventory** — Product catalogue with stock levels (the 26 existing products are seeded with zero stock). Admins add, edit and remove products and choose which show on the public website; managers and admins change stock (see `docs/ROLES.md`)
+- **New Sale** — Record a shop sale for a named or walk-in customer; stock goes down in the same step
+- **Order History** — Past orders, searchable by customer
+- **Beekeeping Dashboard** — Overview of products, stock value and low-stock items
+
 ### House Rental
 
 Tenant payment tracking and property management.
@@ -93,7 +102,7 @@ Loan tracking with principal/interest split on payments.
 
 - **JWT Authentication** — Stateless token-based auth with 7-day expiration
 - **Role-Based Access** — Admin, manager, and staff roles
-- **Public Endpoints** — `POST /api/auth/login`, `/api/public/**`, `/api/fuel-prices/current`, and public ecommerce product/customer-auth routes under `/api/ecommerce/**` are accessible without a JWT. Public API responses must not expose internal financial or staff data.
+- **Public Endpoints** — `POST /api/auth/login`, `/api/public/**`, `/api/fuel-prices/current`, and the online shop, restaurant menu, site content and pictures under `/api/public/**` are accessible without a JWT. Public API responses must not expose internal financial or staff data.
 - **Protected Endpoints** — Other business API routes require a valid JWT token.
 
 ---
