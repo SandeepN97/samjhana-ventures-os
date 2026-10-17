@@ -27,12 +27,14 @@ describe('SettingsPage user management (admin)', () => {
 
   it('does not clip the staff dropdown: the user card is not overflow-hidden', async () => {
     renderWithProviders(<SettingsPage />);
-    const heading = await screen.findByText(testI18n.t('settings.userManagement'));
-    expect(heading.closest('.rounded-xl').className).not.toContain('overflow-hidden');
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
+    const heading = await screen.findByRole('heading', { name: testI18n.t('settings.userManagement') });
+    expect(heading.closest('.rounded-2xl').className).not.toContain('overflow-hidden');
   });
 
   it('offers no reset or role change on your own row', async () => {
     renderWithProviders(<SettingsPage />);
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
     await screen.findByText('Sita');
     expect(screen.getAllByRole('button', { name: testI18n.t('settings.resetPassword') })).toHaveLength(1);
     expect(screen.getAllByRole('combobox', { name: /Change role/ }).length).toBe(1);
@@ -41,6 +43,7 @@ describe('SettingsPage user management (admin)', () => {
   it('asks first, then shows the temporary password once', async () => {
     api.post.mockResolvedValue({ data: { username: 'sita', temporaryPassword: 'Abcd2345Efgh6789' } });
     renderWithProviders(<SettingsPage />);
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
     await screen.findByText('Sita');
     await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.resetPassword') }));
     expect(api.post).not.toHaveBeenCalled();
@@ -55,6 +58,7 @@ describe('SettingsPage user management (admin)', () => {
 
   it('does nothing when the admin keeps the old password', async () => {
     renderWithProviders(<SettingsPage />);
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
     await screen.findByText('Sita');
     await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.resetPassword') }));
     await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.keep') }));
@@ -64,6 +68,7 @@ describe('SettingsPage user management (admin)', () => {
   it('shows the server message when the reset fails', async () => {
     api.post.mockRejectedValue({ response: { data: { message: 'User is not active' } } });
     renderWithProviders(<SettingsPage />);
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
     await screen.findByText('Sita');
     await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.resetPassword') }));
     await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.resetPasswordYes') }));
@@ -74,6 +79,7 @@ describe('SettingsPage user management (admin)', () => {
   it('changes a role through the server', async () => {
     api.put.mockResolvedValue({ data: {} });
     renderWithProviders(<SettingsPage />);
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
     await screen.findByText('Sita');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /Change role for Sita/ }), 'MANAGER');
     expect(api.put).toHaveBeenCalledWith('/api/admin/users/sita/role', { role: 'MANAGER' }, expect.anything());
@@ -81,6 +87,7 @@ describe('SettingsPage user management (admin)', () => {
 
   it('shows the Nepali words', async () => {
     renderWithProviders(<SettingsPage />, { locale: 'ne' });
+    await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement', { lng: 'ne' }) })[0]);
     await screen.findByText('Sita');
     expect(screen.getByRole('button', { name: 'पासवर्ड रिसेट' })).toBeInTheDocument();
   });
@@ -97,6 +104,7 @@ describe('SettingsPage user management (admin)', () => {
     // The login fields appear once a staff member is chosen.
     async function openForm(options) {
       renderWithProviders(<SettingsPage />, options);
+      await userEvent.click(screen.getAllByRole('button', { name: testI18n.t('settings.userManagement') })[0]);
       await screen.findByText('Sita');
       await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.add') }));
       await userEvent.click(screen.getByRole('button', { name: 'Select option' }));
