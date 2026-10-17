@@ -385,12 +385,11 @@ class ImageMetadataStripperTest {
     }
 
     @Test
-    void shouldRefuseAPngWithAWrongChecksumInAChunkItKeeps() {
-        byte[] broken = TestImages.png();
-        int idat = indexOf(broken, ascii("IDAT"));
-        broken[idat + 5] ^= 0x55;
-        assertThatThrownBy(() -> strip(broken, "image/png"))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not a valid picture");
+    void shouldAcceptAPngWhosePictureDataChecksumIsWrong_asBrowsersDo() {
+        // Chromium, ImageMagick and ffmpeg all show this file, so refusing it would only turn away pictures that work.
+        byte[] clean = strip(PNG_WITH_WRONG_PICTURE_CHECKSUM, "image/png");
+
+        assertThat(clean).isEqualTo(PNG_WITH_WRONG_PICTURE_CHECKSUM);
     }
 
     @Test

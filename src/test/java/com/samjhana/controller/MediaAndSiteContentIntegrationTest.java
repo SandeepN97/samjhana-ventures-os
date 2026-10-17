@@ -118,6 +118,16 @@ class MediaAndSiteContentIntegrationTest {
     }
 
     @Test
+    void shouldAcceptTheOnePixelPictureTheBrowserTestUploads() throws Exception {
+        // its picture-data checksum is wrong, but browsers show it, so the upload has to keep working (it failed with 400 once)
+        String id = upload(admin, PictureFixtures.PNG_WITH_WRONG_PICTURE_CHECKSUM, "chair.png");
+
+        byte[] served = mockMvc.perform(get("/api/public/media/" + id)).andExpect(status().isOk())
+                .andExpect(content().contentType("image/png")).andReturn().getResponse().getContentAsByteArray();
+        assertThat(served).isEqualTo(PictureFixtures.PNG_WITH_WRONG_PICTURE_CHECKSUM);
+    }
+
+    @Test
     void shouldRefuseAFileThatOnlyStartsLikeAWebp() throws Exception {
         byte[] junkBehindAWebpHeader = PictureFixtures.riff(new byte[100]);
         mockMvc.perform(multipart("/api/media")

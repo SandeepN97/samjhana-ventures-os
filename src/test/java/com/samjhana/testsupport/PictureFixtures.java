@@ -36,6 +36,13 @@ public final class PictureFixtures {
     public static final byte[] WEBP_ANIMATED = Base64.getDecoder().decode(
             "UklGRsAAAABXRUJQVlA4WAoAAAACAAAABwAABwAAQU5JTQYAAAD/////AABBTk1GSAAAAAAAAAAAAAcAAAcAAGQAAAJWUDggMAAAANABAJ0BKggACAACADQloAJ0ugH4AAOwAP7wxAv/ILlhdcjX/yA/5Af8gP/48gAAAEFOTUZEAAAAAAAAAAAABwAABwAAZAAAAFZQOCAsAAAAlAEAnQEqCAAIAAAANCWgAnS6AAOYAP75k2//kB//kB//kB//ID/iF3sgMAA=");
 
+    /**
+     * The one-pixel PNG the browser test (samjhana-admin/e2e/public-site.e2e.js) uploads. The checksum of its picture data is
+     * wrong, and yet Chromium, ImageMagick and ffmpeg all show it: an upload of such a file must keep working.
+     */
+    public static final byte[] PNG_WITH_WRONG_PICTURE_CHECKSUM = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==");
+
     // ===================== JPEG =====================
 
     /** One JPEG segment: marker, length, payload. */

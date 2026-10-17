@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.CRC32;
 
 /**
  * Cuts the hidden details out of a picture file and leaves the picture alone (finding P0-05).
@@ -26,7 +25,7 @@ import java.util.zip.CRC32;
  *
  * <p>The picture data itself is copied byte for byte: nothing is decoded or re-encoded, so there is no loss of quality, no
  * memory spent on the pixels, and no image-decoding code runs on what was uploaded. A file that does not parse cleanly
- * (cut off, junk between its pieces, a wrong checksum, an impossible size) is refused instead of being passed on as it is,
+ * (cut off, junk between its pieces, an impossible size) is refused instead of being passed on as it is,
  * so what is stored is always a file this class understood. Animated pictures are refused, and so is any side longer than
  * {@link MediaService#MAX_PIXELS_PER_SIDE}.
  */
@@ -243,12 +242,9 @@ public final class ImageMetadataStripper {
                     keep = false;                                                      // text, EXIF, time, size and any private chunk
                 }
             }
-            if (keep) {
-                CRC32 crc = new CRC32();
-                crc.update(in, pos + 4, 4 + (int) length);
-                if (crc.getValue() != u32be(in, dataEnd)) throw invalid();
-                out.write(in, pos, next - pos);
-            }
+            // Checksums are not re-checked: a picture whose checksum is wrong is still shown by browsers, and turning it away
+            // would only refuse pictures that work today. The chunk is copied as it is.
+            if (keep) out.write(in, pos, next - pos);
             first = false;
             pos = next;
         }
