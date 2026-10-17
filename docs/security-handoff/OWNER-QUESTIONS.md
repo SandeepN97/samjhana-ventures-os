@@ -48,6 +48,7 @@ Already done: **K-04** (the keep-alive job pointed at a page the app does not se
 | C2 | Release #173 (`staging` to `main`) | Your call and timing. Before it: check the prod Render environment is complete (real `JWT_SECRET`, real `OCPP_SECRET_*`, the Supabase CA file; `ADMIN_INITIAL_PASSWORD` only for a brand-new database). The merged series needs no SQL; later builds may (A-03 expiry, new session statuses) |
 | C3 | Keep-alive | Set the repository variable `STAGING_HEALTH_URL` to `https://samjhana-ventures-os-staging.onrender.com/api/public/fuel-prices/current` (check the host in Render) and, if wanted, `PROD_HEALTH_URL`; or use a free outside pinger (cron-job.org, UptimeRobot) because GitHub's schedule is unreliable |
 | C4 | Domain e-mail `sandeep@samjhanamultiproduct.com` | Who hosts the domain's DNS (registrar, Cloudflare)? Then choose: free receive-only forwarding (Cloudflare Email Routing), or the open-source Forward Email service that can also send |
+| C7 | Plate photos for the reader test (G11) | Collect 100 to 200 labelled plate photos (day, night, dirty, Latin and Devanagari plates), cropped to the plate, with the true text for each; tell customers or staff what they are used for |
 | C5 | Real-charger test | A date, which charger, and who saves the charger's log and the app's `ocpp_message_log` (checklist in `DECISIONS-MADE.md` section 5) |
 
 ## D. Confirm these assumptions (made while recording the answers)
@@ -59,4 +60,5 @@ Already done: **K-04** (the keep-alive job pointed at a page the app does not se
 | D3 | Names (P1b-09): admin-only renames are enough; no extra column to copy the name onto each record | Keep, or allow the column (SQL) |
 | D4 | Daily close (P1a-14, P1b-04): no exception for a lone admin to verify a day they closed | Keep, or allow "self-verified" when only one admin exists |
 | D5 | Temporary passwords (A-03): a 24 hour expiry needs a new column | OK to run the SQL when Codex prepares it |
+| D7 | Plate reader licence rules (G11): permissive licences usable with attribution; no licence means rewrite from the published method; GPL or AGPL code is not linked in | Confirm, or ask a lawyer about a specific package |
 | D6 | Manager-only stock increases and fuel purchases (P1B3-01, P1a-08, P1B3-02): no staff member has to receive deliveries | Confirm, or choose "staff enter, manager approves" |
