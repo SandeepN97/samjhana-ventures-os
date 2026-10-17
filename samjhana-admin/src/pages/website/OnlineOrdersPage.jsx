@@ -194,7 +194,7 @@ export default function OnlineOrdersPage() {
               )}
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-center">
+            <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] 2xl:items-center">
               <ChipSlider
                 className="lg:hidden"
                 label={t('shopOrders.filterLabel')}
@@ -209,12 +209,14 @@ export default function OnlineOrdersPage() {
               />
 
               <div className="hidden lg:block" role="tablist" aria-label={t('shopOrders.filterLabel')}>
-                <div className="flex min-w-max gap-2">
+                <div className="flex flex-wrap gap-2">
                   {TABS.map((status) => {
                     const selectedTab = tab === status;
+                    const StatusIcon = STATUS_ICON[status];
                     return (
                       <button type="button" role="tab" key={status} aria-selected={selectedTab} onClick={() => setTab(status)}
                         className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${selectedTab ? 'bg-core-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}>
+                        <StatusIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                         {status === 'ALL' ? t('shopOrders.all') : statusLabel(status)}
                         {status !== 'ALL' && (
                           <span aria-hidden="true" className={`rounded-full px-2 py-0.5 text-xs ${selectedTab ? 'bg-white/15 text-white' : 'bg-white text-slate-500 ring-1 ring-slate-200'}`}>{num(counts[status] || 0)}</span>
@@ -225,7 +227,7 @@ export default function OnlineOrdersPage() {
                 </div>
               </div>
 
-              <div className="relative">
+              <div className="relative lg:w-96 lg:max-w-full lg:justify-self-end">
                 <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
                   aria-label={t('shopOrders.search')} placeholder={t('shopOrders.search')}
