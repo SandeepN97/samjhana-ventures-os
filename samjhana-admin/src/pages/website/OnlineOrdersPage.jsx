@@ -162,17 +162,13 @@ export default function OnlineOrdersPage() {
         <PageHeader unit="core" icon={ShoppingBag} title={t('shopOrders.title')} backTo="/" />
 
         <main className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6">
-          <section className="overflow-hidden rounded-2xl bg-[#f7f3ed] ring-1 ring-[#e4daca]" aria-labelledby="order-desk-title">
-            <div className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-              <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e9efdf] text-[#6f591e] ring-1 ring-[#d7ddcb]">
-                  <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 id="order-desk-title" className="text-lg font-bold text-slate-900">{t('shopOrders.deskTitle')}</h2>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-[#5f5548]">{t('shopOrders.deskIntro')}</p>
+          <section className="overflow-hidden rounded-xl bg-[#f7f3ed] ring-1 ring-[#e4daca]" aria-labelledby="order-desk-title">
+            <div className="grid gap-2 px-4 py-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <h2 id="order-desk-title" className="text-base font-bold text-slate-900">{t('shopOrders.deskTitle')}</h2>
                   {!loading && !loadError && (
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold text-slate-700" aria-label={t('shopOrders.queueSummary')}>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-slate-700" aria-label={t('shopOrders.queueSummary')}>
                       {['NEW', 'CONFIRMED', 'READY'].map((status) => (
                         <span key={status} className="flex items-center gap-1.5">
                           <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} aria-hidden="true" />
@@ -182,9 +178,10 @@ export default function OnlineOrdersPage() {
                     </div>
                   )}
                 </div>
+                <p className="mt-0.5 max-w-4xl text-sm leading-5 text-[#5f5548]">{t('shopOrders.deskIntro')}</p>
               </div>
-              <p className="flex items-center gap-2 text-sm font-semibold text-[#5f5548]">
-                <Clock3 className="h-4 w-4" aria-hidden="true" />{t('shopOrders.autoRefresh')}
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-[#5f5548]">
+                <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{t('shopOrders.autoRefresh')}
               </p>
             </div>
           </section>
