@@ -152,6 +152,16 @@ describe('generated files', () => {
   });
 });
 
+describe('design system folder', () => {
+  it.each([
+    'README.md', 'TOKENS.md', 'INVENTORY.md', 'CONSISTENCY.md', 'REVIEW.md', 'index.html', 'build.mjs',
+    'assets/Logos/README.md', 'assets/Logos/grid-mark.svg', 'assets/Icons/README.md', 'fonts/README.md',
+    'reference/shringashwor-concept.md', 'preview/admin.css', 'preview/web.css',
+  ])('has %s', (file) => {
+    expect(fs.existsSync(path.join(DESIGN_SYSTEM_DIR, file)), `design-system/${file} is missing (is it git-ignored?)`).toBe(true);
+  });
+});
+
 describe('documents', () => {
   it('link only to files that exist', () => {
     for (const file of markdownFiles(DESIGN_SYSTEM_DIR)) {
