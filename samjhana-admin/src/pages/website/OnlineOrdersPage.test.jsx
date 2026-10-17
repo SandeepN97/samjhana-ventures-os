@@ -38,6 +38,9 @@ describe('OnlineOrdersPage', () => {
     expect(screen.getByRole('heading', { name: 'Order desk' })).toBeInTheDocument();
     expect(screen.getByText('View order')).toBeInTheDocument();
     expect(within(screen.getByRole('tab', { name: /New/ })).getByText('1')).toBeInTheDocument();
+    for (const label of ['New', 'Confirmed', 'Ready', 'Completed', 'Cancelled', 'All']) {
+      expect(screen.getByRole('tab', { name: new RegExp(label) }).querySelector('svg')).not.toBeNull();
+    }
     expect(api.get).toHaveBeenCalledWith('/api/shop-orders?status=NEW');
   });
 

@@ -319,6 +319,7 @@ export default function SettingsPage() {
           : activeSection === 'changePassword'
           ? t('settings.changePassword')
           : t('settings.title')}
+        hideWhenSidebarShows={!activeSection}
       />
 
       {/* Edit Profile Section */}
@@ -501,7 +502,8 @@ export default function SettingsPage() {
       {/* Main Settings View */}
       {!activeSection && (
         <div className="mx-auto max-w-6xl px-4 py-5 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6">
-          <aside className="lg:sticky lg:top-4">
+          <div className="lg:w-[280px]">
+            <aside className="lg:fixed lg:top-4 lg:w-[280px]">
             {/* Who is signed in */}
             <div className={`${PANEL} p-4`}>
               <div className="flex items-center gap-4">
@@ -533,9 +535,14 @@ export default function SettingsPage() {
                 </div>
               </nav>
             )}
-          </aside>
+            </aside>
+          </div>
 
-          <div className="mt-4 min-w-0 space-y-4 lg:mt-0">
+          <div className="min-w-0">
+          <div
+            data-testid="settings-section-content"
+            className={`mt-4 flex min-w-0 flex-col gap-4 lg:mt-0 lg:gap-3 ${tab === 'general' ? 'lg:fixed lg:top-4 lg:max-h-[calc(100vh_-_2rem)] lg:w-[calc(min(calc(100vw_-_16rem),72rem)_-_21rem)] lg:overflow-y-auto' : ''}`}
+          >
             {tabs.length > 1 && (
               <ChipSlider
                 className="lg:hidden"
@@ -550,14 +557,14 @@ export default function SettingsPage() {
               <>
             {/* Preferences */}
             <div className={`${PANEL} overflow-hidden`}>
-              <div className="px-4 py-3.5 border-b border-slate-100">
+              <div className="border-b border-slate-100 px-4 py-3.5 lg:py-2.5">
                 <h2 className="text-base font-bold text-core-900">
                   {t('settings.preferences')}
                 </h2>
               </div>
 
               {/* Language */}
-              <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
+              <div className="flex w-full items-center justify-between gap-3 px-4 py-3 lg:py-2">
                 <div className="flex items-center gap-3">
                   <RowIcon icon={Globe} />
                   <span className="text-gray-800">{t('settings.language')}</span>
@@ -570,7 +577,7 @@ export default function SettingsPage() {
 
             {/* Account */}
             <div className={`${PANEL} overflow-hidden`}>
-              <div className="px-4 py-3.5 border-b border-slate-100">
+              <div className="border-b border-slate-100 px-4 py-3.5 lg:py-2.5">
                 <h2 className="text-base font-bold text-core-900">
                   {t('settings.account')}
                 </h2>
@@ -578,7 +585,7 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => setActiveSection('editProfile')}
-                className="w-full min-h-[64px] flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="flex min-h-[64px] w-full items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50 lg:min-h-[56px] lg:py-2"
               >
                 <div className="flex items-center gap-3">
                   <RowIcon icon={User} />
@@ -589,7 +596,7 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => setActiveSection('changePassword')}
-                className="w-full min-h-[64px] flex items-center justify-between px-4 py-3 border-t border-slate-100 hover:bg-gray-50 transition-colors"
+                className="flex min-h-[64px] w-full items-center justify-between border-t border-slate-100 px-4 py-3 transition-colors hover:bg-gray-50 lg:min-h-[56px] lg:py-2"
               >
                 <div className="flex items-center gap-3">
                   <RowIcon icon={Shield} />
@@ -877,14 +884,14 @@ export default function SettingsPage() {
               <>
             {/* Support */}
             <div className={`${PANEL} overflow-hidden`}>
-              <div className="px-4 py-3.5 border-b border-slate-100">
+              <div className="border-b border-slate-100 px-4 py-3.5 lg:py-2.5">
                 <h2 className="text-base font-bold text-core-900">
                   {t('settings.support')}
                 </h2>
               </div>
 
-              <div className="px-4 py-4">
-                <div className="flex items-center gap-3 mb-2">
+              <div className="px-4 py-4 lg:py-3">
+                <div className="mb-2 flex items-center gap-3 lg:mb-1">
                   <RowIcon icon={HelpCircle} />
                   <span className="text-gray-800 font-medium">{t('settings.helpSupport')}</span>
                 </div>
@@ -946,19 +953,20 @@ export default function SettingsPage() {
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="w-full bg-white rounded-xl shadow-sm px-4 py-4 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-4 text-red-600 shadow-sm transition-colors hover:bg-red-50 lg:py-3"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-bold">{t('settings.logout')}</span>
             </button>
 
             {/* App Version */}
-            <div className="text-center text-gray-400 text-sm py-4">
-              <p>Samjhana Ventures OS</p>
+            <div className="py-4 text-center text-sm text-gray-400 lg:py-2">
+              <p>{t('home.title')}</p>
               <p>v1.0.0</p>
             </div>
               </>
             )}
+          </div>
           </div>
         </div>
       )}

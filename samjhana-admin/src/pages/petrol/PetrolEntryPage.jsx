@@ -152,7 +152,7 @@ export default function PetrolEntryPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <PageHeader unit="petrol" icon={Fuel} title={t('petrol.title')} />
+      <PageHeader unit="petrol" icon={Fuel} title={t('petrol.title')} hideWhenSidebarShows />
 
       {/* Today's Prices + Actions — three columns */}
       <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm overflow-hidden flex">

@@ -159,20 +159,16 @@ export default function OnlineOrdersPage() {
   return (
     <>
       <div ref={pageRef} className="min-h-screen bg-slate-100 pb-24">
-        <PageHeader unit="core" icon={ShoppingBag} title={t('shopOrders.title')} backTo="/" />
+        <PageHeader unit="core" icon={ShoppingBag} title={t('shopOrders.title')} backTo="/" hideWhenSidebarShows />
 
         <main className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6">
-          <section className="overflow-hidden rounded-2xl bg-[#f7f3ed] ring-1 ring-[#e4daca]" aria-labelledby="order-desk-title">
-            <div className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-              <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e9efdf] text-[#6f591e] ring-1 ring-[#d7ddcb]">
-                  <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 id="order-desk-title" className="text-lg font-bold text-slate-900">{t('shopOrders.deskTitle')}</h2>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-[#5f5548]">{t('shopOrders.deskIntro')}</p>
+          <section className="overflow-hidden rounded-xl bg-[#f7f3ed] ring-1 ring-[#e4daca]" aria-labelledby="order-desk-title">
+            <div className="grid gap-2 px-4 py-3 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <h2 id="order-desk-title" className="text-base font-bold text-slate-900">{t('shopOrders.deskTitle')}</h2>
                   {!loading && !loadError && (
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold text-slate-700" aria-label={t('shopOrders.queueSummary')}>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-slate-700" aria-label={t('shopOrders.queueSummary')}>
                       {['NEW', 'CONFIRMED', 'READY'].map((status) => (
                         <span key={status} className="flex items-center gap-1.5">
                           <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} aria-hidden="true" />
@@ -182,9 +178,10 @@ export default function OnlineOrdersPage() {
                     </div>
                   )}
                 </div>
+                <p className="mt-0.5 max-w-4xl text-sm leading-5 text-[#5f5548]">{t('shopOrders.deskIntro')}</p>
               </div>
-              <p className="flex items-center gap-2 text-sm font-semibold text-[#5f5548]">
-                <Clock3 className="h-4 w-4" aria-hidden="true" />{t('shopOrders.autoRefresh')}
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-[#5f5548]">
+                <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{t('shopOrders.autoRefresh')}
               </p>
             </div>
           </section>
@@ -197,7 +194,7 @@ export default function OnlineOrdersPage() {
               )}
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-center">
+            <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] 2xl:items-center">
               <ChipSlider
                 className="lg:hidden"
                 label={t('shopOrders.filterLabel')}
@@ -212,12 +209,14 @@ export default function OnlineOrdersPage() {
               />
 
               <div className="hidden lg:block" role="tablist" aria-label={t('shopOrders.filterLabel')}>
-                <div className="flex min-w-max gap-2">
+                <div className="flex flex-wrap gap-2">
                   {TABS.map((status) => {
                     const selectedTab = tab === status;
+                    const StatusIcon = STATUS_ICON[status];
                     return (
                       <button type="button" role="tab" key={status} aria-selected={selectedTab} onClick={() => setTab(status)}
                         className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${selectedTab ? 'bg-core-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}>
+                        <StatusIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                         {status === 'ALL' ? t('shopOrders.all') : statusLabel(status)}
                         {status !== 'ALL' && (
                           <span aria-hidden="true" className={`rounded-full px-2 py-0.5 text-xs ${selectedTab ? 'bg-white/15 text-white' : 'bg-white text-slate-500 ring-1 ring-slate-200'}`}>{num(counts[status] || 0)}</span>
@@ -228,7 +227,7 @@ export default function OnlineOrdersPage() {
                 </div>
               </div>
 
-              <div className="relative">
+              <div className="relative lg:w-96 lg:max-w-full lg:justify-self-end">
                 <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
                   aria-label={t('shopOrders.search')} placeholder={t('shopOrders.search')}

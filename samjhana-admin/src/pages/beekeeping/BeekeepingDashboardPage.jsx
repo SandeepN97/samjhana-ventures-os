@@ -44,7 +44,7 @@ export default function BeekeepingDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader unit="beekeeping" icon={Hexagon} title={t('beeDash.title')} subtitle={t('beeDash.dashboardLabel')} >
+      <PageHeader unit="beekeeping" icon={Hexagon} title={t('beeDash.title')} subtitle={t('beeDash.dashboardLabel')} hideWhenSidebarShows>
         <BusinessTabs business="beekeeping" />
       </PageHeader>
 

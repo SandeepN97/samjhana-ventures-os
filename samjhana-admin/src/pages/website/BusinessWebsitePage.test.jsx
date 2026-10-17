@@ -30,7 +30,7 @@ describe('Website page tab inside a business', () => {
     expect(await screen.findByLabelText('Title, first line')).toHaveValue('Furniture for');
     expect(screen.getByRole('link', { name: 'Products' })).toHaveAttribute('href', '/furniture/inventory');
     expect(screen.queryByLabelText('Phone number')).toBeNull();           // the shared contact section is not here
-    expect(screen.queryByRole('navigation', { name: 'Choose an area to edit' })).toBeNull(); // one section needs no selector
+    expect(screen.queryByRole('group', { name: 'Choose an area to edit' })).toBeNull(); // one section needs no selector
   });
 
   it('saves the section it shows', async () => {

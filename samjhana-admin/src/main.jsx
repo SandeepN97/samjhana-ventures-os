@@ -1,6 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@fontsource-variable/red-hat-text';
+import '@fontsource/mukta/400.css';
+import '@fontsource/mukta/500.css';
+import '@fontsource/mukta/600.css';
+import '@fontsource/mukta/700.css';
+import '@fontsource/yatra-one/devanagari-400.css';
+import '@fontsource/yatra-one/latin-400.css';
 import App from './App';
 import './i18n/index';
 import './index.css';

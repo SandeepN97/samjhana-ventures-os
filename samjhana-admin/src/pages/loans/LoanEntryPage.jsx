@@ -339,6 +339,7 @@ export default function LoanEntryPage() {
         unit="loans"
         icon={Landmark}
         title={t('business.loan')}
+        hideWhenSidebarShows={mode === 'summary'}
         onBack={() => (mode === 'summary' ? navigate('/') : setMode('summary'))}
       />
 

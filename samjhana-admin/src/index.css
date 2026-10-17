@@ -2,6 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Nepali typography. Only while the screen is in Nepali (the page language follows the language
+ * switch): Yatra One for headings, Kalimati for the established chrome, and Mukta for desktop
+ * working content. English and the mobile layout keep their existing fonts.
+ * Yatra One is bundled from @fontsource/yatra-one (see main.jsx); Kalimati is the Government of
+ * Nepal's Unicode font, kept in src/assets/fonts; Mukta is bundled from @fontsource/mukta. All are
+ * served from this app, which the production content-security-policy requires. Yatra One and
+ * Kalimati each have a single weight, so headings stay at normal weight (Yatra One is already
+ * heavy) rather than being thickened by the browser.
+ */
+@font-face {
+  font-family: 'Kalimati';
+  src: url('./assets/fonts/Kalimati.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-ne-heading: 'Yatra One', 'Noto Sans Devanagari', 'Kalimati', system-ui, sans-serif;
+  --font-ne-body: 'Kalimati', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-ne-content: 'Mukta', 'Noto Sans Devanagari', 'Kalimati', system-ui, sans-serif;
+}
+
+html[lang="ne"] body,
+html[lang="ne"] button,
+html[lang="ne"] input,
+html[lang="ne"] select,
+html[lang="ne"] textarea,
+html[lang="ne"] [class*="Red_Hat_Text"] {
+  font-family: var(--font-ne-body);
+}
+
+html[lang="ne"] h1,
+html[lang="ne"] h2,
+html[lang="ne"] h3,
+html[lang="ne"] h4,
+html[lang="ne"] h5,
+html[lang="ne"] h6 {
+  font-family: var(--font-ne-heading);
+  font-weight: 400;
+}
+
+/*
+ * The desktop shell deliberately leaves its side panel outside this boundary. Mukta is applied to
+ * the working area only; page-top headers keep the established Yatra One/Kalimati lock-up. The
+ * shell is not rendered below 1024px, so mobile typography is unchanged.
+ */
+@media (min-width: 1024px) {
+  html[lang="ne"] .desktop-main-content {
+    --font-ne-content-scale: 1.08;
+    font-size: calc(1rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-xs {
+    font-size: calc(0.75rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-sm {
+    font-size: calc(0.875rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-base {
+    font-size: calc(1rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-lg {
+    font-size: calc(1.125rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-xl {
+    font-size: calc(1.25rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-2xl {
+    font-size: calc(1.5rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-3xl {
+    font-size: calc(1.875rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-4xl {
+    font-size: calc(2.25rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content .text-5xl {
+    font-size: calc(3rem * var(--font-ne-content-scale));
+  }
+
+  html[lang="ne"] .desktop-main-content,
+  html[lang="ne"] .desktop-main-content button,
+  html[lang="ne"] .desktop-main-content input,
+  html[lang="ne"] .desktop-main-content select,
+  html[lang="ne"] .desktop-main-content textarea,
+  html[lang="ne"] .desktop-main-content [class*="Red_Hat_Text"],
+  html[lang="ne"] .desktop-main-content h1,
+  html[lang="ne"] .desktop-main-content h2,
+  html[lang="ne"] .desktop-main-content h3,
+  html[lang="ne"] .desktop-main-content h4,
+  html[lang="ne"] .desktop-main-content h5,
+  html[lang="ne"] .desktop-main-content h6 {
+    font-family: var(--font-ne-content);
+  }
+
+  html[lang="ne"] .desktop-main-content header,
+  html[lang="ne"] .desktop-main-content header * {
+    font-family: var(--font-ne-body);
+  }
+
+  html[lang="ne"] .desktop-main-content header {
+    --font-ne-content-scale: 1;
+    font-size: 1rem;
+  }
+
+  html[lang="ne"] .desktop-main-content header h1,
+  html[lang="ne"] .desktop-main-content header h2,
+  html[lang="ne"] .desktop-main-content header h3,
+  html[lang="ne"] .desktop-main-content header h4,
+  html[lang="ne"] .desktop-main-content header h5,
+  html[lang="ne"] .desktop-main-content header h6 {
+    font-family: var(--font-ne-heading);
+  }
+}
+
 /* Prevent iOS Safari auto-zoom on input focus (requires font-size >= 16px) */
 input, select, textarea {
   font-size: max(16px, 1em);
