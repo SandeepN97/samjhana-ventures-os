@@ -166,6 +166,57 @@ class OcppMessageLoggerTest {
         }
     }
 
+    // ---- finding D-01: a charger-supplied number with an extreme exponent or multiplier is not logged or compared ----
+
+    @Test
+    void shouldWarnAndSkipEnergyThatIsNotAUsableNumber() throws Exception {
+        String extreme = ",\"meterValue\":[{\"sampledValue\":[{\"value\":\"1e100000\",\"measurand\":\"Energy.Active.Import.Register\"}]}]";
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            logger.transactionEvent(state, json(txEvent("Updated", 1, extreme)));
+
+            assertThat(capture.matching("is not a usable number")).hasSize(1);
+            assertThat(capture.matching("ENERGY Energy.Active.Import.Register =")).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldWarnAndSkipEnergyWithAnExtremeMultiplier() throws Exception {
+        String extreme = ",\"meterValue\":[{\"sampledValue\":[{\"value\":5,\"measurand\":\"Energy.Active.Import.Register\","
+                + "\"unitOfMeasure\":{\"unit\":\"Wh\",\"multiplier\":100000}}]}]";
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            logger.transactionEvent(state, json(txEvent("Updated", 1, extreme)));
+
+            assertThat(capture.matching("ENERGY multiplier 100000 with value '5' is out of range")).hasSize(1);
+            assertThat(capture.matching("ENERGY Energy.Active.Import.Register =")).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldWarnAndSkipEnergyWhoseMultiplierIsTheLargestNegativeNumber() throws Exception {
+        String extreme = ",\"meterValue\":[{\"sampledValue\":[{\"value\":5,\"measurand\":\"Energy.Active.Import.Register\","
+                + "\"unitOfMeasure\":{\"unit\":\"Wh\",\"multiplier\":-2147483648}}]}]";
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            logger.transactionEvent(state, json(txEvent("Updated", 1, extreme)));
+
+            assertThat(capture.matching("is out of range")).hasSize(1);
+        }
+    }
+
+    @Test
+    void shouldStillLogEnergyWithAnOrdinaryMultiplier() throws Exception {
+        String ordinary = ",\"meterValue\":[{\"sampledValue\":[{\"value\":5,\"measurand\":\"Energy.Active.Import.Register\","
+                + "\"unitOfMeasure\":{\"unit\":\"Wh\",\"multiplier\":3}}]}]";
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            logger.transactionEvent(state, json(txEvent("Updated", 1, ordinary)));
+
+            assertThat(capture.matching("ENERGY Energy.Active.Import.Register =")).singleElement().asString().contains("5000 Wh");
+        }
+    }
+
     // ---------------------------------------------------------------- clock skew
 
     @Test

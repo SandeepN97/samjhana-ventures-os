@@ -48,8 +48,8 @@ public class ChargeSessionController {
     }
 
     @PostMapping("/{id}/stop")
-    public ResponseEntity<ChargeSessionResponse> stop(@PathVariable UUID id) {
-        return ResponseEntity.ok(chargeSessionService.stop(id));
+    public ResponseEntity<ChargeSessionResponse> stop(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(chargeSessionService.stop(id, user));
     }
 
     @PostMapping("/{id}/mark-paid")
@@ -61,7 +61,7 @@ public class ChargeSessionController {
     }
 
     @PostMapping("/{id}/unlock")
-    public ResponseEntity<ChargeSessionResponse> retryUnlock(@PathVariable UUID id) {
-        return ResponseEntity.ok(chargeSessionService.retryUnlock(id));
+    public ResponseEntity<ChargeSessionResponse> retryUnlock(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(chargeSessionService.retryUnlock(id, user));
     }
 }

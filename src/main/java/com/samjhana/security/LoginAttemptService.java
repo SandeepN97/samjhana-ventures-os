@@ -9,7 +9,11 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,8 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * A correct login clears the username and the username+address counters, not the address total.
  *
  * <p>Everything is held in memory only: no address is saved to the database or written to a log, and a
- * restart forgets it all. In memory is fine for a single instance. The address tables are capped at
- * {@link #MAX_TRACKED_KEYS} entries so invented addresses cannot grow memory without limit.
+ * restart forgets it all. In memory is fine for a single instance. Every table is capped at
+ * {@link #MAX_TRACKED_KEYS} entries so invented usernames and addresses cannot grow memory without limit: the address
+ * tables stop recording new keys when full, and the username table drops the name used least recently (so a name that
+ * is being guessed at stays in it, while a flood of made-up names pushes out only each other). A username is cut to
+ * {@link #MAX_USERNAME_LENGTH} characters, the length of a real one, before it is used as a key.
  */
 @Component
 public class LoginAttemptService {
@@ -42,9 +49,17 @@ public class LoginAttemptService {
     static final int MAX_PAIR_FAILURES = 5;
     static final int MAX_ADDRESS_FAILURES = 30;
     static final int MAX_TRACKED_KEYS = 20_000;
+    static final int MAX_USERNAME_LENGTH = 50;
     static final Duration WINDOW = Duration.ofMinutes(15);
 
-    private final Map<String, Deque<Instant>> failures = new ConcurrentHashMap<>();
+    /** Least recently used first; once it holds {@link #MAX_TRACKED_KEYS} names the least recently used one is dropped. */
+    private final Map<String, Deque<Instant>> failures = Collections.synchronizedMap(
+            new LinkedHashMap<String, Deque<Instant>>(256, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Deque<Instant>> eldest) {
+                    return size() > MAX_TRACKED_KEYS;
+                }
+            });
     private final Map<String, Deque<Instant>> pairFailures = new ConcurrentHashMap<>();
     private final Map<String, Deque<Instant>> addressFailures = new ConcurrentHashMap<>();
     private final Clock clock;
@@ -164,7 +179,13 @@ public class LoginAttemptService {
     }
 
     private void forgetExpired(Map<String, Deque<Instant>> map) {
-        for (String name : map.keySet()) {
+        // A copy of the names: looking at an entry of the username table moves it to the "most recently used" end,
+        // which must not happen while walking the table itself.
+        List<String> names;
+        synchronized (map) {
+            names = new ArrayList<>(map.keySet());
+        }
+        for (String name : names) {
             map.computeIfPresent(name, (key, recent) -> {
                 dropExpired(recent);
                 return recent.isEmpty() ? null : recent;
@@ -182,7 +203,9 @@ public class LoginAttemptService {
     }
 
     private static String key(String username) {
-        return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+        if (username == null) return "";
+        String name = username.trim().toLowerCase(Locale.ROOT);
+        return name.length() > MAX_USERNAME_LENGTH ? name.substring(0, MAX_USERNAME_LENGTH) : name;
     }
 
     private static String pairKey(String username, String address) {
