@@ -53,12 +53,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(new ErrorResponse("EV_SESSION_CONFLICT", ex.getMessage()));
     }
 
-    @ExceptionHandler(FuelPriceScraperException.class)
-    public ResponseEntity<ErrorResponse> handleScraperError(FuelPriceScraperException ex) {
-        log.warn("Fuel price scraper error: {}", ex.getMessage());
-        return ResponseEntity.status(503).body(new ErrorResponse("SCRAPER_ERROR", ex.getMessage()));
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
