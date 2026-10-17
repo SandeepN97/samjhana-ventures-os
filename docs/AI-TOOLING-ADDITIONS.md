@@ -133,7 +133,7 @@ Taste Skill is a collection of 13 standalone `SKILL.md` design skills for Codex,
 | Tool | Status | Permitted scope now |
 |---|---|---|
 | Superpowers | In use (owner decision, Oct 4, 2026) | Every task, scaled to its size; the rules in `CLAUDE.md` win over its habits; re-check with SkillSpector when it updates |
-| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | Trial: run on every PR in static mode (no AI) over `skills-lock.json`, `.claude/` and `.agents/`; no hook or CI step yet (see "Trial first, then automate") |
+| NVIDIA SkillSpector | Approved for manual use (owner decision, Oct 4, 2026); do the section 2 source and dependency review the first time | Trial: run on every PR in static mode (no AI) over `skills-lock.json`, `.claude/` and the local `.agents/` folder (restored from `skills-lock.json`, not committed); no hook or CI step yet (see "Trial first, then automate") |
 | Playwright | Populated and wired into CI | Disposable local Spring Boot/H2 and simulated charger |
 | Strix | Deferred | Only before a release, only against an isolated local copy with fake data (not yet built); never prod, staging, a shared database or a charger |
 | Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content. Connect as a pinned MCP server only after the trial |
@@ -146,9 +146,9 @@ Taste Skill is a collection of 13 standalone `SKILL.md` design skills for Codex,
 
 SkillSpector and Context7 are used on every PR for a trial period, and only then moved into automation.
 
-1. **Each PR** carries a "Tooling check" in its description: SkillSpector (static mode, pinned commit, over `skills-lock.json`, `.claude/` and `.agents/`; "no skills or plugins changed" when nothing there changed) and Context7 (library lookups used, and whether the answers held up).
+1. **Each PR** carries a "Tooling check" in its description: SkillSpector (static mode, pinned commit, over `skills-lock.json`, `.claude/` and the local (uncommitted) `.agents/` folder; "no skills or plugins changed" when nothing there changed) and Context7 (library lookups used, and whether the answers held up).
 2. **Honesty rule:** if a tool cannot run in the current environment, the PR says `not run: <reason>`. A tool is never reported as passing when it did not run. Known limits seen on Oct 4, 2026: the cloud coding sandbox could not reach `context7.com` or `api.osv.dev`, and had Python 3.11 while SkillSpector needs 3.12 or newer. Run these in a developer's own Claude Code or Codespace, or in CI.
-3. **Log:** results go in `docs/security/skill-scans/` (date, tool version and commit, what was scanned, findings, decision). The first SkillSpector run still follows the source and dependency review in section 2, in a throwaway environment with no project secrets.
+3. **Log:** results go in `docs/tooling/skill-scans/` (date, tool version and commit, what was scanned, findings, decision). The first SkillSpector run still follows the source and dependency review in section 2, in a throwaway environment with no project secrets.
 4. **Pass criteria after about 5 PRs:** no unexplained high or critical findings, false alarms are manageable, and the tool's network behavior is understood (what it sends, and where).
 5. **Then:** SkillSpector becomes one CI job, static mode and no secrets, that runs only when `skills-lock.json` or `.claude/` changes; Context7 is connected as a pinned MCP server with no secrets. No hook, no auto-update, no AI mode in CI without a new review.
 
@@ -173,3 +173,18 @@ Official references:
 - Impeccable source: <https://github.com/pbakaus/impeccable>
 - Taste Skill documentation: <https://www.tasteskill.dev/>
 - Taste Skill source: <https://github.com/Leonxlnx/taste-skill>
+
+## Plugins and repository tooling
+
+(Moved here from the old plugin notice, which is removed. It was never an installation guide.)
+
+`CLAUDE.md` holds the project conventions and `.claude/` the shared configuration. Project skills live in `.agents/skills/`, a local folder restored from `skills-lock.json` and not committed. None of this means a Claude Code or Copilot CLI plugin is installed: plugins belong to each developer's own tool account.
+
+Before installing a plugin or adding shared hooks:
+
+1. Check the current official documentation for the specific client and plugin.
+2. Review the exact source, permissions, hooks and network behaviour.
+3. Trial it without production or shared-staging credentials and confirm it does not override repository safety or test requirements.
+4. Keep the plugin optional unless the team explicitly approves and documents it.
+
+Do not rely on the former guide's plugin counts, marketplace commands, claims about automatic activation, or sample shared plugin configuration. Those details were not verified for the current Copilot CLI/Claude Code setup.

@@ -24,7 +24,7 @@ This repository is public, so the wording is neutral. The full finding text is i
 
 | # | Finding | What is needed | Options and Rec |
 |---|---|---|---|
-| B1 | P1BX-01 (**High**) | Check staging and prod for accounts that still use a published development password (the dev logins listed in `CLAUDE.md`). Try each one on each live site. If one works, change that password or deactivate the account at once | **Rec: do this first**, it takes minutes. Tell Claude or Codex the result |
+| B1 | P1BX-01 (**High**) | Check staging and prod for accounts that still use a published development password (the dev logins that `DataSeeder` creates on an empty dev database). Try each one on each live site. If one works, change that password or deactivate the account at once | **Rec: do this first**, it takes minutes. Tell Claude or Codex the result |
 | B2 | J-01 | Add the Java dependency-vulnerability check to every pull request? | 1) On every PR, non-blocking at first. **Rec.** 2) Weekly only. 3) No. Workflow files need a token with the `workflow` permission |
 | B3 | P1BX-02 | `.claude/settings.json` pre-approves commands for every maintainer's agent | 1) Trim to read-only and test commands. **Rec.** 2) Keep |
 | B4 | P3-01 | Charger connections and live screens run inside the one service | 1) Keep for now, revisit with more chargers or an outage. **Rec.** 2) Plan a second service |
