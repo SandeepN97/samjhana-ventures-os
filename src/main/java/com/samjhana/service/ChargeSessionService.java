@@ -286,10 +286,11 @@ public class ChargeSessionService {
 
         updateMeterValues(session, payload.path("meterValue"));
         LocalDateTime eventTime = parseTimestamp(payload.path("timestamp").asText(null));
-        if ("Started".equals(eventType)
-                || ("Updated".equals(eventType) && session.getStatus() == ChargeSession.Status.STARTING)) {
-            // An Updated event for a session still STARTING means its Started event was lost or
-            // missed: the car is charging, so show it as such.
+        if (session.getStatus() == ChargeSession.Status.STARTING
+                && ("Started".equals(eventType) || "Updated".equals(eventType))) {
+            // Started only ever moves a session that is waiting to start (a late or replayed one must not undo a
+            // stop, a payment or an unlock: finding P1a-16). An Updated event for a session still STARTING means its
+            // Started event was lost or missed: the car is charging, so show it as such.
             if (session.getStartedAt() == null || "Started".equals(eventType)) session.setStartedAt(eventTime);
             session.setStatus(ChargeSession.Status.ACTIVE);
             session.setStatusMessage("Charging in progress");
@@ -473,7 +474,11 @@ public class ChargeSessionService {
         if (transactionId != null && !transactionId.isBlank()) {
             Optional<ChargeSession> existing = chargeSessionRepository
                     .findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(transactionId, chargePointCode);
-            if (existing.isPresent()) return existing.get();
+            // Only a session that is still open takes the charger's events. A finished one (closed, failed, cancelled)
+            // keeps the figures it was billed with, and a charger whose transaction counter restarted must have its
+            // new transaction matched by the start id below, not captured by the old session that had the same id
+            // (finding P1a-16).
+            if (existing.isPresent() && OPEN_STATUSES.contains(existing.get().getStatus())) return existing.get();
         }
         if (remoteStartId != null) {
             // Only a session still waiting for its charger can claim a new transaction; an unknown
