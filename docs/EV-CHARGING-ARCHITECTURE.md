@@ -40,7 +40,7 @@ Sessions are isolated by `(charge point, EVSE, connector)`. Starting a session t
 
 Incoming `TransactionEvent` messages must report both IDs in OCPP's `evse` object. They are matched by OCPP transaction ID together with charge point, EVSE, and connector, falling back to the open session on that same charge point, EVSE, and connector.
 
-The `evse_id` column and its supporting index are added by `docs/migrations/2026-09-26-add-evse-id-to-charge-sessions.sql`. **Apply that SQL to the staging and production databases before deploying this version:** staging uses `ddl-auto: validate` and will refuse to start without the column.
+The `evse_id` column and its supporting index are added by `docs/sql/2026-09-26-add-evse-id-to-charge-sessions.sql`. **Apply that SQL to the staging and production databases before deploying this version:** staging uses `ddl-auto: validate` and will refuse to start without the column.
 
 ## Diagnostics and audit trail
 
