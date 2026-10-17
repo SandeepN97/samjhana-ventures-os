@@ -45,7 +45,8 @@ describe('SettingsPage demo reset', () => {
 
   it('shows the reset button where the server offers it', async () => {
     renderWithProviders(<SettingsPage />);
-    expect(await screen.findByText('Reset to Demo Data')).toBeInTheDocument();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Demo / Testing' }))[0]);
+    expect(screen.getByText('Reset to Demo Data')).toBeInTheDocument();
   });
 
   it('hides the reset button where the server does not offer it (prod)', async () => {
@@ -53,6 +54,7 @@ describe('SettingsPage demo reset', () => {
     renderWithProviders(<SettingsPage />);
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/admin/features', expect.anything()));
     expect(screen.queryByText('Reset to Demo Data')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Demo / Testing' })).not.toBeInTheDocument();
   });
 
   it('hides the reset button for managers without asking the server', async () => {
@@ -65,7 +67,8 @@ describe('SettingsPage demo reset', () => {
 
   it('resets without logging in as a demo account and keeps the current login', async () => {
     renderWithProviders(<SettingsPage />);
-    await userEvent.click(await screen.findByText('Reset to Demo Data'));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Demo / Testing' }))[0]);
+    await userEvent.click(screen.getByText('Reset to Demo Data'));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, Reset' }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/api/admin/demo-reset', null, expect.anything()));
@@ -77,14 +80,16 @@ describe('SettingsPage demo reset', () => {
   it('shows an error when the reset fails', async () => {
     mock.resetFails = true;
     renderWithProviders(<SettingsPage />);
-    await userEvent.click(await screen.findByText('Reset to Demo Data'));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Demo / Testing' }))[0]);
+    await userEvent.click(screen.getByText('Reset to Demo Data'));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, Reset' }));
     expect(await screen.findByText('Demo data reset failed')).toBeInTheDocument();
   });
 
   it('shows the reset section in Nepali', async () => {
     renderWithProviders(<SettingsPage />, { locale: 'ne' });
-    expect(await screen.findByText('डेमो डाटामा रिसेट गर्नुहोस्')).toBeInTheDocument();
-    expect(screen.getByText('डेमो / परीक्षण')).toBeInTheDocument();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'डेमो / परीक्षण' }))[0]);
+    expect(screen.getByText('डेमो डाटामा रिसेट गर्नुहोस्')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'डेमो / परीक्षण' })).toBeInTheDocument();
   });
 });

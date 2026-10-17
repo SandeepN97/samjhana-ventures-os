@@ -123,4 +123,22 @@ describe('DailyClosePage', () => {
       expect(screen.getByText('Day Closed')).toBeInTheDocument();
     });
   });
+
+  it('marks the chosen tab, keeps both tabs 44px tall, and switches to Reports', async () => {
+    renderWithProviders(<DailyClosePage />);
+    const reports = await screen.findByRole('button', { name: 'Reports' });
+    const tabs = screen.getByRole('group', { name: 'Reports' });
+    expect(reports).toHaveClass('min-h-[44px]');
+    expect(reports).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(reports);
+    expect(tabs.querySelectorAll('button')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Reports' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Total Sales')).not.toBeInTheDocument();
+  });
+
+  it('shows the tabs in Nepali', async () => {
+    renderWithProviders(<DailyClosePage />, { locale: 'ne' });
+    const group = await screen.findByRole('group', { name: 'रिपोर्ट' });
+    expect(group.querySelectorAll('button')).toHaveLength(2);
+  });
 });
