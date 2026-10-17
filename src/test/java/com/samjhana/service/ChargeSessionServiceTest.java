@@ -7,6 +7,7 @@ import com.samjhana.dto.MarkChargeSessionPaidRequest;
 import com.samjhana.dto.StartChargeSessionRequest;
 import com.samjhana.dto.TransactionRequest;
 import com.samjhana.dto.TransactionResponse;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.ChargePoint;
 import com.samjhana.entity.ChargeSession;
 import com.samjhana.entity.EvCustomerVehicle;
@@ -51,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -283,7 +285,7 @@ class ChargeSessionServiceTest {
     void shouldRequestStopButKeepConnectorLocked_whenExplicitUnlock() {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
 
-        ChargeSessionResponse response = service.stop(session.getId());
+        ChargeSessionResponse response = service.stop(session.getId(), staff);
 
         assertEquals("STOP_REQUESTED", response.getStatus());
         verify(ocppCommands).requestStop(CODE, session.getId(), "TX-1");
@@ -295,7 +297,7 @@ class ChargeSessionServiceTest {
         chargePoint.setLockBehavior(ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP);
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
 
-        ChargeSessionResponse response = service.stop(session.getId());
+        ChargeSessionResponse response = service.stop(session.getId(), staff);
 
         assertEquals("AWAITING_PAYMENT", response.getStatus());
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
@@ -305,7 +307,7 @@ class ChargeSessionServiceTest {
     void shouldRefuseStop_whenSessionIsNotActive() {
         ChargeSession session = session(ChargeSession.Status.STARTING);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
     }
 
@@ -314,7 +316,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
         session.setOcppTransactionId(null);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
     }
 
     @Test
@@ -322,7 +324,76 @@ class ChargeSessionServiceTest {
         UUID unknown = UUID.randomUUID();
         when(chargeSessionRepository.findById(unknown)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> service.stop(unknown));
+        assertThrows(ResourceNotFoundException.class, () -> service.stop(unknown, staff));
+    }
+
+    // ---- finding P1b-08: a stop or unlock command is recorded with the person who sent it ----
+
+    private AuditLog theAuditRow() {
+        org.mockito.ArgumentCaptor<AuditLog> row = org.mockito.ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(row.capture());
+        return row.getValue();
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheStop_withTheStatusBeforeAndAfter() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+
+        service.stop(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertEquals(AuditLog.AuditAction.UPDATE, row.getAction());
+        assertEquals(AuditLog.EntityType.CHARGE_SESSION, row.getEntityType());
+        assertEquals(session.getId(), row.getEntityId());
+        assertSame(staff, row.getUser());
+        assertEquals("ACTIVE", mapper.readTree(row.getOldValues()).get("status").asText());
+        assertEquals("STOP_REQUESTED", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Stop requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheStop_whenTheChargerUnlocksAutomatically() throws Exception {
+        chargePoint.setLockBehavior(ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP);
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+
+        service.stop(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertEquals("AWAITING_PAYMENT", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Stop requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldWriteNoAuditRow_whenTheStopIsRefused() {
+        ChargeSession session = session(ChargeSession.Status.STARTING);
+
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
+
+        verify(auditLogRepository, never()).save(any(AuditLog.class));
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheUnlock_withTheStatusBeforeAndAfter() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.UNLOCK_REQUESTED);
+        session.setPaidAt(LocalDateTime.now());
+
+        service.retryUnlock(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertSame(staff, row.getUser());
+        assertEquals(session.getId(), row.getEntityId());
+        assertEquals("UNLOCK_REQUESTED", mapper.readTree(row.getOldValues()).get("status").asText());
+        assertEquals("UNLOCK_REQUESTED", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Unlock requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldWriteNoAuditRow_whenTheUnlockIsRefused() {
+        ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
+
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
+
+        verify(auditLogRepository, never()).save(any(AuditLog.class));
     }
 
     // ------------------------------------------------------------------ mark paid
@@ -440,7 +511,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.PAID);
         session.setPaidAt(LocalDateTime.now());
 
-        ChargeSessionResponse response = service.retryUnlock(session.getId());
+        ChargeSessionResponse response = service.retryUnlock(session.getId(), staff);
 
         assertEquals("UNLOCK_REQUESTED", response.getStatus());
         verify(ocppCommands).unlockConnector(CODE, session.getId(), 1, 1);
@@ -450,7 +521,7 @@ class ChargeSessionServiceTest {
     void shouldRefuseUnlock_whenSessionIsNotPaid() {
         ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
 
-        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
         verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
@@ -861,7 +932,7 @@ class ChargeSessionServiceTest {
         doThrow(new EvSessionStateException("Charger " + CODE + " is offline"))
                 .when(ocppCommands).requestStop(anyString(), any(), anyString());
 
-        service.stop(session.getId());
+        service.stop(session.getId(), staff);
 
         assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
         assertTrue(session.getStatusMessage().startsWith("Could not send the stop command"));
@@ -874,7 +945,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
         when(ocppCommands.isConnected(CODE)).thenReturn(false);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
 
         assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
@@ -899,7 +970,7 @@ class ChargeSessionServiceTest {
         session.setPaidAt(LocalDateTime.now());
         when(ocppCommands.isConnected(CODE)).thenReturn(false);
 
-        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
 
         verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
