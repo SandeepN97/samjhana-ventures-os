@@ -319,6 +319,7 @@ export default function SettingsPage() {
           : activeSection === 'changePassword'
           ? t('settings.changePassword')
           : t('settings.title')}
+        hideWhenSidebarShows={!activeSection}
       />
 
       {/* Edit Profile Section */}

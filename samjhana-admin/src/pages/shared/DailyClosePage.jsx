@@ -786,6 +786,7 @@ export default function DailyClosePage() {
         unit="core"
         title={t('dailyClose.closeDay')}
         subtitle={`${formatDateLabel(businessDate)}, ${businessDate} · ${formatBsDate(businessDate, isNepali)}`}
+        hideWhenSidebarShows
       >
         {renderTabBar(t('dailyClose.closeDay'))}
       </PageHeader>

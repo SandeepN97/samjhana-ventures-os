@@ -159,7 +159,7 @@ export default function OnlineOrdersPage() {
   return (
     <>
       <div ref={pageRef} className="min-h-screen bg-slate-100 pb-24">
-        <PageHeader unit="core" icon={ShoppingBag} title={t('shopOrders.title')} backTo="/" />
+        <PageHeader unit="core" icon={ShoppingBag} title={t('shopOrders.title')} backTo="/" hideWhenSidebarShows />
 
         <main className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6">
           <section className="overflow-hidden rounded-xl bg-[#f7f3ed] ring-1 ring-[#e4daca]" aria-labelledby="order-desk-title">

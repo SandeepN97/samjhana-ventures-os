@@ -252,7 +252,7 @@ export default function StaffManagementPage() {
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <PageHeader unit="core" icon={Users} title={t('staff.title')} />
+      <PageHeader unit="core" icon={Users} title={t('staff.title')} hideWhenSidebarShows />
 
       {/* Find staff: search, add, and filter by business */}
       <div className="mx-auto w-full max-w-6xl px-4 pt-5">

@@ -279,7 +279,7 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
 
   return (
     <div className={embedded ? '' : 'min-h-screen bg-slate-100 pb-24'}>
-      {!embedded && <PageHeader unit="core" icon={Globe} title={t('siteEditor.title')} />}
+      {!embedded && <PageHeader unit="core" icon={Globe} title={t('siteEditor.title')} hideWhenSidebarShows />}
 
       {!allowed ? (
         <p role="alert" className="mx-auto mt-6 max-w-3xl rounded-2xl bg-white p-5 text-slate-700 shadow-sm ring-1 ring-slate-200">{t('siteEditor.noAccess')}</p>
