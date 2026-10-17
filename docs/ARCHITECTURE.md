@@ -62,6 +62,7 @@ samjhana-web/        Public React/Vite website and frontend tests
 tools/ocpp-simulator/ Standalone OCPP simulator for manual testing
 docs/                Architecture, feature, setup, security and tooling documentation (index: docs/README.md)
 docs/sql/            SQL to run on Supabase before a deploy (see docs/sql/README.md)
+design-system/       How both apps look: tokens, component guides and previews (see design-system/README.md)
 ```
 
 For local startup commands, see the [README](../README.md).
