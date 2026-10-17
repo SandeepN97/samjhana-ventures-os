@@ -17,7 +17,8 @@ import {
   EyeOff,
   Save,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  SlidersHorizontal,
 } from 'lucide-react';
 import api from '../../utils/api';
 import { passwordProblem, passwordProblemMessage, serverPasswordMessage } from '../../utils/passwordPolicy';
@@ -28,7 +29,19 @@ import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
 import LanguageToggle from '../../components/LanguageToggle';
+import ChipSlider from '../../components/ChipSlider';
 import { clearSignIn } from '../../utils/session';
+
+const PANEL = 'rounded-2xl bg-white shadow-sm ring-1 ring-slate-200';
+
+/** The small rounded icon tile at the start of a settings row, as on the Website page. */
+function RowIcon({ icon: Icon }) {
+  return (
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-core-100 text-core-700">
+      <Icon className="h-5 w-5" aria-hidden="true" />
+    </span>
+  );
+}
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -40,6 +53,8 @@ export default function SettingsPage() {
 
   // Active section: null, 'editProfile', 'changePassword'
   const [activeSection, setActiveSection] = useState(null);
+  // Which group of settings the main view shows: general, team (admins), system (dev reset)
+  const [tab, setTab] = useState('general');
 
   // Demo reset state
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
@@ -287,6 +302,12 @@ export default function SettingsPage() {
     }
   };
 
+  const tabs = [
+    { id: 'general', label: t('settings.tabGeneral'), icon: SlidersHorizontal },
+    ...(isAdmin ? [{ id: 'team', label: t('settings.userManagement'), icon: Users }] : []),
+    ...(isAdmin && demoResetAvailable ? [{ id: 'system', label: t('settings.demoTitle'), icon: RefreshCw }] : []),
+  ];
+
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -302,8 +323,8 @@ export default function SettingsPage() {
 
       {/* Edit Profile Section */}
       {activeSection === 'editProfile' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+        <div className="mx-auto max-w-2xl p-4 space-y-4">
+          <div className={`${PANEL} p-5 space-y-4`}>
             {/* Avatar */}
             <div className="flex justify-center">
               <div className="w-20 h-20 bg-core-500 rounded-full flex items-center justify-center">
@@ -335,7 +356,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileFullName}
                 onChange={(e) => setProfileFullName(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
+                className="w-full px-4 py-3 text-base min-h-[44px] border border-gray-300 rounded-xl focus:border-core-500 focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="Full name"
               />
             </div>
@@ -349,7 +370,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileFullNameNe}
                 onChange={(e) => setProfileFullNameNe(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
+                className="w-full px-4 py-3 text-base min-h-[44px] border border-gray-300 rounded-xl focus:border-core-500 focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="पूरा नाम"
               />
             </div>
@@ -371,7 +392,7 @@ export default function SettingsPage() {
               onClick={handleSaveProfile}
               disabled={profileSaving}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg text-white transition-all active:scale-95 ${
-                profileSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-600 hover:bg-core-700'
+                profileSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-800 hover:bg-core-700'
               }`}
             >
               {profileSaving ? (
@@ -389,8 +410,8 @@ export default function SettingsPage() {
 
       {/* Change Password Section */}
       {activeSection === 'changePassword' && (
-        <div className="p-4 space-y-4">
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+        <div className="mx-auto max-w-2xl p-4 space-y-4">
+          <div className={`${PANEL} p-5 space-y-4`}>
             {/* Current Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -401,13 +422,13 @@ export default function SettingsPage() {
                   type={showCurrentPw ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
+                  className="w-full px-4 py-3 pr-12 text-base min-h-[44px] border border-gray-300 rounded-xl focus:border-core-500 focus:outline-none focus:ring-2 focus:ring-core-500"
                   placeholder="••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700"
                 >
                   {showCurrentPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -424,13 +445,13 @@ export default function SettingsPage() {
                   type={showNewPw ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
+                  className="w-full px-4 py-3 pr-12 text-base min-h-[44px] border border-gray-300 rounded-xl focus:border-core-500 focus:outline-none focus:ring-2 focus:ring-core-500"
                   placeholder="••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700"
                 >
                   {showNewPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -446,7 +467,7 @@ export default function SettingsPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-core-500"
+                className="w-full px-4 py-3 text-base min-h-[44px] border border-gray-300 rounded-xl focus:border-core-500 focus:outline-none focus:ring-2 focus:ring-core-500"
                 placeholder="••••••"
               />
               {confirmPassword && newPassword && confirmPassword !== newPassword && (
@@ -461,7 +482,7 @@ export default function SettingsPage() {
               onClick={handleChangePassword}
               disabled={pwSaving}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg text-white transition-all active:scale-95 ${
-                pwSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-600 hover:bg-core-700'
+                pwSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-core-800 hover:bg-core-700'
               }`}
             >
               {pwSaving ? (
@@ -479,31 +500,58 @@ export default function SettingsPage() {
 
       {/* Main Settings View */}
       {!activeSection && (
-        <>
-          {/* User Profile Card */}
-          <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-core-500 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-800">
-                  {user.fullName || user.username}
-                </p>
-                <p className="text-sm text-gray-500">{getRoleLabel(user.role)}</p>
-                <p className="text-xs text-gray-400">@{user.username}</p>
+        <div className="mx-auto max-w-6xl px-4 py-5 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6">
+          <aside className="lg:sticky lg:top-4">
+            {/* Who is signed in */}
+            <div className={`${PANEL} p-4`}>
+              <div className="flex items-center gap-4">
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-core-800">
+                  <span className="text-2xl font-bold text-white">
+                    {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold text-core-900">
+                    {user.fullName || user.username}
+                  </p>
+                  <p className="text-sm text-gray-600">{getRoleLabel(user.role)}</p>
+                  <p className="truncate text-xs text-gray-500">@{user.username}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Settings Sections */}
-          <div className="px-4 mt-6 space-y-4">
+            {tabs.length > 1 && (
+              <nav className={`${PANEL} mt-4 hidden p-3 lg:block`} aria-label={t('settings.title')}>
+                <div className="flex flex-col gap-2">
+                  {tabs.map((x) => (
+                    <button type="button" key={x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)}
+                      className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${tab === x.id ? 'bg-core-800 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
+                      <x.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                      <span>{x.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </nav>
+            )}
+          </aside>
+
+          <div className="mt-4 min-w-0 space-y-4 lg:mt-0">
+            {tabs.length > 1 && (
+              <ChipSlider
+                className="lg:hidden"
+                label={t('settings.title')}
+                value={tab}
+                onChange={setTab}
+                items={tabs.map((x) => ({ value: x.id, label: x.label, icon: x.icon }))}
+              />
+            )}
+
+            {tab === 'general' && (
+              <>
             {/* Preferences */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50">
-                <h2 className="font-bold text-gray-700 text-sm uppercase">
+            <div className={`${PANEL} overflow-hidden`}>
+              <div className="px-4 py-3.5 border-b border-slate-100">
+                <h2 className="text-base font-bold text-core-900">
                   {t('settings.preferences')}
                 </h2>
               </div>
@@ -511,7 +559,7 @@ export default function SettingsPage() {
               {/* Language */}
               <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <Globe className="w-5 h-5 text-gray-500" />
+                  <RowIcon icon={Globe} />
                   <span className="text-gray-800">{t('settings.language')}</span>
                 </div>
                 <LanguageToggle tone="onLight" />
@@ -521,19 +569,19 @@ export default function SettingsPage() {
             </div>
 
             {/* Account */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50">
-                <h2 className="font-bold text-gray-700 text-sm uppercase">
+            <div className={`${PANEL} overflow-hidden`}>
+              <div className="px-4 py-3.5 border-b border-slate-100">
+                <h2 className="text-base font-bold text-core-900">
                   {t('settings.account')}
                 </h2>
               </div>
 
               <button
                 onClick={() => setActiveSection('editProfile')}
-                className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors"
+                className="w-full min-h-[64px] flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-gray-500" />
+                  <RowIcon icon={User} />
                   <span className="text-gray-800">{t('settings.editProfile')}</span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -541,26 +589,29 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => setActiveSection('changePassword')}
-                className="w-full flex items-center justify-between px-4 py-4 border-t hover:bg-gray-50 transition-colors"
+                className="w-full min-h-[64px] flex items-center justify-between px-4 py-3 border-t border-slate-100 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-gray-500" />
+                  <RowIcon icon={Shield} />
                   <span className="text-gray-800">{t('settings.changePassword')}</span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
             </div>
 
+              </>
+            )}
+
             {/* User Management - Admin Only */}
-            {isAdmin && (
-              <div className="bg-white rounded-xl shadow-sm">
-                <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl flex items-center justify-between">
-                  <h2 className="font-bold text-gray-700 text-sm uppercase">
+            {isAdmin && tab === 'team' && (
+              <div className={PANEL}>
+                <div className="px-4 py-3.5 border-b border-slate-100 rounded-t-2xl flex items-center justify-between">
+                  <h2 className="text-base font-bold text-core-900">
                     {t('settings.userManagement')}
                   </h2>
                   <button
                     onClick={() => setShowUserForm(!showUserForm)}
-                    className="flex items-center gap-1 text-core-600 text-sm font-medium"
+                    className="flex items-center gap-1 min-h-[44px] px-2 text-core-700 text-sm font-bold"
                   >
                     {showUserForm ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                     {showUserForm ? t('settings.close') : t('settings.add')}
@@ -695,7 +746,7 @@ export default function SettingsPage() {
                                 placeholder={t('settings.password')}
                                 autoComplete="new-password"
                               />
-                              <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                              <button type="button" className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700"
                                 onClick={() => setShowNewUserPw(!showNewUserPw)}>
                                 {showNewUserPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                               </button>
@@ -715,7 +766,7 @@ export default function SettingsPage() {
                                 placeholder={t('settings.repeatPassword')}
                                 autoComplete="new-password"
                               />
-                              <button type="button" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                              <button type="button" className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700"
                                 onClick={() => setShowNewUserPwConfirm(!showNewUserPwConfirm)}>
                                 {showNewUserPwConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                               </button>
@@ -729,7 +780,7 @@ export default function SettingsPage() {
                           type="submit"
                           disabled={submitting}
                           className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${
-                            submitting ? 'bg-gray-400' : 'bg-core-600 hover:bg-core-700'
+                            submitting ? 'bg-gray-400' : 'bg-core-800 hover:bg-core-700'
                           }`}
                         >
                           {submitting
@@ -822,17 +873,19 @@ export default function SettingsPage() {
               />
             )}
 
+            {tab === 'general' && (
+              <>
             {/* Support */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50">
-                <h2 className="font-bold text-gray-700 text-sm uppercase">
+            <div className={`${PANEL} overflow-hidden`}>
+              <div className="px-4 py-3.5 border-b border-slate-100">
+                <h2 className="text-base font-bold text-core-900">
                   {t('settings.support')}
                 </h2>
               </div>
 
               <div className="px-4 py-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <HelpCircle className="w-5 h-5 text-gray-500" />
+                  <RowIcon icon={HelpCircle} />
                   <span className="text-gray-800 font-medium">{t('settings.helpSupport')}</span>
                 </div>
                 <p className="text-sm text-gray-500 ml-8">
@@ -841,12 +894,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
+              </>
+            )}
+
             {/* Demo Data Reset — admin only, and only where the server offers it */}
-            {isAdmin && demoResetAvailable && (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-amber-200">
+            {isAdmin && demoResetAvailable && tab === 'system' && (
+              <div className="rounded-2xl bg-white shadow-sm ring-1 ring-amber-200 overflow-hidden">
                 <div className="px-4 py-3 border-b bg-amber-50 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span className="font-bold text-amber-800 text-sm uppercase tracking-wide">{t('settings.demoTitle')}</span>
+                  <h2 className="text-base font-bold text-amber-800">{t('settings.demoTitle')}</h2>
                 </div>
                 <div className="px-4 py-4">
                   <p className="text-sm text-gray-600 mb-3">
@@ -885,6 +941,8 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {tab === 'general' && (
+              <>
             {/* Logout */}
             <button
               onClick={handleLogout}
@@ -899,8 +957,10 @@ export default function SettingsPage() {
               <p>Samjhana Ventures OS</p>
               <p>v1.0.0</p>
             </div>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
