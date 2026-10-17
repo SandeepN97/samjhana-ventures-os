@@ -286,20 +286,20 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
       ) : (
         <main className={`mx-auto w-full ${embedded ? '' : 'max-w-7xl px-4 pt-5 sm:px-6'}`}>
           <div className={`${embedded ? 'px-4 pt-4 sm:px-6' : ''}`}>
-            <div className="overflow-hidden rounded-2xl bg-[#f7f3ed] shadow-sm ring-1 ring-[#e4daca]">
-              <div className="grid gap-4 px-5 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div data-testid="website-editor-intro" className="overflow-hidden rounded-2xl bg-[#f7f3ed] shadow-sm ring-1 ring-[#e4daca] lg:rounded-xl lg:shadow-none">
+              <div className="grid gap-4 px-5 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:gap-2 lg:px-4 lg:py-3">
                 <div className="flex items-start gap-3">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e9efdf] text-[#6f591e] ring-1 ring-[#d7ddcb]">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e9efdf] text-[#6f591e] ring-1 ring-[#d7ddcb] lg:h-9 lg:w-9">
                     <Globe className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <p className="max-w-3xl pt-1 text-sm leading-6 text-[#5f5548] sm:text-base">
+                  <p className="max-w-3xl pt-1 text-sm leading-6 text-[#5f5548] sm:text-base lg:pt-0 lg:text-sm lg:leading-5">
                     {embedded ? t('siteEditor.pageIntro') : t('siteEditor.intro')}
                   </p>
                 </div>
 
                 {!embedded && (
-                  <Link to="/restaurant-menu" className="group flex min-h-[64px] items-center gap-3 rounded-xl bg-white px-4 py-2.5 font-bold text-core-800 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-800"><Utensils className="h-5 w-5" aria-hidden="true" /></span>
+                  <Link to="/restaurant-menu" className="group flex min-h-[64px] items-center gap-3 rounded-xl bg-white px-4 py-2.5 font-bold text-core-800 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 lg:min-h-[46px] lg:px-3 lg:py-1">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-800 lg:h-8 lg:w-8"><Utensils className="h-5 w-5" aria-hidden="true" /></span>
                     <span><span className="block text-sm">{t('siteEditor.menu')}</span><span className="mt-0.5 block text-xs font-medium text-slate-500">{t('siteEditor.menuHint')}</span></span>
                   </Link>
                 )}
@@ -307,34 +307,17 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
             </div>
           </div>
 
-          <div className={`${embedded ? 'px-4 sm:px-6' : ''} mt-5 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-6`}>
+          <div className={`${embedded ? 'px-4 sm:px-6' : ''} mt-5`}>
             {visibleTabs.length > 1 && (
-              <>
+              <div data-testid="website-area-selector" className="mb-4 lg:rounded-2xl lg:bg-white lg:p-3 lg:shadow-sm lg:ring-1 lg:ring-slate-200">
+                <p className="hidden px-1 pb-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-400 lg:block">{t('siteEditor.editArea')}</p>
                 <ChipSlider
-                  className="mb-4 lg:hidden"
                   label={t('siteEditor.editArea')}
                   value={tabId}
                   onChange={setTabId}
                   items={visibleTabs.map((x) => ({ value: x.id, label: t(x.labelKey), icon: TAB_ICONS[x.id] || Globe }))}
                 />
-
-                <aside className="hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 lg:sticky lg:top-4 lg:block">
-                  <p className="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{t('siteEditor.editArea')}</p>
-                  <nav className="flex flex-col gap-2" aria-label={t('siteEditor.editArea')}>
-                    {visibleTabs.map((x) => {
-                      const TabIcon = TAB_ICONS[x.id] || Globe;
-                      const selected = tabId === x.id;
-                      return (
-                        <button type="button" key={x.id} aria-pressed={selected} onClick={() => setTabId(x.id)}
-                          className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${selected ? 'bg-core-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
-                          <TabIcon className={`h-5 w-5 shrink-0 ${selected ? 'text-amber-300' : 'text-slate-400'}`} aria-hidden="true" />
-                          <span>{t(x.labelKey)}</span>
-                        </button>
-                      );
-                    })}
-                  </nav>
-                </aside>
-              </>
+              </div>
             )}
 
             <div className="min-w-0">

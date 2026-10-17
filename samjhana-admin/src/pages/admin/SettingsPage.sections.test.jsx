@@ -36,6 +36,24 @@ describe('SettingsPage sections', () => {
     expect(screen.getByRole('heading', { name: 'Preferences' })).toBeInTheDocument();
   });
 
+  it('keeps the desktop settings panel fixed while reserving its grid column', () => {
+    asUser('ADMIN');
+    renderWithProviders(<SettingsPage />);
+    const desktopPanel = screen.getByRole('navigation', { name: 'Settings' }).parentElement;
+    expect(desktopPanel).toHaveClass('lg:fixed', 'lg:top-4', 'lg:w-[280px]');
+    expect(desktopPanel.parentElement).toHaveClass('lg:w-[280px]');
+  });
+
+  it('fixes the desktop General content without changing the other sections', async () => {
+    asUser('ADMIN');
+    renderWithProviders(<SettingsPage />);
+    const content = screen.getByTestId('settings-section-content');
+    expect(content).toHaveClass('lg:fixed', 'lg:top-4', 'lg:w-[calc(min(calc(100vw_-_16rem),72rem)_-_21rem)]');
+
+    await userEvent.click(within(screen.getByRole('group', { name: 'Settings' })).getByRole('button', { name: testI18n.t('settings.userManagement') }));
+    expect(content).not.toHaveClass('lg:fixed');
+  });
+
   it('shows one group at a time as the admin changes section', async () => {
     asUser('ADMIN');
     renderWithProviders(<SettingsPage />);

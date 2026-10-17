@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Droplet,
   ChevronRight,
+  CalendarDays,
 } from 'lucide-react';
 import api from '../../utils/api';
 import { ToastContainer } from '../../components/Toast';
@@ -450,10 +451,16 @@ export default function DailyClosePage() {
   const isClosed = summary?.isClosed;
   const report = summary?.closedReport;
 
-  // ── Tab bar (rendered inside each header) ────────────────────────────────
+  // ── Day context and tab switch ──────────────────────────────────────────
 
-  const renderTabBar = (tab1Label) => (
-    <div className="mt-3 flex gap-2 lg:max-w-sm" role="group" aria-label={t('reports.title')}>
+  const renderTabBar = (tab1Label, tone = 'dark') => (
+    <div
+      className={tone === 'light'
+        ? 'mt-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1'
+        : 'mt-3 flex gap-2 lg:max-w-sm'}
+      role="group"
+      aria-label={t('reports.title')}
+    >
       {[
         { key: 'close', label: tab1Label },
         { key: 'report', label: t('reports.title') },
@@ -462,16 +469,37 @@ export default function DailyClosePage() {
           key={tab.key}
           onClick={() => setActiveTab(tab.key)}
           aria-pressed={activeTab === tab.key}
-          className={`min-h-[44px] flex-1 rounded-xl px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-            activeTab === tab.key
+          className={`min-h-[44px] flex-1 rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 ${tone === 'light'
+            ? `focus-visible:ring-core-500 focus-visible:ring-offset-2 ${activeTab === tab.key
+              ? 'bg-core-800 text-white shadow-sm'
+              : 'text-core-600 hover:bg-white hover:text-core-900'}`
+            : `focus-visible:ring-white ${activeTab === tab.key
               ? 'bg-white text-core-800'
-              : 'bg-white/10 text-white/80 hover:bg-white/20'
+              : 'bg-white/10 text-white/80 hover:bg-white/20'}`
           }`}
         >
           {tab.label}
         </button>
       ))}
     </div>
+  );
+
+  const renderDayControls = (tab1Label) => (
+    <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200" aria-label={t('dailyClose.title')}>
+      <div className="flex items-center gap-3" role="group" aria-label={t('common.date')}>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-core-100 text-core-700">
+          <CalendarDays className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-core-900">{formatDateLabel(businessDate)}</p>
+          <p className="truncate text-sm text-gray-600">{formatBsDate(businessDate, isNepali)}</p>
+        </div>
+        <time dateTime={businessDate} className="shrink-0 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold tabular-nums text-gray-600">
+          {businessDate}
+        </time>
+      </div>
+      {renderTabBar(tab1Label, 'light')}
+    </section>
   );
 
   // ── Report tab content ────────────────────────────────────────────────────
@@ -558,6 +586,7 @@ export default function DailyClosePage() {
 
       {/* The day's result, then the businesses and the profit: on desktop this column stays in view on the right */}
       <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-4 lg:gap-6">
+        {desktop && renderDayControls(t('dailyClose.closeDay'))}
         <section className="rounded-2xl bg-core-800 p-5 text-white shadow-sm" aria-labelledby="rep-result">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -782,14 +811,11 @@ export default function DailyClosePage() {
   // =========================================================================
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
-      <PageHeader
-        unit="core"
-        title={t('dailyClose.closeDay')}
-        subtitle={`${formatDateLabel(businessDate)}, ${businessDate} · ${formatBsDate(businessDate, isNepali)}`}
-        hideWhenSidebarShows
-      >
-        {renderTabBar(t('dailyClose.closeDay'))}
-      </PageHeader>
+      {!desktop && (
+        <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+          {renderDayControls(t('dailyClose.closeDay'))}
+        </div>
+      )}
 
       {activeTab === 'report' ? renderReportTab() : (
         <>
@@ -828,7 +854,8 @@ export default function DailyClosePage() {
             </div>
 
             {/* Closing the day: stays in view beside the summary on desktop */}
-            <div className="lg:sticky lg:top-4">
+            <div className="space-y-3 lg:sticky lg:top-4">
+              {desktop && renderDayControls(t('dailyClose.closeDay'))}
               <ClosePanel
                 desktop={desktop}
                 cashCounted={cashCounted}

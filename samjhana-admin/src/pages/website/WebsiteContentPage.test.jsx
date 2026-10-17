@@ -63,7 +63,10 @@ describe('WebsiteContentPage', () => {
     renderWithProviders(<WebsiteContentPage />);
     expect(await screen.findByLabelText('Phone number')).toHaveValue('+977 1');
     expect(screen.getByLabelText('Fuel & EV hours (e.g. 6am – 9pm)')).toHaveValue('6am – 9pm');
-    expect(screen.getByRole('navigation', { name: 'Choose an area to edit' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Choose an area to edit' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Choose an area to edit' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('website-editor-intro')).toHaveClass('lg:rounded-xl');
+    expect(screen.getByTestId('website-area-selector')).toContainElement(screen.getByRole('group', { name: 'Choose an area to edit' }));
     // The chooser already says which area is open, so the area name and count are not repeated under it.
     expect(screen.queryByText('2 sections')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 2, name: 'Contact & hours' })).not.toBeInTheDocument();
@@ -173,7 +176,7 @@ describe('WebsiteContentPage', () => {
   it('shows Nepali labels', async () => {
     renderWithProviders(<WebsiteContentPage />, { locale: 'ne' });
     expect(await screen.findByLabelText('फोन नम्बर')).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'सम्पादन गर्ने भाग छान्नुहोस्' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'सम्पादन गर्ने भाग छान्नुहोस्' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'संपर्क र समय' })[0]).toBeInTheDocument();
     expect(screen.queryByText('२ खण्ड')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /रेस्टुरेन्ट मेनु/ })).toBeInTheDocument();
