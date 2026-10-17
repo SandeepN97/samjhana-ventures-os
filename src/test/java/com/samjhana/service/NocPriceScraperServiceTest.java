@@ -82,4 +82,30 @@ class NocPriceScraperServiceTest {
         // the fetch failed, so nothing may have been saved
         verifyNoInteractions(fuelPriceRepository);
     }
+
+    // ---- finding P0-08: a number scraped from the page that cannot be a price is not saved ----
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "0.00", "-5", "10000.01", "99999999"})
+    void shouldNotSaveAScrapedPriceThatCannotBeAPrice(String price) {
+        Boolean saved = ReflectionTestUtils.invokeMethod(service, "saveIfChanged",
+                com.samjhana.entity.FuelPrice.FuelType.PETROL, new java.math.BigDecimal(price), java.time.LocalDate.now());
+
+        org.assertj.core.api.Assertions.assertThat(saved).isFalse();
+        org.mockito.Mockito.verify(fuelPriceRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @org.junit.jupiter.api.Test
+    void shouldSaveAScrapedPriceThatMakesSense() {
+        when(fuelPriceRepository.findFirstByFuelTypeAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Optional.empty());
+        when(fuelPriceRepository.findByFuelTypeAndEffectiveDate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Optional.empty());
+
+        Boolean saved = ReflectionTestUtils.invokeMethod(service, "saveIfChanged",
+                com.samjhana.entity.FuelPrice.FuelType.PETROL, new java.math.BigDecimal("171.00"), java.time.LocalDate.now());
+
+        org.assertj.core.api.Assertions.assertThat(saved).isTrue();
+        org.mockito.Mockito.verify(fuelPriceRepository).save(org.mockito.ArgumentMatchers.any());
+    }
 }

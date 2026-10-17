@@ -3,14 +3,18 @@ package com.samjhana.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.FurnitureCustomer;
 import com.samjhana.entity.FurnitureItem;
 import com.samjhana.entity.FurnitureItem.FurnitureCategory;
 import com.samjhana.entity.Transaction;
+import com.samjhana.entity.User;
 import com.samjhana.exception.ResourceNotFoundException;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.FurnitureCustomerRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +34,7 @@ public class FurnitureService {
     private final ObjectMapper objectMapper;
     private final MediaService mediaService;
     private final SlugService slugService;
+    private final AuditLogRepository auditLogRepository;
 
     // ===================== DASHBOARD =====================
 
@@ -284,20 +289,50 @@ public class FurnitureService {
         return orders;
     }
 
+    /** The delivery steps the order screen offers; nothing else is stored. */
+    private static final Set<String> DELIVERY_STATUSES = Set.of("PENDING", "IN_PROGRESS", "DELIVERED");
+
+    /**
+     * Moves a furniture order to another delivery step and records who did it (finding P0-09). Only furniture
+     * orders can be changed here, and only to one of the three steps. There is no closed-day rule on purpose:
+     * delivery happens days after the sale.
+     */
     @Transactional
-    public Map<String, Object> updateDeliveryStatus(UUID id, String newStatus) {
+    public Map<String, Object> updateDeliveryStatus(UUID id, String newStatus, User user) {
         Transaction transaction = transactionRepository.findById(id)
+                .filter(t -> t.getBusiness() != null && "furniture".equalsIgnoreCase(t.getBusiness().getCode()))
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
         if (newStatus == null) throw new IllegalArgumentException("deliveryStatus is required");
+        String status = newStatus.trim().toUpperCase(Locale.ROOT);
+        if (!DELIVERY_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("deliveryStatus must be PENDING, IN_PROGRESS or DELIVERED");
+        }
 
         Map<String, Object> customFields = parseCustomFields(transaction.getCustomFields());
-        customFields.put("deliveryStatus", newStatus);
+        Object before = customFields.get("deliveryStatus");
+        customFields.put("deliveryStatus", status);
         try {
             transaction.setCustomFields(objectMapper.writeValueAsString(customFields));
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Failed to update status");
         }
-        return transactionToOrderMap(transactionRepository.save(transaction));
+        Transaction saved = transactionRepository.save(transaction);
+
+        AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION, saved.getId(),
+                statusJson(before), statusJson(status));
+        entry.setDescription("Delivery status changed from " + (before == null ? "none" : before) + " to " + status);
+        auditLogRepository.save(entry);
+        return transactionToOrderMap(saved);
+    }
+
+    private String statusJson(Object status) {
+        Map<String, Object> json = new LinkedHashMap<>();
+        json.put("deliveryStatus", status);
+        try {
+            return objectMapper.writeValueAsString(json);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not write the audit record", e);
+        }
     }
 
     // ===================== HELPERS =====================
@@ -382,12 +417,8 @@ public class FurnitureService {
 
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return null;
-        if (value instanceof Number) return BigDecimal.valueOf(((Number) value).doubleValue());
-        try {
-            return new BigDecimal(value.toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        if (value instanceof Number) return SafeDecimal.limited(BigDecimal.valueOf(((Number) value).doubleValue()));
+        return SafeDecimal.parse(value.toString());
     }
 
     private int toInt(Object value, int defaultValue) {

@@ -10,6 +10,7 @@ import com.samjhana.exception.TransactionNotFoundException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
 import com.samjhana.repository.DailyReportRepository;
+import com.samjhana.repository.FuelPriceRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
@@ -49,6 +50,7 @@ class TransactionServiceTest {
     @Mock SystemSettingRepository systemSettingRepository;
     @Mock BeekeepingService beekeepingService;
     @Mock LoanReceiptService loanReceiptService;
+    @Mock FuelPriceRepository fuelPriceRepository;
 
     private TransactionService service;
     private User staff;
@@ -59,7 +61,7 @@ class TransactionServiceTest {
     void setUp() {
         service = new TransactionService(transactionRepository, businessUnitRepository, furnitureItemRepository,
                 auditLogRepository, calculationEngine, new ObjectMapper(), dailyReportRepository, systemSettingRepository,
-                beekeepingService, loanReceiptService);
+                beekeepingService, loanReceiptService, fuelPriceRepository);
         staff = User.builder().username("staff").passwordHash("x").fullName("Staff Member").role(User.UserRole.STAFF).build();
         manager = User.builder().username("manager").passwordHash("x").fullName("Shop Manager").role(User.UserRole.MANAGER).build();
         pending = Transaction.builder()

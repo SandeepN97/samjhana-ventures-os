@@ -75,9 +75,24 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        if (causedByTooLargeBody(ex)) {
+            return ResponseEntity.status(413).body(new ErrorResponse("TOO_LARGE", "That request is too large."));
+        }
         log.debug("Unreadable request body: {}", ex.getMessage());
         return ResponseEntity.status(400)
                 .body(new ErrorResponse("INVALID_REQUEST", "Request body is missing or contains an invalid value."));
+    }
+
+    /**
+     * True when the body did not say how big it was and turned out to be over the limit while it was being read
+     * (see {@code RequestBodyLimitFilter}): reading stopped there, so nothing more was kept in memory.
+     */
+    private static boolean causedByTooLargeBody(Throwable ex) {
+        Throwable cause = ex;
+        for (int depth = 0; cause != null && depth < 10; depth++, cause = cause.getCause()) {
+            if (cause instanceof RequestBodyTooLargeException) return true;
+        }
+        return false;
     }
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
