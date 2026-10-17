@@ -3,6 +3,7 @@ package com.samjhana.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samjhana.entity.MediaAsset;
 import com.samjhana.repository.MediaAssetRepository;
+import com.samjhana.testsupport.PictureFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,9 +53,62 @@ class MediaServiceTest {
     }
 
     @Test
-    void shouldAcceptAWebpByItsHeader() {
-        byte[] webp = new byte[]{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 'V', 'P', '8', ' '};
-        assertThat(service.store(webp, "x.webp", "admin").getContentType()).isEqualTo("image/webp");
+    void shouldAcceptARealWebp_andRefuseAFileThatOnlyStartsLikeOne() {
+        assertThat(service.store(PictureFixtures.WEBP_LOSSY, "x.webp", "admin").getContentType()).isEqualTo("image/webp");
+
+        // the old check looked at 12 bytes only: a header with nothing behind it, or junk behind it, got through (finding P0-05)
+        byte[] justTheHeader = new byte[]{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 'V', 'P', '8', ' '};
+        byte[] junkBehindTheHeader = PictureFixtures.riff(new byte[100]);
+        for (byte[] fake : List.of(justTheHeader, junkBehindTheHeader)) {
+            assertThatThrownBy(() -> service.store(fake, "x.webp", "admin"))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not a valid picture");
+        }
+    }
+
+    @Test
+    void shouldRefuseAnAnimatedWebp() {
+        assertThatThrownBy(() -> service.store(PictureFixtures.WEBP_ANIMATED, "x.webp", "admin"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Animated");
+        verify(mediaRepository, never()).save(any());
+    }
+
+    // ---- finding P0-05: hidden details never reach the database -------------------------------------
+
+    @Test
+    void shouldStoreAJpegWithoutItsHiddenDetails_andRecordTheNewSize() {
+        byte[] withDetails = PictureFixtures.jpegPlanting(image("jpg"), PictureFixtures.ascii("TRAILER-" + PictureFixtures.SECRET),
+                PictureFixtures.exifSegment(1, false), PictureFixtures.xmpSegment(), PictureFixtures.commentSegment());
+
+        MediaAsset stored = service.store(withDetails, "holiday.jpg", "admin");
+
+        assertThat(PictureFixtures.contains(stored.getData(), PictureFixtures.SECRET)).isFalse();
+        assertThat(stored.getSizeBytes()).isEqualTo(stored.getData().length).isLessThan(withDetails.length);
+        assertThat(stored.getContentType()).isEqualTo("image/jpeg");
+        assertThat(PictureFixtures.samePixels(image("jpg"), stored.getData())).isTrue();
+    }
+
+    @Test
+    void shouldStoreAPngAndAWebpWithoutTheirHiddenDetails() {
+        byte[] png = PictureFixtures.pngPlanting(image("png"), new byte[0],
+                PictureFixtures.pngChunk("tEXt", PictureFixtures.ascii("Comment\0" + PictureFixtures.SECRET)));
+        byte[] webp = PictureFixtures.riff(PictureFixtures.webpHeaderChunk(0x04, 8, 8),
+                PictureFixtures.webpPictureChunk(PictureFixtures.WEBP_LOSSY),
+                PictureFixtures.webpChunk("XMP ", PictureFixtures.ascii(PictureFixtures.SECRET)));
+
+        for (byte[] original : List.of(png, webp)) {
+            MediaAsset stored = service.store(original, "x", "admin");
+            assertThat(PictureFixtures.contains(stored.getData(), PictureFixtures.SECRET)).isFalse();
+            assertThat(stored.getSizeBytes()).isEqualTo(stored.getData().length);
+        }
+    }
+
+    @Test
+    void shouldRefuseAJpegThatIsCutOff_andSaveNothing() {
+        byte[] cutOff = java.util.Arrays.copyOf(image("jpg"), image("jpg").length - 10);
+
+        assertThatThrownBy(() -> service.store(cutOff, "x.jpg", "admin"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not a valid picture");
+        verify(mediaRepository, never()).save(any());
     }
 
     @Test

@@ -25,6 +25,8 @@ import com.samjhana.service.ChargePointService;
 import com.samjhana.service.ChargeSessionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
@@ -474,5 +476,177 @@ class OcppWebSocketHandlerTest {
         assertThat(sent).hasSize(4);
         long outRows = writer.rows(OcppMessageLog.class).stream().filter(r -> r.getDirection().equals("OUT")).count();
         assertThat(outRows).as("every frame handed to the socket has an OUT row").isEqualTo(sent.size());
+    }
+    // ---------------------------------------------------------------- finding D-05: what a charger may make the app store
+
+    private String statusNotification(String connectorStatus) throws Exception {
+        return mapper.createArrayNode().add(2).add("s-" + sent.size()).add("StatusNotification")
+                .add(mapper.createObjectNode().put("timestamp", "2026-10-15T10:00:00Z").put("connectorStatus", connectorStatus)
+                        .put("evseId", 1).put("connectorId", 1)).toString();
+    }
+
+    private String bootNotification(String serialNumber) throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode station = mapper.createObjectNode().put("model", "HD-D180").put("vendorName", "V");
+        if (serialNumber != null) station.put("serialNumber", serialNumber);
+        return mapper.createArrayNode().add(2).add("b-" + sent.size()).add("BootNotification")
+                .add(mapper.createObjectNode().put("reason", "PowerUp").set("chargingStation", station)).toString();
+    }
+
+    private String transactionEvent(String transactionId) throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode payload = mapper.createObjectNode();
+        payload.put("eventType", "Updated").put("timestamp", "2026-10-15T10:00:00Z").put("triggerReason", "MeterValuePeriodic").put("seqNo", 1);
+        payload.putObject("transactionInfo").put("transactionId", transactionId);
+        return mapper.createArrayNode().add(2).add("t-" + sent.size()).add("TransactionEvent").add(payload).toString();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Available", "Occupied", "Reserved", "Unavailable", "Faulted"})
+    void shouldStoreEachStandardConnectorStatus(String status) throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        receive(session, statusNotification(status));
+
+        verify(chargePointService).recordStatus(CP, status);
+        assertThat(lastSent().get(0).asInt()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldAnswerPropertyConstraintViolation_andStoreNothing_whenTheConnectorStatusIsNotAStandardOne() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        receive(session, statusNotification("Y".repeat(200)));
+        receive(session, statusNotification("Charging"));
+
+        assertThat(sent).hasSize(2);
+        for (String frame : sent) {
+            JsonNode reply = mapper.readTree(frame);
+            assertThat(reply.get(0).asInt()).isEqualTo(4);
+            assertThat(reply.get(2).asText()).isEqualTo("PropertyConstraintViolation");
+            assertThat(reply.get(3).asText()).doesNotContain("YYYYY").doesNotContain("Charging");
+        }
+        verify(chargePointService, never()).recordStatus(any(), any());
+        verify(session, never()).close();
+        verify(session, never()).close(any());
+    }
+
+    @Test
+    void shouldAnswerFormationViolation_whenTheConnectorStatusIsMissingOrNotText() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        receive(session, "[2,\"s-1\",\"StatusNotification\",{\"timestamp\":\"2026-10-15T10:00:00Z\",\"evseId\":1,\"connectorId\":1}]");
+        receive(session, "[2,\"s-2\",\"StatusNotification\",{\"connectorStatus\":null}]");
+        receive(session, "[2,\"s-3\",\"StatusNotification\",{\"connectorStatus\":12}]");
+
+        assertThat(sent).hasSize(3);
+        for (String frame : sent) {
+            JsonNode reply = mapper.readTree(frame);
+            assertThat(reply.get(0).asInt()).isEqualTo(4);
+            assertThat(reply.get(2).asText()).isEqualTo("FormationViolation");
+        }
+        verify(chargePointService, never()).recordStatus(any(), any());
+    }
+
+    @Test
+    void shouldKeepAnsweringAfterARefusedStatus_andNeverShowTheBadValueAsAConnectorChange() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, statusNotification("W".repeat(200)));
+            receive(session, "[2,\"hb-1\",\"Heartbeat\",{}]");
+            receive(session, statusNotification("Occupied"));
+
+            assertThat(capture.matching("CONNECTOR STATUS CHANGE")).as("only the real status is tracked").hasSize(1);
+            assertThat(capture.matching("REJECTED StatusNotification from " + CP)).hasSize(1);
+            assertThat(capture.matching("REJECTED StatusNotification")).singleElement().asString().doesNotContain("W".repeat(70));
+        }
+        assertThat(sent).hasSize(3);
+        assertThat(mapper.readTree(sent.get(1)).get(0).asInt()).isEqualTo(3);
+        verify(chargePointService).recordHeartbeat(CP);
+        verify(chargePointService).recordStatus(CP, "Occupied");
+    }
+
+    @Test
+    void shouldAcceptTheBootButNotStoreASerialThatDoesNotFit() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, bootNotification("S".repeat(26)));
+            receive(session, bootNotification("has a space"));
+
+            assertThat(capture.matching("serial number does not fit")).hasSize(2);
+            assertThat(capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN).stream()
+                    .map(ILoggingEvent::getFormattedMessage).filter(m -> m.contains("serial number does not fit")))
+                    .noneMatch(m -> m.contains("S".repeat(40)));
+        }
+        verify(chargePointService, times(2)).recordBoot(CP, null);
+        for (String frame : sent) {
+            JsonNode reply = mapper.readTree(frame);
+            assertThat(reply.get(0).asInt()).isEqualTo(3);
+            assertThat(reply.get(2).get("status").asText()).isEqualTo("Accepted");
+        }
+    }
+
+    @Test
+    void shouldStoreAValidSerial_andStaySilentAboutAMissingOrBlankOne() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, bootNotification("SN-123.a_b"));
+            receive(session, bootNotification(null));
+            receive(session, bootNotification("  "));
+
+            assertThat(capture.matching("serial number does not fit")).isEmpty();
+        }
+        verify(chargePointService).recordBoot(CP, "SN-123.a_b");
+        verify(chargePointService, times(2)).recordBoot(CP, null);
+    }
+
+    @Test
+    void shouldAnswerPropertyConstraintViolation_andChangeNoSession_whenATransactionIdIsLongerThan36() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        receive(session, transactionEvent("T".repeat(37)));
+
+        JsonNode reply = lastSent();
+        assertThat(reply.get(0).asInt()).isEqualTo(4);
+        assertThat(reply.get(2).asText()).isEqualTo("PropertyConstraintViolation");
+        assertThat(reply.get(3).asText()).doesNotContain("TTTTT");
+        verify(chargeSessionService, never()).handleTransactionEvent(any(), any());
+        verify(session, never()).close(any());
+    }
+
+    @Test
+    void shouldPassATransactionIdOf36CharactersOn() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        receive(session, transactionEvent("T".repeat(36)));
+
+        assertThat(lastSent().get(0).asInt()).isEqualTo(3);
+        verify(chargeSessionService).handleTransactionEvent(eq(CP), any());
+    }
+
+    @Test
+    void shouldSayTheCommandFailed_whenAChargersErrorAnswerCarriesNoText() throws Exception {
+        WebSocketSession session = open("ws-1");
+        String messageId = sendCommand(UUID.randomUUID(), "RequestStartTransaction");
+
+        receive(session, "[4,\"" + messageId + "\",\"GenericError\"]");
+
+        verify(chargeSessionService).handleCommandResult(any(), eq(null), eq("OCPP command failed"));
+    }
+
+    @Test
+    void shouldCutAChargersErrorText_beforeItReachesTheSessionAndTheStoredRow() throws Exception {
+        WebSocketSession session = open("ws-1");
+        String messageId = sendCommand(UUID.randomUUID(), "RequestStartTransaction");
+
+        receive(session, "[4,\"" + messageId + "\",\"" + "C".repeat(300) + "\",\"" + "D".repeat(5000) + "\",{}]");
+
+        ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
+        verify(chargeSessionService).handleCommandResult(any(), eq(null), text.capture());
+        assertThat(text.getValue()).startsWith("D".repeat(200)).endsWith("...(5000 chars)").hasSizeLessThanOrEqualTo(230);
+        OcppCommandLog row = writer.rows(OcppCommandLog.class).get(0);
+        assertThat(row.getErrorCode()).as("the stored column holds 64").isEqualTo("C".repeat(64));
+        assertThat(row.getErrorDescription()).as("fits the 500-character column").startsWith("D".repeat(200)).hasSizeLessThanOrEqualTo(230);
     }
 }

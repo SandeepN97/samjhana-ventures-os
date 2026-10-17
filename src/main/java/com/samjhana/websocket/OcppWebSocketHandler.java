@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.samjhana.entity.OcppConnectionLog;
 import com.samjhana.ocpp.OcppConnectionRegistry;
+import com.samjhana.ocpp.OcppFieldChecks;
 import com.samjhana.ocpp.diag.JsonMasker;
 import com.samjhana.ocpp.diag.LogSafe;
 import com.samjhana.ocpp.diag.OcppAuditWriter;
@@ -236,10 +237,12 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
                 commandAudit.answered(command, frame.get(2));
                 chargeSessionService.handleCommandResult(command, frame.get(2), null);
             } else {
-                String errorCode = frame.get(2).asText();
-                String description = frame.size() > 3 ? frame.get(3).asText() : null;
+                // The code and text are the charger's own words: cut to what the stored columns hold (finding D-05), so a long
+                // one cannot make the write fail and leave the command's outcome unrecorded.
+                String errorCode = OcppFieldChecks.errorCode(frame.get(2).asText());
+                String description = frame.size() > 3 ? OcppFieldChecks.errorText(frame.get(3).asText()) : null;
                 commandAudit.errored(command, errorCode, description, frame.size() > 4 ? frame.get(4) : null);
-                String detail = frame.size() > 3 ? frame.get(3).asText() : "OCPP command failed";
+                String detail = description != null ? description : "OCPP command failed";
                 chargeSessionService.handleCommandResult(command, null, detail);
             }
         } catch (Exception ex) {
@@ -267,7 +270,14 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
                 switch (action) {
                     case "BootNotification" -> {
                         messageLogger.boot(state, payload);
-                        String serial = payload.path("chargingStation").path("serialNumber").asText(null);
+                        JsonNode sentSerial = payload.path("chargingStation").path("serialNumber");
+                        String serial = OcppFieldChecks.serialToStore(sentSerial);
+                        if (serial == null && OcppFieldChecks.wasSent(sentSerial)) {
+                            // Only a label: the boot is accepted, the serial is just not stored (finding D-05).
+                            LIFECYCLE.warn("BOOT from {}: the serial number does not fit (1 to 25 letters, digits, '.', '_' or '-'), "
+                                    + "so it is not stored and the boot is accepted anyway. value={}", code,
+                                    LogSafe.clean(sentSerial.isTextual() ? sentSerial.asText() : sentSerial.toString(), 60));
+                        }
                         chargePointService.recordBoot(code, serial);
                         long interval = properties.getHeartbeatInterval().toSeconds();
                         state.heartbeatIntervalSeconds(interval);
@@ -281,10 +291,13 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
                         response.put("currentTime", Instant.now().toString());
                     }
                     case "StatusNotification" -> {
+                        // Checked before anything is logged or tracked, so a refused value never shows up as a connector change.
+                        String connectorStatus = OcppFieldChecks.requireConnectorStatus(payload);
                         messageLogger.status(state, payload);
-                        chargePointService.recordStatus(code, payload.path("connectorStatus").asText("Unknown"));
+                        chargePointService.recordStatus(code, connectorStatus);
                     }
                     case "TransactionEvent" -> {
+                        OcppFieldChecks.requireTransactionIdFits(payload);
                         messageLogger.transactionEvent(state, payload);
                         chargeSessionService.handleTransactionEvent(code, payload);
                     }
@@ -295,6 +308,17 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
                     }
                 }
                 sendCallResult(session, code, messageId, response);
+            } catch (OcppFieldChecks.Violation violation) {
+                // The charger sent a value the standard (or the stored column) does not allow: say so with the standard code,
+                // store nothing, and keep the connection open (finding D-05).
+                LIFECYCLE.warn("REJECTED {} from {} (messageId={}): {} [{}] value={}", action, code, messageId,
+                        violation.getMessage(), violation.errorCode(), violation.value());
+                try {
+                    sendCallError(session, code, messageId, violation.errorCode(), violation.getMessage());
+                } catch (Exception sendFailure) {
+                    log.error("Could not send the {} CALLERROR for {} to {} (messageId={})", violation.errorCode(), action, code,
+                            messageId, sendFailure);
+                }
             } catch (Exception ex) {
                 log.error("Handler failed for action {} from {} (messageId={}, sessionId={}): {}", action, code,
                         messageId, session.getId(), ex.toString(), ex);

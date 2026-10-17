@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -139,6 +140,43 @@ class ChargePointServiceTest {
 
         assertEquals("SN-123", point.getSerialNumber());
         assertEquals(ChargePoint.ConnectionStatus.ONLINE, point.getConnectionStatus());
+    }
+
+    // finding D-05: the serial column is unique, so a serial another charger already holds must not be written
+
+    @Test
+    void shouldNotStoreASerialAnotherChargerAlreadyHolds_butStillMarkTheBootOnline() {
+        ChargePoint point = offlineCharger();
+        when(chargePointRepository.existsBySerialNumberAndIdNot("SN-TAKEN", point.getId())).thenReturn(true);
+
+        chargePointService.recordBoot("HD-D180-CC-01", "SN-TAKEN");
+
+        assertNull(point.getSerialNumber());
+        assertEquals(ChargePoint.ConnectionStatus.ONLINE, point.getConnectionStatus());
+        assertNotNull(point.getLastHeartbeatAt());
+        verify(chargePointRepository).save(point);
+    }
+
+    @Test
+    void shouldKeepTheChargersOwnSerial_whenAnotherChargerHoldsTheNewOne() {
+        ChargePoint point = offlineCharger();
+        point.setSerialNumber("SN-OLD");
+        when(chargePointRepository.existsBySerialNumberAndIdNot("SN-TAKEN", point.getId())).thenReturn(true);
+
+        chargePointService.recordBoot("HD-D180-CC-01", "SN-TAKEN");
+
+        assertEquals("SN-OLD", point.getSerialNumber());
+    }
+
+    @Test
+    void shouldAskNoQuestions_whenTheChargerReportsItsOwnSerialAgain() {
+        ChargePoint point = offlineCharger();
+        point.setSerialNumber("SN-SAME");
+
+        chargePointService.recordBoot("HD-D180-CC-01", "SN-SAME");
+
+        assertEquals("SN-SAME", point.getSerialNumber());
+        verify(chargePointRepository, never()).existsBySerialNumberAndIdNot(any(), any());
     }
 
     @Test
