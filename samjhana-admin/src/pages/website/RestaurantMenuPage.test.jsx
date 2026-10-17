@@ -42,7 +42,8 @@ describe('RestaurantMenuPage', () => {
     as('STAFF');
     renderWithProviders(<RestaurantMenuPage />);
     await screen.findByText('Dal Bhat Set');
-    await userEvent.click(screen.getByRole('button', { name: 'Snacks' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filter dishes by type: All' }));
+    await userEvent.click(screen.getByRole('menuitemradio', { name: /Snacks/ }));
     expect(screen.queryByText('Dal Bhat Set')).not.toBeInTheDocument();
     expect(screen.getByText('Buff Momo')).toBeInTheDocument();
   });
