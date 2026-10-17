@@ -1,15 +1,15 @@
 # Decisions made by the owner, and what to build
 
-Written 2026-10-17 by Claude Code from a question-by-question session with the owner. 23 of the 32 open questions in `DECISIONS-AND-OPS.md` were answered, plus five "leftover pieces" of partly fixed findings. This file is the brief for the next agent (Codex or a person): what the owner **decided**, what to **build**, in what **order**, and what is **still undecided**.
+Written 2026-10-17 by Claude Code from a question-by-question session with the owner. All 32 open questions in `DECISIONS-AND-OPS.md` were answered, plus five "leftover pieces" of partly fixed findings. This file is the brief for the next agent (Codex or a person): what the owner **decided**, what to **build**, in what **order**, and what is **still undecided**.
 
 ## 0. Rules for using this file
 
-1. Build only what is marked *Decided* (sections 1 to 3). Everything in section 4 is **not decided**: ask the owner, do not guess.
+1. Build only what is in this file. All 32 questions are decided; what still needs the owner (hosting, database, CI, confirmations) is in `OWNER-QUESTIONS.md` sections B to D. For anything not covered, ask the owner, do not guess.
 2. Each build is a small PR into `staging` (`METHOD.md`). The owner asked to **see the plan first**: before touching files for a group, post the plan block from `CLAUDE.md` (branch, scope, out of scope, tests) and wait for the owner's yes.
 3. **No schema changes without the owner.** Where a build looks like it needs a new column, table or enum value (marked `SQL?` below), first use the route that needs none (the `customFields` JSON on `Transaction`, existing columns, a computed value). If there is none, stop: put the proposed SQL under `docs/sql/` in the PR and ask the owner to run it on Supabase before deploy (staging uses `ddl-auto: validate`). Ask early, so the owner can run it while you build.
 4. This repository is public. Write PR text and comments in the same neutral style as this folder: state the rule that must hold, not how the old behaviour could be abused. The full finding text (location, quoted code, exact fix, test idea) is in the private report (`README.md` section 6); the one-line summaries below are enough to start.
 5. User-visible text needs English and Nepali. Touch targets at least 44 px. No hard deletes. Update `docs/ROLES.md` whenever a role rule changes, and the role-matrix test with it.
-6. Order of work: the 8 items in `QUEUE.md` need no decision and can run in parallel with these groups. Suggested order for the groups: G1, G2, G3, G4, G6, then G5 (G5 waits for a real-charger test, section 5).
+6. Order of work: the 8 items in `QUEUE.md` need no decision and can run in parallel with these groups. Suggested order for the groups: G1, G2, G3, G4, G6, G7, G9, then G8 and G5 (G5 and part of G8 wait for a real-charger test, section 5).
 
 ## 1. The decisions at a glance
 
@@ -39,6 +39,14 @@ Written 2026-10-17 by Claude Code from a question-by-question session with the o
 | P1a-11 | Managers cancel empty sessions; a silent starting session gives up after 10 minutes | G5 | maybe (new status) |
 | C-03 | The EV sale is booked when payment is taken | G5 | no |
 | P1a-01 | EV price check: charger battery percent first, staff fallback flagged, never block | G5 | maybe; **after the test** |
+| L-03 | Staff see a fulfilment view of online orders; contact details for managers, admins, or one audited reveal | G7 | no |
+| P0-06, P1B3-05 | Closed daily reports are for managers and admins; staff see today only, and date plus total in the recent list | G7 | no |
+| L-02 | Personal details of finished orders are scrubbed after 2 years; admin anonymise on request; phone not copied into the ledger | G7 | maybe (scrub marker) |
+| I-02 | The public checkout gives a fixed generic message when stock is short | G7 | no |
+| G-02 | Plates: accept Latin and Devanagari, store a Latin key, show what was typed | G8 | maybe |
+| G-05 | Meter readings: keep the highest value, flag the session, baseline from the start event | G8 | maybe (flag); after the test |
+| P1b-07 | Plate photo, name and phone kept per charging session; never overwrite; re-encode; audit | G8 | yes (session columns) |
+| P1B1-03 | Analytics and lists: 366-day maximum, 31-day default, 100 rows per page, sums in the database | G9 | no |
 
 ## 2. Group G1: who may post what
 
@@ -93,20 +101,24 @@ Several parts wait for the real-charger test (section 5). Build the parts that d
 - **P1a-09.** Keep today's explicit-unlock flow. Add detection: when an unpaid session ends with the car disconnected, or the connector becomes available, mark it "left unpaid" and alert the manager (read `stoppedReason`, `triggerReason`, charging state and per-connector status). Never show "connector remains locked" unless the charger confirmed it. After the test, record the lock behaviour per charger and decide the default with the owner.
 - **P1a-01 (after the test).** The price is rate per percent times percent gained. The charger's own first battery reading is the start percentage whenever it sends one. If it sends none, the staff-entered start percentage is accepted but the session is **flagged**. If no price can be worked out at all (no vehicle rate or no reading), staff may still enter an amount; it is flagged and listed for managers at the daily close. **Never block.** Vehicle type stays optional (a session without one is flagged "no price check"; ask the owner if this should change). Every EV payment records the price worked out, the amount charged, and who entered it (audit row). The owner's words: *"we don't know yet what comes from the device until we do the actual test with one of the charging stations; we need both logs to see if that comes from the charger. If it does, great; if not, the user has to verify."* `SQL?` new session columns (declared start percent, source, flag) may be needed: ask.
 
-## 4. Not decided yet (do not build)
+## 4. Groups G7 to G9 (decided later the same day)
 
-The owner was asked these, with the options below. For Topic 7 the owner answered with a free-text message that Claude did not receive; ask again. Topics 8 and 9 were not asked yet. The "proposed default" is only Claude's suggestion. The full options for each, and every other question that still needs the owner, are in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md).
+### G7. Customer data and who reads what
 
-| Finding | Question | Proposed default |
-|---|---|---|
-| L-03 | Which roles may see online customers' contact details? | Staff see order number, status, items, first name and city or pickup; staff can open one order's full details (recorded); managers and admins see everything |
-| P0-06, P1B3-05 | Which roles may read a closed daily report for any date? | Managers and admins only; staff see today's running totals, and the recent list shows only date and total |
-| L-02 | How long are customers' personal details kept, how are they erased? | Scrub name, phone, email, address of completed or cancelled orders after 2 years (amounts, dates, order numbers stay); an admin "anonymise" action on request; stop copying the phone into the ledger and audit log |
-| I-02 | What does the public checkout say when stock is short? | A fixed generic message; the cart shows only in stock, few left, out |
-| G-02 | Which number-plate formats must work (Devanagari plates?) and how are they stored? | Ask what the plates look like. Likely: normalise (NFKC, upper-case, drop spaces, hyphens, dots), keep the original for display, reject anything else |
-| G-05 | A meter reading lower than the previous one, or after a meter reset? | Keep the highest value, flag the session, take the baseline from the start event. Depends on what the real chargers send |
-| P1b-07 | Plate-photo evidence per vehicle (today) or per charging session? | Per session; never overwrite an existing vehicle photo; re-encode photos; audit changes |
-| P1B1-03 | Limits on analytics and list endpoints | Maximum range 366 days; default window 31 days with paging (100 per page); aggregate in SQL; set `-XX:MaxRAMPercentage` and a heap dump flag in `docker/entrypoint.sh` (the flag part needs no decision) |
+- **L-03.** Staff get a fulfilment view of online orders: order number, status, items, first name, city or pickup. Phone, email, address and notes are for managers and admins; staff can open **one** order's full details through an audited "reveal" call. Lower the list page-size cap. Update `docs/ROLES.md` and the role-matrix test. Tests: staff list has no contact fields; reveal returns them and writes an audit row; manager list is full.
+- **P0-06 and P1B3-05.** Closed daily reports are for managers and admins. `today-summary?date=` ignores the date for non-managers (or needs `canManage()` when the date is not today's business date) and builds the staff view without the closed report; `GET /api/daily-reports/recent` gives staff only date and total; loan businesses stay out of staff totals. Tests per route.
+- **L-02.** Scrub name, phone, email, address and notes of completed or cancelled online orders older than **2 years** (a scheduled job; amounts, dates and order numbers stay). An admin "anonymise customer, vehicle or order" action scrubs the same data in `shop_orders`, `transactions.custom_fields`, `audit_logs.new_values` and `ev_customer_vehicles`, and deletes the plate photo file. Stop copying the phone number into the ledger and the audit log (store the order number; whitelist the keys written to the audit log). Add a short privacy notice to the checkout (English and Nepali) and a one-page retention note. This scrubs fields; it does not hard-delete rows. `SQL?` only if a "scrubbed" marker column is wanted: try a fixed placeholder value first. The owner was told to ask an accountant whether a legal minimum applies to sales records.
+- **I-02.** The public checkout answers with a fixed message ("Some items are no longer available in the amount you asked for. Please review your cart.") with no product name and no count; the cart page re-reads `stockStatus` through `GET /api/public/shop/products?slugs=...`. Tests: no stock number or product name in the response; English and Nepali text.
+
+### G8. Plates, meter readings, evidence
+
+- **G-02.** Accept Latin and Devanagari plates: NFKC-normalise, upper-case with `Locale.ROOT`, strip spaces, hyphens and dots, map Devanagari digits and plate letters to Latin explicitly, store the Latin key for matching and the typed text for display, reject (400) anything still outside A to Z and 0 to 9, and show the normalised plate to the operator before submitting (same rule in the form). The letter-mapping table needs real plate examples from the owner. Tests: Devanagari digits map to Latin; two different plates never collapse into one key; a refused character gives a clear message in English and Nepali.
+- **G-05 (after the charger test).** Keep the highest delivered value (`max(previous, new)`); flag the session when a reading falls below the last one; take the baseline from the start event (or accept the first sample only when it is near zero); store unit-converted values with a "reset seen" marker (`SQL?` for a flag column; ask). Depends on what the real chargers send.
+- **P1b-07.** Store the photo, name and phone as entered on the **charging session**; never overwrite an existing vehicle photo (append a new one); re-encode plate photos the way receipts are (decode, size-check, write a fresh JPEG without metadata); write an audit row when a vehicle's name, phone or photo changes; optionally audit photo views. `SQL?` **yes**: new session columns. Write the SQL first and ask the owner to run it before the code deploys.
+
+### G9. Limits on big reads
+
+- **P1B1-03.** Cap analytics date ranges at **366 days** (400 beyond); `GET /api/transactions` defaults to the last **31 days** with paging (**100** rows per page); replace the two "all time" loads with SQL that filters by business code and aggregates (or cache for a minute); filter by business and status in the query, not in Java. In `docker/entrypoint.sh` set `-XX:MaxRAMPercentage` and a heap-dump-on-out-of-memory flag (needs no decision). Tests: a range over 366 days is refused; the default window and paging; totals unchanged for valid ranges.
 
 ## 5. Real-charger test (needed for G5)
 

@@ -1,6 +1,6 @@
 # Waiting for the owner, and ops / CI items
 
-**Update 2026-10-17:** the owner answered 23 of the 32 questions in section 1 (marked ✅ below); the answers and what to build are in [`DECISIONS-MADE.md`](DECISIONS-MADE.md). Still open: L-03, P0-06, P1B3-05, L-02, I-02, G-02, G-05, P1b-07, P1B1-03.
+**Update 2026-10-17:** the owner answered all 32 questions in section 1 (marked ✅ below); the answers and what to build are in [`DECISIONS-MADE.md`](DECISIONS-MADE.md).
 
 **Do not start anything in the first part of this file without the owner's answer.** Each one is a rule about who may do what, or how money is counted, or a trade-off the owner has to choose. Building a guess would change how the business works.
 
@@ -8,7 +8,7 @@ The second part is hosting, database, CI and documentation work. Some of it can 
 
 This repository is public, so the questions are worded neutrally. The full text of every finding is in the private report (README section 6).
 
-## 1. Decisions only the owner can make (32: 23 answered on 2026-10-17, 9 still open)
+## 1. Decisions only the owner can make (32: all answered on 2026-10-17)
 
 | ID | Sev | The question for the owner |
 |---|---|---|
@@ -22,19 +22,19 @@ This repository is public, so the questions are worded neutrally. The full text 
 | A-03 | Low | Should accounts created or reset by an admin, and the first-run admin, be forced to choose their own password at first login? **✅ Decided: see DECISIONS-MADE.md** |
 | C-02 | Low | How should loan repayments paid to the bank count in the drawer and in the day's totals? **✅ Decided: see DECISIONS-MADE.md** |
 | C-03 | Low | On a charger that unlocks by itself, when is the EV sale booked (when the charger reports the end, or when the staff takes payment)? **✅ Decided: see DECISIONS-MADE.md** |
-| G-02 | Low | Which number-plate formats must be supported (for example Devanagari plates), and how should they be stored? |
+| G-02 | Low | Which number-plate formats must be supported (for example Devanagari plates), and how should they be stored? **✅ Decided: see DECISIONS-MADE.md** |
 | G-03 | Low | How far back may staff post entries into days that were never closed? **✅ Decided: see DECISIONS-MADE.md** |
-| G-05 | Low | Charger meter readings: what to do with a reading lower than the previous one or after a meter reset? |
-| I-02 | Low | The public checkout says when stock is short: may it reveal the remaining count, or should it say only "not available"? |
+| G-05 | Low | Charger meter readings: what to do with a reading lower than the previous one or after a meter reset? **✅ Decided: see DECISIONS-MADE.md** |
+| I-02 | Low | The public checkout says when stock is short: may it reveal the remaining count, or should it say only "not available"? **✅ Decided: see DECISIONS-MADE.md** |
 | I-04 | Low | First-run admin password: it is printed once in the log by design (CLAUDE.md). Keep, or require `ADMIN_INITIAL_PASSWORD`? **✅ Decided: see DECISIONS-MADE.md** |
 | I-05 | Low | Should the app refuse to start for weak (not just published) secrets, and what is "weak"? **✅ Decided: see DECISIONS-MADE.md** |
-| L-02 | Low | Customer personal data: how long is it kept, and how is it erased on request? (Soft delete rule in CLAUDE.md applies.) |
-| L-03 | Low | Which roles may read online customers' contact details? |
-| P0-06 | Low | Which roles may read a closed daily report for any date? |
-| P1B1-03 | Low | Limits on analytics and list endpoints: maximum date range, default window, paging. |
+| L-02 | Low | Customer personal data: how long is it kept, and how is it erased on request? (Soft delete rule in CLAUDE.md applies.) **✅ Decided: see DECISIONS-MADE.md** |
+| L-03 | Low | Which roles may read online customers' contact details? **✅ Decided: see DECISIONS-MADE.md** |
+| P0-06 | Low | Which roles may read a closed daily report for any date? **✅ Decided: see DECISIONS-MADE.md** |
+| P1B1-03 | Low | Limits on analytics and list endpoints: maximum date range, default window, paging. **✅ Decided: see DECISIONS-MADE.md** |
 | P1B3-02 | Low | May staff post fuel purchase entries, or is that manager-only? **✅ Decided: see DECISIONS-MADE.md** |
 | P1B3-03 | Low | Per-account wrong-password budget (currently 10 per account, effectively 50 with the per-address limits)? **✅ Decided: see DECISIONS-MADE.md** |
-| P1B3-05 | Low | Which roles may read recent daily reports (PR #111 intended manager-only)? |
+| P1B3-05 | Low | Which roles may read recent daily reports (PR #111 intended manager-only)? **✅ Decided: see DECISIONS-MADE.md** |
 | P1a-07 | Low | Loan payments: must the booked amount equal principal plus interest, and who enters which? **✅ Decided: see DECISIONS-MADE.md** |
 | P1a-08 | Low | Same question as P1B3-01 for furniture and honey stock. **✅ Decided: see DECISIONS-MADE.md** |
 | P1a-11 | Low | Charge sessions: cancel, void and timeout rules for a session that never charged. **✅ Decided: see DECISIONS-MADE.md** |
@@ -42,7 +42,7 @@ This repository is public, so the questions are worded neutrally. The full text 
 | P1a-15 | Low | EV payments by eSewa or Khalti: do they count as drawer cash? **✅ Decided: see DECISIONS-MADE.md** |
 | P1b-04 | Low | Daily-close verification: who may verify, and may it be repeated? **✅ Decided: see DECISIONS-MADE.md** |
 | P1b-05 | Low | An admin's own payment to the bank: should it need a second approver and a receipt photo? **✅ Decided: see DECISIONS-MADE.md** |
-| P1b-07 | Low | Plate-photo evidence: kept per vehicle (today) or per charging session? |
+| P1b-07 | Low | Plate-photo evidence: kept per vehicle (today) or per charging session? **✅ Decided: see DECISIONS-MADE.md** |
 | P1b-09 | Low | "Entered by / reviewed by / closed by" labels: free-text display names today; switch to the immutable username? **✅ Decided: see DECISIONS-MADE.md** |
 
 ### Leftover pieces of partly fixed findings (also the owner's call)

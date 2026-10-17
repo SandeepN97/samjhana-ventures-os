@@ -6,8 +6,8 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
 - **Done:** 46 findings fixed with tests, all merged into `staging` (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md). Nothing from this series is waiting for a merge; the `staging` → `main` release PR (#173) is the owner's.
-- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet). [`DECISIONS-MADE.md`](DECISIONS-MADE.md) holds what the owner decided on 23 of the 32 questions (2026-10-17) and what to build for each, in groups G1 to G6.
-- **Not yours to start:** the 9 questions still undecided ([`DECISIONS-MADE.md`](DECISIONS-MADE.md) section 4) and the 27 ops/CI/database items in [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md). Every question that still needs the owner, with options and a recommendation, is in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md).
+- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet). [`DECISIONS-MADE.md`](DECISIONS-MADE.md) holds what the owner decided on all 32 questions (2026-10-17) and what to build for each, in groups G1 to G9.
+- **Not yours to start:** the 27 ops/CI/database items in [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md). Everything that still needs the owner (hosting, database and CI choices, release timing, assumptions to confirm), with options and a recommendation, is in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md) sections B to D.
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
 
@@ -34,7 +34,7 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 - #160 once failed in CI before any test ran, because Maven Central could not be reached for a plugin. That is an infrastructure failure, not a code failure. The Claude Code integration cannot re-run a job (403), so the PR was updated again after another merge, which started a fresh run.
 - GitHub's "Update branch" answered "merge conflict between base and head" for #168, although `git merge` of `origin/staging` into the branch was clean (the branch and `staging` had two merge bases after the stack was merged). Merging `origin/staging` into the branch locally, running the checks and pushing fixed it.
 
-**In progress when this was written:** nothing is half-done and nothing is unpushed: every branch has been merged. The owner decided the NOC fuel-price scraper should not exist at all, so it was removed (#167) and its four findings (M-01 to M-04) were closed that way instead of being hardened; prices are entered by hand on the Fuel Price page. The owner paused the series on 2026-10-17 to merge everything first and to keep the test site awake (#170); ask before starting `QUEUE.md` item 1. Later the same day the owner answered 23 of the 32 decision questions in a one-topic-at-a-time session; the answers and the build plan are in `DECISIONS-MADE.md`. The owner's free-text reply to the topic 7 questions was not received, so topic 7 (and topics 8 and 9) are still open.
+**In progress when this was written:** nothing is half-done and nothing is unpushed: every branch has been merged. The owner decided the NOC fuel-price scraper should not exist at all, so it was removed (#167) and its four findings (M-01 to M-04) were closed that way instead of being hardened; prices are entered by hand on the Fuel Price page. The owner paused the series on 2026-10-17 to merge everything first and to keep the test site awake (#170); ask before starting `QUEUE.md` item 1. Later the same day the owner answered all 32 decision questions in a one-topic-at-a-time session; the answers and the build plan are in `DECISIONS-MADE.md`.
 
 **Quick start**
 
@@ -84,8 +84,8 @@ If the private copy is not available you can still do everything in `QUEUE.md`: 
 | `README.md` | this guide |
 | `STATUS.md` | all 118 findings with their status and PR |
 | `QUEUE.md` | what to fix next (no decision needed), with fix and test ideas |
-| `DECISIONS-MADE.md` | what the owner decided (23 of 32), what to build for each, what is still undecided, the real-charger test |
-| `OWNER-QUESTIONS.md` | everything still waiting for the owner: undecided rules (A), hosting, database and CI items (B), other open items (C), assumptions to confirm (D) |
+| `DECISIONS-MADE.md` | what the owner decided (all 32), what to build for each (groups G1 to G9), the real-charger test |
+| `OWNER-QUESTIONS.md` | everything still waiting for the owner: hosting, database and CI items (B), other open items (C), assumptions to confirm (D); the rules in A are answered |
 | `DECISIONS-AND-OPS.md` | the original questions for the owner, and ops/CI/database items |
 | `METHOD.md` | the routine, commands, mutation checks, PR body, gotchas |
 | `tools/` | `mutate.py`, `example-mutations.json` |

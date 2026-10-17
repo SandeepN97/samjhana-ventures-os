@@ -1,10 +1,10 @@
 # Questions that still need the owner
 
-Written 2026-10-17 by Claude Code. Everything here is waiting for an answer from the owner (or for something only the owner can do). Reply with the item number and the option letter, for example "A1 a" or "B5: 1 hop". Items marked **Rec** show Claude's recommendation; nothing is built from this file until the owner answers. Decisions already made are in `DECISIONS-MADE.md`.
+Written 2026-10-17 by Claude Code. Everything here is waiting for an answer from the owner (or for something only the owner can do). Reply with the item number and the option letter, for example "A1 a" or "B5: 1 hop". Items marked **Rec** show Claude's recommendation; nothing in sections B to D is built until the owner answers. Decisions already made are in `DECISIONS-MADE.md`.
 
 This repository is public, so the wording is neutral. The full finding text is in the private report (`README.md` section 6).
 
-## A. Rules still undecided (9 findings)
+## A. Rules that were undecided: ANSWERED on 2026-10-17 (the owner chose the recommended option, **Rec.**, for A1 to A8; the build plan is in `DECISIONS-MADE.md` groups G7 to G9)
 
 | # | Finding | Question | Options (Rec first) |
 |---|---|---|---|
@@ -46,7 +46,6 @@ Already done: **K-04** (the keep-alive job pointed at a page the app does not se
 | C3 | Keep-alive | Set the repository variable `STAGING_HEALTH_URL` to `https://samjhana-ventures-os-staging.onrender.com/api/public/fuel-prices/current` (check the host in Render) and, if wanted, `PROD_HEALTH_URL`; or use a free outside pinger (cron-job.org, UptimeRobot) because GitHub's schedule is unreliable |
 | C4 | Domain e-mail `sandeep@samjhanamultiproduct.com` | Who hosts the domain's DNS (registrar, Cloudflare)? Then choose: free receive-only forwarding (Cloudflare Email Routing), or the open-source Forward Email service that can also send |
 | C5 | Real-charger test | A date, which charger, and who saves the charger's log and the app's `ocpp_message_log` (checklist in `DECISIONS-MADE.md` section 5) |
-| C6 | Section A | Answer A1 to A8, or ask Claude to walk through them again one at a time |
 
 ## D. Confirm these assumptions (made while recording the answers)
 
