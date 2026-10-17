@@ -1052,4 +1052,152 @@ class ChargeSessionServiceTest {
 
         verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
+
+    // ------------------------------------------------------------------ finding P1a-16: events and a session's state
+
+    /** A Started event for transaction {@code transactionId}, answering the start command with this {@code remoteStartId}. */
+    private JsonNode startedEvent(String transactionId, Integer remoteStartId, Integer seqNo) throws Exception {
+        return mapper.readTree("{\"eventType\":\"Started\","
+                + (seqNo == null ? "" : "\"seqNo\":" + seqNo + ",")
+                + "\"timestamp\":\"2026-09-19T11:00:00+05:45\",\"evse\":{\"id\":1,\"connectorId\":1},"
+                + "\"transactionInfo\":{\"transactionId\":\"" + transactionId + "\""
+                + (remoteStartId == null ? "" : ",\"remoteStartId\":" + remoteStartId) + "},"
+                + "\"meterValue\":[{\"sampledValue\":[{\"measurand\":\"SoC\",\"value\":55},"
+                + "{\"measurand\":\"Energy.Active.Import.Register\",\"value\":9000}]}]}");
+    }
+
+    private ChargeSession waitingSessionForARestartedCounter() {
+        ChargeSession waiting = ChargeSession.builder()
+                .id(UUID.randomUUID()).chargePoint(chargePoint)
+                .vehicle(EvCustomerVehicle.builder().id(UUID.randomUUID()).plateNumber("BA2PA9999").build())
+                .connectorId(1).targetPercent(80).startSoc(10).currentSoc(10).energyDeliveredKwh(BigDecimal.ZERO)
+                .ratePerPercent(new BigDecimal("14")).status(ChargeSession.Status.STARTING)
+                .requestedAt(LocalDateTime.now()).build();
+        when(chargeSessionRepository.findByChargePointCodeAndStatus(CODE, ChargeSession.Status.STARTING))
+                .thenReturn(java.util.List.of(waiting));
+        return waiting;
+    }
+
+    @Test
+    void shouldGiveAReusedTransactionIdToTheWaitingSession_notToTheClosedSessionThatOnceHadIt() throws Exception {
+        ChargeSession closed = session(ChargeSession.Status.CLOSED);   // transaction TX-1, finished and paid
+        closed.setCurrentSoc(80);
+        closed.setPaidAt(LocalDateTime.now().minusHours(3));
+        ChargeSession waiting = waitingSessionForARestartedCounter();
+
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", OcppCommandService.remoteStartIdFor(waiting.getId()), 0));
+
+        assertEquals(ChargeSession.Status.ACTIVE, waiting.getStatus());
+        assertEquals("TX-1", waiting.getOcppTransactionId());
+        assertEquals(55, waiting.getCurrentSoc());
+        assertEquals(ChargeSession.Status.CLOSED, closed.getStatus());
+        assertEquals(80, closed.getCurrentSoc());
+        assertEquals(0, BigDecimal.ZERO.compareTo(closed.getEnergyDeliveredKwh()));
+    }
+
+    @Test
+    void shouldIgnoreAnEventForAClosedSession_whenNothingIsWaitingToTakeItsTransactionId() throws Exception {
+        ChargeSession closed = session(ChargeSession.Status.CLOSED);
+        closed.setCurrentSoc(80);
+
+        service.handleTransactionEvent(CODE, event("Updated", 9, 10, 1_000L));
+
+        assertEquals(ChargeSession.Status.CLOSED, closed.getStatus());
+        assertEquals(80, closed.getCurrentSoc());
+        verify(chargeSessionRepository, never()).save(any(ChargeSession.class));
+    }
+
+    @Test
+    void shouldIgnoreEveryEventForASessionThatIsFinished() throws Exception {
+        for (ChargeSession.Status finished : new ChargeSession.Status[]{
+                ChargeSession.Status.CLOSED, ChargeSession.Status.FAILED, ChargeSession.Status.CANCELLED}) {
+            ChargeSession session = session(finished);
+            session.setCurrentSoc(77);
+
+            service.handleTransactionEvent(CODE, event("Started", 5, 10, 1_000L));
+            service.handleTransactionEvent(CODE, event("Updated", 6, 11, 2_000L));
+            service.handleTransactionEvent(CODE, event("Ended", 7, 12, 3_000L));
+
+            assertEquals(finished, session.getStatus(), "status of a " + finished + " session");
+            assertEquals(77, session.getCurrentSoc(), "state of charge of a " + finished + " session");
+        }
+        verify(chargeSessionRepository, never()).save(any(ChargeSession.class));
+    }
+
+    @Test
+    void shouldStillHandleEventsForEveryOpenStatus() throws Exception {
+        for (ChargeSession.Status open : new ChargeSession.Status[]{
+                ChargeSession.Status.STARTING, ChargeSession.Status.ACTIVE, ChargeSession.Status.STOP_REQUESTED,
+                ChargeSession.Status.AWAITING_PAYMENT, ChargeSession.Status.PAID, ChargeSession.Status.UNLOCK_REQUESTED}) {
+            ChargeSession session = session(open);
+
+            service.handleTransactionEvent(CODE, event("Updated", 1, 61, 6_000L));
+
+            assertEquals(61, session.getCurrentSoc(), "state of charge of a " + open + " session");
+            // only a session still waiting to start is moved on by an Updated event
+            assertEquals(open == ChargeSession.Status.STARTING ? ChargeSession.Status.ACTIVE : open, session.getStatus(),
+                    "status of a " + open + " session");
+        }
+    }
+
+    @Test
+    void shouldKeepASessionStopRequested_whenALateStartedEventArrives() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.STOP_REQUESTED);
+
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, 0));
+
+        assertEquals(ChargeSession.Status.STOP_REQUESTED, session.getStatus());
+    }
+
+    @Test
+    void shouldNotReopenASessionAwaitingPayment_whenStartedIsReplayedWithoutASequenceNumber() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
+
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, null));
+
+        assertEquals(ChargeSession.Status.AWAITING_PAYMENT, session.getStatus());
+    }
+
+    @Test
+    void shouldNotUndoPaymentOrUnlock_whenStartedIsReplayed() throws Exception {
+        ChargeSession paid = session(ChargeSession.Status.PAID);
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, null));
+        assertEquals(ChargeSession.Status.PAID, paid.getStatus());
+
+        ChargeSession unlocking = session(ChargeSession.Status.UNLOCK_REQUESTED);
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, null));
+        assertEquals(ChargeSession.Status.UNLOCK_REQUESTED, unlocking.getStatus());
+    }
+
+    @Test
+    void shouldNotResetTheStartTime_whenStartedIsReplayedOnAnActiveSession() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        LocalDateTime started = LocalDateTime.of(2026, 9, 19, 9, 0);
+        session.setStartedAt(started);
+
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, null));
+
+        assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
+        assertEquals(started, session.getStartedAt());
+    }
+
+    @Test
+    void shouldStillStartASession_whenItsFirstStartedEventArrives() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.STARTING);
+
+        service.handleTransactionEvent(CODE, startedEvent("TX-1", null, 0));
+
+        assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
+        assertEquals("Charging in progress", session.getStatusMessage());
+        assertNotNull(session.getStartedAt());
+    }
+
+    @Test
+    void shouldStillTreatAnUpdatedEventAsStarted_whenTheStartedEventWasLost() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.STARTING);
+
+        service.handleTransactionEvent(CODE, event("Updated", 3, 45, 4_000L));
+
+        assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
+    }
 }
