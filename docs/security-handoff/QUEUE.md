@@ -69,3 +69,7 @@ Notes that apply to every entry:
 
 - **P1b-08**: add audit rows (existing `AuditLog.EntityType` values only; a non-null user) for the still-unaudited admin actions: website text and pictures (site content, media upload and delete), EV vehicle rates, furniture items and stock, rental properties and tenants, staff HR records, restaurant menu, customer delete, and daily-close and verify. Pattern to copy: `FuelPriceService.saveOrUpdatePrice` (PR #143) and `ChargeSessionService.recordCommand` (PR #145).
 - **P0-12** and **P1b-03**: the remaining parts are owner decisions (DECISIONS-AND-OPS.md).
+
+## Decided items
+
+The owner has answered 23 of the 32 open questions. What to build for them, in groups G1 to G6 with tests and SQL flags, is in `DECISIONS-MADE.md`; the 8 items above need no decision and can run in parallel. The real-charger test (DECISIONS-MADE.md section 5) gates the EV charging group.

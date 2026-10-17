@@ -1,55 +1,57 @@
 # Waiting for the owner, and ops / CI items
 
+**Update 2026-10-17:** the owner answered 23 of the 32 questions in section 1 (marked ✅ below); the answers and what to build are in [`DECISIONS-MADE.md`](DECISIONS-MADE.md). Still open: L-03, P0-06, P1B3-05, L-02, I-02, G-02, G-05, P1b-07, P1B1-03.
+
 **Do not start anything in the first part of this file without the owner's answer.** Each one is a rule about who may do what, or how money is counted, or a trade-off the owner has to choose. Building a guess would change how the business works.
 
 The second part is hosting, database, CI and documentation work. Some of it can be done in a pull request, some needs Render or Supabase access that only the owner has.
 
 This repository is public, so the questions are worded neutrally. The full text of every finding is in the private report (README section 6).
 
-## 1. Decisions only the owner can make (32)
+## 1. Decisions only the owner can make (32: 23 answered on 2026-10-17, 9 still open)
 
 | ID | Sev | The question for the owner |
 |---|---|---|
-| P1a-02 | Medium | Charger-initiated sessions: how strictly should the server treat a charging session that a charger starts by itself (no staff request)? Options: stop it, hold it for payment, or only flag it. |
-| P1a-01 | High | EV charging price floor: which inputs may staff override, and what must the floor be calculated from? |
-| C-01 | Medium | Which payment methods count as cash in the drawer when the day is closed, and who chooses the method on a sale? |
-| P0-10 | Medium | Lock-out policy for a username that is being guessed: how long, and is it acceptable that the real user is locked out while it lasts? |
-| P1B3-01 | Medium | Who may increase stock through an ordinary purchase entry? (`docs/ROLES.md` says stock changes are manager-only; confirm and the server can enforce it.) |
-| P1a-06 | Medium | Approve/reject: which status changes are allowed (for example may an approved sale be rejected, by whom, with what reason)? |
-| P1a-09 | Medium | Charger unlock flow: should the connector stay locked until payment is taken, and what happens when the lock state cannot be verified? |
-| A-03 | Low | Should accounts created or reset by an admin, and the first-run admin, be forced to choose their own password at first login? |
-| C-02 | Low | How should loan repayments paid to the bank count in the drawer and in the day's totals? |
-| C-03 | Low | On a charger that unlocks by itself, when is the EV sale booked (when the charger reports the end, or when the staff takes payment)? |
+| P1a-02 | Medium | Charger-initiated sessions: how strictly should the server treat a charging session that a charger starts by itself (no staff request)? Options: stop it, hold it for payment, or only flag it. **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-01 | High | EV charging price floor: which inputs may staff override, and what must the floor be calculated from? **✅ Decided: see DECISIONS-MADE.md** |
+| C-01 | Medium | Which payment methods count as cash in the drawer when the day is closed, and who chooses the method on a sale? **✅ Decided: see DECISIONS-MADE.md** |
+| P0-10 | Medium | Lock-out policy for a username that is being guessed: how long, and is it acceptable that the real user is locked out while it lasts? **✅ Decided: see DECISIONS-MADE.md** |
+| P1B3-01 | Medium | Who may increase stock through an ordinary purchase entry? (`docs/ROLES.md` says stock changes are manager-only; confirm and the server can enforce it.) **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-06 | Medium | Approve/reject: which status changes are allowed (for example may an approved sale be rejected, by whom, with what reason)? **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-09 | Medium | Charger unlock flow: should the connector stay locked until payment is taken, and what happens when the lock state cannot be verified? **✅ Decided: see DECISIONS-MADE.md** |
+| A-03 | Low | Should accounts created or reset by an admin, and the first-run admin, be forced to choose their own password at first login? **✅ Decided: see DECISIONS-MADE.md** |
+| C-02 | Low | How should loan repayments paid to the bank count in the drawer and in the day's totals? **✅ Decided: see DECISIONS-MADE.md** |
+| C-03 | Low | On a charger that unlocks by itself, when is the EV sale booked (when the charger reports the end, or when the staff takes payment)? **✅ Decided: see DECISIONS-MADE.md** |
 | G-02 | Low | Which number-plate formats must be supported (for example Devanagari plates), and how should they be stored? |
-| G-03 | Low | How far back may staff post entries into days that were never closed? |
+| G-03 | Low | How far back may staff post entries into days that were never closed? **✅ Decided: see DECISIONS-MADE.md** |
 | G-05 | Low | Charger meter readings: what to do with a reading lower than the previous one or after a meter reset? |
 | I-02 | Low | The public checkout says when stock is short: may it reveal the remaining count, or should it say only "not available"? |
-| I-04 | Low | First-run admin password: it is printed once in the log by design (CLAUDE.md). Keep, or require `ADMIN_INITIAL_PASSWORD`? |
-| I-05 | Low | Should the app refuse to start for weak (not just published) secrets, and what is "weak"? |
+| I-04 | Low | First-run admin password: it is printed once in the log by design (CLAUDE.md). Keep, or require `ADMIN_INITIAL_PASSWORD`? **✅ Decided: see DECISIONS-MADE.md** |
+| I-05 | Low | Should the app refuse to start for weak (not just published) secrets, and what is "weak"? **✅ Decided: see DECISIONS-MADE.md** |
 | L-02 | Low | Customer personal data: how long is it kept, and how is it erased on request? (Soft delete rule in CLAUDE.md applies.) |
 | L-03 | Low | Which roles may read online customers' contact details? |
 | P0-06 | Low | Which roles may read a closed daily report for any date? |
 | P1B1-03 | Low | Limits on analytics and list endpoints: maximum date range, default window, paging. |
-| P1B3-02 | Low | May staff post fuel purchase entries, or is that manager-only? |
-| P1B3-03 | Low | Per-account wrong-password budget (currently 10 per account, effectively 50 with the per-address limits)? |
+| P1B3-02 | Low | May staff post fuel purchase entries, or is that manager-only? **✅ Decided: see DECISIONS-MADE.md** |
+| P1B3-03 | Low | Per-account wrong-password budget (currently 10 per account, effectively 50 with the per-address limits)? **✅ Decided: see DECISIONS-MADE.md** |
 | P1B3-05 | Low | Which roles may read recent daily reports (PR #111 intended manager-only)? |
-| P1a-07 | Low | Loan payments: must the booked amount equal principal plus interest, and who enters which? |
-| P1a-08 | Low | Same question as P1B3-01 for furniture and honey stock. |
-| P1a-11 | Low | Charge sessions: cancel, void and timeout rules for a session that never charged. |
-| P1a-14 | Low | Daily close: may the person who closed a day also verify it? |
-| P1a-15 | Low | EV payments by eSewa or Khalti: do they count as drawer cash? |
-| P1b-04 | Low | Daily-close verification: who may verify, and may it be repeated? |
-| P1b-05 | Low | An admin's own payment to the bank: should it need a second approver and a receipt photo? |
+| P1a-07 | Low | Loan payments: must the booked amount equal principal plus interest, and who enters which? **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-08 | Low | Same question as P1B3-01 for furniture and honey stock. **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-11 | Low | Charge sessions: cancel, void and timeout rules for a session that never charged. **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-14 | Low | Daily close: may the person who closed a day also verify it? **✅ Decided: see DECISIONS-MADE.md** |
+| P1a-15 | Low | EV payments by eSewa or Khalti: do they count as drawer cash? **✅ Decided: see DECISIONS-MADE.md** |
+| P1b-04 | Low | Daily-close verification: who may verify, and may it be repeated? **✅ Decided: see DECISIONS-MADE.md** |
+| P1b-05 | Low | An admin's own payment to the bank: should it need a second approver and a receipt photo? **✅ Decided: see DECISIONS-MADE.md** |
 | P1b-07 | Low | Plate-photo evidence: kept per vehicle (today) or per charging session? |
-| P1b-09 | Low | "Entered by / reviewed by / closed by" labels: free-text display names today; switch to the immutable username? |
+| P1b-09 | Low | "Entered by / reviewed by / closed by" labels: free-text display names today; switch to the immutable username? **✅ Decided: see DECISIONS-MADE.md** |
 
 ### Leftover pieces of partly fixed findings (also the owner's call)
 
-- **P0-12** (rest): policy for how long stock is held for an unpaid online order and how the public order throttle should behave.
-- **P1b-03** (rest): the approve/reject state machine (same decision as P1a-06). The audit-trail part is done in PR #137.
-- **P1b-02**: re-entering the acting admin's password, second-admin confirmation or a delay for admin-on-admin actions, and expiry of temporary passwords. The decision-free parts of P1b-02 (last-admin guard, no finalising another admin's reset, audit row for every password change) are done in PR #154.
-- **P1a-10** and **P1B1-01**: whether the app should refuse to start for charger secrets shorter than 24 characters, and whether the environment variable should always overwrite the stored charger secret (it would undo `rotate-secret`).
-- **A-02**: the minimum password length (the audit suggests 12; today 8).
+- **P0-12** (rest): policy for how long stock is held for an unpaid online order and how the public order throttle should behave. **✅ Decided: see DECISIONS-MADE.md**
+- **P1b-03** (rest): the approve/reject state machine (same decision as P1a-06). The audit-trail part is done in PR #137. **✅ Decided: see DECISIONS-MADE.md**
+- **P1b-02**: re-entering the acting admin's password, second-admin confirmation or a delay for admin-on-admin actions, and expiry of temporary passwords. The decision-free parts of P1b-02 (last-admin guard, no finalising another admin's reset, audit row for every password change) are done in PR #154. **✅ Decided: see DECISIONS-MADE.md**
+- **P1a-10** and **P1B1-01**: whether the app should refuse to start for charger secrets shorter than 24 characters, and whether the environment variable should always overwrite the stored charger secret (it would undo `rotate-secret`). **✅ Decided: see DECISIONS-MADE.md**
+- **A-02**: the minimum password length (the audit suggests 12; today 8). **✅ Decided: see DECISIONS-MADE.md**
 
 ## 2. Ops, CI, database, docs and architecture (28)
 
