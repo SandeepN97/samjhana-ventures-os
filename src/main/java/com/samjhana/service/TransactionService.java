@@ -6,6 +6,7 @@ import com.samjhana.dto.TransactionRequest;
 import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BusinessUnit;
+import com.samjhana.entity.FuelPrice;
 import com.samjhana.entity.FurnitureItem;
 import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.Transaction;
@@ -16,10 +17,12 @@ import com.samjhana.exception.TransactionNotFoundException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
 import com.samjhana.repository.DailyReportRepository;
+import com.samjhana.repository.FuelPriceRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
 import com.samjhana.strategy.BusinessCalculationStrategy.ValidationResult;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,8 +37,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -52,8 +58,16 @@ public class TransactionService {
     private final SystemSettingRepository systemSettingRepository;
     private final BeekeepingService beekeepingService;
     private final LoanReceiptService loanReceiptService;
+    private final FuelPriceRepository fuelPriceRepository;
 
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
+
+    /** Businesses whose sales the server can work out itself (quantity x rate). Every other business is unchanged. */
+    private static final java.util.Set<String> COMPUTED_AMOUNT_BUSINESSES =
+            java.util.Set.of(BusinessUnit.CODE_PETROL, BusinessUnit.CODE_EV);
+    /** How many rupees the client's amount may differ from the server's figure by (rounding). */
+    private static final BigDecimal AMOUNT_TOLERANCE = new BigDecimal("1.00");
+    private static final BigDecimal RATE_TOLERANCE = new BigDecimal("0.01");
 
     /**
      * The most characters of extra details ({@code customFields}, as JSON) one entry may carry. Real entries are a few
@@ -161,6 +175,21 @@ public class TransactionService {
             addServerSideCost(business.getCode(), request.getTransactionType(), request.getAmount(), customFields);
         }
 
+        // For fuel and EV sales the server works the amount out itself; the client's figure is only a claim.
+        SaleAmountCheck amountCheck = checkSaleAmount(business.getCode(), request.getTransactionType(),
+                request.getAmount(), request.getCustomFields(), date);
+        String amountOverrideNote = null;
+        if (amountCheck.disagrees()) {
+            if (!user.canManage()) {
+                throw new IllegalArgumentException("This sale does not add up: " + amountCheck.describe());
+            }
+            // A manager or admin may discount or correct a sale: it is kept as entered, marked, and audited below.
+            if (customFields == null) customFields = new LinkedHashMap<>();
+            if (amountCheck.expected() != null) customFields.put("expectedAmount", amountCheck.expected());
+            customFields.put("amountOverride", true);
+            amountOverrideNote = "AMOUNT OVERRIDE by " + user.getUsername() + ": " + amountCheck.describe();
+        }
+
         String customFieldsJson;
         try {
             customFieldsJson = objectMapper.writeValueAsString(customFields);
@@ -223,12 +252,80 @@ public class TransactionService {
 
         auditLogRepository.save(AuditLog.createEvent(user, AuditLog.EntityType.TRANSACTION,
                 saved.getId(), customFieldsJson));
+        if (amountOverrideNote != null) {
+            AuditLog override = AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION, saved.getId(), null, customFieldsJson);
+            override.setDescription(amountOverrideNote.length() > 500 ? amountOverrideNote.substring(0, 500) : amountOverrideNote);
+            auditLogRepository.save(override);
+        }
 
         if (!stockAlreadyHeld && "furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
             adjustFurnitureStock(request.getCustomFields(), request.getTransactionType());
         }
 
         return TransactionVisibility.toResponse(saved, user, objectMapper);
+    }
+
+    /** What the server found when it compared a sale with its own figures. */
+    private record SaleAmountCheck(List<String> problems, BigDecimal expected) {
+        boolean disagrees() {
+            return !problems.isEmpty();
+        }
+
+        String describe() {
+            return String.join("; ", problems);
+        }
+    }
+
+    /**
+     * SECURITY (P0-02). For a petrol or EV sale, works out quantity x rate with the business's own strategy and, for fuel,
+     * looks up the pump price in force on the sale date (or the day before, for entries made around midnight or a price
+     * change). Anything the server cannot check (no strategy figure, no price set yet) is left alone.
+     */
+    private SaleAmountCheck checkSaleAmount(String businessCode, String transactionType, BigDecimal amount,
+                                            Map<String, Object> fields, LocalDate date) {
+        List<String> problems = new ArrayList<>();
+        String code = businessCode == null ? "" : businessCode.toLowerCase(Locale.ROOT);
+        if (!Transaction.TransactionType.SALE.name().equals(transactionType) || !COMPUTED_AMOUNT_BUSINESSES.contains(code)) {
+            return new SaleAmountCheck(problems, null);
+        }
+        BigDecimal expected = null;
+        if (fields == null) {
+            problems.add("no quantity or rate was given");
+        } else {
+            BigDecimal worked = calculationEngine.calculateAmount(code, fields);
+            if (worked != null && worked.signum() > 0) {
+                expected = worked;
+                if (amount.subtract(worked).abs().compareTo(AMOUNT_TOLERANCE) > 0) {
+                    problems.add("amount " + amount.toPlainString() + " is not quantity x rate " + worked.toPlainString());
+                }
+            }
+            if (BusinessUnit.CODE_PETROL.equals(code)) {
+                BigDecimal rate = toNumber(fields.get("ratePerLiter"));
+                List<BigDecimal> prices = fuelPricesInForce(fields.get("fuelType"), date);
+                if (rate != null && !prices.isEmpty()
+                        && prices.stream().noneMatch(price -> price.subtract(rate).abs().compareTo(RATE_TOLERANCE) <= 0)) {
+                    problems.add("rate " + rate.toPlainString() + " is not the fuel price in force " + prices);
+                }
+            }
+        }
+        return new SaleAmountCheck(problems, expected);
+    }
+
+    /** The selling price of this fuel on {@code date} and on the day before (empty when none has been set). */
+    private List<BigDecimal> fuelPricesInForce(Object fuelType, LocalDate date) {
+        if (fuelType == null) return List.of();
+        FuelPrice.FuelType type;
+        try {
+            type = FuelPrice.FuelType.valueOf(fuelType.toString().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+        return Stream.of(date, date.minusDays(1))
+                .map(day -> fuelPriceRepository.findFirstByFuelTypeAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(type, day))
+                .flatMap(Optional::stream)
+                .map(FuelPrice::getPricePerLiter)
+                .distinct()
+                .toList();
     }
 
     /**
@@ -278,15 +375,31 @@ public class TransactionService {
         }
     }
 
+    /** The lookup below reads the pump's newest purchases one small page at a time, and at most this many pages. */
+    private static final int PURCHASE_RATE_PAGE_SIZE = 25;
+    private static final int PURCHASE_RATE_MAX_PAGES = 8;
+
+    /**
+     * What the pump last paid per litre for this fuel: the newest purchase (not rejected) of that fuel that has a rate.
+     * The database hands over the purchases newest first, a page at a time, so a sale never loads the pump's whole
+     * history (finding K-01). Purchases are rare (one per delivery), so the newest
+     * {@value #PURCHASE_RATE_PAGE_SIZE} x {@value #PURCHASE_RATE_MAX_PAGES} are far more than needed; if none of them
+     * is of this fuel the sale is saved without a purchase rate.
+     */
     private java.util.Optional<BigDecimal> latestPurchaseRate(String fuelType) {
-        return transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("petrol").stream()
-                .filter(t -> t.getTransactionType() == Transaction.TransactionType.PURCHASE)
-                .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
-                .map(t -> readFields(t.getCustomFields()))
-                .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
-                .map(cf -> toNumber(cf.get("ratePerLiter")))
-                .filter(rate -> rate != null && rate.signum() > 0)
-                .findFirst();
+        for (int page = 0; page < PURCHASE_RATE_MAX_PAGES; page++) {
+            List<Transaction> purchases = transactionRepository.findRecentByBusinessCodeAndTypeExcludingStatus(
+                    "petrol", Transaction.TransactionType.PURCHASE, Transaction.TransactionStatus.REJECTED,
+                    org.springframework.data.domain.PageRequest.of(page, PURCHASE_RATE_PAGE_SIZE));
+            java.util.Optional<BigDecimal> found = purchases.stream()
+                    .map(t -> readFields(t.getCustomFields()))
+                    .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
+                    .map(cf -> toNumber(cf.get("ratePerLiter")))
+                    .filter(rate -> rate != null && rate.signum() > 0)
+                    .findFirst();
+            if (found.isPresent() || purchases.size() < PURCHASE_RATE_PAGE_SIZE) return found;
+        }
+        return java.util.Optional.empty();
     }
 
     private Map<String, Object> readFields(String json) {
@@ -308,12 +421,7 @@ public class TransactionService {
     }
 
     private static BigDecimal toNumber(Object value) {
-        if (value == null) return null;
-        try {
-            return new BigDecimal(value.toString().trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return value == null ? null : SafeDecimal.parse(value.toString());
     }
 
     /** Every transaction the viewer may see, loans hidden from staff and cost stripped for them. */
