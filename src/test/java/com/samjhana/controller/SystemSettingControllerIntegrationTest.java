@@ -77,11 +77,12 @@ class SystemSettingControllerIntegrationTest {
         mockMvc.perform(get("/api/settings/nea_rate")).andExpect(status().isUnauthorized());
     }
 
+    /** Finding B-01: settings are for managers and admins (docs/ROLES.md), whichever key is asked for. */
     @Test
-    void shouldStillLetStaffReadOrdinarySettings() throws Exception {
+    void shouldNotLetStaffReadAnySettingThatIsStored() throws Exception {
         mockMvc.perform(get("/api/settings/shop_name").header("Authorization", bearerFor("setting-staff", User.UserRole.STAFF)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.value").value("Samjhana"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.value").doesNotExist());
     }
 
     @Test

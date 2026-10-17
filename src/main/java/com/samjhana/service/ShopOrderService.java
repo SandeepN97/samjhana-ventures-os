@@ -237,35 +237,52 @@ public class ShopOrderService {
         }
         Status before = order.getStatus();
         if (!before.canMoveTo(next)) {
-            throw new IllegalArgumentException("An order that is " + before.name().toLowerCase(Locale.ROOT)
-                    + " can't be changed to " + next.name().toLowerCase(Locale.ROOT));
+            throw new IllegalArgumentException(cannotMove(before, next));
         }
+        String why = null;
         if (next == Status.CANCELLED) {
             if (!user.canManage()) throw new AccessDeniedException("Only a manager or admin can cancel an order");
-            String why = optionalText(reason, 300, "Reason");
-            order.setCancelReason(why);
-            restoreStock(order);
+            why = optionalText(reason, 300, "Reason");
+        }
+        // The order's lines are read now: the update below leaves this copy of the order behind.
+        List<ShopOrderLine> lines = List.copyOf(order.getLines());
+
+        // The move itself comes first, as one statement that only works while the order is still in the status this
+        // request saw. Of two requests at the same moment only one gets past this line, so the sale is booked once,
+        // the held stock goes back once, and an order cannot be both completed and cancelled (finding P1a-05).
+        LocalDateTime now = LocalDateTime.now();
+        int moved = orderRepository.moveStatus(id, before, next, user.getUsername(), why,
+                next == Status.COMPLETED ? now : null, now);
+        if (moved != 1) {
+            Status current = find(id).getStatus();
+            throw new IllegalArgumentException(current.canMoveTo(next)
+                    ? "This order was just changed by someone else. Please reload it and try again."
+                    : cannotMove(current, next));
+        }
+        if (next == Status.CANCELLED) {
+            restoreStock(lines);
         }
         if (next == Status.COMPLETED) {
-            recordSale(order, user);
-            order.setCompletedAt(LocalDateTime.now());
+            recordSale(order, lines, user);
         }
-        order.setStatus(next);
-        order.setStatusUpdatedBy(user.getUsername());
-        orderRepository.save(order);
 
         AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.RESOURCE, order.getId(),
                 "{\"status\":\"" + before + "\"}", "{\"status\":\"" + next + "\"}");
         entry.setDescription("Online order " + order.getOrderNumber() + ": " + before + " to " + next);
         auditLogRepository.save(entry);
-        return toAdmin(order);
+        return toAdmin(find(id));
+    }
+
+    private static String cannotMove(Status from, Status to) {
+        return "An order that is " + from.name().toLowerCase(Locale.ROOT) + " can't be changed to " + to.name().toLowerCase(Locale.ROOT);
     }
 
     @Transactional
     public Map<String, Object> updateNotes(UUID id, String notes) {
-        ShopOrder order = find(id);
-        order.setInternalNotes(optionalText(notes, 2000, "Notes"));
-        return toAdmin(orderRepository.save(order));
+        find(id);
+        // Only the notes are written: saving the whole order back would undo a status change made at the same moment.
+        orderRepository.saveNotes(id, optionalText(notes, 2000, "Notes"), LocalDateTime.now());
+        return toAdmin(find(id));
     }
 
     // ===================== helpers =====================
@@ -274,8 +291,8 @@ public class ShopOrderService {
         return orderRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
     }
 
-    private void restoreStock(ShopOrder order) {
-        for (ShopOrderLine line : order.getLines()) {
+    private void restoreStock(List<ShopOrderLine> lines) {
+        for (ShopOrderLine line : lines) {
             if (ShopCatalogService.FURNITURE.equals(line.getProductType())) {
                 furnitureItemRepository.addStock(line.getProductId(), line.getQuantity());
             } else {
@@ -285,9 +302,9 @@ public class ShopOrderService {
     }
 
     /** One sale per business unit, so furniture and honey each land in their own books. Stock was already held. */
-    private void recordSale(ShopOrder order, User user) {
+    private void recordSale(ShopOrder order, List<ShopOrderLine> lines, User user) {
         Map<String, List<ShopOrderLine>> byBusiness = new LinkedHashMap<>();
-        for (ShopOrderLine line : order.getLines()) {
+        for (ShopOrderLine line : lines) {
             String business = ShopCatalogService.FURNITURE.equals(line.getProductType())
                     ? BusinessUnit.CODE_FURNITURE : BusinessUnit.CODE_BEEKEEPING;
             byBusiness.computeIfAbsent(business, k -> new ArrayList<>()).add(line);

@@ -41,7 +41,7 @@ to the audit log. Photos are re-saved as plain JPEG on upload, so phone location
 | Feature | Staff | Manager | Admin |
 |---|---|---|---|
 | Fuel entries; see fuel prices | ✅ | ✅ | ✅ |
-| Set fuel prices, fetch the NOC price | ✖ | ✅ | ✅ |
+| Set fuel prices | ✖ | ✅ | ✅ |
 | EV sessions: start, stop, unlock, take payment (a discount below the price needs a manager) | ✅ | ✅ | ✅ |
 | Charger lock mode | ✖ | ✅ | ✅ |
 | Rotate a charger's secret | ✖ | ✖ | ✅ |
@@ -91,6 +91,7 @@ The public site, shop, order tracking, `/api/public/**`, the login endpoint and 
 login. They never return cost prices, profit, stock counts, staff data or internal IDs.
 
 ## Notes
+- **Choosing a password** (changing your own, or an admin creating an account): 8 to 72 characters, not a common password (such as `password123` or `12345678`, in any capitals) and not containing the account's username. A Nepali letter counts as 3 towards the 72. The screen says which rule a password broke, in English or Nepali. The temporary password an admin hands out is random and is replaced by the person's own choice, which follows this rule.
 - **A forgotten admin password:** another admin resets it from Settings → Users. If there is no other admin, use the
   emergency SQL in `docs/RECOVERY.md`. Keep at least two admins.
 - **Roles live in the database as a `role` column.** Row-level security keeps everyone but the backend out of the

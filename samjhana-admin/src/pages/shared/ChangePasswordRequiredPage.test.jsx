@@ -67,6 +67,38 @@ describe('ChangePasswordRequiredPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it('shows why the server refused a common password, in English', async () => {
+    api.post.mockRejectedValue({ response: { status: 400, data: {
+      code: 'PASSWORD_TOO_COMMON', message: 'New password is too common or too easy to guess. Choose something less obvious' } } });
+    renderWithProviders(<ChangePasswordRequiredPage />);
+    await fill('Temp1234', 'Password123', 'Password123');
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('Password is too common or too easy to guess. Choose something less obvious');
+  });
+
+  it('shows why the server refused a password in Nepali, not in the English the server wrote', async () => {
+    api.post.mockRejectedValue({ response: { status: 400, data: {
+      code: 'PASSWORD_HAS_USERNAME', message: 'New password must not contain the username' } } });
+    renderWithProviders(<ChangePasswordRequiredPage />, { locale: 'ne' });
+    const boxes = document.querySelectorAll('input');
+    await userEvent.type(boxes[0], 'Temp1234');
+    await userEvent.type(boxes[1], 'Sita-Sita-7731');
+    await userEvent.type(boxes[2], 'Sita-Sita-7731');
+    await userEvent.click(screen.getByRole('button', { name: 'नयाँ पासवर्ड सुरक्षित गर्नुहोस्' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन');
+    expect(alert).not.toHaveTextContent('must not contain the username');
+  });
+
+  it('refuses a password longer than 72 bytes without calling the server', async () => {
+    renderWithProviders(<ChangePasswordRequiredPage />);
+    const tooLong = `${'Qx7!'.repeat(18)}z`;
+    await fill('Temp1234', tooLong, tooLong);
+    expect(screen.getByRole('alert'))
+      .toHaveTextContent('Password is too long. Use at most 72 characters (a Nepali letter counts as 3)');
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
   it('shows Nepali text', () => {
     renderWithProviders(<ChangePasswordRequiredPage />, { locale: 'ne' });
     expect(screen.getByText('नयाँ पासवर्ड रोज्नुहोस्')).toBeInTheDocument();

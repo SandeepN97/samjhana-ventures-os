@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Globe, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 import { changePasswordFromLogin } from '../../utils/changePasswordFromLogin';
-import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
+import { passwordProblem, passwordProblemMessage, serverPasswordMessage } from '../../utils/passwordPolicy';
 import { Wordmark } from '../../components/brand';
 
 export default function LoginPage() {
@@ -95,8 +95,9 @@ export default function LoginPage() {
       setError(t('login.currentPasswordRequired'));
       return;
     }
-    if (!isAcceptableNewPassword(newPassword)) {
-      setError(t('login.newPasswordMin8'));
+    const passwordIssue = passwordProblem(newPassword);
+    if (passwordIssue) {
+      setError(passwordProblemMessage(t, passwordIssue, 'login.newPasswordMin8'));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -123,7 +124,7 @@ export default function LoginPage() {
       setError(
         err.response?.status === 401
           ? t('login.invalidCredentials')
-          : err.response?.data?.message || t('login.changeFailed')
+          : serverPasswordMessage(err, t, 'login.newPasswordMin8', t('login.changeFailed'))
       );
     } finally {
       setLoading(false);

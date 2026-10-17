@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Registers the site's three fixed DC fast chargers when the table is empty.
@@ -56,11 +57,36 @@ public class ChargePointSeeder implements CommandLineRunner {
             }
             if (chargePoint.getOcppAuthSecretHash() == null || chargePoint.getOcppAuthSecretHash().isBlank()) {
                 chargePoint.setOcppAuthSecretHash(passwordEncoder.encode(ocppProperties.secretFor(spec.code())));
+            } else {
+                replaceTheStoredHashIfItIsThePublishedDefault(chargePoint);
             }
             chargePointRepository.save(chargePoint);
             if (isNew) created++;
         }
         log.info("Charge point registry synchronized ({} created, {} total configured).", created, specs.size());
+    }
+
+    /**
+     * The secret is hashed into the database once, so a database first booted with the development default
+     * keeps accepting that default (published in this repository) after the operator configures a real secret
+     * (finding P1B1-01). A stored hash that matches the charger's published default is therefore replaced by the
+     * configured secret. A hash set by "rotate secret" never matches the published default, so it is left alone, and
+     * nothing changes where the configured secret is itself the development default (a developer's machine).
+     */
+    private void replaceTheStoredHashIfItIsThePublishedDefault(ChargePoint chargePoint) {
+        String code = chargePoint.getCode();
+        String published = OcppProperties.publishedDevSecretFor(code);
+        if (!passwordEncoder.matches(published, chargePoint.getOcppAuthSecretHash())) return;
+        Optional<String> configured = ocppProperties.configuredSecretFor(code);
+        if (configured.isEmpty() || configured.get().equals(published)) {
+            if (configured.isEmpty()) {
+                log.warn("Charge point {} still accepts the published development secret and no secret is configured for it.", code);
+            }
+            return;
+        }
+        chargePoint.setOcppAuthSecretHash(passwordEncoder.encode(configured.get()));
+        log.warn("Charge point {} was still using the published development secret: replaced it with the configured secret. "
+                + "Set that secret on the charger.", code);
     }
 
     private ChargePoint chargePoint(ChargePointSpec spec) {

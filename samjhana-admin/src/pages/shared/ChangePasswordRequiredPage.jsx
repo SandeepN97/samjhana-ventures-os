@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import api from '../../utils/api';
 import { clearSignIn } from '../../utils/session';
-import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
+import { passwordProblem, passwordProblemMessage, serverPasswordMessage } from '../../utils/passwordPolicy';
 import LanguageToggle from '../../components/LanguageToggle';
 
 /**
@@ -28,7 +28,8 @@ export default function ChangePasswordRequiredPage() {
     e.preventDefault();
     setError('');
     if (!temporary) return setError(t('settings.currentPasswordRequired'));
-    if (!isAcceptableNewPassword(newPassword)) return setError(t('forcedPassword.tooShort'));
+    const passwordIssue = passwordProblem(newPassword);
+    if (passwordIssue) return setError(passwordProblemMessage(t, passwordIssue, 'forcedPassword.tooShort'));
     if (newPassword === temporary) return setError(t('forcedPassword.same'));
     if (newPassword !== confirm) return setError(t('forcedPassword.mismatch'));
 
@@ -43,7 +44,7 @@ export default function ChangePasswordRequiredPage() {
       localStorage.setItem('user', JSON.stringify({ ...user, mustChangePassword: false }));
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || t('settings.passwordChangeFailed', 'Failed to change password'));
+      setError(serverPasswordMessage(err, t, 'forcedPassword.tooShort', t('settings.passwordChangeFailed', 'Failed to change password')));
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,9 @@
 package com.samjhana.service;
 
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.User;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.LoanReceiptRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.zip.CRC32;
@@ -25,19 +28,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LoanReceiptServiceTest {
 
     @Mock LoanReceiptRepository repository;
+    @Mock AuditLogRepository auditLogRepository;
     LoanReceiptService service;
     User manager, other, admin;
 
     @BeforeEach
     void setUp() {
-        service = new LoanReceiptService(repository);
-        lenient().when(repository.save(any(LoanReceipt.class))).thenAnswer(i -> i.getArgument(0));
+        service = new LoanReceiptService(repository, auditLogRepository);
+        lenient().when(repository.save(any(LoanReceipt.class))).thenAnswer(i -> {
+            LoanReceipt receipt = i.getArgument(0);
+            if (receipt.getId() == null) receipt.setId(UUID.randomUUID());   // what the database does on the first save
+            return receipt;
+        });
         manager = User.builder().username("mgr").role(User.UserRole.MANAGER).build();
         other = User.builder().username("mgr2").role(User.UserRole.MANAGER).build();
         admin = User.builder().username("boss").role(User.UserRole.ADMIN).build();
@@ -150,13 +160,90 @@ class LoanReceiptServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    // ---- finding F-05: one receipt, one payment ----
+
     @Test
-    void shouldRecordWhichPaymentAReceiptBelongsTo() {
+    void shouldRecordWhichPaymentAReceiptBelongsTo_withOneGuardedStatement() {
         LoanReceipt r = existing("mgr", null);
         UUID tx = UUID.randomUUID();
+        when(repository.attachIfFree(r.getId(), tx)).thenReturn(1);
+
         service.attach(r, tx);
-        ArgumentCaptor<LoanReceipt> captor = ArgumentCaptor.forClass(LoanReceipt.class);
-        verify(repository).save(captor.capture());
-        assertThat(captor.getValue().getTransactionId()).isEqualTo(tx);
+
+        verify(repository).attachIfFree(r.getId(), tx);
+        verify(repository, never()).save(any(LoanReceipt.class));   // the whole row is never written back
+    }
+
+    @Test
+    void shouldRefuseTheSecondPayment_whenAnotherPaymentGotTheReceiptFirst() {
+        LoanReceipt staleCopy = existing("mgr", null);   // this request still sees the receipt as free
+        UUID tx = UUID.randomUUID();
+        when(repository.attachIfFree(staleCopy.getId(), tx)).thenReturn(0);
+
+        assertThatThrownBy(() -> service.attach(staleCopy, tx))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already used by another payment");
+        assertThat(staleCopy.getTransactionId()).as("the copy is not changed").isNull();
+    }
+
+    private LoanReceipt attachedWithTheseBytes(byte[] data) {
+        return LoanReceipt.builder().id(UUID.randomUUID()).uploadedBy("mgr").transactionId(UUID.randomUUID())
+                .contentType("image/jpeg").sizeBytes((long) data.length).data(data).build();
+    }
+
+    @Test
+    void shouldRefuseAPhotoThatIsTheSameAsOneAlreadyAttachedToAPayment() throws Exception {
+        byte[] photo = image("png", 30, 20);
+        byte[] saved = service.store(photo, manager).getData();
+        when(repository.findAttachedWithSize(saved.length)).thenReturn(List.of(attachedWithTheseBytes(saved.clone())));
+
+        assertThatThrownBy(() -> service.store(photo, other))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already attached to a payment");
+    }
+
+    @Test
+    void shouldKeepAPhotoOfTheSameSizeButDifferentContent() throws Exception {
+        byte[] photo = image("png", 30, 20);
+        byte[] saved = service.store(photo, manager).getData();
+        byte[] otherContent = saved.clone();
+        otherContent[otherContent.length - 3] ^= 0x55;
+        when(repository.findAttachedWithSize(saved.length)).thenReturn(List.of(attachedWithTheseBytes(otherContent)));
+
+        assertThat(service.store(photo, other).getUploadedBy()).isEqualTo("mgr2");
+    }
+
+    @Test
+    void shouldKeepAPhotoNobodyHasAttached() throws Exception {
+        when(repository.findAttachedWithSize(org.mockito.ArgumentMatchers.anyLong())).thenReturn(List.of());
+
+        assertThat(service.store(image("png", 30, 20), manager).getId()).isNotNull();
+    }
+
+    @Test
+    void shouldLookOnlyAtReceiptsOfTheSameSize() throws Exception {
+        LoanReceipt saved = service.store(image("png", 30, 20), manager);
+
+        verify(repository).findAttachedWithSize(saved.getSizeBytes());
+    }
+
+    @Test
+    void shouldRecordWhoUploadedAReceiptPhoto_withoutKeepingThePhotoInTheRecord() throws Exception {
+        LoanReceipt saved = service.store(image("png", 30, 20), manager);
+
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(captor.capture());
+        AuditLog row = captor.getValue();
+        assertThat(row.getUser()).isSameAs(manager);
+        assertThat(row.getEntityType()).isEqualTo(AuditLog.EntityType.RESOURCE);
+        assertThat(row.getAction()).isEqualTo(AuditLog.AuditAction.CREATE);
+        assertThat(row.getEntityId()).isEqualTo(saved.getId());
+        assertThat(row.getDescription()).contains("receipt").contains("mgr");
+        assertThat(row.getNewValues()).doesNotContain("data");
+    }
+
+    @Test
+    void shouldRecordNothing_whenThePhotoIsRefused() {
+        assertThatThrownBy(() -> service.store("<svg/>".getBytes(), manager)).isInstanceOf(IllegalArgumentException.class);
+
+        verify(auditLogRepository, never()).save(any(AuditLog.class));
     }
 }

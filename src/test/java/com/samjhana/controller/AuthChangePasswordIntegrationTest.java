@@ -155,9 +155,9 @@ class AuthChangePasswordIntegrationTest {
     void shouldAccept_whenTheNewPasswordIsExactlyEightCharacters() throws Exception {
         User staff = createUser("cp-staff", User.UserRole.STAFF, "old-password-1");
 
-        changePassword(bearer(staff), null, "old-password-1", "12345678").andExpect(status().isOk());
+        changePassword(bearer(staff), null, "old-password-1", "k7Qm2xPv").andExpect(status().isOk());
 
-        assertTrue(passwordIs("cp-staff", "12345678"));
+        assertTrue(passwordIs("cp-staff", "k7Qm2xPv"));
     }
 
     @Test

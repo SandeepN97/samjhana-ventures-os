@@ -287,6 +287,7 @@ function QuickButton({ button, wide = false, badge, onClick }) {
 function SecondaryButton({ icon: Icon, label, onClick, badge }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="w-full flex items-center justify-between bg-white rounded-xl px-4 py-4 shadow-md active:bg-gray-50 transition-colors"
     >
