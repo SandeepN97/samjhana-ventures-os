@@ -20,6 +20,7 @@ import {
   Home,
   AlertTriangle,
   Droplet,
+  ChevronRight,
 } from 'lucide-react';
 import api from '../../utils/api';
 import { ToastContainer } from '../../components/Toast';
@@ -27,6 +28,9 @@ import { useToast } from '../../hooks/useToast';
 import { formatBsDate } from '../../utils/nepaliDate';
 import { PageHeader } from '../../components/brand';
 import { addDays, nepalToday } from '../../utils/businessDay';
+import useDesktop from '../../hooks/useDesktop';
+import useLocaleFormat from '../../hooks/useLocaleFormat';
+import ChipSlider from '../../components/ChipSlider';
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-petrol-500' },
@@ -80,6 +84,84 @@ function txnLabel(txn, t) {
   }
 }
 
+/** "09:30" from the time a transaction was saved (the server keeps Nepal local time). */
+const txnTime = (createdAt) => {
+  const match = /T(\d{2}):(\d{2})/.exec(createdAt || '');
+  return match ? `${match[1]}:${match[2]}` : '';
+};
+
+/** The small line under a transaction's name: who entered it, plus detail that does not fit the name. */
+function txnSubline(txn, t) {
+  const cf = txn.customFields || {};
+  const parts = [];
+  if (txn.businessCode === 'ev' && cf.chargingMode === 'PERCENTAGE') {
+    if (cf.vehicleName) parts.push(cf.vehicleName);
+    parts.push(`${cf.startPercent}%→${cf.endPercent}%`);
+  }
+  if (txn.businessCode === 'rental') {
+    if (cf.rentalMonth) parts.push(cf.rentalMonth);
+    if (cf.paymentType) parts.push(cf.paymentType);
+  }
+  parts.push(`${t('dailyClose.byLabel')} ${txn.enteredByName}`);
+  return parts.join(' · ');
+}
+
+const PAYMENT_TONE = {
+  cash: 'bg-green-100 text-green-800',
+  bank: 'bg-blue-100 text-blue-800',
+  out: 'bg-red-100 text-red-800',
+};
+
+/**
+ * One transaction on one compact line: time, business tile, what it was, its payment tag, a signed
+ * amount, and (for admins) the edit button. Used by the review list and the Reports ledger.
+ * `txn.customFields` must already be parsed.
+ */
+function TxnRow({ txn, t, num, format, onEdit }) {
+  const business = BUSINESS_CONFIG[txn.businessCode] || {};
+  const Icon = business.icon || Banknote;
+  const isSale = txn.transactionType === 'SALE';
+  const pm = txn.customFields?.paymentMethod;
+  const payment = pm
+    ? { label: pm.toUpperCase() === 'CASH' ? t('common.cash') : t('common.bank'), tone: pm.toUpperCase() === 'CASH' ? 'cash' : 'bank' }
+    : isSale
+      ? { label: t('transactionType.sale'), tone: 'cash' }
+      : { label: t('transactionType.purchase'), tone: 'out' };
+
+  return (
+    <li className={`flex min-h-[64px] items-center gap-3 px-4 py-2 sm:px-5 ${isSale ? '' : 'bg-red-50/40'}`}>
+      <span className="w-11 shrink-0 text-sm tabular-nums text-gray-600">{num(txnTime(txn.createdAt))}</span>
+      <div className={`${business.color || 'bg-gray-400'} grid h-8 w-8 shrink-0 place-items-center rounded-lg`}>
+        <Icon className="h-4 w-4 text-white" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-sm font-semibold text-gray-800">{txnLabel(txn, t)}</p>
+        <p className="truncate text-xs text-gray-600">{txnSubline(txn, t)}</p>
+        {txn.notes && <p className="truncate text-xs italic text-gray-600">"{txn.notes}"</p>}
+      </div>
+      {/* On a phone the payment tag sits under the amount; on desktop it is its own column */}
+      <div className="flex shrink-0 flex-col items-end gap-1 lg:contents">
+        <p className={`order-1 w-24 text-right text-sm font-bold tabular-nums lg:order-2 lg:w-28 ${isSale ? 'text-green-700' : 'text-red-700'}`}>
+          {isSale ? '+' : '−'}{format(txn.amount)}
+        </p>
+        <div className="order-2 flex justify-end lg:order-1 lg:w-28 lg:justify-center">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${PAYMENT_TONE[payment.tone]}`}>{payment.label}</span>
+        </div>
+      </div>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={t('dailyClose.editTransaction')}
+          className="order-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-core-50 hover:text-core-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+        </button>
+      )}
+    </li>
+  );
+}
+
 export default function DailyClosePage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -88,6 +170,8 @@ export default function DailyClosePage() {
   const isAdmin = user.role === 'ADMIN' || user.role === 'MANAGER';
   const canViewProfit = user.role === 'ADMIN' || user.role === 'MANAGER';
   const { toasts, showToast, removeToast } = useToast();
+  const desktop = useDesktop();
+  const { num } = useLocaleFormat();
 
   const [activeTab, setActiveTab] = useState('close');
   const [businessDate, setBusinessDate] = useState(null);
@@ -113,6 +197,10 @@ export default function DailyClosePage() {
 
   // Transaction review toggle (open view)
   const [showTxnReview, setShowTxnReview] = useState(false);
+  // Desktop shows the first few transactions and a button for the rest
+  const [showAllTxns, setShowAllTxns] = useState(false);
+  // Reports tab: which transactions the ledger shows (all, sale, purchase, cash, bank)
+  const [reportFilter, setReportFilter] = useState('all');
 
   // Last close for comparison
   const [lastReport, setLastReport] = useState(null);
@@ -326,6 +414,21 @@ export default function DailyClosePage() {
     return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
 
+  // Reports ledger: filter chips and the totals of what is shown
+  const isSaleTxn = (txn) => txn.transactionType === 'SALE';
+  const payOf = (txn) => (txn.customFields?.paymentMethod || '').toUpperCase();
+  const REPORT_FILTERS = {
+    all: () => true,
+    sale: isSaleTxn,
+    purchase: (txn) => !isSaleTxn(txn),
+    cash: (txn) => payOf(txn) === 'CASH',
+    bank: (txn) => payOf(txn) === 'BANK',
+  };
+  const shownReportTxns = sortedReportTxns.filter(REPORT_FILTERS[reportFilter] || REPORT_FILTERS.all);
+  const shownIncome = shownReportTxns.filter(isSaleTxn).reduce((sum, txn) => sum + parseFloat(txn.amount), 0);
+  const shownExpense = shownReportTxns.filter((txn) => !isSaleTxn(txn)).reduce((sum, txn) => sum + parseFloat(txn.amount), 0);
+  const shownNet = shownIncome - shownExpense;
+
   // ── Derived close-view values ─────────────────────────────────────────────
 
   const cashNum = parseFloat(cashCounted) || 0;
@@ -350,7 +453,7 @@ export default function DailyClosePage() {
   // ── Tab bar (rendered inside each header) ────────────────────────────────
 
   const renderTabBar = (tab1Label) => (
-    <div className="mt-3 flex gap-2" role="group" aria-label={t('reports.title')}>
+    <div className="mt-3 flex gap-2 lg:max-w-sm" role="group" aria-label={t('reports.title')}>
       {[
         { key: 'close', label: tab1Label },
         { key: 'report', label: t('reports.title') },
@@ -373,227 +476,235 @@ export default function DailyClosePage() {
 
   // ── Report tab content ────────────────────────────────────────────────────
 
-  const renderReportTab = () => (
-    <div className="mx-auto w-full max-w-5xl p-4 space-y-4">
-      {/* Income / Expense */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="flex items-center gap-2 text-green-600 mb-1">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('reports.income')}</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{fmt(totalIncome)}</p>
-        </div>
-        <div className="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-200">
-          <div className="flex items-center gap-2 text-red-600 mb-1">
-            <TrendingDown className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('reports.expense')}</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{fmt(totalExpense)}</p>
-        </div>
-      </div>
+  const renderProfitPanel = () => {
+    if (!canViewProfit) return null;
+    const petrol = fuelProfitData?.petrol;
+    const diesel = fuelProfitData?.diesel;
+    const ev = evProfitData;
+    const rows = [
+      petrol?.count > 0 && {
+        key: 'petrol', label: t('petrol.petrol'),
+        iconBg: 'bg-red-100', iconColor: 'text-red-600', Icon: Fuel,
+        revenue: petrol.totalRevenue, profit: petrol.totalProfit,
+        margin: petrol.margin, tracked: petrol.trackedCount,
+        detail: `${t('reports.saleCount', { count: petrol.count, formattedCount: num(petrol.count) })} · ${petrol.totalLiters.toFixed(0)}L`,
+      },
+      diesel?.count > 0 && {
+        key: 'diesel', label: t('petrol.diesel'),
+        iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600', Icon: Droplet,
+        revenue: diesel.totalRevenue, profit: diesel.totalProfit,
+        margin: diesel.margin, tracked: diesel.trackedCount,
+        detail: `${t('reports.saleCount', { count: diesel.count, formattedCount: num(diesel.count) })} · ${diesel.totalLiters.toFixed(0)}L`,
+      },
+      ev?.count > 0 && {
+        key: 'ev', label: 'EV',
+        iconBg: 'bg-green-100', iconColor: 'text-green-600', Icon: Zap,
+        revenue: ev.totalRevenue, profit: ev.totalProfit,
+        margin: ev.margin, tracked: ev.trackedCount,
+        detail: t('reports.saleCount', { count: ev.count, formattedCount: num(ev.count) }),
+      },
+    ].filter(Boolean);
 
-      {/* Net + Cash/Bank split */}
-      <div className={`rounded-xl p-4 shadow-sm text-white ${netAmount >= 0 ? 'bg-green-500' : 'bg-red-500'}`}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm opacity-80">{t('reports.netAmount')}</p>
-            <p className="text-3xl font-bold">{netAmount >= 0 ? '+' : '−'}{fmt(netAmount)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm opacity-80">{t('reports.transactions')}</p>
-            <p className="text-2xl font-bold">{reportTxns.length}</p>
-          </div>
+    if (rows.length === 0) return null;
+
+    const combinedProfit = rows.filter(r => r.tracked > 0).reduce((sum, r) => sum + r.profit, 0);
+    const profitTone = combinedProfit >= 0 ? 'text-green-700' : 'text-red-700';
+
+    return (
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" aria-labelledby="rep-profit">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <h2 id="rep-profit" className="text-base font-bold text-core-900">{t('reports.profitTitle')}</h2>
+          <span className={`text-lg font-bold tabular-nums ${profitTone}`}>
+            {combinedProfit >= 0 ? '+' : '−'}{fmt(combinedProfit)}
+          </span>
         </div>
-        {(totalCash > 0 || totalBank > 0) && (
-          <div className="flex gap-3 border-t border-white/20 pt-3">
-            <div className="flex items-center gap-1.5 flex-1">
-              <Banknote className="w-4 h-4 opacity-80" />
-              <div>
-                <p className="text-xs opacity-70">{t('common.cash')}</p>
-                <p className="text-sm font-bold">{fmt(totalCash)}</p>
+        <div className="divide-y divide-slate-100">
+          {rows.map(({ key, label, iconBg, iconColor, Icon, revenue, profit, margin, tracked, detail }) => (
+            <div key={key} className="flex items-center gap-3 px-5 py-3">
+              <div className={`${iconBg} grid h-8 w-8 shrink-0 place-items-center rounded-lg`}>
+                <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
               </div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-1">
-              <Building2 className="w-4 h-4 opacity-80" />
-              <div>
-                <p className="text-xs opacity-70">{t('common.bank')}</p>
-                <p className="text-sm font-bold">{fmt(totalBank)}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800">{label}</p>
+                <p className="text-xs text-gray-600">{detail}</p>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Business breakdown */}
-      {businessBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <h2 className="font-bold text-gray-800">{t('dashboard.businessBreakdown')}</h2>
-          </div>
-          <div className="divide-y">
-            {businessBreakdown.map(b => {
-              const Icon = b.icon;
-              return (
-                <button
-                  key={b.code}
-                  onClick={() => navigate('/records', { state: { filter: b.code } })}
-                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                >
-                  <div className={`${b.color} p-2 rounded-lg`}>
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold text-gray-800 text-sm">{isNepali ? b.labelNe : b.label}</p>
-                    <p className="text-xs text-gray-400">{b.count} {t('reports.transactions')}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-bold text-sm ${b.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {b.net >= 0 ? '+' : '−'}{fmt(b.net)}
-                    </p>
-                    {b.expense > 0 && (
-                      <p className="text-xs text-gray-400">+{fmt(b.income)} / −{fmt(b.expense)}</p>
-                    )}
-                  </div>
-                  <span className="text-gray-300 ml-1">›</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Transaction list */}
-      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-          <h2 className="font-bold text-gray-800">{t('reports.todayTransactions')}</h2>
-          <span className="text-xs text-gray-400">{sortedReportTxns.length} {t('reports.transactions')}</span>
-        </div>
-        {sortedReportTxns.length === 0 ? (
-          <p className="text-center text-gray-400 py-8 text-sm">{t('reports.noData')}</p>
-        ) : (
-          <div className="divide-y">
-            <div className="grid grid-cols-12 gap-1 px-4 py-2 bg-gray-50 text-xs text-gray-400 font-medium">
-              <span className="col-span-6">{t('common.description')}</span>
-              <span className="col-span-3 text-center">{t('common.paymentMethod')}</span>
-              <span className="col-span-3 text-right">{t('common.amount')}</span>
-            </div>
-            {sortedReportTxns.map((txn) => {
-              const config = BUSINESS_CONFIG[txn.businessCode] || {};
-              const Icon = config.icon || Banknote;
-              const isSale = txn.transactionType === 'SALE';
-              const pm = txn.customFields?.paymentMethod;
-              return (
-                <div key={txn.id} className="grid grid-cols-12 gap-1 items-center px-4 py-2.5">
-                  <div className="col-span-6 flex items-center gap-2 min-w-0">
-                    <div className={`${config.color || 'bg-gray-400'} p-1.5 rounded-md flex-shrink-0`}>
-                      <Icon className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-gray-800 truncate">{txnLabel(txn, t)}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{txn.enteredByName}</p>
-                    </div>
-                  </div>
-                  <div className="col-span-3 flex justify-center">
-                    {pm ? (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        pm.toUpperCase() === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {pm.toUpperCase() === 'CASH' ? t('common.cash') : t('common.bank')}
-                      </span>
-                    ) : (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        isSale ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                      }`}>
-                        {isSale ? t('transactionType.sale') : t('transactionType.purchase')}
-                      </span>
-                    )}
-                  </div>
-                  <p className={`col-span-3 text-xs font-bold text-right ${isSale ? 'text-green-600' : 'text-red-600'}`}>
-                    {isSale ? '+' : '−'}{fmt(txn.amount)}
+              <div className="text-right">
+                <p className="text-sm font-medium tabular-nums text-gray-700">{fmt(revenue)}</p>
+                {tracked > 0 ? (
+                  <p className={`text-xs font-bold tabular-nums ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {profit >= 0 ? '+' : '−'}{fmt(profit)} · {margin}%
                   </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Profit Summary — admin/manager only */}
-      {canViewProfit && (() => {
-        const petrol = fuelProfitData?.petrol;
-        const diesel = fuelProfitData?.diesel;
-        const ev = evProfitData;
-        const rows = [
-          petrol?.count > 0 && {
-            key: 'petrol', label: t('petrol.petrol'),
-            iconBg: 'bg-red-100', iconColor: 'text-red-600', Icon: Fuel,
-            revenue: petrol.totalRevenue, profit: petrol.totalProfit,
-            margin: petrol.margin, tracked: petrol.trackedCount,
-            detail: `${petrol.count} txns · ${petrol.totalLiters.toFixed(0)}L`,
-          },
-          diesel?.count > 0 && {
-            key: 'diesel', label: t('petrol.diesel'),
-            iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600', Icon: Droplet,
-            revenue: diesel.totalRevenue, profit: diesel.totalProfit,
-            margin: diesel.margin, tracked: diesel.trackedCount,
-            detail: `${diesel.count} txns · ${diesel.totalLiters.toFixed(0)}L`,
-          },
-          ev?.count > 0 && {
-            key: 'ev', label: 'EV',
-            iconBg: 'bg-green-100', iconColor: 'text-green-600', Icon: Zap,
-            revenue: ev.totalRevenue, profit: ev.totalProfit,
-            margin: ev.margin, tracked: ev.trackedCount,
-            detail: `${ev.count} txns`,
-          },
-        ].filter(Boolean);
-
-        if (rows.length === 0) return null;
-
-        const combinedProfit = rows.filter(r => r.tracked > 0).reduce((s, r) => s + r.profit, 0);
-
-        return (
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-            <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-              <h2 className="font-bold text-gray-800">{t('reports.profitTitle')}</h2>
-              <span className={`text-lg font-bold ${combinedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {combinedProfit >= 0 ? '+' : '−'}{fmt(combinedProfit)}
-              </span>
-            </div>
-            <div className="divide-y">
-              {rows.map(({ key, label, iconBg, iconColor, Icon, revenue, profit, margin, tracked, detail }) => (
-                <div key={key} className="px-4 py-3 flex items-center gap-3">
-                  <div className={`${iconBg} p-1.5 rounded-md flex-shrink-0`}>
-                    <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800">{label}</p>
-                    <p className="text-xs text-gray-400">{detail}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-700">{fmt(revenue)}</p>
-                    {tracked > 0 ? (
-                      <p className={`text-xs font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {profit >= 0 ? '+' : '−'}{fmt(profit)} · {margin}%
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic">{t('reports.noPurchaseRate').split('—')[0].trim()}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <div className={`px-4 py-3 flex items-center justify-between ${combinedProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                <p className={`font-bold text-sm ${combinedProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {t('reports.totalProfit')}
-                </p>
-                <p className={`text-2xl font-bold ${combinedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {combinedProfit >= 0 ? '+' : '−'}{fmt(combinedProfit)}
-                </p>
+                ) : (
+                  <p className="text-xs italic text-gray-600">{t('reports.noPurchaseRate').split('—')[0].trim()}</p>
+                )}
               </div>
             </div>
+          ))}
+          <div className={`flex items-center justify-between px-5 py-3 ${combinedProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <p className={`text-sm font-bold ${combinedProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+              {t('reports.totalProfit')}
+            </p>
+            <p className={`text-2xl font-extrabold tabular-nums ${profitTone}`}>
+              {combinedProfit >= 0 ? '+' : '−'}{fmt(combinedProfit)}
+            </p>
           </div>
-        );
-      })()}
+        </div>
+      </section>
+    );
+  };
+
+  const renderReportTab = () => (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:max-w-6xl lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(340px,1fr)] lg:items-start lg:gap-6 lg:pb-10">
+
+      {/* The day's result, then the businesses and the profit: on desktop this column stays in view on the right */}
+      <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-4 lg:gap-6">
+        <section className="rounded-2xl bg-core-800 p-5 text-white shadow-sm" aria-labelledby="rep-result">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 id="rep-result" className="text-sm font-semibold text-core-300">{t('reports.netAmount')}</h2>
+              <p className={`mt-1 text-4xl font-extrabold leading-none tabular-nums ${netAmount >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                {netAmount >= 0 ? '+' : '−'}{fmt(netAmount)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-core-300">{t('reports.transactions')}</p>
+              <p className="text-2xl font-extrabold leading-tight tabular-nums">{num(reportTxns.length)}</p>
+            </div>
+          </div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/20 pt-4">
+            <div>
+              <dt className="flex items-center gap-1.5 text-xs text-core-300"><TrendingUp className="h-4 w-4 text-green-300" aria-hidden="true" />{t('reports.income')}</dt>
+              <dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(totalIncome)}</dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-xs text-core-300"><TrendingDown className="h-4 w-4 text-red-300" aria-hidden="true" />{t('reports.expense')}</dt>
+              <dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(totalExpense)}</dd>
+            </div>
+            {(totalCash > 0 || totalBank > 0) && (
+              <>
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-core-300"><Banknote className="h-4 w-4" aria-hidden="true" />{t('common.cash')}</dt>
+                  <dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(totalCash)}</dd>
+                </div>
+                <div>
+                  <dt className="flex items-center gap-1.5 text-xs text-core-300"><Building2 className="h-4 w-4" aria-hidden="true" />{t('common.bank')}</dt>
+                  <dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(totalBank)}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+          {(totalCash > 0 || totalBank > 0) && (
+            <div className="mt-4">
+              <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full" role="img"
+                aria-label={`${t('common.cash')} ${Math.round((totalCash / (totalCash + totalBank)) * 100)}%, ${t('common.bank')} ${Math.round((totalBank / (totalCash + totalBank)) * 100)}%`}>
+                <div className="bg-ev-400" style={{ width: `${(totalCash / (totalCash + totalBank)) * 100}%` }} />
+                <div className="bg-rental-400" style={{ width: `${(totalBank / (totalCash + totalBank)) * 100}%` }} />
+              </div>
+              <div className="mt-1.5 flex justify-between text-xs text-core-300">
+                <span>{t('common.cash')} {num(Math.round((totalCash / (totalCash + totalBank)) * 100))}%</span>
+                <span>{t('common.bank')} {num(Math.round((totalBank / (totalCash + totalBank)) * 100))}%</span>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {businessBreakdown.length > 0 && (
+          <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" aria-labelledby="rep-biz">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <h2 id="rep-biz" className="text-base font-bold text-core-900">{t('dashboard.businessBreakdown')}</h2>
+              <span className="text-xs text-gray-600">{t('reports.openInRecords')}</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {businessBreakdown.map(b => {
+                const Icon = b.icon;
+                return (
+                  <button
+                    key={b.code}
+                    type="button"
+                    onClick={() => navigate('/records', { state: { filter: b.code } })}
+                    className="flex min-h-[56px] w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-core-500"
+                  >
+                    <div className={`${b.color} grid h-8 w-8 shrink-0 place-items-center rounded-lg`}>
+                      <Icon className="h-4 w-4 text-white" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{isNepali ? b.labelNe : b.label}</p>
+                      <p className="text-xs text-gray-600">
+                        {t('reports.transactionCount', { count: b.count, formattedCount: num(b.count) })}
+                        {totalIncome > 0 && ` · ${t('reports.shareOfIncome', { pct: num(Math.round((b.income / totalIncome) * 100)) })}`}
+                      </p>
+                      {totalIncome > 0 && (
+                        <div className="mt-1.5 h-1.5 rounded-full bg-slate-100" aria-hidden="true">
+                          <div className={`h-full rounded-full ${b.color}`} style={{ width: `${Math.round((b.income / totalIncome) * 100)}%` }} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-bold tabular-nums ${b.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        {b.net >= 0 ? '+' : '−'}{fmt(b.net)}
+                      </p>
+                      {b.expense > 0 && (
+                        <p className="text-xs tabular-nums text-gray-600">+{fmt(b.income)} / −{fmt(b.expense)}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-gray-400" aria-hidden="true" />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {renderProfitPanel()}
+      </div>
+
+      {/* Every transaction of the day */}
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 lg:col-start-1 lg:row-start-1" aria-labelledby="rep-txns">
+        <div className="px-5 pb-4 pt-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="rep-txns" className="text-lg font-bold text-core-900">{t('reports.todayTransactions')}</h2>
+            <span className="text-sm text-gray-600">{t('reports.transactionCount', { count: sortedReportTxns.length, formattedCount: num(sortedReportTxns.length) })}</span>
+          </div>
+          {sortedReportTxns.length > 0 && (
+            <ChipSlider
+              className="mt-3.5"
+              label={t('reports.filterLabel')}
+              value={reportFilter}
+              onChange={setReportFilter}
+              items={[
+                { value: 'all', label: t('records.all'), count: num(sortedReportTxns.length) },
+                { value: 'sale', label: t('transactionType.sale'), icon: TrendingUp, count: num(sortedReportTxns.filter(REPORT_FILTERS.sale).length) },
+                { value: 'purchase', label: t('transactionType.purchase'), icon: TrendingDown, count: num(sortedReportTxns.filter(REPORT_FILTERS.purchase).length) },
+                { value: 'cash', label: t('common.cash'), icon: Banknote },
+                { value: 'bank', label: t('common.bank'), icon: Building2 },
+              ]}
+            />
+          )}
+        </div>
+        {sortedReportTxns.length === 0 || shownReportTxns.length === 0 ? (
+          <p className="py-10 text-center text-sm text-gray-600">{t('reports.noData')}</p>
+        ) : (
+          <div>
+            <div className="flex items-center gap-3 border-t border-slate-100 bg-gray-50 px-4 py-2 text-[13px] font-semibold text-gray-600 sm:px-5">
+              <span className="w-11 shrink-0">{t('reports.colTime')}</span>
+              <span className="w-8 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">{t('common.description')}</span>
+              <span className="hidden w-28 shrink-0 text-center lg:block">{t('common.paymentMethod')}</span>
+              <span className="w-24 shrink-0 text-right lg:w-28">{t('common.amount')}</span>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {shownReportTxns.map((txn) => (
+                <TxnRow key={txn.id} txn={txn} t={t} num={num} format={fmt} />
+              ))}
+            </ul>
+            <div className="flex flex-wrap justify-end gap-x-7 gap-y-2 border-t border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-600">
+              <span>{t('reports.income')} <b className="ml-1.5 tabular-nums text-gray-800">{fmt(shownIncome)}</b></span>
+              <span>{t('reports.expense')} <b className="ml-1.5 tabular-nums text-gray-800">{fmt(shownExpense)}</b></span>
+              <span>{t('reports.netAmount')} <b className={`ml-1.5 tabular-nums ${shownNet >= 0 ? 'text-green-700' : 'text-red-700'}`}>{shownNet >= 0 ? '+' : '−'}{fmt(shownNet)}</b></span>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 
@@ -606,7 +717,7 @@ export default function DailyClosePage() {
         <PageHeader
           unit="core"
           title={t('dailyClose.dayClosed')}
-          subtitle={`${formatDateLabel(businessDate)}, ${businessDate}`}
+          subtitle={`${formatDateLabel(businessDate)}, ${businessDate} · ${formatBsDate(businessDate, isNepali)}`}
         >
           {renderTabBar(t('dailyClose.summary'))}
         </PageHeader>
@@ -674,184 +785,77 @@ export default function DailyClosePage() {
       <PageHeader
         unit="core"
         title={t('dailyClose.closeDay')}
-        subtitle={`${formatDateLabel(businessDate)}, ${businessDate}`}
+        subtitle={`${formatDateLabel(businessDate)}, ${businessDate} · ${formatBsDate(businessDate, isNepali)}`}
+        hideWhenSidebarShows
       >
         {renderTabBar(t('dailyClose.closeDay'))}
       </PageHeader>
 
       {activeTab === 'report' ? renderReportTab() : (
-        <div className="mx-auto w-full max-w-5xl p-4 space-y-4">
+        <>
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 pb-44 lg:max-w-6xl lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,1fr)] lg:items-start lg:gap-6 lg:pb-10">
+            {/* How the day went */}
+            <div className="flex flex-col gap-4 lg:gap-6">
+              <SalesSummary
+                desktop={desktop}
+                summary={summary}
+                systemTotal={systemTotal}
+                cashSalesTotal={cashSalesTotal}
+                bankSalesTotal={bankSalesTotal}
+                lastReport={lastReport}
+                isNepali={isNepali}
+                num={num}
+                formatAmount={formatAmount}
+                formatLiters={formatLiters}
+                formatUnits={formatUnits}
+              />
 
-          {summary && (
-            <SalesBreakdown report={summary} formatAmount={formatAmount} formatLiters={formatLiters} formatUnits={formatUnits} />
-          )}
-
-          <div className="bg-core-800 text-white rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-center mb-3">
-              <div>
-                <p className="text-sm opacity-80">{t('dailyClose.totalSales')}</p>
-                <p className="text-3xl font-bold mt-1">{formatAmount(systemTotal)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm opacity-80">{t('dailyClose.transactions')}</p>
-                <p className="text-2xl font-bold">{summary?.transactionCount || 0}</p>
-              </div>
+              {transactions.length > 0 && (
+                <ReviewPanel
+                  desktop={desktop}
+                  transactions={transactions}
+                  open={showTxnReview}
+                  onToggle={() => setShowTxnReview((v) => !v)}
+                  showAll={showAllTxns}
+                  onToggleAll={() => setShowAllTxns((v) => !v)}
+                  isAdmin={isAdmin}
+                  num={num}
+                  formatAmount={formatAmount}
+                  parseCustomFields={parseCustomFields}
+                  onEdit={openEditModal}
+                />
+              )}
             </div>
-            <div className="border-t border-core-400 pt-3 flex gap-4">
-              <div className="flex items-center gap-2 flex-1">
-                <Banknote className="w-5 h-5 opacity-80" />
-                <div>
-                  <p className="text-xs opacity-70">{t('common.cash')}</p>
-                  <p className="text-lg font-bold">{formatAmount(cashSalesTotal)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-1">
-                <Building2 className="w-5 h-5 opacity-80" />
-                <div>
-                  <p className="text-xs opacity-70">{t('common.bank')}</p>
-                  <p className="text-lg font-bold">{formatAmount(bankSalesTotal)}</p>
-                </div>
-              </div>
-            </div>
-            {lastReport && (() => {
-              const lastTotal = parseFloat(lastReport.totalSystemSales) || 0;
-              const diff = systemTotal - lastTotal;
-              const pct = lastTotal > 0 ? ((diff / lastTotal) * 100).toFixed(1) : null;
-              return (
-                <div className="border-t border-core-400 pt-2 mt-2 flex items-center justify-between text-xs opacity-80">
-                  <span>{t('dailyClose.lastClose')} · {formatBsDate(lastReport.reportDate, isNepali)}</span>
-                  <span className="flex items-center gap-1 font-bold">
-                    {formatAmount(lastTotal)}
-                    {pct !== null && (
-                      <span className={diff >= 0 ? 'text-green-300' : 'text-red-300'}>
-                        {diff >= 0 ? ' ▲' : ' ▼'}{Math.abs(pct)}%
-                      </span>
-                    )}
-                  </span>
-                </div>
-              );
-            })()}
-          </div>
 
-          {transactions.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-              <button
-                onClick={() => setShowTxnReview(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <span className="flex items-center gap-2 font-bold text-gray-700">
-                  <CheckCircle2 className="w-5 h-5 text-core-500" />
-                  {t('reports.reviewTransactions')}
-                  <span className="text-sm font-normal text-gray-400">({transactions.length})</span>
-                </span>
-                <span className="text-gray-400 text-sm">{showTxnReview ? '▲' : '▼'}</span>
-              </button>
-              {showTxnReview && (
-                <div className="border-t max-h-72 overflow-y-auto">
-                  <TransactionList
-                    transactions={transactions}
-                    isAdmin={isAdmin}
+            {/* Closing the day: stays in view beside the summary on desktop */}
+            <div className="lg:sticky lg:top-4">
+              <ClosePanel
+                desktop={desktop}
+                cashCounted={cashCounted}
+                setCashCounted={setCashCounted}
+                cashSalesTotal={cashSalesTotal}
+                discrepancy={discrepancy}
+                isMatch={isMatch}
+                hasDiscrepancy={hasDiscrepancy}
+                notes={notes}
+                setNotes={setNotes}
+                formatAmount={formatAmount}
+                closeButton={(
+                  <CloseButton
+                    disabled={isSubmitting || !cashCounted}
+                    needsCash={!cashCounted}
+                    businessDate={businessDate}
+                    transactionCount={summary?.transactionCount || 0}
+                    systemTotal={systemTotal}
+                    num={num}
                     formatAmount={formatAmount}
-                    parseCustomFields={parseCustomFields}
-                    onEdit={openEditModal}
+                    onClose={() => setShowConfirm(true)}
                   />
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Banknote className="w-6 h-6 text-green-600" />
-                {t('dailyClose.countCash')}
-              </label>
-              {cashSalesTotal > 0 && (
-                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg font-medium">
-                  {t('common.cash')}: <span className="text-core-700 font-bold">{formatAmount(cashSalesTotal)}</span>
-                </span>
-              )}
-            </div>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl font-bold">रु</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                value={cashCounted}
-                onChange={(e) => setCashCounted(e.target.value)}
-                placeholder={t('dailyClose.enterCashAmount')}
-                className="w-full pl-12 pr-4 py-4 text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-200 outline-none transition-colors"
+                )}
               />
             </div>
           </div>
-
-          {cashCounted !== '' && (
-            <div className={`rounded-xl overflow-hidden shadow-sm ${
-              isMatch ? 'bg-green-500' : discrepancy > 0 ? 'bg-blue-500' : 'bg-red-500'
-            } text-white`}>
-              <div className="px-4 pt-4 pb-2 space-y-2">
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>{t('dailyClose.totalSales')} ({t('common.cash')})</span>
-                  <span className="font-bold">{formatAmount(cashSalesTotal)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm opacity-90">
-                  <span>{t('dailyClose.cashCounted')}</span>
-                  <span className="font-bold">{formatAmount(parseFloat(cashCounted) || 0)}</span>
-                </div>
-              </div>
-              <div className={`mx-3 mb-3 mt-1 rounded-lg px-4 py-3 flex items-center justify-between ${
-                isMatch ? 'bg-green-600' : discrepancy > 0 ? 'bg-blue-600' : 'bg-red-600'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {isMatch
-                    ? <CheckCircle2 className="w-7 h-7" />
-                    : discrepancy > 0
-                      ? <TrendingUp className="w-7 h-7" />
-                      : <TrendingDown className="w-7 h-7" />}
-                  <span className="text-lg font-bold">
-                    {isMatch
-                      ? t('dailyClose.cashMatches')
-                      : discrepancy > 0
-                        ? t('dailyClose.overLabel')
-                        : t('dailyClose.shortLabel')}
-                  </span>
-                </div>
-                <span className="text-3xl font-black">
-                  {isMatch
-                    ? '✓'
-                    : `${discrepancy > 0 ? '+' : '−'}${formatAmount(Math.abs(discrepancy))}`}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {hasDiscrepancy && (
-            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-4">
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                {discrepancy > 0 ? t('dailyClose.reasonForOver') : t('dailyClose.reasonForShort')}
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('dailyClose.writeReason')}
-                rows={3}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-200 outline-none transition-colors text-lg"
-              />
-            </div>
-          )}
-
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={isSubmitting || !cashCounted}
-            className={`w-full py-4 rounded-xl text-white text-xl font-bold shadow-lg transition-all active:scale-95 ${
-              isSubmitting || !cashCounted
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700'
-            }`}
-          >
-            {t('dailyClose.closeDay')}
-          </button>
-        </div>
+        </>
       )}
 
       {showConfirm && (
@@ -889,24 +893,383 @@ export default function DailyClosePage() {
 }
 
 // =============================================================================
+// Open day: sales summary, review list, closing panel
+// =============================================================================
+
+const CASH_RESULT = {
+  match: 'bg-green-50 text-green-800 ring-green-200',
+  over: 'bg-blue-50 text-blue-800 ring-blue-200',
+  short: 'bg-red-50 text-red-800 ring-red-200',
+};
+
+/** "Last close" line: the previous total and how today compares. */
+function LastCloseLine({ lastReport, systemTotal, isNepali, formatAmount, tone }) {
+  const { t } = useTranslation();
+  if (!lastReport) return null;
+  const lastTotal = parseFloat(lastReport.totalSystemSales) || 0;
+  const diff = systemTotal - lastTotal;
+  const pct = lastTotal > 0 ? ((diff / lastTotal) * 100).toFixed(1) : null;
+  const dark = tone === 'dark';
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-x-3 text-xs ${dark ? 'text-core-300' : 'text-gray-600'}`}>
+      <span>{t('dailyClose.lastClose')} · {formatBsDate(lastReport.reportDate, isNepali)}</span>
+      <span className={`flex items-center gap-1 font-bold ${dark ? 'text-white' : 'text-gray-700'}`}>
+        {formatAmount(lastTotal)}
+        {pct !== null && (
+          <span className={diff >= 0 ? (dark ? 'text-green-300' : 'text-green-700') : (dark ? 'text-red-300' : 'text-red-700')}>
+            {diff >= 0 ? ' ▲' : ' ▼'}{Math.abs(pct)}%
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** Colour bar showing each business's share of the day's sales. */
+function ShareBar({ rows, total, className = '' }) {
+  if (total <= 0) return null;
+  return (
+    <div className={`flex h-3 gap-0.5 overflow-hidden rounded-full ${className}`} role="img"
+      aria-label={rows.map((r) => `${r.label} ${r.share.toFixed(1)}%`).join(', ')}>
+      {rows.map((r) => (
+        <div key={r.label} className={r.color} style={{ width: `${r.share}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function SalesSummary({ desktop, summary, systemTotal, cashSalesTotal, bankSalesTotal, lastReport, isNepali, num, formatAmount, formatLiters, formatUnits }) {
+  const { t } = useTranslation();
+  const items = summary ? businessItems(summary, t, formatLiters, formatUnits) : [];
+  const rows = items
+    .map((item) => ({ ...item, amount: parseFloat(item.amount) || 0 }))
+    .filter((item) => item.amount > 0)
+    .map((item) => ({ ...item, share: systemTotal > 0 ? (item.amount / systemTotal) * 100 : 0 }));
+  const count = summary?.transactionCount || 0;
+
+  const cashBank = (
+    <div className={desktop ? 'flex flex-wrap gap-3 border-t border-gray-200 pt-4' : 'mt-3.5 flex gap-4 border-t border-white/20 pt-3'}>
+      <div className={`flex flex-1 items-center gap-3 ${desktop ? 'min-w-[200px] rounded-xl bg-gray-50 px-4 py-3 ring-1 ring-inset ring-gray-200' : ''}`}>
+        <Banknote className={`h-5 w-5 shrink-0 ${desktop ? 'text-green-700' : 'text-core-300'}`} aria-hidden="true" />
+        <div>
+          <p className={`text-xs ${desktop ? 'text-gray-600' : 'text-core-300'}`}>{t('common.cash')}</p>
+          <p className={`font-bold tabular-nums ${desktop ? 'text-lg text-gray-800' : 'text-base'}`}>{formatAmount(cashSalesTotal)}</p>
+        </div>
+      </div>
+      <div className={`flex flex-1 items-center gap-3 ${desktop ? 'min-w-[200px] rounded-xl bg-gray-50 px-4 py-3 ring-1 ring-inset ring-gray-200' : ''}`}>
+        <Building2 className={`h-5 w-5 shrink-0 ${desktop ? 'text-blue-700' : 'text-core-300'}`} aria-hidden="true" />
+        <div>
+          <p className={`text-xs ${desktop ? 'text-gray-600' : 'text-core-300'}`}>{t('common.bank')}</p>
+          <p className={`font-bold tabular-nums ${desktop ? 'text-lg text-gray-800' : 'text-base'}`}>{formatAmount(bankSalesTotal)}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (desktop) {
+    return (
+      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" aria-labelledby="eod-sales-heading">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 id="eod-sales-heading" className="text-base font-bold text-core-900">{t('dailyClose.totalSales')}</h2>
+            <p className="mt-2 text-4xl font-extrabold leading-none tabular-nums text-core-900">{formatAmount(systemTotal)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-600">{t('dailyClose.transactions')}</p>
+            <p className="text-3xl font-extrabold leading-tight tabular-nums text-core-900">{num(count)}</p>
+          </div>
+        </div>
+
+        {rows.length > 0 && (
+          <>
+            <ShareBar rows={rows} total={systemTotal} className="mt-5" />
+            <table className="mt-2 w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-left text-[13px] font-semibold text-gray-600">
+                  <th scope="col" className="pb-2 pt-3 font-semibold">{t('dailyClose.colBusiness')}</th>
+                  <th scope="col" className="pb-2 pt-3 text-right font-semibold">{t('dailyClose.colQuantity')}</th>
+                  <th scope="col" className="pb-2 pt-3 text-right font-semibold">{t('dailyClose.colAmount')}</th>
+                  <th scope="col" className="pb-2 pt-3 text-right font-semibold">{t('dailyClose.colShare')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const Icon = r.icon;
+                  return (
+                    <tr key={r.label} className="border-t border-gray-200">
+                      <td className="py-3">
+                        <span className="inline-flex items-center gap-2.5 font-semibold text-gray-800">
+                          <span className={`grid h-7 w-7 place-items-center rounded-lg ${r.color}`}><Icon className="h-4 w-4 text-white" aria-hidden="true" /></span>
+                          {r.label}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right tabular-nums text-gray-600">{r.detail || '—'}</td>
+                      <td className="py-3 text-right font-bold tabular-nums text-gray-800">{formatAmount(r.amount)}</td>
+                      <td className="py-3 text-right tabular-nums text-gray-600">{r.share.toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        <div className="mt-2">{cashBank}</div>
+        <div className="mt-3.5"><LastCloseLine lastReport={lastReport} systemTotal={systemTotal} isNepali={isNepali} formatAmount={formatAmount} tone="light" /></div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <div className="rounded-2xl bg-core-800 p-5 text-white shadow-sm">
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-sm text-core-300">{t('dailyClose.totalSales')}</p>
+            <p className="mt-0.5 text-3xl font-extrabold leading-tight tabular-nums">{formatAmount(systemTotal)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-core-300">{t('dailyClose.transactions')}</p>
+            <p className="text-2xl font-extrabold leading-tight tabular-nums">{num(count)}</p>
+          </div>
+        </div>
+        {cashBank}
+        <div className="mt-3"><LastCloseLine lastReport={lastReport} systemTotal={systemTotal} isNepali={isNepali} formatAmount={formatAmount} tone="dark" /></div>
+      </div>
+
+      {rows.length > 0 && (
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200" aria-labelledby="eod-biz-heading">
+          <h2 id="eod-biz-heading" className="text-base font-bold text-core-900">{t('dashboard.businessBreakdown')}</h2>
+          <ShareBar rows={rows} total={systemTotal} className="mt-3 h-2.5" />
+          <ul className="mt-3">
+            {rows.map((r) => {
+              const Icon = r.icon;
+              return (
+                <li key={r.label} className="flex items-center gap-2.5 border-t border-gray-200 py-3 first:border-t-0 first:pt-1">
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${r.color}`}><Icon className="h-4 w-4 text-white" aria-hidden="true" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-800">{r.label}</p>
+                    <p className="text-xs text-gray-600">{r.detail ? `${r.detail} · ` : ''}{r.share.toFixed(1)}%</p>
+                  </div>
+                  <p className="text-[15px] font-bold tabular-nums text-gray-800">{formatAmount(r.amount)}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
+
+const REVIEW_PREVIEW = 5;
+
+function ReviewPanel({ desktop, transactions, open, onToggle, showAll, onToggleAll, isAdmin, num, formatAmount, parseCustomFields, onEdit }) {
+  const { t } = useTranslation();
+  const count = transactions.length;
+  const list = (limit) => (
+    <ul className="divide-y divide-slate-100">
+      {(limit ? transactions.slice(0, limit) : transactions).map((txn) => (
+        <TxnRow
+          key={txn.id}
+          txn={{ ...txn, customFields: parseCustomFields(txn.customFields) }}
+          t={t}
+          num={num}
+          format={formatAmount}
+          onEdit={isAdmin ? () => onEdit(txn) : undefined}
+        />
+      ))}
+    </ul>
+  );
+
+  if (desktop) {
+    return (
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200" aria-labelledby="eod-review-heading">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
+          <h2 id="eod-review-heading" className="flex items-center gap-2 text-base font-bold text-core-900">
+            <CheckCircle2 className="h-5 w-5 text-core-500" aria-hidden="true" />
+            {t('reports.reviewTransactions')}
+            <span className="font-normal text-gray-500">({num(count)})</span>
+          </h2>
+          <span className="text-sm text-gray-600">{t('dailyClose.reviewHint')}</span>
+        </div>
+        {list(showAll ? undefined : REVIEW_PREVIEW)}
+        {count > REVIEW_PREVIEW && (
+          <button
+            type="button"
+            onClick={onToggleAll}
+            className="flex min-h-[48px] w-full items-center justify-center border-t border-slate-100 bg-gray-50 text-sm font-bold text-core-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-core-500"
+          >
+            {showAll ? t('dailyClose.showFewer') : t('dailyClose.showAllTransactions', { formattedCount: num(count) })}
+          </button>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex min-h-[56px] w-full items-center justify-between px-4 py-3 transition-colors hover:bg-gray-50"
+      >
+        <span className="flex items-center gap-2 font-bold text-gray-700">
+          <CheckCircle2 className="h-5 w-5 text-core-500" aria-hidden="true" />
+          {t('reports.reviewTransactions')}
+          <span className="text-sm font-normal text-gray-500">({num(count)})</span>
+        </span>
+        <span className="text-sm text-gray-500" aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div className="max-h-72 overflow-y-auto border-t border-slate-100">{list(undefined)}</div>}
+    </div>
+  );
+}
+
+function CloseButton({ disabled, needsCash, businessDate, transactionCount, systemTotal, num, formatAmount, onClose }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={disabled}
+        aria-describedby={needsCash ? 'close-day-hint' : undefined}
+        className={`min-h-[56px] w-full rounded-xl text-lg font-extrabold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-800 focus-visible:ring-offset-2 ${
+          disabled ? 'cursor-not-allowed bg-gray-400' : 'bg-green-700 hover:bg-green-800'
+        }`}
+      >
+        {t('dailyClose.closeTheDay')}
+      </button>
+      <p id="close-day-hint" className="text-center text-xs text-gray-600 tabular-nums">
+        {needsCash
+          ? t('dailyClose.enterCashAmount')
+          : t('dailyClose.closesSummary', {
+            count: transactionCount,
+            formattedCount: num(transactionCount),
+            date: businessDate,
+            total: formatAmount(systemTotal),
+          })}
+      </p>
+    </div>
+  );
+}
+
+function ClosePanel({ desktop, cashCounted, setCashCounted, cashSalesTotal, discrepancy, isMatch, hasDiscrepancy, notes, setNotes, formatAmount, closeButton }) {
+  const { t } = useTranslation();
+  const state = isMatch ? 'match' : discrepancy > 0 ? 'over' : 'short';
+
+  const body = (
+    <>
+      <div>
+        <label htmlFor="eod-cash" className="mb-2.5 flex items-center gap-2 text-[15px] font-bold text-core-900">
+          <Banknote className="h-5 w-5 text-green-700" aria-hidden="true" />
+          {t('dailyClose.countCash')}
+        </label>
+        <div className="flex min-h-[60px] items-center gap-3 rounded-xl bg-white px-4 ring-2 ring-inset ring-gray-300 focus-within:ring-core-800">
+          <span className="text-xl font-bold text-gray-500">रु</span>
+          <input
+            id="eod-cash"
+            type="number"
+            inputMode="decimal"
+            value={cashCounted}
+            onChange={(e) => setCashCounted(e.target.value)}
+            placeholder={t('dailyClose.enterCashAmount')}
+            className="min-w-0 flex-1 border-0 bg-transparent py-3 text-3xl font-extrabold tabular-nums text-core-900 outline-none placeholder:text-lg placeholder:font-semibold placeholder:text-gray-400"
+          />
+        </div>
+        <div className="mt-2.5 flex justify-between gap-3 text-sm text-gray-600">
+          <span>{t('dailyClose.expectedCash')}</span>
+          <span className="font-bold tabular-nums text-gray-800">{formatAmount(cashSalesTotal)}</span>
+        </div>
+      </div>
+
+      {cashCounted !== '' && (
+        <div role="status" className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3.5 ring-1 ring-inset ${CASH_RESULT[state]}`}>
+          <span className="flex items-center gap-2.5 text-lg font-extrabold">
+            {state === 'match'
+              ? <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+              : state === 'over'
+                ? <TrendingUp className="h-6 w-6" aria-hidden="true" />
+                : <TrendingDown className="h-6 w-6" aria-hidden="true" />}
+            {state === 'match'
+              ? t('dailyClose.cashMatches')
+              : state === 'over'
+                ? t('dailyClose.overLabel')
+                : t('dailyClose.shortLabel')}
+          </span>
+          <span className="text-2xl font-extrabold tabular-nums">
+            {state === 'match' ? '✓' : `${discrepancy > 0 ? '+' : '−'}${formatAmount(Math.abs(discrepancy))}`}
+          </span>
+        </div>
+      )}
+
+      {hasDiscrepancy && (
+        <div>
+          <label htmlFor="eod-reason" className="mb-2 block text-sm font-bold text-gray-700">
+            {discrepancy > 0 ? t('dailyClose.reasonForOver') : t('dailyClose.reasonForShort')}
+          </label>
+          <textarea
+            id="eod-reason"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t('dailyClose.writeReason')}
+            rows={3}
+            className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-base outline-none transition-colors focus:border-core-500 focus:ring-2 focus:ring-core-500"
+          />
+        </div>
+      )}
+    </>
+  );
+
+  if (desktop) {
+    return (
+      <section className="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" aria-labelledby="eod-close-heading">
+        <h2 id="eod-close-heading" className="text-lg font-bold text-core-900">{t('dailyClose.closeTheDay')}</h2>
+        {body}
+        {closeButton}
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        {body}
+      </div>
+      {/* The close button stays at the bottom of the screen, so closing never needs a scroll */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-8px_16px_rgba(15,23,42,0.06)]">
+        <div className="mx-auto w-full max-w-5xl">{closeButton}</div>
+      </div>
+    </>
+  );
+}
+
+// =============================================================================
 // Sub-component: Sales Breakdown Cards
 // =============================================================================
 
-function SalesBreakdown({ report, formatAmount, formatLiters, formatUnits }) {
-  const { t } = useTranslation();
-  const items = [
+/** The businesses a day's sales are split into, with the colour that identifies each. */
+function businessItems(report, t, formatLiters, formatUnits) {
+  return [
     { icon: Fuel, color: 'bg-petrol-500', label: t('dailyClose.petrolShort'), amount: report.petrolSales, detail: formatLiters(report.petrolLiters) },
     { icon: Fuel, color: 'bg-gray-700', label: t('dailyClose.dieselShort'), amount: report.dieselSales, detail: formatLiters(report.dieselLiters) },
     { icon: Zap, color: 'bg-ev-500', label: t('dailyClose.evShort'), amount: report.evSales, detail: formatUnits(report.evUnits) },
     { icon: Home, color: 'bg-rental-500', label: t('dailyClose.rent'), amount: report.rentalSales, detail: null },
     { icon: Package, color: 'bg-purple-500', label: t('dailyClose.other'), amount: report.otherSales, detail: null },
   ];
+}
+
+function SalesBreakdown({ report, formatAmount, formatLiters, formatUnits }) {
+  const { t } = useTranslation();
+  const items = businessItems(report, t, formatLiters, formatUnits);
 
   const hasData = items.some(i => parseFloat(i.amount) > 0);
   if (!hasData) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
       {items.map((item, idx) => {
         const Icon = item.icon;
         const amount = parseFloat(item.amount) || 0;
@@ -984,7 +1347,7 @@ function TransactionList({ transactions, isAdmin, formatAmount, parseCustomField
 
   return (
     <div className="space-y-3">
-      <h2 className="font-bold text-gray-800 text-lg">
+      <h2 className="text-lg font-bold text-core-900">
         {t('dailyClose.transactions')}
         <span className="text-sm font-normal text-gray-500 ml-2">({transactions.length})</span>
       </h2>
@@ -1042,7 +1405,7 @@ function TransactionList({ transactions, isAdmin, formatAmount, parseCustomField
                 {isAdmin && (
                   <button
                     onClick={() => onEdit(txn)}
-                    className="p-2 text-gray-400 hover:text-core-600 hover:bg-core-50 rounded-lg transition-colors"
+                    className="flex h-11 w-11 items-center justify-center text-gray-500 hover:text-core-700 hover:bg-core-50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -1070,20 +1433,20 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
           <h2 className="text-lg font-bold text-gray-800">{t('dailyClose.editTransaction')}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+          <button type="button" onClick={onClose} aria-label={t('common.close')} className="flex h-11 w-11 items-center justify-center hover:bg-gray-100 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500"><X className="w-5 h-5 text-gray-500" aria-hidden="true" /></button>
         </div>
 
-        <div className="mx-auto w-full max-w-5xl p-4 space-y-4">
+        <div className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.amountLabel')}</label>
             <input type="number" inputMode="decimal" value={editForm.amount} onChange={(e) => updateField('amount', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+              className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.typeLabel')}</label>
             <select value={editForm.transactionType} onChange={(e) => updateField('transactionType', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
+              className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none">
               <option value="SALE">Sale</option>
               <option value="PURCHASE">Purchase</option>
               <option value="EXPENSE">Expense</option>
@@ -1098,7 +1461,7 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.fuelType')}</label>
                 <select value={editForm.fuelType || 'petrol'} onChange={(e) => updateField('fuelType', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
+                  className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none">
                   <option value="petrol">Petrol</option>
                   <option value="diesel">Diesel</option>
                 </select>
@@ -1107,18 +1470,18 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.litersLabel')}</label>
                   <input type="number" inputMode="decimal" value={editForm.liters || ''} onChange={(e) => updateField('liters', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+                    className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.rateLabel')}</label>
                   <input type="number" inputMode="decimal" value={editForm.ratePerLiter || ''} onChange={(e) => updateField('ratePerLiter', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+                    className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.paymentLabel')}</label>
                 <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
+                  className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none">
                   <option value="CASH">{t('common.cash')}</option>
                   <option value="BANK">{t('common.bank')}</option>
                 </select>
@@ -1137,23 +1500,23 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.startPercent')}</label>
                   <input type="number" value={editForm.startPercent ?? ''} onChange={(e) => updateField('startPercent', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+                    className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.endPercent')}</label>
                   <input type="number" value={editForm.endPercent ?? ''} onChange={(e) => updateField('endPercent', e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+                    className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.ratePercent')}</label>
                 <input type="number" value={editForm.ratePerPercent ?? ''} onChange={(e) => updateField('ratePerPercent', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+                  className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.paymentLabel')}</label>
                 <select value={editForm.paymentMethod || 'CASH'} onChange={(e) => updateField('paymentMethod', e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none">
+                  className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none">
                   <option value="CASH">{t('common.cash')}</option>
                   <option value="BANK">{t('common.bank')}</option>
                 </select>
@@ -1164,13 +1527,13 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.notesLabel')}</label>
             <textarea value={editForm.notes || ''} onChange={(e) => updateField('notes', e.target.value)} rows={2}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none resize-none" />
+              className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none resize-none" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('dailyClose.refNo')}</label>
             <input type="text" value={editForm.referenceNumber || ''} onChange={(e) => updateField('referenceNumber', e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none" />
+              className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none" />
           </div>
         </div>
 
@@ -1184,7 +1547,7 @@ function EditTransactionModal({ transaction, editForm, setEditForm, saving, erro
             {t('dailyClose.cancelLabel')}
           </button>
           <button onClick={onSave} disabled={saving}
-            className="flex-1 py-4 text-core-600 font-bold hover:bg-core-50 transition-colors flex items-center justify-center gap-2">
+            className="flex-1 py-4 min-h-[56px] text-core-700 font-bold hover:bg-core-50 transition-colors flex items-center justify-center gap-2">
             {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-core-600"></div> : t('dailyClose.saveLabel')}
           </button>
         </div>
@@ -1226,15 +1589,15 @@ function VerificationSection({ report, isAdmin, verifyNotes, setVerifyNotes, ver
 
   return (
     <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-4 space-y-3">
-      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+      <h3 className="text-base font-bold text-core-900 flex items-center gap-2">
         <ShieldCheck className="w-5 h-5 text-core-600" />
         {t('dailyClose.verifyReport')}
       </h3>
       <textarea value={verifyNotes} onChange={(e) => setVerifyNotes(e.target.value)}
         placeholder={t('dailyClose.notesOptional')} rows={2}
-        className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-core-500 outline-none resize-none" />
+        className="w-full min-h-[44px] px-3 py-2 text-base border border-gray-300 rounded-xl focus:border-core-500 focus:ring-2 focus:ring-core-500 outline-none resize-none" />
       <button onClick={onVerify} disabled={verifying}
-        className={`w-full py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-core-600 hover:bg-core-700'}`}>
+        className={`w-full min-h-[48px] py-3 rounded-xl text-white font-bold transition-all active:scale-95 ${verifying ? 'bg-gray-400' : 'bg-core-800 hover:bg-core-700'}`}>
         {verifying ? t('dailyClose.verifying') : t('dailyClose.verifyReport')}
       </button>
     </div>

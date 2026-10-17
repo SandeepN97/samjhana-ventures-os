@@ -269,6 +269,7 @@ export default function EVEntryPage() {
         unit="ev"
         icon={Zap}
         title={headerTitle}
+        hideWhenSidebarShows={tab === 'start'}
         actions={canManageVehicles && (
           <HeaderAction unit="ev" icon={Settings} label={t('evLive.vehicles')} onClick={() => navigate('/ev-vehicles')} />
         )}

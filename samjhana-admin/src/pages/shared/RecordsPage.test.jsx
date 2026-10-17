@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecordsPage from './RecordsPage';
@@ -27,6 +27,15 @@ function record(overrides) {
     ...overrides,
   };
 }
+
+const setDesktop = (on) => {
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: on,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+};
 
 describe('RecordsPage ledger', () => {
   beforeEach(() => {
@@ -60,6 +69,16 @@ describe('RecordsPage ledger', () => {
         customFields: JSON.stringify({ fuelType: 'diesel', liters: 42, ratePerLiter: 166.67, paymentMethod: 'BANK' }),
       }),
     ];
+  });
+
+  afterEach(() => delete window.matchMedia);
+
+  it('does not repeat the Records title beside the desktop sidebar', () => {
+    setDesktop(true);
+    renderWithProviders(<RecordsPage />);
+
+    expect(screen.getByRole('heading', { name: 'Records' })).toHaveClass('sr-only');
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
   });
 
   it('presents one chronological ledger and classifies every money direction truthfully', async () => {

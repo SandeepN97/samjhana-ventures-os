@@ -55,6 +55,7 @@ import LoanEntryPage from './pages/loans/LoanEntryPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import ChangePasswordRequiredPage from './pages/shared/ChangePasswordRequiredPage';
+import DesktopShell from './components/DesktopShell';
 
 function signedInUser() {
   try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
@@ -71,7 +72,7 @@ export function PrivateRoute({ children, roles }) {
   const user = signedInUser();
   if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
-  return children;
+  return <DesktopShell>{children}</DesktopShell>;
 }
 
 function RequireSignIn({ children }) {

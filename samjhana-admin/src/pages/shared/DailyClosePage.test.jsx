@@ -91,6 +91,23 @@ describe('DailyClosePage', () => {
     });
   });
 
+  it('keeps Close off, and says what is missing, until the cash has been counted', async () => {
+    renderWithProviders(<DailyClosePage />);
+    await screen.findByText('Total Sales');
+    expect(screen.getByRole('button', { name: 'Close the day' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Close the day' })).toHaveAccessibleDescription('Enter cash amount');
+    await userEvent.type(screen.getByLabelText('Count Your Cash'), '3000');
+    expect(screen.getByRole('button', { name: 'Close the day' })).toBeEnabled();
+    expect(screen.getByText(/Closes 2026-03-19 · 10 transactions/)).toBeInTheDocument();
+  });
+
+  it('shows how the cash count compares once an amount is typed', async () => {
+    renderWithProviders(<DailyClosePage />);
+    await screen.findByText('Total Sales');
+    await userEvent.type(screen.getByLabelText('Count Your Cash'), '3000');
+    expect(screen.getByText('Cash matches!')).toBeInTheDocument();
+  });
+
   it('shows Day Closed title when day is already closed', async () => {
     const { default: api } = await import('../../utils/api');
     api.get.mockImplementation((url) => {

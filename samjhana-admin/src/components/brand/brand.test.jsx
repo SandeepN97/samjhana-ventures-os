@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Fuel } from 'lucide-react';
@@ -11,6 +11,15 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
 });
+
+const setDesktop = (on) => {
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: on,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+};
 
 describe('brand theme', () => {
   it('gives every business unit and core a complete theme', () => {
@@ -28,6 +37,7 @@ describe('brand theme', () => {
 
 describe('PageHeader', () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => delete window.matchMedia);
 
   it('renders the title, subtitle and business colour', () => {
     renderWithProviders(<PageHeader unit="petrol" icon={Fuel} title="Petrol Pump" subtitle="Today" />);
@@ -66,6 +76,35 @@ describe('PageHeader', () => {
     expect(screen.getByRole('button', { name: 'Tenants' })).toHaveClass('min-h-[44px]');
     expect(screen.getByText('tabs')).toBeInTheDocument();
     expect(screen.getAllByRole('button')).toHaveLength(2); // back + Tenants, no language toggle
+  });
+
+  it('removes a repeated sidebar title on desktop but keeps it for screen readers', () => {
+    setDesktop(true);
+    renderWithProviders(<PageHeader title="Records" hideWhenSidebarShows />);
+
+    expect(screen.getByRole('heading', { name: 'Records' })).toHaveClass('sr-only');
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Go Back' })).not.toBeInTheDocument();
+  });
+
+  it('keeps unique desktop controls when the repeated title is removed', () => {
+    setDesktop(true);
+    renderWithProviders(
+      <PageHeader
+        title="End of Day"
+        subtitle="Today"
+        hideWhenSidebarShows
+        actions={<HeaderAction icon={Fuel} label="Review" onClick={() => {}} />}
+      >
+        <div>tabs</div>
+      </PageHeader>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'End of Day' })).toHaveClass('sr-only');
+    expect(screen.getByText('Today')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review' })).toBeVisible();
+    expect(screen.getByText('tabs')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Go Back' })).not.toBeInTheDocument();
   });
 });
 

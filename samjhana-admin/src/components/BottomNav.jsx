@@ -18,7 +18,7 @@ export default function BottomNav({ active = 'home' }) {
   return (
     <nav
       aria-label={t('nav.home')}
-      className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-gray-200 bg-white px-4 py-2"
+      className="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-gray-200 bg-white px-4 py-2 lg:hidden"
     >
       {ITEMS.map(({ key, icon: Icon, path, labelKey }) => (
         <button
