@@ -1,10 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   Globe,
   Home,
@@ -43,28 +41,51 @@ function currentUser() {
  */
 export default function DesktopShell({ children }) {
   const desktop = useDesktop();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(
-    () => localStorage.getItem('desktopSidebarCollapsed') === 'true',
+  const [sidebarWidth, setSidebarWidth] = useState(
+    () => localStorage.getItem('desktopSidebarCollapsed') === 'true' ? 76 : 256,
   );
+  const [resizing, setResizing] = useState(false);
   if (!desktop) return children;
 
-  const toggleSidebar = () => {
-    const nextCollapsed = !sidebarCollapsed;
-    localStorage.setItem('desktopSidebarCollapsed', String(nextCollapsed));
-    setSidebarCollapsed(nextCollapsed);
+  const collapsed = sidebarWidth <= 76;
+  const saveWidth = (width) => {
+    const nextWidth = width < 166 ? 76 : 256;
+    setSidebarWidth(nextWidth);
+    localStorage.setItem('desktopSidebarCollapsed', String(nextWidth === 76));
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      <div className={`transition-[padding] duration-200 ease-out ${sidebarCollapsed ? 'pl-[76px]' : 'pl-64'}`}>
+      <Sidebar
+        collapsed={collapsed}
+        width={sidebarWidth}
+        resizing={resizing}
+        onResizeStart={(event) => {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          setResizing(true);
+        }}
+        onResize={(event) => setSidebarWidth(Math.max(76, Math.min(256, event.clientX)))}
+        onResizeEnd={(event) => {
+          setResizing(false);
+          saveWidth(event.clientX);
+        }}
+        onResizeKey={(event) => {
+          if (event.key === 'ArrowLeft') { event.preventDefault(); saveWidth(76); }
+          if (event.key === 'ArrowRight') { event.preventDefault(); saveWidth(256); }
+        }}
+      />
+      <div
+        data-testid="desktop-main-offset"
+        className={`transition-[padding] duration-200 ease-out ${resizing ? '!transition-none' : ''}`}
+        style={{ paddingLeft: `${sidebarWidth}px` }}
+      >
         <div className="desktop-main-content mx-auto w-full max-w-[1400px]">{children}</div>
       </div>
     </div>
   );
 }
 
-function Sidebar({ collapsed, onToggle }) {
+function Sidebar({ collapsed, width, resizing, onResizeStart, onResize, onResizeEnd, onResizeKey }) {
   const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const user = currentUser();
@@ -86,35 +107,27 @@ function Sidebar({ collapsed, onToggle }) {
     <aside
       data-testid="desktop-sidebar"
       data-collapsed={collapsed}
-      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-core-800 text-white transition-[width] duration-200 ease-out ${collapsed ? 'w-[76px]' : 'w-64'}`}
+      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-core-800 text-white ${resizing ? '' : 'transition-[width] duration-200 ease-out'}`}
+      style={{ width: `${width}px` }}
     >
-      <div className={`flex min-h-[64px] items-center ${collapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
-        {!collapsed && (
-          <Link to="/" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white">
-            <Wordmark size="sm" />
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
-          title={collapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      <div className={`flex ${collapsed ? 'min-h-[64px] items-center justify-center px-2' : 'min-h-[88px] items-center px-5 pt-6'}`}>
+        <Link
+          to="/"
+          aria-label={t('nav.home')}
+          title={collapsed ? t('nav.home') : undefined}
+          aria-current={pathname === '/' ? 'page' : undefined}
+          className={`flex min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${collapsed ? 'h-11 w-11 items-center justify-center' : ''} ${pathname === '/' ? 'text-white' : 'text-white/90 hover:text-white'}`}
         >
           {collapsed
-            ? <ChevronRight className="h-5 w-5" aria-hidden="true" />
-            : <ChevronLeft className="h-5 w-5" aria-hidden="true" />}
-        </button>
+            ? <Home className="h-6 w-6" aria-hidden="true" />
+            : <Wordmark size="sm" />}
+        </Link>
       </div>
 
       <nav
         aria-label={t('home.menuLabel')}
         className={`flex-1 space-y-4 overflow-y-auto pb-3 ${collapsed ? 'px-2' : 'px-3'}`}
       >
-        <ul>
-          <Item to="/" icon={Home} label={t('nav.home')} active={pathname === '/'} collapsed={collapsed} />
-        </ul>
-
         <section aria-labelledby="shell-businesses">
           <h2 id="shell-businesses" className={`${collapsed ? 'sr-only' : 'px-3 pb-1 text-xs font-bold text-core-300'}`}>{t('home.businessesHeading')}</h2>
           <ul className="space-y-0.5">
@@ -171,6 +184,23 @@ function Sidebar({ collapsed, onToggle }) {
           compact={collapsed}
           className={collapsed ? 'w-full justify-center' : 'w-full [&>button]:flex-1 [&>button]:justify-center'}
         />
+      </div>
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('nav.resizeSidebar')}
+        aria-valuemin={76}
+        aria-valuemax={256}
+        aria-valuenow={width}
+        tabIndex={0}
+        onPointerDown={onResizeStart}
+        onPointerMove={(event) => { if (event.buttons === 1) onResize(event); }}
+        onPointerUp={onResizeEnd}
+        onPointerCancel={onResizeEnd}
+        onKeyDown={onResizeKey}
+        className="absolute right-[-6px] top-0 z-50 h-full w-3 touch-none cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-core-300"
+      >
+        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/10 transition-colors hover:bg-white/40" aria-hidden="true" />
       </div>
     </aside>
   );

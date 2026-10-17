@@ -32,7 +32,7 @@ describe('Home on a desktop', () => {
     setDesktop(true);
     renderWithProviders(<QuickActionButtons />);
     await waitFor(() => expect(screen.getByTestId('today-cash')).not.toHaveTextContent('—'));
-    expect(screen.getByRole('heading', { name: 'Samjhana Multiproduct Pvt. Ltd.' }).parentElement).toHaveClass('pt-24', 'pb-8');
+    expect(screen.getByRole('heading', { name: 'Samjhana Multiproduct Pvt. Ltd.' }).parentElement).toHaveClass('pt-8', 'pb-8');
     expect(screen.getByRole('heading', { name: 'Businesses' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Bank Loan/ })).toBeInTheDocument();
     expect(await screen.findByTestId('waiting-badge')).toHaveTextContent('2');

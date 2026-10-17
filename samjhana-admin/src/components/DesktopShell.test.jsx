@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { renderWithProviders, testI18n } from '../test/test-utils';
@@ -23,6 +23,7 @@ const renderShell = (path = '/records', options) => {
   window.history.pushState({}, '', path);
   return renderWithProviders(
     <Routes>
+      <Route path="/" element={<DesktopShell><p>home body</p></DesktopShell>} />
       <Route path="*" element={<DesktopShell><p>page body</p></DesktopShell>} />
     </Routes>,
     options,
@@ -60,45 +61,60 @@ describe('DesktopShell', () => {
     expect(screen.getByText('page body')).toBeInTheDocument();
     expect(screen.getByText('page body').parentElement).toHaveClass('desktop-main-content');
     expect(screen.getByText('page body').parentElement.contains(menu.closest('aside'))).toBe(false);
-    ['Home', 'Records', 'End of Day', 'Online Orders', 'Analytics', 'Website', 'Settings'].forEach((name) => {
+    ['Records', 'End of Day', 'Online Orders', 'Analytics', 'Website', 'Settings'].forEach((name) => {
       expect(within(menu).getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     });
+    expect(within(menu).queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('desktop-sidebar')).getByText('Samjhana Multiproduct Pvt. Ltd.').closest('a')).toHaveAttribute('href', '/');
     expect(within(menu).getAllByRole('link').length).toBeGreaterThan(10);
   });
 
-  it('collapses to a minimum-width icon rail and keeps language and logout available', async () => {
+  it('uses the brand as the Home route', async () => {
+    setDesktop(true);
+    asUser('ADMIN');
+    renderShell('/records');
+    await userEvent.click(screen.getByRole('link', { name: 'Home' }));
+    expect(await screen.findByText('home body')).toBeInTheDocument();
+  });
+
+  it('resizes to an icon rail at 76px and keeps language and logout available', () => {
     setDesktop(true);
     asUser('ADMIN');
     renderShell();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' });
+    fireEvent.pointerDown(separator, { pointerId: 1, button: 0, buttons: 1, clientX: 256 });
+    fireEvent.pointerMove(separator, { pointerId: 1, buttons: 1, clientX: 50 });
+    fireEvent.pointerUp(separator, { pointerId: 1, clientX: 50 });
 
     const sidebar = screen.getByTestId('desktop-sidebar');
     const menu = screen.getByRole('navigation', { name: 'Main menu' });
-    const homeLink = within(menu).getByRole('link', { name: 'Home' });
     expect(sidebar).toHaveAttribute('data-collapsed', 'true');
-    expect(sidebar).toHaveClass('w-[76px]');
-    expect(screen.getByText('page body').parentElement.parentElement).toHaveClass('pl-[76px]');
+    expect(sidebar).toHaveStyle({ width: '76px' });
+    expect(screen.getByTestId('desktop-main-offset')).toHaveStyle({ paddingLeft: '76px' });
+    const homeLink = within(sidebar).getByRole('link', { name: 'Home' });
     expect(homeLink).toHaveAttribute('title', 'Home');
-    expect(within(homeLink).getByText('Home')).toHaveClass('sr-only');
-    expect(homeLink.querySelector('svg')).toHaveClass('h-5', 'w-5');
+    expect(homeLink.querySelector('svg')).toHaveClass('h-6', 'w-6');
     expect(screen.getByRole('button', { name: 'Switch language to Nepali' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
     expect(localStorage.getItem('desktopSidebarCollapsed')).toBe('true');
   });
 
-  it('restores the expanded sidebar from the saved preference and allows expanding it again', async () => {
+  it('restores the expanded sidebar from the saved preference and allows expanding it by dragging', () => {
     setDesktop(true);
     asUser('ADMIN');
     localStorage.setItem('desktopSidebarCollapsed', 'true');
     renderShell();
 
     const sidebar = screen.getByTestId('desktop-sidebar');
-    expect(sidebar).toHaveClass('w-[76px]');
-    await userEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    expect(sidebar).toHaveStyle({ width: '76px' });
+    const separator = screen.getByRole('separator', { name: 'Resize sidebar' });
+    fireEvent.pointerDown(separator, { pointerId: 1, button: 0, buttons: 1, clientX: 76 });
+    fireEvent.pointerMove(separator, { pointerId: 1, buttons: 1, clientX: 220 });
+    fireEvent.pointerUp(separator, { pointerId: 1, clientX: 220 });
     expect(sidebar).toHaveAttribute('data-collapsed', 'false');
-    expect(sidebar).toHaveClass('w-64');
-    expect(screen.getByText('page body').parentElement.parentElement).toHaveClass('pl-64');
+    expect(sidebar).toHaveStyle({ width: '256px' });
+    expect(screen.getByTestId('desktop-main-offset')).toHaveStyle({ paddingLeft: '256px' });
     expect(localStorage.getItem('desktopSidebarCollapsed')).toBe('false');
   });
 
@@ -151,6 +167,7 @@ describe('DesktopShell', () => {
     asUser('ADMIN');
     renderShell('/records', { locale: 'ne' });
     expect(screen.getByRole('navigation', { name: testI18n.t('home.menuLabel', { lng: 'ne' }) })).toBeInTheDocument();
+    expect(screen.getByRole('separator', { name: testI18n.t('nav.resizeSidebar', { lng: 'ne' }) })).toBeInTheDocument();
     expect(screen.getByText('व्यवसायहरू')).toBeInTheDocument();
   });
 });
