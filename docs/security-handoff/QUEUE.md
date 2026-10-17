@@ -72,4 +72,4 @@ Notes that apply to every entry:
 
 ## Decided items
 
-The owner has answered 23 of the 32 open questions. What to build for them, in groups G1 to G6 with tests and SQL flags, is in `DECISIONS-MADE.md`; the 8 items above need no decision and can run in parallel. The real-charger test (DECISIONS-MADE.md section 5) gates the EV charging group.
+The owner has answered all 32 open questions. What to build for them, in groups G1 to G9 with tests and SQL flags, is in `DECISIONS-MADE.md`; the 8 items above need no decision and can run in parallel. The real-charger test (DECISIONS-MADE.md section 5) gates the EV charging group.

@@ -1,6 +1,6 @@
 # Status of all 118 audit findings
 
-Written 2026-10-16, refreshed 2026-10-17 after every PR of the series had been merged into `staging` and the owner had answered 23 of the 32 questions. Counts: **46 findings fixed** (all merged into `staging`), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **23 decided by the owner and ready to build** (`DECISIONS-MADE.md`), **9 still waiting for the owner's decision**, **27 ops/CI/docs/architecture**, **8 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
+Written 2026-10-16, refreshed 2026-10-17 after every PR of the series had been merged into `staging` and the owner had answered all 32 questions. Counts: **46 findings fixed** (all merged into `staging`), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **32 decided by the owner and ready to build** (`DECISIONS-MADE.md`), **0 still waiting for the owner's decision**, **27 ops/CI/docs/architecture**, **8 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
 
 The authoritative record of each fix is its pull request (body = what was wrong, what changed, tests, mutation checks). To find the PR for a finding: GitHub search `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`.
 
@@ -54,13 +54,13 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | F-02 | Low | A refused EV session start still leaves its plate photo on disk: any STAFF login can write an unlimited… | Fixed, merged into staging | #149 |
 | F-04 | Low | Plate photos (the only evidence of which car charged) live on the container's own disk: on a host… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | F-05 | Low | Loan receipts: one receipt, one payment | Fixed, merged into staging | #166 |
-| G-02 | Low | The plate number is "normalised" by deleting every character outside A-Z and 0-9 after a plain… | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| G-02 | Low | The plate number is "normalised" by deleting every character outside A-Z and 0-9 after a plain… | Decision made, ready to build | see DECISIONS-MADE.md |
 | G-03 | Low | How far back staff may post entries | Decision made, ready to build | see DECISIONS-MADE.md |
 | G-04 | Low | Date display in the admin app (time zone) | To do (no decision needed) | see QUEUE.md |
-| G-05 | Low | EV meter handling has no monotonic or reset rule: the first reading received becomes the baseline, and a… | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| G-05 | Low | EV meter handling has no monotonic or reset rule: the first reading received becomes the baseline, and a… | Decision made, ready to build | see DECISIONS-MADE.md |
 | H-01 | Low | Public site links: re-check on read and in the browser | To do (no decision needed) | see QUEUE.md |
 | I-01 | Low | The catch-all exception handler turns ordinary client mistakes into HTTP 500 plus a full stack trace in… | Fixed, merged into staging | #142 |
-| I-02 | Low | The public checkout's "Not enough stock for <product>" answer is an exact stock-count oracle for… | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| I-02 | Low | The public checkout's "Not enough stock for <product>" answer is an exact stock-count oracle for… | Decision made, ready to build | see DECISIONS-MADE.md |
 | I-03 | Low | Row-level security on the Supabase tables is claimed in the docs but provided by nothing in the… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | I-04 | Low | First-run admin password handling | Decision made, ready to build | see DECISIONS-MADE.md |
 | I-05 | Low | Strictness of the startup checks for weak secrets | Decision made, ready to build | see DECISIONS-MADE.md |
@@ -70,8 +70,8 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | J-06 | Low | Nothing refreshes the SHA-pinned GitHub Actions or the pinned Python tool dependencies, the… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-09 | Low | The AI-tooling supply chain rests on pins and records the repository does not contain: agent skills are… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | K-04 | Low | The uptime signals are weaker than they look: the keep-alive example points at an endpoint this app does… | Fixed, merged into staging | #170 (the keep-alive job now pings a page the app serves; live after a release to main and once the repository variables are set) |
-| L-02 | Low | Customer data retention and erasure | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
-| L-03 | Low | Who may read online customers' contact details | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| L-02 | Low | Customer data retention and erasure | Decision made, ready to build | see DECISIONS-MADE.md |
+| L-03 | Low | Who may read online customers' contact details | Decision made, ready to build | see DECISIONS-MADE.md |
 | M-01 | Low | Price scraper must not overwrite a manager's manual price | Fixed, merged into staging | #167 (no longer applies: the owner had the NOC price scraper removed; stacked on #143) |
 | M-02 | Low | Price scraper: tie the price to the configured depot | Fixed, merged into staging | #167 (no longer applies: the scraper is removed; stacked on #143) |
 | M-03 | Low | Price fetch: report failures and show staleness | Fixed, merged into staging | #167 (no longer applies: the scraper is removed; stacked on #143) |
@@ -80,7 +80,7 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | N-02 | Low | A bank reference is not unique anywhere: the same reference can be booked as many loan payments, in two… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | N-05 | Low | There is no baseline schema, no rollback script and no documented backup or restore for the only copy of… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | P0-05 | Low | Uploaded pictures: strip metadata, verify WebP | To do (no decision needed) | see QUEUE.md |
-| P0-06 | Low | Who may read a closed daily report | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| P0-06 | Low | Who may read a closed daily report | Decision made, ready to build | see DECISIONS-MADE.md |
 | P0-07 | Low | Legacy public furniture endpoints ignore the "Hidden on website" switch and return internal UUIDs | Fixed, merged into staging | #141 |
 | P0-08 | Low | No sanity bounds on fuel prices (manual entry and the NOC scraper) | Fixed, merged into staging | #143 |
 | P0-09 | Low | PATCH /api/furniture/orders/{id}/delivery-status accepts any transaction id from any signed-in user | Fixed, merged into staging | #140 |
@@ -88,12 +88,12 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P0-13 | Low | Public media: answer conditional requests without loading the image | Fixed, merged into staging | #153 |
 | P0-15 | Low | Authentication events and admin actions in the audit trail | To do (no decision needed) | see QUEUE.md |
 | P1B1-02 | Low | Rent and furniture order screens vs server validation | Fixed, merged into staging | #165 (stacked on #161) |
-| P1B1-03 | Low | Original read endpoints load whole tables into memory on every call and are open to every signed-in… | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| P1B1-03 | Low | Original read endpoints load whole tables into memory on every call and are open to every signed-in… | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1B1-04 | Low | Rejected entries must not count on the module screens | To do (no decision needed) | see QUEUE.md |
 | P1B3-02 | Low | Who may post fuel purchase entries | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1B3-03 | Low | Switching on PR #109's per-address login limits raises the per-account guess budget from 10 to 50 per 15… | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1B3-04 | Low | Recovery runbook: no literal temporary password | Already fixed before this series | already fixed on staging: docs/RECOVERY.md now uses a placeholder and tells the reader never to reuse a published password |
-| P1B3-05 | Low | Who may read recent daily reports | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| P1B3-05 | Low | Who may read recent daily reports | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1BX-03 | Low | Production base images are digest-pinned with no update path: the Dependabot docker ecosystem promised… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | P1a-05 | Low | Online-order status changes made atomic | Fixed, merged into staging | #164 |
 | P1a-07 | Low | Loan payment: the booked amount, the principalAmount and the interestAmount are three unrelated client… | Decision made, ready to build | see DECISIONS-MADE.md |
@@ -107,7 +107,7 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P1b-04 | Low | Maker/checker on daily-close verification | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1b-05 | Low | Approval of an admin's own bank payment | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1b-06 | Low | Live EV feed: re-check the account while a socket is open | Fixed, merged into staging | #160 |
-| P1b-07 | Low | Plate-photo evidence is kept per vehicle, not per session: any staff member who starts a session with an… | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
+| P1b-07 | Low | Plate-photo evidence is kept per vehicle, not per session: any staff member who starts a session with an… | Decision made, ready to build | see DECISIONS-MADE.md |
 | P1b-09 | Low | Every "entered by / reviewed by / closed by / verified by" shown in the app is a free-text name each… | Decision made, ready to build | see DECISIONS-MADE.md |
 | B-01 | Info | Settings read access: allow-list instead of deny-list | Fixed, merged into staging | #156 |
 | D-05 | Info | Charger messages: validate field formats and lengths | To do (no decision needed) | see QUEUE.md |
@@ -131,5 +131,5 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 
 - **High** (5): 1 decision made, ready to build; 3 fixed, merged into staging; 1 Ops / CI / docs / architecture
 - **Medium** (30): 6 decision made, ready to build; 18 fixed, merged into staging; 3 Ops / CI / docs / architecture; 3 partly fixed
-- **Low** (66): 2 already fixed before this series; 16 decision made, ready to build; 21 fixed, merged into staging; 12 Ops / CI / docs / architecture; 6 to do (no decision needed); 9 waiting for the owner's decision
+- **Low** (66): 2 already fixed before this series; 25 decision made, ready to build; 21 fixed, merged into staging; 12 Ops / CI / docs / architecture; 6 to do (no decision needed)
 - **Info** (17): 4 fixed, merged into staging; 11 Ops / CI / docs / architecture; 2 to do (no decision needed)
