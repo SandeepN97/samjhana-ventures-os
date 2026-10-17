@@ -1,10 +1,14 @@
 package com.samjhana.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samjhana.entity.AuditLog;
+import com.samjhana.entity.BusinessUnit;
+import com.samjhana.entity.User;
 import com.samjhana.entity.FurnitureCustomer;
 import com.samjhana.entity.FurnitureItem;
 import com.samjhana.entity.FurnitureItem.FurnitureCategory;
 import com.samjhana.entity.Transaction;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.FurnitureCustomerRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.TransactionRepository;
@@ -24,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,13 +40,14 @@ class FurnitureServiceTest {
     @Mock TransactionRepository transactionRepository;
     @Mock MediaService mediaService;
     @Mock SlugService slugService;
+    @Mock AuditLogRepository auditLogRepository;
 
     private FurnitureService service;
 
     @BeforeEach
     void setUp() {
         service = new FurnitureService(customerRepository, itemRepository, transactionRepository, new ObjectMapper(),
-                mediaService, slugService);
+                mediaService, slugService, auditLogRepository);
     }
 
     private FurnitureItem item(String name, String sellingPrice, int stockQty, int reorderLevel) {
@@ -52,9 +59,15 @@ class FurnitureServiceTest {
                 .build();
     }
 
+    private final BusinessUnit furnitureUnit = BusinessUnit.builder().code("furniture").name("Furniture").build();
+    private final BusinessUnit petrolUnit = BusinessUnit.builder().code("petrol").name("Petrol").build();
+    private final User staff = User.builder().id(UUID.randomUUID()).username("counter-staff").passwordHash("x")
+            .fullName("Counter Staff").role(User.UserRole.STAFF).build();
+
     private Transaction saleTransaction(LocalDate date, String amount, String customFieldsJson) {
         return Transaction.builder()
                 .id(UUID.randomUUID())
+                .business(furnitureUnit)
                 .transactionType(Transaction.TransactionType.SALE)
                 .transactionDate(date)
                 .amount(new BigDecimal(amount))
@@ -281,16 +294,16 @@ class FurnitureServiceTest {
         when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
         when(transactionRepository.save(any())).then(returnsFirstArg());
 
-        Map<String, Object> result = service.updateDeliveryStatus(transaction.getId(), "SHIPPED");
+        Map<String, Object> result = service.updateDeliveryStatus(transaction.getId(), "IN_PROGRESS", staff);
 
-        assertThat(result.get("deliveryStatus")).isEqualTo("SHIPPED");
+        assertThat(result.get("deliveryStatus")).isEqualTo("IN_PROGRESS");
     }
 
     @Test
     void shouldRejectDeliveryStatusUpdate_whenStatusNull() {
         Transaction transaction = saleTransaction(LocalDate.now(), "100", null);
         when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
-        assertThatThrownBy(() -> service.updateDeliveryStatus(transaction.getId(), null))
+        assertThatThrownBy(() -> service.updateDeliveryStatus(transaction.getId(), null, staff))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -298,6 +311,107 @@ class FurnitureServiceTest {
     void shouldThrow_whenUpdatingDeliveryStatusForUnknownOrder() {
         UUID id = UUID.randomUUID();
         when(transactionRepository.findById(id)).thenReturn(java.util.Optional.empty());
-        assertThatThrownBy(() -> service.updateDeliveryStatus(id, "SHIPPED")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.updateDeliveryStatus(id, "DELIVERED", staff)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ---- finding P0-09: only furniture orders, only a real status, and a record of who changed it ----
+
+    @Test
+    void shouldRefuseToChangeATransactionOfAnotherBusiness_andChangeNothing() {
+        Transaction petrolSale = saleTransaction(LocalDate.now(), "1700", "{\"liters\":10}");
+        petrolSale.setBusiness(petrolUnit);
+        when(transactionRepository.findById(petrolSale.getId())).thenReturn(java.util.Optional.of(petrolSale));
+
+        assertThatThrownBy(() -> service.updateDeliveryStatus(petrolSale.getId(), "DELIVERED", staff))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("Order not found: " + petrolSale.getId());
+
+        assertThat(petrolSale.getCustomFields()).isEqualTo("{\"liters\":10}");
+        verify(transactionRepository, never()).save(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRefuseATransactionWithNoBusiness() {
+        Transaction orphan = saleTransaction(LocalDate.now(), "100", null);
+        orphan.setBusiness(null);
+        when(transactionRepository.findById(orphan.getId())).thenReturn(java.util.Optional.of(orphan));
+
+        assertThatThrownBy(() -> service.updateDeliveryStatus(orphan.getId(), "DELIVERED", staff))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"SHIPPED", "DONE", "", "   ", "PENDING;DROP", "<script>"})
+    void shouldRefuseAStatusThatIsNotOneOfTheThree(String status) {
+        Transaction transaction = saleTransaction(LocalDate.now(), "100", "{\"deliveryStatus\":\"PENDING\"}");
+        when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
+
+        assertThatThrownBy(() -> service.updateDeliveryStatus(transaction.getId(), status, staff))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(transaction.getCustomFields()).isEqualTo("{\"deliveryStatus\":\"PENDING\"}");
+        verify(transactionRepository, never()).save(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"PENDING", "IN_PROGRESS", "DELIVERED", "delivered", " in_progress "})
+    void shouldAcceptTheThreeStatuses_inAnyCase_andStoreThemInCapitals(String status) {
+        Transaction transaction = saleTransaction(LocalDate.now(), "100", null);
+        when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
+        when(transactionRepository.save(any())).then(returnsFirstArg());
+
+        Map<String, Object> result = service.updateDeliveryStatus(transaction.getId(), status, staff);
+
+        assertThat(result.get("deliveryStatus")).isEqualTo(status.trim().toUpperCase());
+    }
+
+    @Test
+    void shouldKeepTheRestOfTheOrdersDetails() throws Exception {
+        Transaction transaction = saleTransaction(LocalDate.now(), "100",
+                "{\"customerName\":\"Ram\",\"deliveryStatus\":\"PENDING\",\"items\":[{\"itemId\":\"x\",\"quantity\":2}]}");
+        when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
+        when(transactionRepository.save(any())).then(returnsFirstArg());
+
+        service.updateDeliveryStatus(transaction.getId(), "DELIVERED", staff);
+
+        Map<?, ?> stored = new ObjectMapper().readValue(transaction.getCustomFields(), Map.class);
+        assertThat(stored.get("customerName")).isEqualTo("Ram");
+        assertThat(stored.get("deliveryStatus")).isEqualTo("DELIVERED");
+        assertThat((List<?>) stored.get("items")).hasSize(1);
+    }
+
+    @Test
+    void shouldWriteAnAuditRowWithWhoChangedItAndTheOldAndNewStatus() throws Exception {
+        Transaction transaction = saleTransaction(LocalDate.now(), "100", "{\"deliveryStatus\":\"PENDING\"}");
+        when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
+        when(transactionRepository.save(any())).then(returnsFirstArg());
+
+        service.updateDeliveryStatus(transaction.getId(), "DELIVERED", staff);
+
+        org.mockito.ArgumentCaptor<AuditLog> row = org.mockito.ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(row.capture());
+        assertThat(row.getValue().getUser()).isSameAs(staff);
+        assertThat(row.getValue().getEntityType()).isEqualTo(AuditLog.EntityType.TRANSACTION);
+        assertThat(row.getValue().getEntityId()).isEqualTo(transaction.getId());
+        assertThat(row.getValue().getAction()).isEqualTo(AuditLog.AuditAction.UPDATE);
+        assertThat(row.getValue().getDescription()).isEqualTo("Delivery status changed from PENDING to DELIVERED");
+        assertThat(new ObjectMapper().readTree(row.getValue().getOldValues()).get("deliveryStatus").asText()).isEqualTo("PENDING");
+        assertThat(new ObjectMapper().readTree(row.getValue().getNewValues()).get("deliveryStatus").asText()).isEqualTo("DELIVERED");
+    }
+
+    @Test
+    void shouldRecordNoOldStatus_whenTheOrderNeverHadOne() throws Exception {
+        Transaction transaction = saleTransaction(LocalDate.now(), "100", null);
+        when(transactionRepository.findById(transaction.getId())).thenReturn(java.util.Optional.of(transaction));
+        when(transactionRepository.save(any())).then(returnsFirstArg());
+
+        service.updateDeliveryStatus(transaction.getId(), "PENDING", staff);
+
+        org.mockito.ArgumentCaptor<AuditLog> row = org.mockito.ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(row.capture());
+        assertThat(row.getValue().getDescription()).isEqualTo("Delivery status changed from none to PENDING");
+        assertThat(new ObjectMapper().readTree(row.getValue().getOldValues()).get("deliveryStatus").isNull()).isTrue();
     }
 }
