@@ -9,6 +9,7 @@ Source: `samjhana-admin/src/components/QuickActionButtons.jsx` (`DashboardPage` 
 |---|---|
 | Page | `min-h-screen bg-gray-100 pb-20` |
 | Header | `bg-core-800 text-white px-4 pt-14 pb-6 shadow-lg`, [AdminWordmark](../AdminWordmark/README.md) centred, welcome line `text-core-300` |
+| Desktop header | `bg-core-800 px-8 pt-14 pb-8 text-white shadow-lg`; the company name sits below a generous top inset |
 | Cash card | `mx-4 mt-4 bg-white rounded-2xl shadow-md p-4`; label `text-gray-500 text-sm`; amount `text-3xl font-bold text-green-600` (a dash while loading, never an invented number) |
 | Tile grid | `grid grid-cols-2 gap-4 p-4 mt-4`; an odd last tile is `col-span-2` |
 | Tile | `{tile} h-32 rounded-2xl shadow-lg text-white`: a 48 px icon over an 18 px bold label; pressed = `active:scale-95`. `{tile}` is `bg-<unit>-500 hover:bg-<unit>-600` (core: `bg-core-700`) |

@@ -17,7 +17,7 @@ export default function DesktopHome({ user, businesses, todayCash, newOrders, wa
 
   return (
     <div className="min-h-screen bg-gray-100 pb-12">
-      <header className="bg-core-800 px-8 py-8 text-white shadow-lg">
+      <header className="bg-core-800 px-8 pt-14 pb-8 text-white shadow-lg">
         <h1 className="text-3xl font-bold tracking-tight">{t('home.title')}</h1>
         <p className="mt-1 text-core-300">
           {t('home.welcome')}{user.fullName ? ` ${user.fullName}` : ''}
