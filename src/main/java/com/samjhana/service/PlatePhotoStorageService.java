@@ -32,6 +32,12 @@ public class PlatePhotoStorageService {
         }
         String header = dataUrl.substring(0, comma).toLowerCase(Locale.ROOT);
         String extension = extensionFor(header);
+        // Judge the size from the length of the text, before anything is copied or decoded: a text this long cannot
+        // be a photo under the limit (Base64 packs 3 bytes into 4 characters; the last group can be 2 bytes short).
+        long encodedLength = dataUrl.length() - (comma + 1L);
+        if (encodedLength / 4 * 3 - 2 > MAX_BYTES) {
+            throw new IllegalArgumentException("Plate photo must be between 1 byte and 5 MB");
+        }
         byte[] bytes;
         try {
             bytes = Base64.getDecoder().decode(dataUrl.substring(comma + 1));

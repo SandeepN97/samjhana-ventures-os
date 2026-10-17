@@ -28,7 +28,11 @@ public class StartChargeSessionRequest {
     @Size(max = 30)
     private String phoneNumber;
 
-    /** Optional camera data URL; JPEG, PNG, or WebP up to 5 MB after decoding. */
+    /**
+     * Optional camera data URL; JPEG, PNG, or WebP up to 5 MB after decoding. As text that is about 7 million
+     * characters (5 MB is 6,990,508 characters of Base64), so the text itself is limited too.
+     */
+    @Size(max = 7_000_000)
     private String platePhotoDataUrl;
 
     private String vehicleCatalogId;

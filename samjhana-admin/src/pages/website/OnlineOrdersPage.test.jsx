@@ -35,6 +35,8 @@ describe('OnlineOrdersPage', () => {
     expect(screen.getByText(/Hari Thapa · 9812345678/)).toBeInTheDocument();
     expect(screen.getByText('2 × Wild Honey')).toBeInTheDocument();
     expect(screen.getByText('Rs 1,850')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Order desk' })).toBeInTheDocument();
+    expect(screen.getByText('View order')).toBeInTheDocument();
     expect(within(screen.getByRole('tab', { name: /New/ })).getByText('1')).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/api/shop-orders?status=NEW');
   });
@@ -74,6 +76,19 @@ describe('OnlineOrdersPage', () => {
     expect(within(dialog).getByText(/Call first/)).toBeInTheDocument();
     expect(within(dialog).getByText('Pay cash on delivery')).toBeInTheDocument();
     expect(within(dialog).getByText('Rs 150')).toBeInTheDocument();
+  });
+
+  it('focuses the order sheet, closes it with Escape, and returns focus to the order', async () => {
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    const orderRow = await screen.findByTestId('order-row');
+    await userEvent.click(orderRow);
+    const dialog = screen.getByRole('dialog');
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    await waitFor(() => expect(close).toHaveFocus());
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(orderRow).toHaveFocus());
   });
 
   it('moves a new order to confirmed, and offers only the next steps', async () => {
