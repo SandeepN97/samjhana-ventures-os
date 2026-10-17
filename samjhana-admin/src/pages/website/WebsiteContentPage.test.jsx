@@ -64,7 +64,11 @@ describe('WebsiteContentPage', () => {
     expect(await screen.findByLabelText('Phone number')).toHaveValue('+977 1');
     expect(screen.getByLabelText('Fuel & EV hours (e.g. 6am – 9pm)')).toHaveValue('6am – 9pm');
     expect(screen.getByRole('navigation', { name: 'Choose an area to edit' })).toBeInTheDocument();
-    expect(screen.getByText('2 sections')).toBeInTheDocument();
+    // The chooser already says which area is open, so the area name and count are not repeated under it.
+    expect(screen.queryByText('2 sections')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Contact & hours' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contact details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Opening hours' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Online orders/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Restaurant menu/ })).toHaveAttribute('href', '/restaurant-menu');
     expect(api.get).not.toHaveBeenCalledWith('/api/shop-orders/summary');
@@ -88,8 +92,8 @@ describe('WebsiteContentPage', () => {
   it('sends number fields as numbers', async () => {
     api.put.mockImplementation((url, body) => Promise.resolve({ data: { value: body } }));
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Shop & delivery' }));
-    expect(screen.getByText('1 section')).toBeInTheDocument();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Shop & delivery' }))[0]);
+    expect(screen.queryByText('1 section')).not.toBeInTheDocument();
     const fee = await screen.findByLabelText('Delivery fee (Rs)');
     await userEvent.clear(fee);
     await userEvent.type(fee, '200');
@@ -108,7 +112,7 @@ describe('WebsiteContentPage', () => {
   it('edits a picture field through the uploader', async () => {
     api.put.mockImplementation((url, body) => Promise.resolve({ data: { value: body } }));
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Home page' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Home page' }))[0]);
     expect(await screen.findByText('Picture: img-v')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'pick for hub-visit-image' }));
     await userEvent.click(within(screen.getByRole('region', { name: 'Two big panels at the top' })).getByRole('button', { name: 'Save' }));
@@ -120,7 +124,7 @@ describe('WebsiteContentPage', () => {
   it('adds, moves and removes list items', async () => {
     api.put.mockImplementation((url, body) => Promise.resolve({ data: { value: body } }));
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Home page' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Home page' }))[0]);
     expect(await screen.findAllByTestId('list-item')).toHaveLength(3);          // 2 services + 1 number
     await userEvent.click(screen.getByRole('button', { name: 'Move Fuel down' }));
     await userEvent.click(screen.getByRole('button', { name: 'Remove Bike repair' }));
@@ -135,8 +139,8 @@ describe('WebsiteContentPage', () => {
   it('lets text lists grow and shrink', async () => {
     api.put.mockImplementation((url, body) => Promise.resolve({ data: { value: body } }));
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Fuel, EV & bike repair' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add text' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Fuel, EV & bike repair' }))[0]);
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Add text' }))[0]);
     await userEvent.type(screen.getByLabelText('Bike types shown as tags 2'), 'Scooters');
     await userEvent.click(within(screen.getByRole('region', { name: 'Bike repair section' })).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith('/api/site-content/bike', expect.objectContaining({ pills: ['All bikes', 'Scooters'] })));
@@ -144,8 +148,8 @@ describe('WebsiteContentPage', () => {
 
   it('keeps the three meals fixed: no add, remove or reorder', async () => {
     renderWithProviders(<WebsiteContentPage />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Choose an area to edit: Contact & hours' }));
-    await userEvent.click(screen.getByRole('menuitemradio', { name: /Restaurant/ }));
+    const slider = await screen.findByRole('group', { name: 'Choose an area to edit' });
+    await userEvent.click(within(slider).getByRole('button', { name: /Restaurant/ }));
     const meals = await screen.findByRole('group', { name: 'Meals (breakfast, lunch, dinner)' });
     expect(within(meals).queryByRole('button', { name: /Remove|Move|Add$/ })).not.toBeInTheDocument();
     expect(within(meals).getByText('Picture for this meal: img-b')).toBeInTheDocument();
@@ -170,8 +174,21 @@ describe('WebsiteContentPage', () => {
     renderWithProviders(<WebsiteContentPage />, { locale: 'ne' });
     expect(await screen.findByLabelText('फोन नम्बर')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'सम्पादन गर्ने भाग छान्नुहोस्' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'संपर्क र समय' })).toBeInTheDocument();
-    expect(screen.getByText('२ खण्ड')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'संपर्क र समय' })[0]).toBeInTheDocument();
+    expect(screen.queryByText('२ खण्ड')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /रेस्टुरेन्ट मेनु/ })).toBeInTheDocument();
+  });
+
+  it('still names the area and counts its sections on a page that has only one area', async () => {
+    renderWithProviders(<WebsiteContentPage only={['contact']} embedded />);
+    expect(await screen.findByLabelText('Phone number')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Contact & hours' })).toBeInTheDocument();
+    expect(screen.getByText('2 sections')).toBeInTheDocument();
+  });
+
+  it('counts the sections in Nepali on a page that has only one area', async () => {
+    renderWithProviders(<WebsiteContentPage only={['contact']} embedded />, { locale: 'ne' });
+    expect(await screen.findByLabelText('फोन नम्बर')).toBeInTheDocument();
+    expect(screen.getByText('२ खण्ड')).toBeInTheDocument();
   });
 });
