@@ -17,6 +17,9 @@ public interface ChargePointRepository extends JpaRepository<ChargePoint, UUID> 
 
     Optional<ChargePoint> findByCodeAndDeletedAtIsNull(String code);
 
+    /** Whether another charger (removed ones included: the column is unique over all rows) already holds this serial number. */
+    boolean existsBySerialNumberAndIdNot(String serialNumber, UUID id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT chargePoint FROM ChargePoint chargePoint WHERE chargePoint.id = :id")
     Optional<ChargePoint> findByIdForUpdate(@Param("id") UUID id);
