@@ -6,6 +6,6 @@ If you are continuing the security-fix work (a series of small pull requests int
 
 Short version of the rules that are easy to get wrong:
 
-- Open pull requests **into `staging`** only. Never open, approve or merge a `staging` → `main` PR, and never merge or approve any PR: the owner does.
+- Open pull requests **into `staging`** only. Never open, approve or merge a `staging` → `main` PR. Do not merge or approve any other PR either, unless the owner asks you to in that conversation (on 2026-10-17 they asked for the whole security series to be merged into `staging`; that does not carry over to later PRs).
 - Do not start items that are waiting for the owner's decision, and do not change the database schema without the owner (it needs SQL run on Supabase first).
 - The detailed security audit report is private. Do not commit it to this public repository, and do not write exploit steps into code, tests, comments, PR text or docs.
