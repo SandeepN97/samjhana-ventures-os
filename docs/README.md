@@ -8,6 +8,7 @@
 | EV charging | [EV charging architecture](EV-CHARGING-ARCHITECTURE.md), [first real-charger connection runbook](ocpp-first-connection-runbook.md) |
 | Operations | [forgotten password / recovery](RECOVERY.md), [SQL to run on Supabase](sql/README.md) |
 | Security and release readiness | [security checklist](SECURITY_CHECKLIST.md), [database checklist](DATABASE_CHECKLIST.md), [security fixes: status, decisions, open questions](security-handoff/README.md) |
+| Design | [design system](../design-system/README.md): tokens, component guides with previews, consistency rules, accessibility review |
 | AI tooling | [tooling decisions](AI-TOOLING-ADDITIONS.md), [scan log](tooling/skill-scans/README.md) |
 
 The detailed security-audit report is private and is not in this repository (see `security-handoff/README.md`, section 6). Keep it in `docs/security/` on your own machine, excluded from git.
