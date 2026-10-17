@@ -10,6 +10,7 @@ import com.samjhana.entity.User;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
 import com.samjhana.repository.DailyReportRepository;
+import com.samjhana.repository.FuelPriceRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
@@ -58,6 +59,7 @@ class TransactionAuditTrailTest {
     @Mock SystemSettingRepository systemSettingRepository;
     @Mock BeekeepingService beekeepingService;
     @Mock LoanReceiptService loanReceiptService;
+    @Mock FuelPriceRepository fuelPriceRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private TransactionService service;
@@ -74,10 +76,10 @@ class TransactionAuditTrailTest {
     void setUp() {
         service = new TransactionService(transactionRepository, businessUnitRepository, furnitureItemRepository,
                 auditLogRepository, calculationEngine, objectMapper, dailyReportRepository, systemSettingRepository,
-                beekeepingService, loanReceiptService);
+                beekeepingService, loanReceiptService, fuelPriceRepository);
         lenient().when(calculationEngine.validate(anyString(), anyMap())).thenReturn(ValidationResult.valid());
         lenient().when(transactionRepository.save(any(Transaction.class))).then(inv -> inv.getArgument(0));
-        entry = Transaction.builder().id(UUID.randomUUID()).business(petrol).enteredBy(manager)
+        entry =Transaction.builder().id(UUID.randomUUID()).business(petrol).enteredBy(manager)
                 .transactionType(Transaction.TransactionType.SALE).transactionDate(today).amount(new BigDecimal("1000"))
                 .notes("first note").referenceNumber("R-1").status(Transaction.TransactionStatus.APPROVED)
                 .customFields("{\"liters\":10}").build();
