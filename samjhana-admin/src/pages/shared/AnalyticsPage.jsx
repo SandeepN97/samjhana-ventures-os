@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronLeft, ChevronRight, Calendar,
   Fuel, Zap, Sofa, Hexagon, Home, Banknote,
-  TrendingUp, TrendingDown, BarChart3, Building2,
-  Receipt, AlertCircle,
-  Star, Droplets, Battery,
+  AlertCircle,
 } from 'lucide-react';
 import api from '../../utils/api';
 import BusinessDrillSheet from '../../components/BusinessDrillSheet';
-import { formatBsDate, adToBs, bsToAd, getBsMonthDays, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../../utils/nepaliDate';
-import { PageHeader } from '../../components/brand';
+import BottomNav from '../../components/BottomNav';
+import LedgerPageHeader from '../../components/LedgerPageHeader';
+import AnalyticsOverview from '../../components/analytics/AnalyticsOverview';
+import { adToBs, bsToAd, getBsMonthDays, BS_MONTHS_NE, BS_MONTHS_EN, toNepaliDigits } from '../../utils/nepaliDate';
 import { nepalTodayDate, toDateStr } from '../../utils/businessDay';
 
 const BUSINESS_CONFIG = {
@@ -23,10 +23,7 @@ const BUSINESS_CONFIG = {
   loan:      { icon: Banknote, color: 'bg-loans-500',    text: 'text-loans-600',    labelEn: 'Loans',       labelNe: 'ऋण' },
 };
 
-const fmt = (n) => {
-  if (n == null || isNaN(Number(n))) return '—';
-  return `रु ${Math.abs(Number(n)).toLocaleString('en-IN')}`;
-};
+const MONEY_IN_TYPES = new Set(['SALE', 'INCOME', 'PAYMENT']);
 
 const pctChange = (curr, prev) => {
   if (!prev || prev === 0) return null;
@@ -57,8 +54,8 @@ function getPeriodRange(period, offset = 0) {
 }
 
 function inRange(dateStr, range) {
-  const d = new Date(dateStr + 'T12:00:00');
-  return d >= range.start && d <= range.end;
+  const date = String(dateStr).slice(0, 10);
+  return date >= toDateStr(range.start) && date <= toDateStr(range.end);
 }
 
 export default function AnalyticsPage() {
@@ -91,12 +88,8 @@ export default function AnalyticsPage() {
 
   // Derived insight state
   const [txnsByDay, setTxnsByDay]             = useState([]);
-  const [cashBankSplit, setCashBankSplit]     = useState({ cash: 0, bank: 0 });
-  const [volumeMetrics, setVolumeMetrics]     = useState({ petrolLiters: 0, dieselLiters: 0, evKwh: 0 });
   const [prevRevenue, setPrevRevenue]         = useState(null);
-  const [peakDay, setPeakDay]                 = useState(null);
   const [pendingCount, setPendingCount]       = useState(0);
-  const [outstandingBalance, setOutstanding]  = useState(null);
   const [periodTxns, setPeriodTxns]           = useState([]);
   const [selectedBiz, setSelectedBiz]         = useState(null);
 
@@ -157,20 +150,10 @@ export default function AnalyticsPage() {
     selectMonth(adStart.getFullYear(), adStart.getMonth());
   };
 
-  // Compute the 7-day rolling window that contains a given day
-  const getWeekRange = (adDate) => {
-    const today = nepalTodayDate();
-    const sel   = new Date(adDate); sel.setHours(0,0,0,0);
-    const diff  = Math.round((today - sel) / 86400000);
-    const wOffset = Math.max(0, Math.floor(diff / 7));
-    return getPeriodRange('week', wOffset);
-  };
-
   useEffect(() => {
     fetchData();
     fetchInsights();
     fetchPending();
-    fetchOutstanding();
   }, [period, offset, weekStart, weekEnd]);
 
   const fetchData = async () => {
@@ -212,41 +195,18 @@ export default function AnalyticsPage() {
       const currPeriodTxns = notRejected.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
       setPeriodTxns(currPeriodTxns);
 
-      const sales    = notRejected.filter(t => t.transactionType === 'SALE');
-      const currSales = sales.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
-      const prevSales = sales.filter(t => t.transactionDate && inRange(t.transactionDate, prevRange));
+      const moneyIn = notRejected.filter(t => MONEY_IN_TYPES.has(t.transactionType));
+      const currMoneyIn = moneyIn.filter(t => t.transactionDate && inRange(t.transactionDate, currRange));
+      const prevMoneyIn = moneyIn.filter(t => t.transactionDate && inRange(t.transactionDate, prevRange));
 
       // Previous period revenue
-      const prevTotal = prevSales.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+      const prevTotal = prevMoneyIn.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
       setPrevRevenue(prevTotal);
-
-      // Cash / Bank split
-      let cash = 0, bank = 0;
-      currSales.forEach(t => {
-        const pm = (t.customFields?.paymentMethod || t.paymentMethod || '').toLowerCase();
-        if (pm === 'cash') cash += parseFloat(t.amount || 0);
-        else bank += parseFloat(t.amount || 0);
-      });
-      setCashBankSplit({ cash, bank });
-
-      // Volume metrics
-      let petrolLiters = 0, dieselLiters = 0, evKwh = 0;
-      currSales.forEach(t => {
-        if (t.businessCode === 'petrol' && t.customFields?.liters) {
-          const ft = (t.customFields.fuelType || '').toLowerCase();
-          if (ft === 'diesel') dieselLiters += parseFloat(t.customFields.liters);
-          else petrolLiters += parseFloat(t.customFields.liters);
-        }
-        if (t.businessCode === 'ev' && t.customFields?.kWh) {
-          evKwh += parseFloat(t.customFields.kWh);
-        }
-      });
-      setVolumeMetrics({ petrolLiters, dieselLiters, evKwh });
 
       // Day-by-day breakdown (current period only)
       if (period !== 'today') {
         const map = {};
-        currSales.forEach(t => {
+        currMoneyIn.forEach(t => {
           const d = t.transactionDate;
           if (!d) return;
           if (!map[d]) map[d] = { date: d, petrol: 0, ev: 0, furniture: 0, beekeeping: 0, rental: 0, loan: 0, total: 0, txnCount: 0 };
@@ -257,12 +217,8 @@ export default function AnalyticsPage() {
         });
         const sorted = Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
         setTxnsByDay(sorted);
-        // Peak day
-        const peak = sorted.reduce((best, r) => (!best || r.total > best.total ? r : best), null);
-        setPeakDay(peak);
       } else {
         setTxnsByDay([]);
-        setPeakDay(null);
       }
     } catch (e) {
       console.error(e);
@@ -274,24 +230,8 @@ export default function AnalyticsPage() {
   const fetchPending = async () => {
     try {
       const res = await api.get('/api/transactions');
-      const pending = res.data.filter(t => t.status === 'PENDING');
+      const pending = res.data.filter(t => t.status === 'PENDING_REVIEW');
       setPendingCount(pending.length);
-    } catch { /* silent */ }
-  };
-
-  const fetchOutstanding = async () => {
-    try {
-      const res = await api.get('/api/rental-properties');
-      const active = (res.data || []).filter(p => p.status === 'ACTIVE' || p.isActive);
-      if (active.length === 0) { setOutstanding(0); return; }
-      const ledgers = await Promise.all(
-        active.map(p => api.get(`/api/rental-properties/${p.id}/ledger`).catch(() => null))
-      );
-      const total = ledgers.reduce((sum, r) => {
-        const bal = r?.data?.outstandingBalance;
-        return sum + (bal ? parseFloat(bal) : 0);
-      }, 0);
-      setOutstanding(total);
     } catch { /* silent */ }
   };
 
@@ -318,7 +258,6 @@ export default function AnalyticsPage() {
 
     if (period === 'week') {
       if (weekStart && weekEnd) return fmtRange(weekStart, weekEnd);
-      if (offset === 0) return isNepali ? 'यो हप्ता' : 'This Week';
       return fmtRange(currRange.start, currRange.end);
     }
     if (offset === 0) {
@@ -350,49 +289,29 @@ export default function AnalyticsPage() {
   const txnCount      = data ? data.transactionCount : 0;
 
   const change = pctChange(totalRevenue, prevRevenue);
-  const cashPct = (cashBankSplit.cash + cashBankSplit.bank) > 0
-    ? Math.round((cashBankSplit.cash / (cashBankSplit.cash + cashBankSplit.bank)) * 100)
-    : 0;
 
   const bizRows = data?.businesses
     ? Object.entries(BUSINESS_CONFIG)
         .map(([code, cfg]) => ({ code, cfg, biz: data.businesses[code] }))
-        .filter(({ biz }) => biz)
+        .filter(({ biz }) => Number(biz?.revenue || 0) > 0)
         .sort((a, b) => Number(b.biz.revenue || 0) - Number(a.biz.revenue || 0))
     : [];
 
-  const maxRev = bizRows.reduce((m, { biz }) => Math.max(m, Number(biz.revenue || 0)), 0);
-
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <PageHeader
-        unit="core"
-        icon={BarChart3}
-        title={isNepali ? 'डासबोर्ड' : 'Dashboard'}
-        actions={pendingCount > 0 && (
-          <button
-            type="button"
-            onClick={() => navigate('/pending')}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-400 px-3 text-xs font-bold text-amber-900"
-          >
-            <AlertCircle className="h-3.5 w-3.5" />
-            {pendingCount} {isNepali ? 'पेन्डिङ' : 'pending'}
-          </button>
-        )}
-      />
+    <div className="min-h-screen bg-gray-100 pb-20 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-0">
+      <LedgerPageHeader title={isNepali ? 'व्यापार सारांश' : 'Business Summary'} />
 
       {/* Period Selector */}
-      <div className="bg-white border-b">
+      <div className="border-b border-core-200 bg-white">
         {isStaff ? (
-          <p className="text-center text-sm text-gray-500 py-3">{isNepali ? 'आजको सारांश' : "Today's Summary"}</p>
+          <p className="mx-auto max-w-7xl px-4 py-3 text-center text-sm text-core-500">{isNepali ? 'आजको सारांश' : "Today's Summary"}</p>
         ) : (
           <>
-            <div className="flex gap-2 px-4 pt-3 pb-2">
+            <div className="mx-auto flex max-w-3xl gap-2 px-4 pb-2 pt-3 md:max-w-[795px] md:px-0 xl:max-w-3xl xl:px-4">
               {['today', 'week', 'month'].map(p => (
                 <button key={p} onClick={() => { setPeriod(p); setOffset(0); setShowPicker(false); if (p !== 'week') { setWeekStart(null); setWeekEnd(null); } }}
-                  className={`flex-1 py-2 rounded-xl font-bold text-sm transition-colors ${
-                    period === p ? 'bg-core-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  className={`min-h-[44px] flex-1 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500 focus-visible:ring-offset-2 md:min-h-[56px] md:text-xl xl:min-h-[44px] xl:text-sm ${
+                    period === p ? 'bg-blue-600 text-white shadow-sm' : 'bg-core-100 text-core-600 hover:bg-core-200'
                   }`}>
                   {{ today: isNepali ? 'आज' : 'Today', week: isNepali ? 'हप्ता' : 'Week', month: isNepali ? 'महिना' : 'Month' }[p]}
                 </button>
@@ -400,12 +319,12 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Period navigation + picker trigger */}
-            <div className="relative" ref={pickerRef}>
+            <div className="relative mx-auto max-w-3xl md:max-w-[795px] xl:max-w-3xl" ref={pickerRef}>
               <div className="flex items-center justify-between px-4 pb-3">
                 <button
                   disabled={period === 'week' && weekStart && weekEnd}
                   onClick={() => setOffset(o => o + 1)}
-                  className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
+                  className={`flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${
                     period === 'week' && weekStart && weekEnd
                       ? 'text-gray-300 cursor-default'
                       : 'text-gray-500 hover:text-core-600 active:text-core-700'
@@ -416,14 +335,14 @@ export default function AnalyticsPage() {
 
                 {/* Tappable period label — opens picker */}
                 <button onClick={openPicker}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-core-700 hover:text-core-900 active:text-core-900 transition-colors px-2 py-1 rounded-lg hover:bg-core-50">
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-core-800 transition-colors hover:bg-core-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500">
                   <Calendar className="w-3.5 h-3.5" />
                   {periodLabel}
                 </button>
 
                 <button onClick={() => setOffset(o => Math.max(0, o - 1))}
                   disabled={offset === 0 || (period === 'week' && weekStart && weekEnd)}
-                  className={`flex items-center gap-1 text-sm transition-colors py-1 px-2 -mx-2 rounded-lg ${
+                  className={`flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${
                     offset === 0 || (period === 'week' && weekStart && weekEnd) ? 'text-gray-300 cursor-default' : 'text-gray-500 hover:text-core-600 active:text-core-700'
                   }`}>
                   {isNepali ? 'अर्को' : 'Next'}
@@ -433,7 +352,7 @@ export default function AnalyticsPage() {
 
               {/* ── Period Picker Dropdown ── */}
               {showPicker && (
-                <div className="absolute left-0 right-0 z-50 mx-4 mb-2 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                <div className="absolute left-4 right-4 z-50 mb-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-core-200 sm:left-1/2 sm:right-auto sm:w-96 sm:-translate-x-1/2">
 
                   {/* ── MONTH PICKER ── */}
                   {period === 'month' && (() => {
@@ -448,16 +367,16 @@ export default function AnalyticsPage() {
                       return (
                         <div className="p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <button onClick={() => setPickerBsView(v => ({ ...v, year: Math.max(minBsYear, v.year - 1) }))}
+                            <button type="button" aria-label={isNepali ? 'अघिल्लो वर्ष' : 'Previous year'} onClick={() => setPickerBsView(v => ({ ...v, year: Math.max(minBsYear, v.year - 1) }))}
                               disabled={pickerBsView.year <= minBsYear}
-                              className={`p-1.5 rounded-lg ${pickerBsView.year <= minBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
-                              <ChevronLeft className="w-4 h-4" />
+                              className={`flex h-11 w-11 items-center justify-center rounded-lg ${pickerBsView.year <= minBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                             </button>
                             <span className="font-bold text-gray-800">{toNepaliDigits(pickerBsView.year)}</span>
-                            <button onClick={() => setPickerBsView(v => ({ ...v, year: Math.min(maxBsYear, v.year + 1) }))}
+                            <button type="button" aria-label={isNepali ? 'अर्को वर्ष' : 'Next year'} onClick={() => setPickerBsView(v => ({ ...v, year: Math.min(maxBsYear, v.year + 1) }))}
                               disabled={pickerBsView.year >= maxBsYear}
-                              className={`p-1.5 rounded-lg ${pickerBsView.year >= maxBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
-                              <ChevronRight className="w-4 h-4" />
+                              className={`flex h-11 w-11 items-center justify-center rounded-lg ${pickerBsView.year >= maxBsYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                              <ChevronRight className="h-4 w-4" aria-hidden="true" />
                             </button>
                           </div>
                           <div className="grid grid-cols-4 gap-1.5">
@@ -465,9 +384,9 @@ export default function AnalyticsPage() {
                               const isFuture = pickerBsView.year === todayBs.year && i > todayBs.month;
                               const isSelected = selBs.year === pickerBsView.year && selBs.month === i;
                               return (
-                                <button key={m} disabled={isFuture}
+                                <button key={m} type="button" disabled={isFuture} aria-pressed={isSelected}
                                   onClick={() => selectBsMonth(pickerBsView.year, i)}
-                                  className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                                  className={`min-h-[44px] rounded-xl px-1 py-2 text-sm font-medium transition-colors ${
                                     isSelected ? 'bg-core-600 text-white' :
                                     isFuture   ? 'text-gray-300 cursor-default' :
                                                  'bg-gray-100 text-gray-700 hover:bg-core-100 hover:text-core-700'
@@ -487,16 +406,16 @@ export default function AnalyticsPage() {
                     return (
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <button onClick={() => setPickerYear(y => Math.max(minYear, y - 1))}
+                          <button type="button" aria-label={isNepali ? 'अघिल्लो वर्ष' : 'Previous year'} onClick={() => setPickerYear(y => Math.max(minYear, y - 1))}
                             disabled={pickerYear <= minYear}
-                            className={`p-1.5 rounded-lg ${pickerYear <= minYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
-                            <ChevronLeft className="w-4 h-4" />
+                            className={`flex h-11 w-11 items-center justify-center rounded-lg ${pickerYear <= minYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                           </button>
                           <span className="font-bold text-gray-800">{pickerYear}</span>
-                          <button onClick={() => setPickerYear(y => Math.min(maxYear, y + 1))}
+                          <button type="button" aria-label={isNepali ? 'अर्को वर्ष' : 'Next year'} onClick={() => setPickerYear(y => Math.min(maxYear, y + 1))}
                             disabled={pickerYear >= maxYear}
-                            className={`p-1.5 rounded-lg ${pickerYear >= maxYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
-                            <ChevronRight className="w-4 h-4" />
+                            className={`flex h-11 w-11 items-center justify-center rounded-lg ${pickerYear >= maxYear ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
@@ -504,9 +423,9 @@ export default function AnalyticsPage() {
                             const isFuture = pickerYear === now.getFullYear() && i > now.getMonth();
                             const isSelected = selStart.getFullYear() === pickerYear && selStart.getMonth() === i;
                             return (
-                              <button key={m} disabled={isFuture}
+                              <button key={m} type="button" disabled={isFuture} aria-pressed={isSelected}
                                 onClick={() => selectMonth(pickerYear, i)}
-                                className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                                className={`min-h-[44px] rounded-xl px-1 py-2 text-sm font-medium transition-colors ${
                                   isSelected ? 'bg-core-600 text-white' :
                                   isFuture   ? 'text-gray-300 cursor-default' :
                                                'bg-gray-100 text-gray-700 hover:bg-core-100 hover:text-core-700'
@@ -581,9 +500,9 @@ export default function AnalyticsPage() {
                             <div className={`text-center text-xs font-medium mb-2 px-2 py-1.5 rounded-lg ${weekPickStep === 1 ? 'bg-core-50 text-core-700' : 'text-gray-500'}`}>{weekHint}</div>
                           )}
                           <div className="flex items-center justify-between mb-2">
-                            <button onClick={prevBs} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
+                            <button type="button" aria-label={isNepali ? 'अघिल्लो महिना' : 'Previous month'} onClick={prevBs} className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
                             <span className="font-bold text-gray-800 text-sm">{BS_MONTHS_NE[bsM]} {toNepaliDigits(bsY)}</span>
-                            <button onClick={nextBs} disabled={atMax} className={`p-1.5 rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
+                            <button type="button" aria-label={isNepali ? 'अर्को महिना' : 'Next month'} onClick={nextBs} disabled={atMax} className={`flex h-11 w-11 items-center justify-center rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
                           </div>
                           <div className="grid grid-cols-7 mb-1">
                             {['आइत','सोम','मंग','बुध','बिही','शुक्र','शनि'].map((d, i) => <div key={i} className="text-center text-[10px] text-gray-400 font-medium py-0.5 truncate">{d}</div>)}
@@ -594,10 +513,11 @@ export default function AnalyticsPage() {
                               const adDate = bsToAd(bsY, bsM, bsDay);
                               const isFuture = adDate > now;
                               return (
-                                <button key={bsDay} disabled={isFuture}
+                                <button key={bsDay} type="button" disabled={isFuture}
+                                  aria-label={`${BS_MONTHS_NE[bsM]} ${toNepaliDigits(bsDay)}, ${toNepaliDigits(bsY)}`}
                                   onClick={() => onDayClick(adDate)}
                                   onMouseEnter={() => isWeek && !isFuture && setHovDay(adDate)}
-                                  className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${dayStyle(adDate, isFuture)}`}>
+                                  className={`flex min-h-[44px] w-full items-center justify-center rounded-lg text-xs font-medium transition-colors ${dayStyle(adDate, isFuture)}`}>
                                   {toNepaliDigits(bsDay)}
                                 </button>
                               );
@@ -606,10 +526,10 @@ export default function AnalyticsPage() {
                           <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
                             {isWeek
                               ? <>
-                                  <button onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">यो हप्ता</button>
-                                  {weekPickStep === 1 && <button onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="flex-1 text-center text-xs text-red-400 hover:text-red-600">रद्द</button>}
+                                  <button type="button" onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800">यो हप्ता</button>
+                                  {weekPickStep === 1 && <button type="button" onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-red-500 hover:bg-red-50 hover:text-red-700">रद्द</button>}
                                 </>
-                              : <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">आज</button>
+                              : <button type="button" onClick={() => onDayClick(now)} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800">आज</button>
                             }
                           </div>
                         </div>
@@ -631,9 +551,9 @@ export default function AnalyticsPage() {
                           <div className={`text-center text-xs font-medium mb-2 px-2 py-1.5 rounded-lg ${weekPickStep === 1 ? 'bg-core-50 text-core-700' : 'text-gray-500'}`}>{weekHint}</div>
                         )}
                         <div className="flex items-center justify-between mb-2">
-                          <button onClick={prevAd} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
+                          <button type="button" aria-label="Previous month" onClick={prevAd} className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
                           <span className="font-bold text-gray-800 text-sm">{AD_MONTHS[pickerMonth]} {pickerYear}</span>
-                          <button onClick={nextAd} disabled={atMax} className={`p-1.5 rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
+                          <button type="button" aria-label="Next month" onClick={nextAd} disabled={atMax} className={`flex h-11 w-11 items-center justify-center rounded-lg ${atMax ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
                         </div>
                         <div className="grid grid-cols-7 mb-1">
                           {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d, i) => <div key={i} className="text-center text-xs text-gray-400 font-medium py-0.5">{d}</div>)}
@@ -643,10 +563,11 @@ export default function AnalyticsPage() {
                           {days.map(day => {
                             const isFuture = day > now;
                             return (
-                              <button key={day.getDate()} disabled={isFuture}
+                              <button key={day.getDate()} type="button" disabled={isFuture}
+                                aria-label={`${AD_MONTHS[pickerMonth]} ${day.getDate()}, ${pickerYear}`}
                                 onClick={() => onDayClick(day)}
                                 onMouseEnter={() => isWeek && !isFuture && setHovDay(day)}
-                                className={`h-8 w-full flex items-center justify-center text-xs rounded-lg transition-colors font-medium ${dayStyle(day, isFuture)}`}>
+                                className={`flex min-h-[44px] w-full items-center justify-center rounded-lg text-xs font-medium transition-colors ${dayStyle(day, isFuture)}`}>
                                 {day.getDate()}
                               </button>
                             );
@@ -655,10 +576,10 @@ export default function AnalyticsPage() {
                         <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
                           {isWeek
                             ? <>
-                                <button onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">This week</button>
-                                {weekPickStep === 1 && <button onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="flex-1 text-center text-xs text-red-400 hover:text-red-600">Cancel</button>}
+                                <button type="button" onClick={() => { setWeekStart(null); setWeekEnd(null); setWeekPickStep(0); setOffset(0); setShowPicker(false); }} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800">This week</button>
+                                {weekPickStep === 1 && <button type="button" onClick={() => { setWeekPickStep(0); setWeekStart(null); setWeekEnd(null); }} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-red-500 hover:bg-red-50 hover:text-red-700">Cancel</button>}
                               </>
-                            : <button onClick={() => onDayClick(now)} className="flex-1 text-center text-xs text-gray-500 hover:text-gray-800">Today</button>
+                            : <button type="button" onClick={() => onDayClick(now)} className="min-h-[44px] flex-1 rounded-lg px-2 text-center text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800">Today</button>
                           }
                         </div>
                       </div>
@@ -672,354 +593,57 @@ export default function AnalyticsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-core-600" />
+        <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8" aria-label={isNepali ? 'सारांश लोड हुँदैछ' : 'Loading business summary'}>
+          <div className="animate-pulse space-y-5">
+            <div className="h-64 rounded-2xl bg-core-200" />
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="h-80 rounded-2xl bg-core-200" />
+              <div className="h-64 rounded-2xl bg-core-200" />
+            </div>
+          </div>
         </div>
       ) : error ? (
-        <div className="m-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center text-sm">{error}</div>
-      ) : !data ? null : (
-        <div className="p-4 space-y-4">
-
-          {/* ── Revenue hero card ── */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-core-700 to-core-900 px-4 pt-4 pb-5 text-white">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs opacity-75">{isNepali ? 'कुल आम्दानी' : 'Total Revenue'} · {periodLabel}</p>
-                  <p className="text-3xl font-black mt-1">{fmt(totalRevenue)}</p>
-                </div>
-                {change !== null && (
-                  <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold mt-1 ${
-                    change >= 0 ? 'bg-green-400/30 text-green-100' : 'bg-red-400/30 text-red-100'
-                  }`}>
-                    {change >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                    {change >= 0 ? '+' : ''}{change}% {isNepali ? 'बनाम' : 'vs'} {prevPeriodLabel}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-xs opacity-85">
-                <span className="flex items-center gap-1">
-                  <Receipt className="w-3.5 h-3.5" />
-                  {txnCount} {isNepali ? 'कारोबार' : 'txns'}
-                </span>
-                {totalExpenses > 0 && (
-                  <span className="flex items-center gap-1">
-                    <TrendingDown className="w-3.5 h-3.5" />
-                    {fmt(totalExpenses)} {isNepali ? 'खर्च' : 'expenses'}
-                  </span>
-                )}
-                {canViewProfit && totalProfit != null && (
-                  <span className={`flex items-center gap-1 font-bold ${totalProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    {totalProfit >= 0 ? '+' : ''}{fmt(totalProfit)} {isNepali ? 'नाफा' : 'profit'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Cash vs Bank split */}
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span className="font-semibold text-gray-700">{isNepali ? 'भुक्तानी विधि' : 'Payment Split'}</span>
-                <span>{cashPct}% {isNepali ? 'नगद' : 'cash'} · {100 - cashPct}% {isNepali ? 'डिजिटल' : 'digital'}</span>
-              </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
-                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cashPct}%` }} />
-                <div className="h-full bg-blue-400 transition-all" style={{ width: `${100 - cashPct}%` }} />
-              </div>
-              <div className="flex justify-between mt-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-xs text-gray-600">{isNepali ? 'नगद' : 'Cash'} {fmt(cashBankSplit.cash)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-                  <span className="text-xs text-gray-600">{isNepali ? 'डिजिटल' : 'Digital/Bank'} {fmt(cashBankSplit.bank)}</span>
-                </div>
-              </div>
-            </div>
+        <div className="mx-auto max-w-2xl px-4 py-10 text-center">
+          <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-red-200">
+            <AlertCircle className="mx-auto h-7 w-7 text-red-600" />
+            <h2 className="mt-3 text-lg font-bold text-core-900">{isNepali ? 'सारांश देखाउन सकिएन' : 'We could not show the summary'}</h2>
+            <p className="mt-1 text-sm text-core-600">{error}</p>
+            <button
+              type="button"
+              onClick={() => { fetchData(); fetchInsights(); fetchPending(); }}
+              className="mt-5 min-h-[44px] rounded-xl bg-core-800 px-5 text-sm font-bold text-white transition-colors hover:bg-core-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-core-500 focus-visible:ring-offset-2"
+            >
+              {isNepali ? 'फेरि प्रयास गर्नुहोस्' : 'Try again'}
+            </button>
           </div>
-
-          {/* ── Volume metrics (petrol + diesel + EV) ── */}
-          {(volumeMetrics.petrolLiters > 0 || volumeMetrics.dieselLiters > 0 || volumeMetrics.evKwh > 0) && (
-            <div className="grid grid-cols-2 gap-3">
-              {volumeMetrics.petrolLiters > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Droplets className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-gray-900">{volumeMetrics.petrolLiters.toFixed(1)}L</p>
-                    <p className="text-[10px] text-gray-400">{isNepali ? 'पेट्रोल बिक्री' : 'Petrol Sold'}</p>
-                  </div>
-                </div>
-              )}
-              {volumeMetrics.dieselLiters > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Droplets className="w-5 h-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-gray-900">{volumeMetrics.dieselLiters.toFixed(1)}L</p>
-                    <p className="text-[10px] text-gray-400">{isNepali ? 'डिजेल बिक्री' : 'Diesel Sold'}</p>
-                  </div>
-                </div>
-              )}
-              {volumeMetrics.evKwh > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Battery className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-gray-900">{volumeMetrics.evKwh.toFixed(1)} kWh</p>
-                    <p className="text-[10px] text-gray-400">{isNepali ? 'EV चार्ज' : 'EV Charged'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Peak day callout (week/month) ── */}
-          {peakDay && period !== 'today' && (
-            <div className="bg-white rounded-xl shadow-sm px-4 py-3 flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Star className="w-5 h-5 text-yellow-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-500">{isNepali ? 'सबैभन्दा राम्रो दिन' : 'Best Day'} · {periodLabel}</p>
-                <p className="font-bold text-gray-800">{formatBsDate(peakDay.date, isNepali)}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-black text-gray-900">{fmt(peakDay.total)}</p>
-                <p className="text-[10px] text-gray-400">{peakDay.txnCount} {isNepali ? 'कारोबार' : 'txns'}</p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Business Performance ── */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b bg-gray-50">
-              <h2 className="font-bold text-gray-800">{isNepali ? 'व्यापार प्रदर्शन' : 'Business Performance'}</h2>
-            </div>
-            {bizRows.length === 0 ? (
-              <p className="text-center text-gray-400 text-sm py-8">{isNepali ? 'यस अवधिमा कुनै डाटा छैन' : 'No data for this period'}</p>
-            ) : (
-              <div className="divide-y">
-                {bizRows.map(({ code, cfg, biz }) => {
-                  const rev    = Number(biz.revenue  || 0);
-                  const exp    = Number(biz.expenses || 0);
-                  const cnt    = biz.count || 0;
-                  const profit = biz.profit != null ? Number(biz.profit) : null;
-                  const pct    = maxRev > 0 ? (rev / maxRev) * 100 : 0;
-                  const Icon   = cfg.icon;
-                  const revShare = totalRevenue > 0 ? Math.round((rev / totalRevenue) * 100) : 0;
-                  return (
-                    <button key={code} onClick={() => setSelectedBiz(code)}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`${cfg.color} w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0`}>
-                            <Icon className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">{isNepali ? cfg.labelNe : cfg.labelEn}</p>
-                            <p className="text-[10px] text-gray-400">
-                              {cnt} {isNepali ? 'कारोबार' : 'txns'} · {revShare}% {isNepali ? 'हिस्सा' : 'share'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <p className="font-bold text-gray-900 text-sm">{fmt(rev)}</p>
-                            {canViewProfit && code !== 'loan' && profit != null && (
-                              <p className={`text-xs font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                {profit >= 0 ? '+' : ''}{fmt(profit)} {isNepali ? 'नाफा' : 'profit'}
-                              </p>
-                            )}
-                            {canViewProfit && code === 'loan' && (
-                              <p className="text-[10px] text-gray-400 italic">{isNepali ? 'पोर्टफोलियो हेर्नुहोस्' : 'see portfolio'}</p>
-                            )}
-                            {!canViewProfit && exp > 0 && (
-                              <p className="text-xs text-red-400">-{fmt(exp)}</p>
-                            )}
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-                        </div>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full ${cfg.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {canViewProfit && totalProfit != null && bizRows.length > 0 && (
-              <div className="px-4 py-3 border-t bg-core-50 flex items-center justify-between">
-                <p className="font-bold text-gray-700 text-sm">{isNepali ? 'कुल नाफा' : 'Total Net Profit'}</p>
-                <p className={`text-lg font-black ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalProfit >= 0 ? '+' : ''}{fmt(totalProfit)}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ── Daily Breakdown cards ── */}
-          {period !== 'today' && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-                <h2 className="font-bold text-gray-800">{isNepali ? 'दैनिक विवरण' : 'Daily Breakdown'}</h2>
-                {txnsLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-core-500" />}
-              </div>
-              {txnsByDay.length === 0 && !txnsLoading ? (
-                <p className="text-center text-gray-400 text-sm py-6">{isNepali ? 'डाटा उपलब्ध छैन' : 'No data'}</p>
-              ) : (
-                <div className="divide-y">
-                  {txnsByDay.map(row => {
-                    const isPeak = peakDay?.date === row.date;
-                    const activeBiz = Object.entries(BUSINESS_CONFIG).filter(([code]) => row[code] > 0);
-                    return (
-                      <div key={row.date} className={`px-4 py-3 ${isPeak ? 'bg-yellow-50' : ''}`}>
-                        {/* Top row: date + total */}
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">{formatBsDate(row.date, isNepali)}</p>
-                            {isPeak && (
-                              <span className="text-[10px] text-yellow-600 font-bold">★ {isNepali ? 'सर्वोत्तम दिन' : 'Best day'}</span>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="font-black text-gray-900">{fmt(row.total)}</p>
-                            <p className="text-[10px] text-gray-400">{row.txnCount} {isNepali ? 'कारोबार' : 'txns'}</p>
-                          </div>
-                        </div>
-                        {/* Proportional colour bar */}
-                        {row.total > 0 && (
-                          <div className="h-1.5 rounded-full overflow-hidden flex mb-2">
-                            {activeBiz.map(([code, cfg]) => (
-                              <div key={code} className={`h-full ${cfg.color}`}
-                                style={{ width: `${(row[code] / row.total) * 100}%` }} />
-                            ))}
-                          </div>
-                        )}
-                        {/* Business pills */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {activeBiz.map(([code, cfg]) => (
-                            <span key={code} className="flex items-center gap-1 text-[11px] text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
-                              <span className={`w-2 h-2 rounded-full ${cfg.color} flex-shrink-0`} />
-                              {isNepali ? cfg.labelNe : cfg.labelEn} {fmt(row[code])}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* Period total footer */}
-                  {txnsByDay.length > 1 && (
-                    <div className="px-4 py-3 bg-core-50 flex items-center justify-between">
-                      <p className="font-bold text-gray-700 text-sm">{isNepali ? 'कुल जम्मा' : 'Period Total'}</p>
-                      <p className="font-black text-core-700">{fmt(txnsByDay.reduce((s, r) => s + r.total, 0))}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Rental Health ── */}
-          {data.rentalHealth && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-500" />
-                <h2 className="font-bold text-gray-800">{isNepali ? 'भाडा स्वास्थ्य' : 'Rental Health'}</h2>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-blue-50 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-black text-blue-700">
-                      {data.rentalHealth.occupiedCount}
-                      <span className="text-sm text-blue-400">/{data.rentalHealth.totalProperties}</span>
-                    </p>
-                    <p className="text-[10px] text-blue-600 mt-0.5">{isNepali ? 'व्यस्त' : 'Occupied'}</p>
-                  </div>
-                  <div className="bg-blue-50 rounded-xl p-3 text-center">
-                    <p className="font-black text-blue-700 text-sm leading-tight">{fmt(data.rentalHealth.monthlyRecurring)}</p>
-                    <p className="text-[10px] text-blue-600 mt-0.5">{isNepali ? 'मासिक' : 'Monthly'}</p>
-                  </div>
-                  <div className={`rounded-xl p-3 text-center ${outstandingBalance > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                    <p className={`font-black text-sm leading-tight ${outstandingBalance > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                      {outstandingBalance != null ? fmt(outstandingBalance) : '—'}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${outstandingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {isNepali ? 'बाँकी' : 'Outstanding'}
-                    </p>
-                  </div>
-                </div>
-                {data.rentalHealth.totalProperties > 0 && (
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                      <span>{isNepali ? 'अधिभोग दर' : 'Occupancy Rate'}</span>
-                      <span className="font-semibold text-blue-600">
-                        {Math.round((data.rentalHealth.occupiedCount / data.rentalHealth.totalProperties) * 100)}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.round((data.rentalHealth.occupiedCount / data.rentalHealth.totalProperties) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Loan Portfolio ── */}
-          {canViewProfit && data.loanPortfolio && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
-                <Banknote className="w-5 h-5 text-red-500" />
-                <h2 className="font-bold text-gray-800">{isNepali ? 'ऋण पोर्टफोलियो' : 'Loan Portfolio'}</h2>
-                <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">
-                  {data.loanPortfolio.activeLoans} {isNepali ? 'सक्रिय' : 'active'}
-                </span>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-red-50 rounded-xl p-3">
-                    <p className="text-xs text-red-500 mb-0.5">{isNepali ? 'कुल सावाँ' : 'Principal Outstanding'}</p>
-                    <p className="font-black text-red-700">{fmt(data.loanPortfolio.totalPrincipal)}</p>
-                  </div>
-                  <div className="bg-orange-50 rounded-xl p-3">
-                    <p className="text-xs text-orange-500 mb-0.5">{isNepali ? 'जम्मा ब्याज' : 'Accrued Interest'}</p>
-                    <p className="font-black text-orange-700">{fmt(data.loanPortfolio.totalAccruedInterest)}</p>
-                  </div>
-                  <div className="bg-green-50 rounded-xl p-3 col-span-2">
-                    <p className="text-xs text-green-500 mb-0.5">{isNepali ? 'कुल भुक्तानी' : 'Total Repaid'}</p>
-                    <p className="font-black text-green-700">{fmt(data.loanPortfolio.totalRepaid)}</p>
-                  </div>
-                </div>
-                {Number(data.loanPortfolio.totalPrincipal) > 0 && (
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                      <span>{isNepali ? 'भुक्तानी प्रगति' : 'Repayment Progress'}</span>
-                      <span className="font-semibold text-core-600">
-                        {Math.min(100, Math.round((Number(data.loanPortfolio.totalRepaid) / Number(data.loanPortfolio.totalPrincipal)) * 100))}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-core-500 rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.round((Number(data.loanPortfolio.totalRepaid) / Number(data.loanPortfolio.totalPrincipal)) * 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
         </div>
+      ) : !data ? null : (
+        <main className="mx-auto max-w-7xl px-4 py-5 md:px-5 lg:px-8 lg:py-8">
+          <AnalyticsOverview
+            totalRevenue={totalRevenue}
+            totalExpenses={totalExpenses}
+            totalProfit={totalProfit}
+            transactionCount={txnCount}
+            canViewProfit={canViewProfit}
+            change={change}
+            previousLabel={prevPeriodLabel}
+            pendingCount={pendingCount}
+            onOpenPending={() => navigate('/pending')}
+            txnsByDay={txnsByDay}
+            range={currRange}
+            period={period}
+            txnsLoading={txnsLoading}
+            businessRows={bizRows}
+            onSelectBusiness={setSelectedBiz}
+            isNepali={isNepali}
+          />
+
+        </main>
       )}
+
+      <div className="xl:hidden">
+        <BottomNav active="analytics" />
+      </div>
 
       {/* ── Business drill-down sheet ── */}
       <BusinessDrillSheet
