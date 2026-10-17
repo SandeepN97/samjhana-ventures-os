@@ -1,6 +1,6 @@
 # Status of all 118 audit findings
 
-Written 2026-10-16, refreshed later the same day. Counts: **44 findings fixed** (10 merged into `staging`, 34 in open PRs), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **32 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **9 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
+Written 2026-10-16, refreshed later the same day. Counts: **45 findings fixed** (10 merged into `staging`, 35 in open PRs), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **32 waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **8 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
 
 The authoritative record of each fix is its pull request (body = what was wrong, what changed, tests, mutation checks). To find the PR for a finding: GitHub search `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`.
 
@@ -43,7 +43,7 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | P1b-03 | Medium | Approve/reject state machine (audit part done) | Partly fixed | #137 fixed the audit trail and re-checks on edits; the approve/reject state machine needs the owner |
 | P1b-08 | Medium | Price, rate, website, picture, stock, HR and charger stop/unlock actions leave no audit row (stop/unlock… | Partly fixed | #143 (fuel prices) and #145 (charger stop/unlock) added audit rows; still unaudited: website text and pictures, EV vehicle rates, furniture items and stock, rental, staff HR, restaurant, customer delete, daily close and verify |
 | P3-01 | Medium | The charger command plane (OCPP WebSocket) and the live kiosk feed run inside the same single JVM and… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| A-02 | Low | Password rules: common-password list, username check, length message | To do (no decision needed) | see QUEUE.md |
+| A-02 | Low | Password rules: common-password list, username check, length message | Fixed, PR open (awaiting the owner's merge) | #168 (stacked on #154; the minimum length stays 8: 12 is the owner's call, see DECISIONS-AND-OPS.md) |
 | A-03 | Low | Passwords set for someone else are not one-time: created accounts and the first-run admin are never… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
 | A-04 | Low | Per-address login limits read whatever X-Forwarded-For list is left when the request reaches the app: if… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | C-02 | Low | Loan repayments to the bank are booked as cash SALES: once approved they raise the day's expected drawer… | Waiting for the owner's decision | see DECISIONS-AND-OPS.md |
@@ -131,5 +131,5 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 
 - **High** (5): 3 fixed, merged into staging; 1 Ops / CI / docs / architecture; 1 waiting for the owner's decision
 - **Medium** (30): 11 fixed, PR open (awaiting the owner's merge); 7 fixed, merged into staging; 3 Ops / CI / docs / architecture; 3 partly fixed; 6 waiting for the owner's decision
-- **Low** (66): 2 already fixed before this series; 19 fixed, PR open (awaiting the owner's merge); 13 Ops / CI / docs / architecture; 7 to do (no decision needed); 25 waiting for the owner's decision
+- **Low** (66): 2 already fixed before this series; 20 fixed, PR open (awaiting the owner's merge); 13 Ops / CI / docs / architecture; 6 to do (no decision needed); 25 waiting for the owner's decision
 - **Info** (17): 4 fixed, PR open (awaiting the owner's merge); 11 Ops / CI / docs / architecture; 2 to do (no decision needed)

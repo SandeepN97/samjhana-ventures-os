@@ -5,8 +5,8 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 ## 0. The 60-second version
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
-- **Done:** 44 findings fixed with tests — 10 merged into `staging`, 34 in open PRs waiting for the owner to merge (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md).
-- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 9 findings that still need no decision from the owner (start at the first one nobody has done yet).
+- **Done:** 45 findings fixed with tests — 10 merged into `staging`, 35 in open PRs waiting for the owner to merge (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md).
+- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet).
 - **Not yours to start:** [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md) — 32 rules/trade-offs only the owner can decide, and 28 ops/CI/database items.
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
@@ -20,7 +20,7 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 5. Never commit the private report to this public repository.
 6. Never skip, disable or quarantine a test to get green. Never rewrite history on a pushed branch.
 
-## 2. Where things stand (2026-10-17, about 00:00 UTC)
+## 2. Where things stand (2026-10-17, about 00:30 UTC)
 
 **Merged into `staging` by the owner:** #124 (P0-16), #125 (P0-01 and part of P0-12), #126 (P0-04, F-03), #127 (K-03), #128 (P0-02), #129 (K-02), #130 (K-01), #131 (F-06), #132 (P1a-04).
 
@@ -55,6 +55,7 @@ Written 2026-10-16 by Claude Code at the owner's request, so that Codex (or any 
 | #165 | P1B1-02 (stacked on #161) | `fix/rent-payments-and-furniture-orders-from-the-app-pass-the-sale-checks` |
 | #166 | F-05 | `fix/loan-receipt-can-only-be-attached-to-one-payment` |
 | #167 | M-01, M-02, M-03, M-04 (no longer apply: the NOC price scraper is removed; stacked on #143 and #135) | `api/remove-the-fuel-price-scraper-entirely` |
+| #168 | A-02 (stacked on #154; the minimum stays 8, 12 is the owner's call) | `fix/passwords-are-checked-against-one-rule-common-and-too-long-ones-are-refused` |
 
 #150 is this handoff folder itself (a docs-only PR). #155 (database and security production-readiness checklists, into `main`) is not part of this series.
 
