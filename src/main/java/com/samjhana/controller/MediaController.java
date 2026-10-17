@@ -41,9 +41,13 @@ public class MediaController {
             return ResponseEntity.notFound().build();
         }
         String etag = "\"" + uuid + "\"";
+        if (etag.equals(ifNoneMatch)) {
+            // The browser only asks whether its copy is still good: confirm the picture is there without reading it
+            // (finding P0-13). A removed picture is still a 404, whatever copy the browser holds.
+            return mediaService.exists(uuid) ? ResponseEntity.status(304).eTag(etag).build() : ResponseEntity.notFound().build();
+        }
         Optional<MediaAsset> found = mediaService.find(uuid);
         if (found.isEmpty()) return ResponseEntity.notFound().build();
-        if (etag.equals(ifNoneMatch)) return ResponseEntity.status(304).eTag(etag).build();
         MediaAsset asset = found.get();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(asset.getContentType()))

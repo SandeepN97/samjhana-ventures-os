@@ -95,6 +95,7 @@ public class SecurityConfig {
                     "/*.ico",
                     // SPA HTML routes (React Router handles auth client-side)
                     "/login",
+                    "/change-password",
                     "/entry/**",
                     "/furniture/**",
                     "/beekeeping/**",

@@ -46,7 +46,8 @@ class OcppHandshakeInterceptorTest {
     void setUp() {
         repository = mock(ChargePointRepository.class);
         writer = new RecordingAuditWriter(new OcppLoggingProperties());
-        interceptor = new OcppHandshakeInterceptor(repository, encoder, writer);
+        interceptor = new OcppHandshakeInterceptor(repository, encoder, writer,
+                new com.samjhana.security.ClientAddressResolver(0), new com.samjhana.security.RequestThrottle());
         point = ChargePoint.builder().code(CODE).isActive(true).ocppAuthSecretHash(encoder.encode(PASSWORD)).build();
         when(repository.findByCodeAndDeletedAtIsNull(CODE)).thenReturn(Optional.of(point));
         when(repository.findByCodeAndDeletedAtIsNull("NOPE-01")).thenReturn(Optional.empty());

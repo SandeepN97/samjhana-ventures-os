@@ -19,21 +19,23 @@ import java.util.Set;
 public class SystemSettingController {
 
     /**
-     * Settings that are business-sensitive (what the station pays for electricity) and must not
-     * be readable by staff — hiding them in the UI is not enough, the API has to refuse too.
+     * The settings the app actually uses. Anything else could only ever be clutter, so it can't be saved, and it
+     * isn't looked up either. The settings are business-sensitive (what the station pays for electricity): they
+     * are for managers and admins (docs/ROLES.md), hiding them in the UI is not enough, the API has to refuse too.
      */
-    private static final Set<String> MANAGER_ONLY_KEYS = Set.of("nea_rate");
-
-    /** The settings the app actually reads. Anything else could only ever be clutter, so it can't be saved. */
     private static final Set<String> WRITABLE_KEYS = Set.of("nea_rate");
 
     private final SystemSettingRepository settingRepository;
 
     @GetMapping("/{key}")
     public ResponseEntity<?> getSetting(@PathVariable String key, @AuthenticationPrincipal User user) {
-        if (MANAGER_ONLY_KEYS.contains(key) && (user == null || !user.canManage())) {
+        // Every key, not a list of the ones we thought of (finding B-01): a setting added later is safe by default.
+        if (user == null || !user.canManage()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Admin or manager access required"));
+        }
+        if (!WRITABLE_KEYS.contains(key)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Unknown setting: " + key));
         }
         return settingRepository.findById(key)
                 .map(s -> ResponseEntity.ok(Map.of("key", s.getSettingKey(), "value", s.getSettingValue())))

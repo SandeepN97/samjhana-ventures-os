@@ -1,8 +1,8 @@
 # Samjhana Ventures OS: AI Development Tooling
 
-**Revision 2 — decisions applied and checked against the repository on September 26, 2026**
+**Revision 3 — decisions applied and checked against the repository on October 16, 2026**
 
-This document covers seven tools: Superpowers, NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, and the official Supabase MCP server. Their status is intentionally different: Superpowers and Context7 are in use on every task; Playwright is being used for local admin and public-site E2E tests and CI; SkillSpector is in a trial on every PR; Ponytail is not used; Strix and Supabase MCP are deferred.
+This document covers nine tools: Superpowers, NVIDIA SkillSpector, Playwright, Strix, Context7, Ponytail, the official Supabase MCP server, Impeccable, and Taste Skill. Their status is intentionally different: Superpowers and Context7 are in use on every task; Playwright is being used for local admin and public-site E2E tests and CI; SkillSpector is in a trial on every PR; Impeccable is available in the current user environment for frontend work but is not repo-pinned; Taste Skill is an evaluated candidate only; Ponytail is not used; Strix and Supabase MCP are deferred.
 
 ## 1. Decisions and safety boundaries
 
@@ -11,6 +11,8 @@ This document covers seven tools: Superpowers, NVIDIA SkillSpector, Playwright, 
 - **SkillSpector is not approved for adoption yet.** Pin and independently evaluate the official source and its dependencies first. A clean scan, including a clean SkillSpector self-scan, is not proof of safety.
 - **Context7 can be evaluated as a development-time documentation aid** for the project's actual versions: React 18 and Vite 5 in the admin frontend, and Spring Boot 3.5.16 in the backend. Retrieved documentation and examples are untrusted inputs and must be checked against the repository and official versioned docs.
 - **Ponytail is technically compatible with the documented Copilot CLI and Claude Code plugin interfaces, but is not installed here.** Its hooks, instructions, and effect on this repository's required workflow need a controlled trial before adoption.
+- **Impeccable is available user-wide in the current coding environment, not installed or pinned by this repository.** It may guide scoped frontend work, but its project hook and generated project files are not approved automatically. Review any proposed hook or project-local configuration before adoption.
+- **Taste Skill is not installed.** Treat it as a candidate design-skill collection. Do not layer its default frontend skill over Impeccable on the same task without naming one workflow owner; overlapping design rules can conflict and make results difficult to audit.
 - These decisions do not authorize edits to deployment workflows beyond the Playwright CI job, nor changes to production or staging data access.
 
 ## 2. NVIDIA SkillSpector — candidate; evaluation required
@@ -108,6 +110,24 @@ Do not install, configure, connect, or invoke the Supabase MCP server until an i
 - It uses more tokens than a plain session. For small fixes, say "skip the process, just fix this" and keep the one-line plan.
 - It is a process aid, not a scanner: it does not inspect or secure the repository. Use `/security-review`, `/code-review` and the tests for that.
 
+## 7b. Impeccable — available user-wide; not repo-pinned
+
+**Official source:** [pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache-2.0 licensed. The project describes one frontend-design skill, 24 commands, live browser iteration, and deterministic detector rules. It supports Codex and other skill-aware coding tools; Codex installs can be project-local under `.agents/skills/` or user-wide under `~/.agents/skills/`.
+
+**Current repository status:** the skill is available from the current developer's user environment and was used as design guidance for the admin website-editor redesign on October 16, 2026. It is not listed in this repository's `skills-lock.json`, and this decision does not add its native project hook, install files, or an automatic update path.
+
+Impeccable is the stronger fit when a task needs an end-to-end design workflow: record durable product context, shape a visual direction, build, inspect real desktop/mobile captures, run deterministic UI checks, and complete a final review. Its commands cover focused activities such as critique, audit, harden, adapt, polish, and document. Generated runtime and review files under `.impeccable/` require the same repository review as any other new artifact.
+
+Before repo-level adoption, pin an upstream revision, inspect the packaged binary/download behavior and hook manifest, run the source/dependency review described for other agent tooling, and record which `.impeccable/` artifacts belong in version control. Codex hook trust is a separate approval; having the user-wide skill available does not approve the project hook.
+
+## 7c. Taste Skill — candidate only
+
+**Official sources:** [Taste Skill documentation](https://www.tasteskill.dev/) and [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), MIT licensed according to the official site.
+
+Taste Skill is a collection of 13 standalone `SKILL.md` design skills for Codex, Claude Code, Cursor, Gemini CLI, and other compatible agents. Its current default, installed as `design-taste-frontend`, is an experimental v2 with brief inference, design-system selection, audit-first redesign guidance, responsive and motion rules, and a hard pre-flight check. The collection also exposes narrower choices such as `gpt-tasteskill`, `redesign-skill`, several visual-style skills, and image-generation skills.
+
+**Current repository status:** not installed, not executed, and not added to `skills-lock.json`. If evaluated, use a disposable branch or checkout, pin the exact revision, select one named skill rather than installing overlapping variants blindly, and compare its output and instruction surface with Impeccable. For this repository, Impeccable remains the active frontend workflow when explicitly invoked; Taste Skill should not run concurrently unless the task defines a non-overlapping role for it.
+
 ## 8. Tool status summary
 
 | Tool | Status | Permitted scope now |
@@ -119,6 +139,8 @@ Do not install, configure, connect, or invoke the Supabase MCP server until an i
 | Context7 | In use (owner decision, Oct 4, 2026) | On any task that writes or changes library code: version-specific documentation only; validate retrieved content. Connect as a pinned MCP server only after the trial |
 | Ponytail | Not used (owner decision, Oct 4, 2026) | None |
 | Supabase MCP | Deferred | None until isolated synthetic test environment exists |
+| Impeccable | Available user-wide; not repo-pinned (observed Oct 16, 2026) | Explicitly scoped frontend design/redesign work; no project hook or automatic install |
+| Taste Skill | Candidate only; not installed (reviewed Oct 16, 2026) | Documentation evaluation only until a pinned, isolated trial is approved |
 
 ## 8a. Trial first, then automate
 
@@ -137,6 +159,8 @@ SkillSpector and Context7 are used on every PR for a trial period, and only then
 3. If useful, evaluate Context7's CLI docs lookup against React 18, Vite 5, and Spring Boot 3.5.16.
 4. Review Ponytail's exact hooks and trial it outside this checkout before any adoption.
 5. Independently evaluate SkillSpector at the recorded commit pin; adopt only after the scan, source, and dependency review has a recorded disposition.
+6. Keep Impeccable user-scoped for explicit frontend work unless its source, binary/update path, artifacts, and project hook pass a pinned review.
+7. Evaluate Taste Skill only if it fills a gap left by Impeccable; trial one pinned skill at a time and avoid overlapping frontend instruction sets.
 
 Official references:
 
@@ -146,3 +170,6 @@ Official references:
 - Context7 source: <https://github.com/upstash/context7>
 - Context7 CLI documentation: <https://context7.com/docs/clients/cli>
 - Ponytail pinned source: <https://github.com/DietrichGebert/ponytail/tree/e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156>
+- Impeccable source: <https://github.com/pbakaus/impeccable>
+- Taste Skill documentation: <https://www.tasteskill.dev/>
+- Taste Skill source: <https://github.com/Leonxlnx/taste-skill>
