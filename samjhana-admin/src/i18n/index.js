@@ -109,6 +109,10 @@ export const resources = {
         title: 'Samjhana Ventures',
         welcome: 'Welcome!',
         todayCash: "Today's Cash",
+        businessesHeading: 'Businesses',
+        workHeading: 'Daily work',
+        menuLabel: 'Main menu',
+        todayHeading: 'Today',
         dailyReport: 'Daily Report',
         dailyClose: 'End of Day',
         staffManagement: 'Staff Management',
@@ -525,6 +529,7 @@ export const resources = {
 
       // Furniture
       furniture: {
+        order: 'Order',
         title: 'Furniture',
         shop: 'Furniture Shop',
         itemName: 'Item Name',
@@ -1341,6 +1346,17 @@ export const resources = {
         confirmTitle: 'Confirm End of Day',
         confirmClose: 'Confirm & Close',
         enterCashAmount: 'Enter cash amount',
+        closeTheDay: 'Close the day',
+        closesSummary_one: 'Closes {{date}} · {{formattedCount}} transaction · {{total}}',
+        closesSummary_other: 'Closes {{date}} · {{formattedCount}} transactions · {{total}}',
+        expectedCash: 'Expected from sales (cash)',
+        reviewHint: 'Check each entry before you close',
+        showAllTransactions: 'Show all {{formattedCount}} transactions',
+        showFewer: 'Show fewer',
+        colBusiness: 'Business',
+        colQuantity: 'Quantity',
+        colAmount: 'Amount',
+        colShare: 'Share',
         cashMatches: 'Cash matches!',
         countedCashMatchesSales: 'Counted cash matches cash sales',
         overLabel: 'OVER',
@@ -1423,6 +1439,7 @@ export const resources = {
         roleStaff: 'Staff',
         preferences: 'Preferences',
         language: 'Language',
+        tabGeneral: 'General',
         languageName: 'English',
         notifications: 'Notifications',
         account: 'Account',
@@ -1538,6 +1555,14 @@ export const resources = {
         income: 'Income',
         expense: 'Expense',
         netAmount: 'Net Amount',
+        filterLabel: 'Filter transactions',
+        openInRecords: 'Tap to open in Records',
+        shareOfIncome: '{{pct}}% of income',
+        colTime: 'Time',
+        transactionCount_one: '{{formattedCount}} transaction',
+        transactionCount_other: '{{formattedCount}} transactions',
+        saleCount_one: '{{formattedCount}} sale',
+        saleCount_other: '{{formattedCount}} sales',
         transactions: 'Transactions',
         noData: 'No data',
         closeTodayReport: "Close Today's Report",
@@ -1611,6 +1636,7 @@ export const resources = {
         noPermission: 'You do not have permission to manage staff.',
         addStaff: 'Add Staff',
         allUnits: 'All Units',
+        filterAll: 'All staff',
         searchPlaceholder: 'Search name or phone...',
         editStaff: 'Edit Staff',
         addNewStaff: 'Add New Staff',
@@ -1805,6 +1831,10 @@ export const resources = {
         title: 'सम्झना भेन्चर्स',
         welcome: 'स्वागत छ, बुवा!',
         todayCash: 'आजको कुल नगद',
+        businessesHeading: 'व्यवसायहरू',
+        workHeading: 'दैनिक काम',
+        menuLabel: 'मुख्य मेनु',
+        todayHeading: 'आज',
         dailyReport: 'दैनिक रिपोर्ट',
         dailyClose: 'दिन अन्त्य',
         staffManagement: 'कर्मचारी व्यवस्थापन',
@@ -2221,6 +2251,7 @@ export const resources = {
 
       // Furniture
       furniture: {
+        order: 'अर्डर',
         title: 'फर्निचर',
         shop: 'फर्निचर पसल',
         itemName: 'सामानको नाम',
@@ -3037,6 +3068,17 @@ export const resources = {
         confirmTitle: 'दिन अन्त्य पुष्टि गर्नुहोस्',
         confirmClose: 'पुष्टि गरी बन्द गर्नुहोस्',
         enterCashAmount: 'नगद रकम प्रविष्ट गर्नुहोस्',
+        closeTheDay: 'दिन बन्द गर्नुहोस्',
+        closesSummary_one: '{{date}} बन्द हुँदै · {{formattedCount}} कारोबार · {{total}}',
+        closesSummary_other: '{{date}} बन्द हुँदै · {{formattedCount}} कारोबार · {{total}}',
+        expectedCash: 'बिक्रीबाट अपेक्षित (नगद)',
+        reviewHint: 'बन्द गर्नुअघि प्रत्येक प्रविष्टि जाँच्नुहोस्',
+        showAllTransactions: 'सबै {{formattedCount}} कारोबार देखाउनुहोस्',
+        showFewer: 'कम देखाउनुहोस्',
+        colBusiness: 'व्यवसाय',
+        colQuantity: 'परिमाण',
+        colAmount: 'रकम',
+        colShare: 'हिस्सा',
         cashMatches: 'मिल्यो!',
         countedCashMatchesSales: 'गनिएको नगद र नगद बिक्री बराबर छ',
         overLabel: 'बढी (Over)',
@@ -3119,6 +3161,7 @@ export const resources = {
         roleStaff: 'कर्मचारी',
         preferences: 'प्राथमिकताहरू',
         language: 'भाषा',
+        tabGeneral: 'सामान्य',
         languageName: 'नेपाली',
         notifications: 'सूचनाहरू',
         account: 'खाता',
@@ -3234,6 +3277,14 @@ export const resources = {
         income: 'आम्दानी',
         expense: 'खर्च',
         netAmount: 'खुद रकम',
+        filterLabel: 'कारोबार छान्नुहोस्',
+        openInRecords: 'रेकर्डमा हेर्न थिच्नुहोस्',
+        shareOfIncome: 'आम्दानीको {{pct}}%',
+        colTime: 'समय',
+        transactionCount_one: '{{formattedCount}} कारोबार',
+        transactionCount_other: '{{formattedCount}} कारोबार',
+        saleCount_one: '{{formattedCount}} बिक्री',
+        saleCount_other: '{{formattedCount}} बिक्री',
         transactions: 'कारोबार',
         noData: 'कुनै डाटा छैन',
         closeTodayReport: 'आजको रिपोर्ट बन्द गर्नुहोस्',
@@ -3307,6 +3358,7 @@ export const resources = {
         noPermission: 'तपाईंसँग कर्मचारी व्यवस्थापन गर्ने अनुमति छैन।',
         addStaff: 'नयाँ कर्मचारी',
         allUnits: 'सबै इकाई',
+        filterAll: 'सबै कर्मचारी',
         searchPlaceholder: 'नाम वा फोन खोज्नुहोस्...',
         editStaff: 'कर्मचारी सम्पादन',
         addNewStaff: 'नयाँ कर्मचारी थप्नुहोस्',
@@ -3425,5 +3477,13 @@ i18n
       escapeValue: false,
     },
   });
+
+// Keep the page's language attribute in step with the language switch, so Nepali-only styling
+// (the Nepali fonts in index.css) switches off when the screen is in English.
+const syncPageLanguage = (language) => {
+  if (typeof document !== 'undefined') document.documentElement.lang = language === 'ne' ? 'ne' : 'en';
+};
+syncPageLanguage(i18n.language);
+i18n.on('languageChanged', syncPageLanguage);
 
 export default i18n;

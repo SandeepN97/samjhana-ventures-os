@@ -19,6 +19,8 @@ import { Wordmark } from './brand';
 import { unitTheme } from '../brand/theme';
 import api from '../utils/api';
 import useLocaleFormat from '../hooks/useLocaleFormat';
+import useDesktop from '../hooks/useDesktop';
+import DesktopHome from './DesktopHome';
 
 /**
  * QuickActionButtons - The "Dad-Proof" mobile home screen.
@@ -30,7 +32,7 @@ import useLocaleFormat from '../hooks/useLocaleFormat';
  * - Touch-friendly with visual feedback
  */
 
-const BUSINESS_BUTTONS = [
+export const BUSINESS_BUTTONS = [
   {
     code: 'petrol',
     icon: Fuel,
@@ -140,9 +142,23 @@ export default function QuickActionButtons() {
   const waitingLoanPayments = usePendingLoanPayments(isAdmin);
   const { money } = useLocaleFormat();
 
+  const desktop = useDesktop();
+
   const visibleButtons = isStaff
     ? BUSINESS_BUTTONS.filter((b) => b.code !== 'loan')
     : BUSINESS_BUTTONS;
+
+  if (desktop) {
+    return (
+      <DesktopHome
+        user={user}
+        businesses={visibleButtons}
+        todayCash={todayCash}
+        newOrders={newOrders}
+        waitingLoanPayments={waitingLoanPayments}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -220,7 +236,7 @@ export default function QuickActionButtons() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 flex justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 flex justify-around lg:hidden">
         <NavButton
           icon={Home}
           label={t('nav.home')}
