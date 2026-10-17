@@ -13,7 +13,9 @@ import java.time.Instant;
 /**
  * Periodic OCPP checks, driven by one 5-second tick so the intervals come straight from
  * {@code ocpp.logging.*}: command timeouts, idle-connection detection and (optionally) server pings.
- * None of them closes a connection or changes business state; they only log and record.
+ * None of them closes a connection or changes business state; they only log and record. (A connection that stays silent
+ * for longer than the idle warning is closed, and a charger left ONLINE without a connection is corrected, by
+ * {@code OcppLivenessSweep}.)
  */
 @Component
 public class OcppHousekeeping {

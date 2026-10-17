@@ -141,6 +141,9 @@ ocpp:
     ping-interval: ${OCPP_LOGGING_PING_INTERVAL:0s}          # 0 = server pings off
     idle-factor: ${OCPP_LOGGING_IDLE_FACTOR:2.0}
     heartbeat-interval: ${OCPP_LOGGING_HEARTBEAT_INTERVAL:30s}
+    close-factor: ${OCPP_LOGGING_CLOSE_FACTOR:3.0}                # close a connection silent for this many heartbeat intervals; 0 = never
+    max-frames-per-second: ${OCPP_LOGGING_MAX_FRAMES_PER_SECOND:20}   # sustained messages per second per connection; 0 = no limit
+    frame-burst: ${OCPP_LOGGING_FRAME_BURST:60}                   # messages one connection may send in one go
     web-socket-max-message-bytes: ${OCPP_LOGGING_WEB_SOCKET_MAX_MESSAGE_BYTES:131072}
     persistence:
       enabled: ${OCPP_LOGGING_PERSISTENCE_ENABLED:true}

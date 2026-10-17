@@ -47,7 +47,10 @@ The defaults already log everything needed for the test. Nothing has to be chang
 | `OCPP_LOGGING_PING_INTERVAL=60s` | `0s` (off) | send WebSocket pings; each ping/pong is logged. Leave off unless you are chasing idle disconnects: the charger's Heartbeat normally keeps the link alive |
 | `OCPP_LOGGING_COMMAND_TIMEOUT=45s` | `30s` | how long a command waits for its reply before a timeout is logged and recorded |
 | `OCPP_LOGGING_HEARTBEAT_FULL_FRAMES=100` | 20 | log more Heartbeat frames in full (the rest are summarised: one line per 10) |
-| `OCPP_LOGGING_HEARTBEAT_INTERVAL=30s` | `30s` | the heartbeat interval handed to the charger in the Boot reply (also drives the idle warning: no frame for 2× this) |
+| `OCPP_LOGGING_HEARTBEAT_INTERVAL=30s` | `30s` | the heartbeat interval handed to the charger in the Boot reply (also drives the idle warning: no frame for 2× this, and the silence limit below) |
+| `OCPP_LOGGING_CLOSE_FACTOR=3.0` | `3.0` | a connection that has sent no frame for this many heartbeat intervals (3 × 30 s = 90 s) is closed with code `4002` and the charger is shown OFFLINE; it reconnects by itself. **`0` switches this off** (use it if a real charger turns out to check in more slowly than the interval it is given) |
+| `OCPP_LOGGING_MAX_FRAMES_PER_SECOND=20` | `20` | the most messages per second one connection may keep sending; a connection that goes over is closed with code `1008` ("too many messages"). `0` = no limit |
+| `OCPP_LOGGING_FRAME_BURST=60` | `60` | how many messages one connection may send in one go (the burst a charger sends when it connects) before the rate above applies |
 | `OCPP_LOGGING_WEB_SOCKET_MAX_MESSAGE_BYTES=131072` | 131072 | largest WebSocket frame accepted. Tomcat's own default (8 KB) would drop the connection with code 1009 on a large frame, such as a full `NotifyReport` |
 
 **Never set** these (the app logs a `FORBIDDEN LOG SETTING` WARN at startup if it finds one, because they print the charger's `Authorization` header or other secrets):
@@ -107,9 +110,12 @@ Search the host log (or `grep` a downloaded copy) for these prefixes:
 | `MISSING REQUIRED FIELD(S) in …` | lifecycle (WARN) | log-only check; the frame is still processed |
 | `Handler failed for action … (messageId=…)` | `OcppWebSocketHandler` (ERROR, stack trace) | an exception; the charger gets a `CALLERROR InternalError` and the socket stays open |
 | `TRANSPORT ERROR chargePointId=… sessionId=…` | lifecycle (WARN, stack trace) | network-level failure |
-| `DISCONNECTED … closeCode=… reason=… duration=… framesIn=… framesOut=… sinceLastFrame=…` | lifecycle | INFO for normal closes, WARN otherwise. `1006` = the connection dropped without a close frame (network, proxy or power); `1009` = frame too big; `4001` = replaced by a newer connection |
+| `DISCONNECTED … closeCode=… reason=… duration=… framesIn=… framesOut=… sinceLastFrame=…` | lifecycle | INFO for normal closes, WARN otherwise. `1006` = the connection dropped without a close frame (network, proxy or power); `1008` = too many messages; `1009` = frame too big; `4001` = replaced by a newer connection; `4002` = no message from the charger for too long |
 | `RECONNECT … replaces oldSessionId=…` and `STALE session … closed` | lifecycle (WARN) | the charger reconnected before the old socket closed; the old one is closed and ignored — the charger stays ONLINE |
 | `IDLE chargePointId=…: no frame for …s` | lifecycle (WARN) | no frame for more than 2× the heartbeat interval |
+| `DEAD CONNECTION chargePointId=… sessionId=…: no frame for …s (limit …s = 3.0 x heartbeat interval …s); closing it with 4002 …` | lifecycle (WARN) | no frame for more than 3× the heartbeat interval: the app closes the connection and shows the charger OFFLINE at once (a `DISCONNECTED … closeCode=4002` line follows). If a healthy charger ever shows this, it checks in more slowly than the interval it is given: raise `OCPP_LOGGING_CLOSE_FACTOR` or set it to `0` |
+| `FLOOD chargePointId=… sessionId=…: more than … frames/s (burst …) after … frames in …s; closing …` | lifecycle (WARN) | the connection sent messages faster than the allowance; it is closed with `1008` (a `DISCONNECTED … closeCode=1008` line follows) |
+| `CHARGE POINT <cp> connection_status: ONLINE -> OFFLINE (no connection and nothing heard since …)` | lifecycle (WARN) | safety net: the database still showed the charger ONLINE although it has no connection and has been silent for 3× the heartbeat interval |
 | `OCPP audit insert failed …` / `OCPP audit queue was full: dropped N rows` | `OcppAuditWriter` (WARN) | the database is not keeping up; the log output still has everything |
 
 ### Handshake reasons and the likely fix
@@ -301,7 +307,7 @@ where relname like 'ocpp\_%' order by pg_total_relation_size(relid) desc;
 - Anything before the application: DNS, TLS, the host's proxy, any CDN/edge (§6).
 - The charger's own screen, error codes and logs, and what the car does. Write these down by hand.
 - The physical connector latch. The lock evidence is derived from OCPP messages only.
-- A charger that connects but never sends a frame: you will see `CONNECTED` and later `IDLE`, but no frames.
+- A charger that connects but never sends a frame: you will see `CONNECTED`, later `IDLE`, and after 3× the heartbeat interval `DEAD CONNECTION` (the app closes it), but no frames.
 - Frames the container rejects as too big (above 128 KB): you will see `DISCONNECTED closeCode=1009`.
 - If persistence is disabled, or the database is down, the same facts exist only in the log output; if the host log is not kept, they are gone.
 - Clock skew is only computed from timestamps inside Status / TransactionEvent / MeterValues, because the 2.0.1 Boot and Heartbeat requests carry no charger time.

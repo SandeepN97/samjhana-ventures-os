@@ -21,11 +21,12 @@ import static org.mockito.Mockito.when;
 class ChargePointServiceLoggingTest {
 
     private ChargePointService service;
+    private ChargePointRepository repository;
     private ChargePoint point;
 
     @BeforeEach
     void setUp() {
-        ChargePointRepository repository = mock(ChargePointRepository.class);
+        repository = mock(ChargePointRepository.class);
         point = ChargePoint.builder().id(java.util.UUID.randomUUID()).code("CP-1").model("M").build();
         when(repository.findByCodeAndDeletedAtIsNull("CP-1")).thenReturn(Optional.of(point));
         when(repository.save(any(ChargePoint.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -58,6 +59,30 @@ class ChargePointServiceLoggingTest {
             assertThat(capture.matching("connector_status: null -> Occupied")).hasSize(1);
             assertThat(capture.matching("connector_status: Occupied -> Available")).hasSize(1);
             assertThat(capture.matching("connector_status: Occupied -> Occupied")).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldLogAnOnlineRowCorrectedToOffline_withTheMomentItWasLastHeardFrom() {
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.of(2026, 10, 17, 12, 30, 0);
+        when(repository.markOfflineIfNotHeardSince(any(), any())).thenReturn(1);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            service.markOfflineIfStale("CP-1", cutoff);
+
+            assertThat(capture.matching("CHARGE POINT CP-1 connection_status: ONLINE -> OFFLINE")).singleElement().asString()
+                    .contains("no connection").contains("2026-10-17T12:30");
+        }
+    }
+
+    @Test
+    void shouldStaySilent_whenNoOnlineRowNeededCorrecting() {
+        when(repository.markOfflineIfNotHeardSince(any(), any())).thenReturn(0);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            service.markOfflineIfStale("CP-1", java.time.LocalDateTime.now());
+
+            assertThat(capture.matching("CHARGE POINT CP-1")).isEmpty();
         }
     }
 }

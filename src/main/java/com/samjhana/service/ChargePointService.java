@@ -67,6 +67,29 @@ public class ChargePointService {
         publish(chargePointRepository.save(point));
     }
 
+    /** The chargers the database shows as ONLINE: what the liveness sweep checks against the live connections (finding D-04). */
+    @Transactional(readOnly = true)
+    public List<String> onlineChargerCodes() {
+        return chargePointRepository.findCodesByConnectionStatus(ChargePoint.ConnectionStatus.ONLINE);
+    }
+
+    /**
+     * Safety net for a charger the database still shows ONLINE although it has no connection: marks it OFFLINE, but only if it
+     * has not been heard from since {@code lastHeardBefore}, and tells the open screens. It is one guarded statement, so a
+     * charger that connected at the same moment keeps its ONLINE. The sweep calls it once per charger, outside any transaction,
+     * so one failing charger cannot undo the others.
+     *
+     * @return whether the charger was changed
+     */
+    @Transactional
+    public boolean markOfflineIfStale(String code, LocalDateTime lastHeardBefore) {
+        if (chargePointRepository.markOfflineIfNotHeardSince(code, lastHeardBefore) == 0) return false;
+        LIFECYCLE.warn("CHARGE POINT {} connection_status: ONLINE -> OFFLINE (no connection and nothing heard since {})",
+                code, lastHeardBefore);
+        publish(find(code));
+        return true;
+    }
+
     @Transactional
     public void recordBoot(String code, String serialNumber) {
         ChargePoint point = find(code);

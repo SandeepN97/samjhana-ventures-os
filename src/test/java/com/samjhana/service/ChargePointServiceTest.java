@@ -348,4 +348,40 @@ class ChargePointServiceTest {
                 unknown, ChargePoint.LockBehavior.EXPLICIT_UNLOCK, admin()));
         verify(auditLogRepository, never()).save(any(AuditLog.class));
     }
+
+    // ------------------------------------------------------------------ finding D-04: ONLINE in the database, no connection
+
+    @Test
+    void shouldListTheCodesOfTheChargersShownOnline() {
+        when(chargePointRepository.findCodesByConnectionStatus(ChargePoint.ConnectionStatus.ONLINE))
+                .thenReturn(List.of("HD-D180-CC-01", "HQC23-80-01"));
+
+        assertEquals(List.of("HD-D180-CC-01", "HQC23-80-01"), chargePointService.onlineChargerCodes());
+    }
+
+    @Test
+    void shouldMarkOfflineAndPublish_whenTheGuardedUpdateChangedTheRow() {
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusSeconds(90);
+        ChargePoint point = chargePoint("HD-D180-CC-01", "HD-D180-CC", "80", 1);
+        point.setConnectionStatus(ChargePoint.ConnectionStatus.OFFLINE); // how the row reads once the statement has run
+        when(chargePointRepository.markOfflineIfNotHeardSince("HD-D180-CC-01", cutoff)).thenReturn(1);
+        when(chargePointRepository.findByCodeAndDeletedAtIsNull("HD-D180-CC-01")).thenReturn(Optional.of(point));
+
+        assertTrue(chargePointService.markOfflineIfStale("HD-D180-CC-01", cutoff));
+
+        ArgumentCaptor<Object> payload = ArgumentCaptor.forClass(Object.class);
+        verify(liveEvents).publish(eq("CHARGE_POINT_UPDATED"), payload.capture());
+        assertEquals("OFFLINE", ((ChargePointResponse) payload.getValue()).getConnectionStatus());
+    }
+
+    @Test
+    void shouldChangeAndPublishNothing_whenTheGuardedUpdateFindsNothingToChange() {
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusSeconds(90);
+        when(chargePointRepository.markOfflineIfNotHeardSince(anyString(), any())).thenReturn(0);
+
+        assertFalse(chargePointService.markOfflineIfStale("HD-D180-CC-01", cutoff));
+
+        verify(liveEvents, never()).publish(anyString(), any());
+        verify(chargePointRepository, never()).save(any(ChargePoint.class));
+    }
 }

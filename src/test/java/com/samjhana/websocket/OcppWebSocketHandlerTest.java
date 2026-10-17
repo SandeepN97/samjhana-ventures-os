@@ -8,6 +8,7 @@ import com.samjhana.entity.OcppCommandLog;
 import com.samjhana.entity.OcppConnectionLog;
 import com.samjhana.entity.OcppMessageLog;
 import com.samjhana.ocpp.OcppConnectionRegistry;
+import com.samjhana.ocpp.diag.FrameRateLimiter;
 import com.samjhana.ocpp.diag.JsonMasker;
 import com.samjhana.ocpp.diag.LockEvidenceTracker;
 import com.samjhana.ocpp.diag.LogCapture;
@@ -35,6 +36,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -648,5 +650,210 @@ class OcppWebSocketHandlerTest {
         OcppCommandLog row = writer.rows(OcppCommandLog.class).get(0);
         assertThat(row.getErrorCode()).as("the stored column holds 64").isEqualTo("C".repeat(64));
         assertThat(row.getErrorDescription()).as("fits the 500-character column").startsWith("D".repeat(200)).hasSizeLessThanOrEqualTo(230);
+    }
+
+    // ---------------------------------------------------------------- finding D-04: a connection that floods or goes silent
+
+    private String heartbeat(int n) {
+        return "[2,\"hb-" + n + "\",\"Heartbeat\",{}]";
+    }
+
+    private OcppConnectionState stateOf(WebSocketSession session) {
+        return OcppConnectionState.of(session, CP);
+    }
+
+    private static final CloseStatus SILENT = new CloseStatus(OcppWebSocketHandler.SILENT_CLOSE_CODE, "no messages from the charger");
+
+    @Test
+    void shouldGiveEachNewConnectionTheConfiguredAllowance() throws Exception {
+        properties.setMaxFramesPerSecond(0.001); // practically no refill: only the burst counts
+        properties.setFrameBurst(5);
+        WebSocketSession session = open("ws-1");
+
+        FrameRateLimiter limiter = stateOf(session).frameLimiter();
+
+        assertThat(limiter).as("a connection gets a limiter when the rate is set").isNotNull();
+        assertThat(limiter.perSecond()).as("the configured rate").isEqualTo(0.001);
+        assertThat(limiter.burst()).as("the configured burst").isEqualTo(5);
+        for (int i = 0; i < 5; i++) assertThat(limiter.tryAcquire()).isTrue();
+        assertThat(limiter.tryAcquire()).isFalse();
+    }
+
+    @Test
+    void shouldNotLimitAConnection_whenTheRateIsSwitchedOff() throws Exception {
+        properties.setMaxFramesPerSecond(0);
+        WebSocketSession session = open("ws-1");
+
+        assertThat(stateOf(session).frameLimiter()).isNull();
+        for (int i = 0; i < 300; i++) receive(session, heartbeat(i));
+
+        verify(chargePointService, times(300)).recordHeartbeat(CP);
+        verify(session, never()).close(any(CloseStatus.class));
+    }
+
+    @Test
+    void shouldHandleAStartUpBurstOfFortyFrames_underTheDefaultAllowance() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        for (int i = 0; i < 40; i++) receive(session, heartbeat(i));
+
+        verify(chargePointService, times(40)).recordHeartbeat(CP);
+        verify(session, never()).close(any(CloseStatus.class));
+        assertThat(sent).hasSize(40);
+    }
+
+    @Test
+    void shouldCloseWith1008AndHandleNothingMore_whenAChargerSendsMoreThanItsAllowance() throws Exception {
+        WebSocketSession session = open("ws-1");
+        stateOf(session).frameLimiter(new FrameRateLimiter(20, 5, () -> 0L)); // a frozen clock: exactly 5 frames fit
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            for (int i = 0; i < 8; i++) receive(session, heartbeat(i));
+
+            verify(chargePointService, times(5)).recordHeartbeat(CP);
+            ArgumentCaptor<CloseStatus> closed = ArgumentCaptor.forClass(CloseStatus.class);
+            verify(session, times(1)).close(closed.capture());
+            assertThat(closed.getValue().getCode()).isEqualTo(1008);
+            assertThat(closed.getValue().getReason()).isEqualTo("too many messages");
+            assertThat(capture.matching("FLOOD chargePointId=" + CP)).as("one line, not one per frame").singleElement()
+                    .asString().contains("sessionId=ws-1").contains("20.0 frames/s").contains("burst 5").contains("1008");
+            assertThat(capture.matching("FRAME IN")).as("the refused frames are not even logged").hasSize(5);
+            assertThat(capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN)).anyMatch(e -> e.getFormattedMessage().startsWith("FLOOD"));
+        }
+        assertThat(sent).as("only the five accepted frames were answered").hasSize(5);
+        verify(chargePointService, times(1)).markDisconnected(CP);
+        assertThat(registry.isConnected(CP)).isFalse();
+        assertThat(writer.rows(OcppConnectionLog.class)).filteredOn(r -> r.getEvent() == OcppConnectionLog.Event.DISCONNECTED)
+                .singleElement().satisfies(row -> assertThat(row.getCloseCode()).isEqualTo(1008));
+    }
+
+    @Test
+    void shouldKeepCountingFramesOverTime_soASlowTrickleIsNeverRefused() throws Exception {
+        WebSocketSession session = open("ws-1");
+        long[] now = {0};
+        stateOf(session).frameLimiter(new FrameRateLimiter(20, 5, () -> now[0]));
+
+        for (int i = 0; i < 100; i++) {
+            now[0] += 100_000_000L; // 10 frames a second
+            receive(session, heartbeat(i));
+        }
+
+        verify(chargePointService, times(100)).recordHeartbeat(CP);
+        verify(session, never()).close(any(CloseStatus.class));
+    }
+
+    @Test
+    void shouldIgnoreFramesThatArriveAfterTheConnectionWasDropped() throws Exception {
+        WebSocketSession session = open("ws-1");
+        handler.dropConnection(session, SILENT);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            receive(session, heartbeat(1));
+
+            assertThat(capture.events()).as("nothing is logged for a frame the app has stopped listening to").isEmpty();
+        }
+        verify(chargePointService, never()).recordHeartbeat(CP);
+        assertThat(sent).isEmpty();
+    }
+
+    @Test
+    void shouldCloseTheSocketMarkTheChargerOfflineAndFailItsCommands_whenAConnectionIsDropped() throws Exception {
+        WebSocketSession session = open("ws-1");
+        sendCommand(UUID.randomUUID(), "UnlockConnector");
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.dropConnection(session, SILENT);
+
+            ArgumentCaptor<CloseStatus> closed = ArgumentCaptor.forClass(CloseStatus.class);
+            verify(session).close(closed.capture());
+            assertThat(closed.getValue().getCode()).isEqualTo(4002);
+            verify(chargePointService, times(1)).markDisconnected(CP);
+            assertThat(registry.isConnected(CP)).isFalse();
+            assertThat(capture.matching("COMMAND LOST")).hasSize(1);
+            assertThat(capture.matching("DISCONNECTED chargePointId=" + CP)).singleElement().asString()
+                    .contains("closeCode=4002").contains("no messages from the charger for too long")
+                    .contains("reason=\"no messages from the charger\"").contains("wasCurrentSession=true");
+            assertThat(capture.events(OcppLoggers.LIFECYCLE_NAME, Level.WARN)).as("a dropped connection is a warning").isNotEmpty();
+        }
+        assertThat(writer.rows(OcppConnectionLog.class)).filteredOn(r -> r.getEvent() == OcppConnectionLog.Event.DISCONNECTED)
+                .singleElement().satisfies(row -> {
+                    assertThat(row.getCloseCode()).isEqualTo(4002);
+                    assertThat(row.getDetail()).contains("closeReason=no messages from the charger");
+                });
+    }
+
+    @Test
+    void shouldRunTheCloseBookkeepingOnce_whenTheContainerReportsTheCloseAfterwards() throws Exception {
+        WebSocketSession session = open("ws-1");
+        handler.dropConnection(session, SILENT);
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.afterConnectionClosed(session, new CloseStatus(1006, "no close frame")); // the late report
+
+            assertThat(capture.matching("DISCONNECTED chargePointId=")).as("no second DISCONNECTED line").isEmpty();
+            assertThat(capture.matching("STALE session")).isEmpty();
+        }
+        verify(chargePointService, times(1)).markDisconnected(CP);
+        assertThat(writer.rows(OcppConnectionLog.class)).filteredOn(r -> r.getEvent() == OcppConnectionLog.Event.DISCONNECTED)
+                .hasSize(1);
+    }
+
+    @Test
+    void shouldRunTheCloseBookkeepingOnce_whenTheContainerReportsTheSameCloseTwice() throws Exception {
+        WebSocketSession session = open("ws-1");
+
+        handler.afterConnectionClosed(session, CloseStatus.GOING_AWAY);
+        handler.afterConnectionClosed(session, CloseStatus.GOING_AWAY);
+
+        verify(chargePointService, times(1)).markDisconnected(CP);
+        assertThat(writer.rows(OcppConnectionLog.class)).filteredOn(r -> r.getEvent() == OcppConnectionLog.Event.DISCONNECTED)
+                .hasSize(1);
+    }
+
+    @Test
+    void shouldStillRunTheBookkeeping_whenTheSocketCannotBeClosed() throws Exception {
+        WebSocketSession session = open("ws-1");
+        doThrow(new IOException("broken pipe")).when(session).close(any(CloseStatus.class));
+
+        try (LogCapture capture = LogCapture.atConfiguredLevels()) {
+            handler.dropConnection(session, SILENT);
+
+            assertThat(capture.matching("Could not close session ws-1 of " + CP)).singleElement().asString().contains("broken pipe");
+        }
+        verify(chargePointService, times(1)).markDisconnected(CP);
+        assertThat(registry.isConnected(CP)).isFalse();
+    }
+
+    @Test
+    void shouldStillRunTheBookkeeping_whenClosingTheSocketThrowsAnUncheckedError() throws Exception {
+        WebSocketSession session = open("ws-1");
+        doThrow(new IllegalStateException("session already closed")).when(session).close(any(CloseStatus.class));
+
+        handler.dropConnection(session, SILENT);
+
+        verify(chargePointService, times(1)).markDisconnected(CP);
+        assertThat(registry.isConnected(CP)).isFalse();
+    }
+
+    @Test
+    void shouldNotAskASocketThatIsAlreadyClosedToCloseAgain_butStillRunTheBookkeeping() throws Exception {
+        WebSocketSession session = open("ws-1");
+        when(session.isOpen()).thenReturn(false);
+
+        handler.dropConnection(session, SILENT);
+
+        verify(session, never()).close(any(CloseStatus.class));
+        verify(chargePointService, times(1)).markDisconnected(CP);
+    }
+
+    @Test
+    void shouldLeaveTheNewerConnectionAlone_whenAnOlderOneIsDropped() throws Exception {
+        WebSocketSession old = open("ws-old");
+        open("ws-new"); // the charger reconnected: this one is the registered connection now
+
+        handler.dropConnection(old, SILENT);
+
+        verify(chargePointService, never()).markDisconnected(CP);
+        assertThat(registry.isConnected(CP)).isTrue();
     }
 }
