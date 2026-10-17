@@ -91,6 +91,8 @@ All UI strings must have both `en` and `ne` translations in `samjhana-admin/src/
 ### Nepal operator UI
 Touch targets must be ≥ 44px on all interactive elements.
 
+UI work: read `design-system/README.md` first (tokens, component guides with previews, "use this, not that").
+
 ### Data integrity
 No hard deletes — always use soft delete with a `deletedAt` timestamp.
 

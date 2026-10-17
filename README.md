@@ -108,6 +108,7 @@ Start with the [documentation index](docs/README.md). Main entries:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Features and API overview](docs/FEATURES.md)
 - [Roles and permissions](docs/ROLES.md)
+- [Design system](design-system/README.md): colours, fonts, components and rules for new screens
 - [EV charging implementation and current limitations](docs/EV-CHARGING-ARCHITECTURE.md)
 - [SQL to run on Supabase before a deploy](docs/sql/README.md)
 - [Security fixes: status, decisions and open questions](docs/security-handoff/README.md)

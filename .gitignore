@@ -43,6 +43,8 @@ graphify-out/
 .codex/
 .impeccable/
 assets/
+# ...except the design system's logo and icon notes, which are part of the repository
+!design-system/assets/
 .github/hooks/
 
 # Python (tools/ocpp-simulator)
