@@ -134,7 +134,8 @@ describe('product picture grid (beekeeping)', () => {
     as('ADMIN');
     renderWithProviders(<BeekeepingInventoryPage />);
     await screen.findAllByTestId('product-row');
-    expect(screen.getByRole('button', { name: /नेपालीमा बदल्नुहोस्|Switch to English/ })).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('button', { name: 'English' })).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('button', { name: 'नेपाली' })).toHaveClass('min-h-[44px]');
   });
 
   it('gives staff and managers no picture, switch or edit controls', async () => {
