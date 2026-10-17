@@ -5,6 +5,7 @@ import com.samjhana.ocpp.diag.OcppCommandAudit;
 import com.samjhana.ocpp.diag.OcppConnectionState;
 import com.samjhana.ocpp.diag.OcppFrameSender;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
@@ -76,6 +77,25 @@ public class OcppConnectionRegistry {
             });
         }
         return new Unregistered(current[0], orphaned);
+    }
+
+    /**
+     * Closes the charger's live connection, if it has one (finding P1a-03: a connection opened with a secret that
+     * has since been changed must not outlive it). The registration is left in place on purpose: the container
+     * reports the close back to the handler, which unregisters the session, fails its pending commands and marks
+     * the charger offline like for any other disconnect.
+     *
+     * @return whether the charger had a connection
+     */
+    public boolean disconnect(String chargePointCode, CloseStatus status) {
+        Connection connection = connections.get(chargePointCode);
+        if (connection == null) return false;
+        try {
+            connection.raw().close(status);
+        } catch (IOException | RuntimeException ex) {
+            // already closing or gone; the container reports it through the usual close handling
+        }
+        return true;
     }
 
     public boolean isConnected(String chargePointCode) {
