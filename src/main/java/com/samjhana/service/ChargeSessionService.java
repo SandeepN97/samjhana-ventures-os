@@ -13,10 +13,13 @@ import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.ocpp.diag.CommandReason;
 import com.samjhana.repository.*;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -77,17 +80,19 @@ public class ChargeSessionService {
                 .orElseGet(() -> EvCustomerVehicle.builder().plateNumber(plate).build());
         if (request.getCustomerName() != null) vehicle.setCustomerName(clean(request.getCustomerName()));
         if (request.getPhoneNumber() != null) vehicle.setPhoneNumber(clean(request.getPhoneNumber()));
-        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
-            vehicle.setPlatePhotoPath(photoStorageService.store(request.getPlatePhotoDataUrl(), plate));
-        }
-        vehicle = customerVehicleRepository.save(vehicle);
-
+        // Everything that can refuse the start comes before the photo is written to the disk (finding F-02).
         EvVehicle catalog = null;
         if (request.getVehicleCatalogId() != null && !request.getVehicleCatalogId().isBlank()) {
             catalog = evVehicleRepository.findById(parseUuid(request.getVehicleCatalogId(), "vehicle type"))
                     .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                     .orElseThrow(() -> new ResourceNotFoundException("EV vehicle type not found"));
         }
+        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
+            String photoPath = photoStorageService.store(request.getPlatePhotoDataUrl(), plate);
+            removeIfTheStartIsRolledBack(photoPath);
+            vehicle.setPlatePhotoPath(photoPath);
+        }
+        vehicle = customerVehicleRepository.save(vehicle);
 
         ChargeSession session = ChargeSession.builder()
                 .chargePoint(chargePoint)
@@ -134,13 +139,24 @@ public class ChargeSessionService {
                 .stream().map(ChargeSessionResponse::from).toList();
     }
 
+    /** The photo is a file, which a database rollback does not undo: if the start fails after it was written, remove it. */
+    private void removeIfTheStartIsRolledBack(String photoPath) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) photoStorageService.delete(photoPath);
+            }
+        });
+    }
+
     @Transactional(readOnly = true)
     public ChargeSessionResponse get(UUID id) {
         return ChargeSessionResponse.from(find(id));
     }
 
     @Transactional
-    public ChargeSessionResponse stop(UUID id) {
+    public ChargeSessionResponse stop(UUID id, User user) {
         ChargeSession session = find(id);
         requireStatus(session, ChargeSession.Status.ACTIVE);
         boolean autoUnlock = session.getChargePoint().getLockBehavior() == ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP;
@@ -148,6 +164,7 @@ public class ChargeSessionService {
             requireOcppTransaction(session);
             requireConnected(session);
         }
+        ChargeSession.Status before = session.getStatus();
         session.setStopRequestedAt(LocalDateTime.now());
 
         Dispatch stopCommand = null;
@@ -159,7 +176,17 @@ public class ChargeSessionService {
             session.setStatusMessage("Stop command sent; connector remains locked");
             stopCommand = requestStopDispatch(session, ChargeSession.Status.ACTIVE, "stop");
         }
-        return publish(chargeSessionRepository.save(session), stopCommand);
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Stop requested");
+        return publish(saved, stopCommand);
+    }
+
+    /** Who sent a command to a charger, and what it did to the session (finding P1b-08). */
+    private void recordCommand(User user, ChargeSession session, ChargeSession.Status before, String what) {
+        AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.CHARGE_SESSION, session.getId(),
+                "{\"status\":\"" + before + "\"}", "{\"status\":\"" + session.getStatus() + "\"}");
+        entry.setDescription(what + " by " + user.getUsername() + " for charger " + session.getChargePoint().getCode());
+        auditLogRepository.save(entry);
     }
 
     @Transactional
@@ -192,7 +219,7 @@ public class ChargeSessionService {
     }
 
     @Transactional
-    public ChargeSessionResponse retryUnlock(UUID id) {
+    public ChargeSessionResponse retryUnlock(UUID id, User user) {
         ChargeSession session = find(id);
         if (session.getPaidAt() == null || session.getChargePoint().getLockBehavior() != ChargePoint.LockBehavior.EXPLICIT_UNLOCK) {
             throw new EvSessionStateException("Only a paid session with explicit connector locking can be unlocked");
@@ -202,9 +229,12 @@ public class ChargeSessionService {
             throw new EvSessionStateException("Session is not waiting for connector unlock");
         }
         requireConnected(session);
+        ChargeSession.Status before = session.getStatus();
         session.setStatus(ChargeSession.Status.UNLOCK_REQUESTED);
         session.setStatusMessage("Unlock command resent");
-        return publish(chargeSessionRepository.save(session), unlockDispatch(session));
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Unlock requested");
+        return publish(saved, unlockDispatch(session));
     }
 
     @Transactional
@@ -357,7 +387,9 @@ public class ChargeSessionService {
                 } else if (measurand.startsWith("Energy.Active.Import")) {
                     String unit = sampled.path("unitOfMeasure").path("unit").asText("Wh");
                     int multiplier = sampled.path("unitOfMeasure").path("multiplier").asInt(0);
-                    value = value.scaleByPowerOfTen(multiplier);
+                    if (multiplier < -SafeDecimal.MAX_POWER || multiplier > SafeDecimal.MAX_POWER) continue;   // not a real unit multiplier (D-01)
+                    value = SafeDecimal.limited(value.scaleByPowerOfTen(multiplier));
+                    if (value == null) continue;
                     energyWh = "kWh".equalsIgnoreCase(unit) ? value.multiply(BigDecimal.valueOf(1000)) : value;
                 }
             }
@@ -596,11 +628,8 @@ public class ChargeSessionService {
         }
     }
 
+    /** A charger-supplied number; null when it is missing, unreadable, or has an extreme exponent (finding D-01). */
     private BigDecimal decimal(String value) {
-        try {
-            return value == null ? null : new BigDecimal(value);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return SafeDecimal.parse(value);
     }
 }
