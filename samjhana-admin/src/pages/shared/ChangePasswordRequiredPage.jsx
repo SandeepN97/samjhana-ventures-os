@@ -62,7 +62,7 @@ export default function ChangePasswordRequiredPage() {
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <KeyRound className="h-8 w-8 text-core-600" aria-hidden="true" />
-          <LanguageToggle />
+          <LanguageToggle tone="onLight" />
         </div>
         <h1 className="text-xl font-bold text-gray-800">{t('forcedPassword.title')}</h1>
         <p className="text-sm text-gray-600">{t('forcedPassword.intro')}</p>

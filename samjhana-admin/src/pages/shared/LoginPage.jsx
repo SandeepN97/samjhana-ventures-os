@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 import { changePasswordFromLogin } from '../../utils/changePasswordFromLogin';
 import { passwordProblem, passwordProblemMessage, serverPasswordMessage } from '../../utils/passwordPolicy';
 import { Wordmark } from '../../components/brand';
+import LanguageToggle from '../../components/LanguageToggle';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
-  const isNepali = i18n.language === 'ne';
+  const { t } = useTranslation();
 
   // Mode: 'login' or 'changePassword'
   const [mode, setMode] = useState('login');
@@ -28,12 +28,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const toggleLanguage = () => {
-    const newLang = isNepali ? 'en' : 'ne';
-    i18n.changeLanguage(newLang);
-    localStorage.setItem('preferredLanguage', newLang);
-  };
 
   const resetForm = () => {
     setUsername('');
@@ -134,13 +128,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-core-700 to-core-900 px-4 relative">
       {/* Language Toggle - Top Right */}
-      <button
-        onClick={toggleLanguage}
-        className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all text-white font-medium active:scale-95"
-      >
-        <Globe className="w-5 h-5" />
-        <span className="font-bold">{isNepali ? 'EN' : 'ने'}</span>
-      </button>
+      <LanguageToggle className="absolute top-4 right-4" />
 
       <div className="w-full max-w-sm">
       <div className="mb-6 flex justify-center text-white">
