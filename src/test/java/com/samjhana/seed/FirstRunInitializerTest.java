@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -115,6 +116,39 @@ class FirstRunInitializerTest {
         assertTrue(generated.matches("[A-Za-z0-9_-]{22}"), "expected 16 random bytes, url-safe base64: " + generated);
         assertEquals("hash(" + generated + ")", savedUser().getPassword());
         assertEquals(1, logLinesContaining(generated), "the generated password is shown exactly once, in the log");
+    }
+
+    /** Finding A-02: the chosen password follows the same rule as every other password. */
+    @ParameterizedTest
+    @ValueSource(strings = {"short", "Password123", "Admin#Admin1x", "Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!Qx7!"})
+    void shouldRefuseToStartAndNeverRepeatThePassword_whenTheChosenPasswordBreaksTheRule(String chosen) {
+        when(userRepository.count()).thenReturn(0L);
+        ReflectionTestUtils.setField(initializer, "adminInitialPassword", chosen);
+
+        IllegalStateException refusal = assertThrows(IllegalStateException.class, initializer::run);
+
+        assertTrue(refusal.getMessage().startsWith("ADMIN_INITIAL_PASSWORD"), refusal.getMessage());
+        assertFalse(refusal.getMessage().contains(chosen), "the password must not be repeated in the message");
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoInteractions(passwordEncoder);
+        assertEquals(0, logLinesContaining(chosen));
+    }
+
+    @Test
+    void shouldSayWhichRuleTheChosenPasswordBroke() {
+        when(userRepository.count()).thenReturn(0L);
+
+        ReflectionTestUtils.setField(initializer, "adminInitialPassword", "short");
+        assertEquals("ADMIN_INITIAL_PASSWORD must be at least 8 characters",
+                assertThrows(IllegalStateException.class, initializer::run).getMessage());
+
+        ReflectionTestUtils.setField(initializer, "adminInitialPassword", "Password123");
+        assertEquals("ADMIN_INITIAL_PASSWORD is too common or too easy to guess. Choose something less obvious",
+                assertThrows(IllegalStateException.class, initializer::run).getMessage());
+
+        ReflectionTestUtils.setField(initializer, "adminInitialPassword", "Admin#Admin1x");
+        assertEquals("ADMIN_INITIAL_PASSWORD must not contain the username",
+                assertThrows(IllegalStateException.class, initializer::run).getMessage());
     }
 
     @Test

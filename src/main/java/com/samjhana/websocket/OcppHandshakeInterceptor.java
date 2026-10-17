@@ -8,6 +8,8 @@ import com.samjhana.ocpp.diag.OcppAuditWriter;
 import com.samjhana.ocpp.diag.OcppLoggers;
 import com.samjhana.ocpp.diag.OcppMdc;
 import com.samjhana.repository.ChargePointRepository;
+import com.samjhana.security.ClientAddressResolver;
+import com.samjhana.security.RequestThrottle;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
@@ -44,10 +47,20 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
     /** Set on the servlet request so the request filter knows the interceptor already logged and stored it. */
     public static final String REQUEST_OUTCOME_ATTRIBUTE = "ocpp.handshake.outcome";
     private static final String OCPP_SUBPROTOCOL = "ocpp2.0.1";
+    /**
+     * Wrong passwords allowed from one address for one charger within the window (finding P1a-10). A charger code is
+     * public and every password check is a BCrypt comparison, so beyond this the attempt is refused before any
+     * password is checked. Counted per address AND charger, so one badly set-up charger cannot shut out the others
+     * at the same site, and successful connections never use any of it up.
+     */
+    static final int MAX_WRONG_PASSWORDS = 10;
+    static final Duration WRONG_PASSWORD_WINDOW = Duration.ofMinutes(5);
 
     private final ChargePointRepository chargePointRepository;
     private final PasswordEncoder passwordEncoder;
     private final OcppAuditWriter auditWriter;
+    private final ClientAddressResolver clientAddress;
+    private final RequestThrottle throttle;
 
     private record Decision(HandshakeOutcome outcome, String authorization, String basicUser) {}
 
@@ -63,7 +76,7 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         String forwardedFor = headers.getFirst("X-Forwarded-For");
         String userAgent = headers.getFirst(HttpHeaders.USER_AGENT);
 
-        Decision decision = decide(code, offeredHeader, offered, headers);
+        Decision decision = decide(request, code, offeredHeader, offered, headers);
 
         try (OcppMdc mdc = OcppMdc.open().chargePoint(LogSafe.clean(code, 64))) {
             boolean accepted = decision.outcome() == HandshakeOutcome.ACCEPTED;
@@ -106,12 +119,16 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
                 return true;
             }
             case NO_SUBPROTOCOL, UNSUPPORTED_SUBPROTOCOL -> response.setStatusCode(HttpStatus.UPGRADE_REQUIRED);
+            case TOO_MANY_FAILURES -> {
+                response.getHeaders().set(HttpHeaders.RETRY_AFTER, String.valueOf(WRONG_PASSWORD_WINDOW.toSeconds()));
+                response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+            }
             default -> response.setStatusCode(HttpStatus.UNAUTHORIZED);
         }
         return false;
     }
 
-    private Decision decide(String code, List<String> offeredHeader, String offered, HttpHeaders headers) {
+    private Decision decide(ServerHttpRequest request, String code, List<String> offeredHeader, String offered, HttpHeaders headers) {
         if (offeredHeader == null || offeredHeader.isEmpty()) return new Decision(HandshakeOutcome.NO_SUBPROTOCOL, "n/a", null);
         if (!offered.contains(OCPP_SUBPROTOCOL)) return new Decision(HandshakeOutcome.UNSUPPORTED_SUBPROTOCOL, "n/a", null);
 
@@ -130,10 +147,23 @@ public class OcppHandshakeInterceptor implements HandshakeInterceptor {
         if (!code.equals(credentials.username())) {
             return new Decision(HandshakeOutcome.USER_MISMATCH, "present, Basic parsable", credentials.username());
         }
+        String wrongPasswordKey = "ocpp-handshake|" + visitorAddress(request) + "|" + code;
+        if (!throttle.hasRoom(wrongPasswordKey, MAX_WRONG_PASSWORDS, WRONG_PASSWORD_WINDOW)) {
+            return new Decision(HandshakeOutcome.TOO_MANY_FAILURES, "present, Basic parsable", credentials.username());
+        }
         if (!passwordEncoder.matches(credentials.password(), point.getOcppAuthSecretHash())) {
+            throttle.tryAcquire(wrongPasswordKey, MAX_WRONG_PASSWORDS, WRONG_PASSWORD_WINDOW);
             return new Decision(HandshakeOutcome.BAD_PASSWORD, "present, Basic parsable", credentials.username());
         }
         return new Decision(HandshakeOutcome.ACCEPTED, "present, Basic parsable", credentials.username());
+    }
+
+    /** The visitor's address as the proxy saw it (see {@link ClientAddressResolver}); one shared bucket when it cannot be told. */
+    private String visitorAddress(ServerHttpRequest request) {
+        if (request instanceof ServletServerHttpRequest servlet) {
+            return clientAddress.resolve(servlet.getServletRequest()).orElse("unknown");
+        }
+        return "unknown";
     }
 
     private String remoteAddress(ServerHttpRequest request) {

@@ -78,6 +78,21 @@ public class RequestThrottle {
         }
     }
 
+    /**
+     * True when the key has fewer than {@code max} actions on record within the window. Records nothing: used to refuse
+     * before expensive work (a password check), while only the failures are then recorded with {@link #tryAcquire}.
+     */
+    public boolean hasRoom(String key, int max, Duration window) {
+        if (key == null || key.length() > MAX_KEY_LENGTH) return false;
+        String id = fingerprint(key);
+        Instant cutoff = clock.instant().minus(window);
+        synchronized (table) {
+            Hits hits = table.get(id);
+            if (hits == null) return true;
+            return hits.times.stream().filter(time -> !time.isBefore(cutoff)).count() < max;
+        }
+    }
+
     /** Forgets every key whose window has passed. Runs once a minute, so no request has to scan the table. */
     @Scheduled(fixedDelayString = "PT1M")
     void forgetExpired() {

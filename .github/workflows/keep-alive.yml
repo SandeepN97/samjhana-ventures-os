@@ -1,42 +1,59 @@
 name: Keep-Alive Ping
 
-# Render's free tier spins down a service after ~15 minutes of no inbound traffic; the next
-# request then pays a cold-start penalty. This workflow pings staging and prod on a schedule
-# so real users rarely hit that cold start. It cannot, and does not try to, prevent restarts
-# from an actual deploy or Render maintenance — only idle-timeout spin-down is preventable
-# this way. See samjhana-three-env-plan-v2.docx section 4.1.
+# What this is for
+#   Render's free tier puts a service to sleep after about 15 minutes with no visitors, and the next visit then
+#   waits about a minute for it to wake. This workflow opens a public page of the staging and prod backends on a
+#   schedule so that rarely happens. The admin screens are served by the same service as the backend, so one address
+#   covers both; the public website is hosted separately and only needs its data from the backend.
+#   It cannot prevent restarts from a deploy or Render maintenance, only the idle sleep.
 #
-# Configure the two repository variables before this does anything useful:
-#   Settings → Secrets and variables → Actions → Variables
-#     STAGING_HEALTH_URL   e.g. https://samjhana-staging.onrender.com/actuator/health
-#     PROD_HEALTH_URL      e.g. https://samjhana.onrender.com/actuator/health
-# Until both are set, each ping step below is skipped (not failed) — a missing URL is a setup
-# gap, not a broken pipeline.
+# What it can and cannot do (measured from this repo's own run history, 27 Sep to 16 Oct 2026)
+#   GitHub's scheduler is best effort. This job is set to run every 10 minutes, but GitHub started it 97 times in
+#   20 days: about every 5 hours, never closer than 2 hours apart. On its own it therefore does NOT keep a free
+#   service awake. A free outside pinger (cron-job.org or UptimeRobot) opening the same address every 10 minutes does.
+#   The minutes below (4, 14, 24, ...) stay off the top of the hour, which GitHub says is its busiest time.
+#   GitHub runs schedules only from the default branch (main), so a change to this file goes live with the next release.
+#   Render's staff have said they discourage pinging free services to keep them awake. Paid plans never sleep.
+#
+# Setup (once): Settings → Secrets and variables → Actions → Variables → New repository variable
+#   STAGING_HEALTH_URL   https://samjhana-ventures-os-staging.onrender.com/api/public/fuel-prices/current
+#   PROD_HEALTH_URL      <the prod backend's address>/api/public/fuel-prices/current   (optional: prod is on a paid plan)
+#   That page is public, needs no login and is the one render.yaml uses as the health check. This app has no
+#   /actuator/health. While an address is not set, its ping is skipped and the run shows a yellow warning saying so.
+#   See samjhana-three-env-plan-v2.docx section 4.1.
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes, comfortably inside the ~15 min idle window
-  workflow_dispatch: {}       # allow manual "run now" from the Actions tab
+    - cron: '4,14,24,34,44,54 * * * *'   # every 10 minutes, a few minutes off the top of the hour
+  workflow_dispatch: {}                    # "Run workflow" button on the Actions tab (once this file is on main)
+
+permissions: {}
 
 jobs:
-  ping-staging:
-    name: Ping staging
+  ping:
+    name: Ping staging and prod
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Ping staging health endpoint
-        if: vars.STAGING_HEALTH_URL != ''
+      - name: Open the public page of each backend
+        env:
+          STAGING_URL: ${{ vars.STAGING_HEALTH_URL }}
+          PROD_URL: ${{ vars.PROD_HEALTH_URL }}
         run: |
-          curl -fsS --max-time 20 "${{ vars.STAGING_HEALTH_URL }}" \
-            && echo "staging: awake" \
-            || echo "::warning::staging keep-alive ping failed (may be a real outage or a cold-start timeout — not retried here)"
-
-  ping-prod:
-    name: Ping prod
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ping prod health endpoint
-        if: vars.PROD_HEALTH_URL != ''
-        run: |
-          curl -fsS --max-time 20 "${{ vars.PROD_HEALTH_URL }}" \
-            && echo "prod: awake" \
-            || echo "::warning::prod keep-alive ping failed (may be a real outage or a cold-start timeout — not retried here)"
+          ping_one() {
+            name="$1"
+            url="$2"
+            if [ -z "$url" ]; then
+              echo "::warning::${name}: no address is set, so nothing was pinged (see the setup notes at the top of this file)"
+              return 0
+            fi
+            # A sleeping Render service needs about a minute to wake: wait for it, and try once more.
+            if curl --fail --silent --show-error --location --max-time 90 --retry 1 --retry-delay 10 \
+                 --output /dev/null --write-out "${name}: HTTP %{http_code} in %{time_total}s\n" "$url"; then
+              echo "${name}: awake"
+            else
+              echo "::warning::${name}: no good answer (a real outage, or a wake-up that took longer than 90 seconds)"
+            fi
+          }
+          ping_one staging "$STAGING_URL"
+          ping_one prod "$PROD_URL"

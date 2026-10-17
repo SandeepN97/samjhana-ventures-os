@@ -24,7 +24,6 @@ import java.util.Optional;
 public class FuelPriceService {
 
     private final FuelPriceRepository fuelPriceRepository;
-    private final NocPriceScraperService nocPriceScraperService;
     private final AuditLogRepository auditLogRepository;
 
     /** The lowest and highest price per litre that is believable (finding P0-08); anything else is a slip of the finger. */
@@ -106,12 +105,6 @@ public class FuelPriceService {
         BigDecimal price = value == null ? null : SafeDecimal.parse(value.toString());
         if (price == null) throw new IllegalArgumentException(label + " must be a number");
         return price;
-    }
-
-    @Transactional
-    public Map<String, FuelPriceResponse> fetchNocPrices() {
-        nocPriceScraperService.fetchAndSavePrices();
-        return getCurrentPrices();
     }
 
     /** Saves the price and records who set it and what it was before (finding P1b-08). An unchanged price changes and records nothing. */

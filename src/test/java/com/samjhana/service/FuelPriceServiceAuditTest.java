@@ -41,7 +41,6 @@ import static org.mockito.Mockito.when;
 class FuelPriceServiceAuditTest {
 
     @Mock FuelPriceRepository fuelPriceRepository;
-    @Mock NocPriceScraperService nocPriceScraperService;
     @Mock AuditLogRepository auditLogRepository;
     @InjectMocks FuelPriceService service;
 

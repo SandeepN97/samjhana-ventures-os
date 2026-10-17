@@ -4,11 +4,14 @@ import com.samjhana.dto.ChangePasswordRequest;
 import com.samjhana.dto.LoginRequest;
 import com.samjhana.dto.LoginResponse;
 import com.samjhana.dto.UserDto;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.User;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.ClientAddressResolver;
 import com.samjhana.security.JwtUtil;
 import com.samjhana.security.LoginAttemptService;
+import com.samjhana.security.PasswordPolicy;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,8 +27,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -39,6 +44,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttempts;
     private final ClientAddressResolver clientAddress;
+    private final AuditLogRepository auditLogRepository;
 
     /** What an admin sees when the named user is unknown or the current password is wrong: one answer for both. */
     private static final String INVALID_TARGET_OR_PASSWORD = "Invalid username or current password";
@@ -57,19 +63,20 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String address = clientAddress.resolve(http).orElse(null);
-        if (loginAttempts.isBlocked(request.getUsername(), address)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
-        }
+        // The attempt is counted as it starts, so a burst of guesses cannot all slip past a counter that is still at zero.
+        ResponseEntity<?> refusal = refusalFor(loginAttempts.tryBegin(request.getUsername(), address));
+        if (refusal != null) return refusal;
         Authentication auth;
         try {
             auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (AuthenticationException e) {
-            loginAttempts.recordFailure(request.getUsername(), address);
+            throw e;   // a wrong password (or a disabled account): the attempt stays counted
+        } catch (RuntimeException e) {
+            loginAttempts.attemptNotCounted(request.getUsername(), address);   // something broke: not the user's doing
             throw e;
         }
-        loginAttempts.recordSuccess(request.getUsername(), address);
+        loginAttempts.attemptSucceeded(request.getUsername(), address);
 
         User user = (User) auth.getPrincipal();
         String token = jwtUtil.generateToken(user);
@@ -78,6 +85,16 @@ public class AuthController {
                 .token(token)
                 .user(UserDto.from(user))
                 .build());
+    }
+
+    private static ResponseEntity<?> refusalFor(LoginAttemptService.Decision decision) {
+        return switch (decision) {
+            case ALLOWED -> null;
+            case TOO_MANY_WRONG_PASSWORDS -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
+            case BUSY -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", "Too many sign-in attempts right now. Please wait a minute and try again."));
+        };
     }
 
     /**
@@ -117,17 +134,20 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Full name is required"));
         }
 
-        user.setFullName(fullName.trim());
+        // Only the names are written (finding P1b-01). The account object here is the copy read when the request
+        // started; saving it back whole would undo a role change, deactivation or password reset made since.
         String fullNameNepali = body.get("fullNameNepali");
+        LocalDateTime now = LocalDateTime.now();
         if (fullNameNepali != null && !fullNameNepali.trim().isEmpty()) {
-            user.setFullNameNepali(fullNameNepali.trim());
+            userRepository.updateNames(user.getId(), fullName.trim(), fullNameNepali.trim(), now);
+        } else {
+            userRepository.updateFullName(user.getId(), fullName.trim(), now);
         }
-
-        userRepository.save(user);
+        User current = userRepository.findById(user.getId()).orElse(user);
 
         return ResponseEntity.ok(Map.of(
                 "message", "Profile updated successfully",
-                "user", UserDto.from(user)
+                "user", UserDto.from(current)
         ));
     }
 
@@ -138,7 +158,7 @@ public class AuthController {
      * Admins may change any user's password by providing the target username;
      * non-admins may only change their own.
      *
-     * Minimum password length: 8 characters.
+     * The new password follows {@link PasswordPolicy}.
      */
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
@@ -165,7 +185,7 @@ public class AuthController {
         // doesn't reveal which usernames are real.
         String guessedAccount = targetsAnotherUser ? request.getUsername().trim() : currentUser.getUsername();
         String address = clientAddress.resolve(http).orElse(null);
-        if (loginAttempts.isBlocked(guessedAccount, address)) {
+        if (loginAttempts.tryBegin(guessedAccount, address, false) != LoginAttemptService.Decision.ALLOWED) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", "Too many wrong passwords. Try again in 15 minutes."));
         }
@@ -176,17 +196,28 @@ public class AuthController {
         boolean currentPasswordMatches = passwordEncoder.matches(request.getCurrentPassword(), hashToCheck);
 
         if (targetUser == null || !currentPasswordMatches) {
-            loginAttempts.recordFailure(guessedAccount, address);
+            // the attempt was counted as a wrong password when it started
             // Naming another user: one answer for "no such user" and "wrong password".
             // Changing your own password: you already know you exist, so the specific message is fine.
             String message = targetsAnotherUser ? INVALID_TARGET_OR_PASSWORD : "Current password is incorrect";
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
 
-        // Validate new password strength
-        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "New password must be at least 8 characters"));
+        loginAttempts.attemptSucceeded(guessedAccount, address);   // the current password was right
+
+        // An admin's temporary password for someone else is for that person to replace (finding P1b-02). If the admin
+        // who handed it out could replace it too, they - not the person - would choose the password.
+        if (targetsAnotherUser && Boolean.TRUE.equals(targetUser.getMustChangePassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "This user has a temporary password and must choose their own the next time they sign in"));
+        }
+
+        // The same rule wherever a password is chosen (finding A-02), checked against the account it is for.
+        Optional<PasswordPolicy.Problem> problem = PasswordPolicy.check(request.getNewPassword(), targetUser.getUsername());
+        if (problem.isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", PasswordPolicy.message(problem.get(), "New password"),
+                    "code", problem.get().code()));
         }
 
         if (request.getNewPassword().equals(request.getCurrentPassword())) {
@@ -194,18 +225,25 @@ public class AuthController {
                     .body(Map.of("message", "The new password must be different from the current one"));
         }
 
-        targetUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        targetUser.setMustChangePassword(false);   // an admin's temporary password is now replaced
-        userRepository.save(targetUser);
-        loginAttempts.recordSuccess(guessedAccount, address);
+        // Only the password is written (finding P1b-01), and an admin's temporary password is now replaced.
+        userRepository.updatePassword(targetUser.getId(), passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
+
+        // Who changed whose password, never the passwords themselves.
+        AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, targetUser.getId(),
+                null, "{\"passwordChanged\":true}");
+        entry.setDescription(targetsAnotherUser
+                ? "Password changed for " + targetUser.getUsername() + " by " + currentUser.getUsername()
+                : "Password changed by " + currentUser.getUsername());
+        auditLogRepository.save(entry);
 
         // The new password logs out every token issued before it (see JwtUtil#isTokenValidFor).
         // Someone changing their own password gets a fresh token so this device stays signed in.
         if (targetsAnotherUser) {
             return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
         }
+        User updated = userRepository.findById(targetUser.getId()).orElse(targetUser);
         return ResponseEntity.ok(Map.of(
                 "message", "Password changed successfully",
-                "token", jwtUtil.generateToken(targetUser)));
+                "token", jwtUtil.generateToken(updated)));
     }
 }

@@ -20,7 +20,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import api from '../../utils/api';
-import { isAcceptableNewPassword } from '../../utils/passwordPolicy';
+import { passwordProblem, passwordProblemMessage, serverPasswordMessage } from '../../utils/passwordPolicy';
 import SearchableSelect from '../../components/SearchableSelect';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import TemporaryPasswordDialog from '../../components/admin/TemporaryPasswordDialog';
@@ -145,8 +145,9 @@ export default function SettingsPage() {
       showToast(t('settings.usernameRequired'), 'error');
       return;
     }
-    if (!isAcceptableNewPassword(newUser.password)) {
-      showToast(t('settings.passwordMin8'), 'error');
+    const passwordIssue = passwordProblem(newUser.password);
+    if (passwordIssue) {
+      showToast(passwordProblemMessage(t, passwordIssue, 'settings.passwordMin8'), 'error');
       return;
     }
     if (newUser.password !== newUserPasswordConfirm) {
@@ -164,7 +165,7 @@ export default function SettingsPage() {
       setShowUserForm(false);
       fetchUsers();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to create user', 'error');
+      showToast(serverPasswordMessage(err, t, 'settings.passwordMin8', 'Failed to create user'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -212,8 +213,9 @@ export default function SettingsPage() {
       showToast(t('settings.currentPasswordRequired'), 'error');
       return;
     }
-    if (!isAcceptableNewPassword(newPassword)) {
-      showToast(t('settings.newPasswordMin8'), 'error');
+    const passwordIssue = passwordProblem(newPassword);
+    if (passwordIssue) {
+      showToast(passwordProblemMessage(t, passwordIssue, 'settings.newPasswordMin8'), 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -239,7 +241,7 @@ export default function SettingsPage() {
         setActiveSection(null);
       }, 1500);
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to change password', 'error');
+      showToast(serverPasswordMessage(err, t, 'settings.newPasswordMin8', 'Failed to change password'), 'error');
     } finally {
       setPwSaving(false);
     }

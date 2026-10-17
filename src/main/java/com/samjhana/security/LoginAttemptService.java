@@ -64,10 +64,19 @@ public class LoginAttemptService {
     private final Map<String, Deque<Instant>> addressFailures = new ConcurrentHashMap<>();
     private final Clock clock;
     private final boolean addressLimits;
+    /** The most login attempts the whole endpoint admits in a minute, or 0 for no ceiling. */
+    private final int globalPerMinute;
+    private final Deque<Instant> recentAttempts = new ArrayDeque<>();
 
     @Autowired
-    public LoginAttemptService(@Value("${samjhana.security.login.ip-limits-enabled:false}") boolean addressLimits) {
-        this(Clock.systemUTC(), addressLimits);
+    public LoginAttemptService(@Value("${samjhana.security.login.ip-limits-enabled:false}") boolean addressLimits,
+                               @Value("${samjhana.security.login.global-per-minute:120}") int globalPerMinute) {
+        this(Clock.systemUTC(), addressLimits, globalPerMinute);
+    }
+
+    /** No ceiling on the whole endpoint. */
+    public LoginAttemptService(boolean addressLimits) {
+        this(Clock.systemUTC(), addressLimits, 0);
     }
 
     LoginAttemptService(Clock clock) {
@@ -75,12 +84,91 @@ public class LoginAttemptService {
     }
 
     LoginAttemptService(Clock clock, boolean addressLimits) {
+        this(clock, addressLimits, 0);
+    }
+
+    LoginAttemptService(Clock clock, boolean addressLimits, int globalPerMinute) {
         this.clock = clock;
         this.addressLimits = addressLimits;
+        this.globalPerMinute = globalPerMinute;
+    }
+
+    /** What {@link #tryBegin} decided about one login attempt. */
+    public enum Decision {
+        /** Go on and check the password. The attempt is already counted. */
+        ALLOWED,
+        /** Too many wrong passwords for this username (or from this address): refuse without checking the password. */
+        TOO_MANY_WRONG_PASSWORDS,
+        /** The whole login endpoint is over its ceiling for this minute: refuse without checking the password. */
+        BUSY
     }
 
     public boolean addressLimitsEnabled() {
         return addressLimits;
+    }
+
+    /**
+     * Decides, in one atomic step, whether this login attempt may go on to the (slow) password check, and if it may,
+     * counts it right now as a wrong password. A burst of guesses that arrive together can therefore not all be
+     * admitted before the first failure is written down (finding P1B2-01). Afterwards the caller reports
+     * {@link #attemptSucceeded} when the password was right, or {@link #attemptNotCounted} when the attempt failed for a
+     * reason that is not the password; a wrong password needs nothing more, it is already counted.
+     *
+     * <p>The username and, when the address limits are on, the username+address and address counters are looked at
+     * first; an attempt they refuse leaves nothing behind. Only attempts they admit use up the endpoint-wide ceiling
+     * ({@code samjhana.security.login.global-per-minute}, finding A-01), which stops a stream of made-up usernames, each
+     * of which would cost a full BCrypt comparison, from keeping every processor busy.
+     */
+    public Decision tryBegin(String username, String address) {
+        return tryBegin(username, address, true);
+    }
+
+    /**
+     * As {@link #tryBegin(String, String)}; {@code endpointWide} says whether an admitted attempt also uses up the
+     * ceiling on the whole login endpoint. Changing a password (which needs a signed-in user already) does not.
+     */
+    public Decision tryBegin(String username, String address, boolean endpointWide) {
+        boolean byAddress = usesAddress(address);
+        String name = key(username);
+        String pair = byAddress ? pairKey(username, address) : null;
+        int userMax = byAddress ? MAX_FAILURES_WITH_ADDRESS_LIMITS : MAX_FAILURES;
+
+        if (!reserve(failures, name, userMax, false)) return Decision.TOO_MANY_WRONG_PASSWORDS;
+        if (byAddress) {
+            if (!reserve(pairFailures, pair, MAX_PAIR_FAILURES, true)) {
+                giveBack(failures, name);
+                return Decision.TOO_MANY_WRONG_PASSWORDS;
+            }
+            if (!reserve(addressFailures, address, MAX_ADDRESS_FAILURES, true)) {
+                giveBack(failures, name);
+                giveBack(pairFailures, pair);
+                return Decision.TOO_MANY_WRONG_PASSWORDS;
+            }
+        }
+        if (endpointWide && !withinCeiling()) {
+            giveBack(failures, name);
+            if (byAddress) {
+                giveBack(pairFailures, pair);
+                giveBack(addressFailures, address);
+            }
+            return Decision.BUSY;
+        }
+        return Decision.ALLOWED;
+    }
+
+    /** The password was right: forget the username's (and username+address) count. Many people share one internet address, so the address total is given back too. */
+    public void attemptSucceeded(String username, String address) {
+        recordSuccess(username, address);
+        if (usesAddress(address)) giveBack(addressFailures, address);
+    }
+
+    /** The attempt failed for a reason other than the password (for example the database was down): do not hold it against anyone. */
+    public void attemptNotCounted(String username, String address) {
+        giveBack(failures, key(username));
+        if (usesAddress(address)) {
+            giveBack(pairFailures, pairKey(username, address));
+            giveBack(addressFailures, address);
+        }
     }
 
     /** Username-only check, with the original limit. */
@@ -145,6 +233,48 @@ public class LoginAttemptService {
 
     int trackedPairs() {
         return pairFailures.size();
+    }
+
+    /**
+     * Counts one attempt for the key unless it already holds {@code max}; true when the attempt was admitted. A capped
+     * table that is full cannot track a new key, so nothing can be refused for it and the attempt is admitted.
+     */
+    private boolean reserve(Map<String, Deque<Instant>> map, String key, int max, boolean capped) {
+        if (capped && map.size() >= MAX_TRACKED_KEYS && !map.containsKey(key)) {
+            return true;
+        }
+        boolean[] admitted = {true};
+        map.compute(key, (name, recent) -> {
+            Deque<Instant> updated = recent != null ? recent : new ArrayDeque<>();
+            dropExpired(updated);
+            if (updated.size() >= max) {
+                admitted[0] = false;
+            } else {
+                updated.addLast(clock.instant());
+            }
+            return updated.isEmpty() ? null : updated;
+        });
+        return admitted[0];
+    }
+
+    /** Takes back the most recent attempt counted for the key. */
+    private void giveBack(Map<String, Deque<Instant>> map, String key) {
+        map.computeIfPresent(key, (name, recent) -> {
+            recent.pollLast();
+            return recent.isEmpty() ? null : recent;
+        });
+    }
+
+    /** True, and counts the attempt, while fewer than the ceiling were admitted in the last minute (always true when there is no ceiling). */
+    private boolean withinCeiling() {
+        if (globalPerMinute <= 0) return true;
+        synchronized (recentAttempts) {
+            Instant cutoff = clock.instant().minus(Duration.ofMinutes(1));
+            while (!recentAttempts.isEmpty() && recentAttempts.peekFirst().isBefore(cutoff)) recentAttempts.pollFirst();
+            if (recentAttempts.size() >= globalPerMinute) return false;
+            recentAttempts.addLast(clock.instant());
+            return true;
+        }
     }
 
     private boolean usesAddress(String address) {
