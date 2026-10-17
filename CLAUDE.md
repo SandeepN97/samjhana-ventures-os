@@ -100,7 +100,7 @@ The admin app keeps no global store: the auth token and signed-in user live in `
 ### Data seeding
 - Reference data is seeded on **every** profile except `test`, and only fills in what is missing (never overwrites): `BusinessUnitSeeder` (the six business units), `BeekeepingProductSeeder` (the 26 existing beekeeping products, zero stock), `ChargePointSeeder` (the three chargers), `EvVehicleCatalogSeeder` (EV vehicle types).
 - `DataSeeder` (`@Profile("dev")`) seeds dev logins only: on an empty dev database they are `admin/admin`, `manager/manager123`, `staff/staff123`.
-- `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log.
+- `FirstRunInitializer` (staging/prod) creates the first admin with `ADMIN_INITIAL_PASSWORD` or a random password printed once in the log. A chosen `ADMIN_INITIAL_PASSWORD` must follow `PasswordPolicy` (8 to 72 bytes, not on `security/common-passwords.txt`, not containing `admin`): on an empty database the app refuses to start with a message naming the broken rule (never the password); a database that already has users is not affected.
 - The Settings page "Reset demo data" exists in dev only: staging and prod never have it (it would wipe furniture products and test data).
 
 ### Profiles

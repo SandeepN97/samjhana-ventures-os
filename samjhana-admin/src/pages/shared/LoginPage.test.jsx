@@ -264,6 +264,42 @@ describe('LoginPage', () => {
       expect(api.post).not.toHaveBeenCalled();
     });
 
+    it('shows why the server refused a common password, in English', async () => {
+      api.post
+        .mockResolvedValueOnce({ data: { token: 'token-from-login', user: {} } })
+        .mockRejectedValueOnce({ response: { status: 400, data: {
+          code: 'PASSWORD_TOO_COMMON', message: 'New password is too common or too easy to guess. Choose something less obvious' } } });
+      await openChangeForm();
+      await fillForm({ next: 'Password123' });
+      await submit();
+
+      expect(await screen.findByText('Password is too common or too easy to guess. Choose something less obvious'))
+        .toBeInTheDocument();
+    });
+
+    it('shows why the server refused a password in Nepali, not in the English the server wrote', async () => {
+      api.post
+        .mockResolvedValueOnce({ data: { token: 'token-from-login', user: {} } })
+        .mockRejectedValueOnce({ response: { status: 400, data: {
+          code: 'PASSWORD_HAS_USERNAME', message: 'New password must not contain the username' } } });
+      await openChangeForm({ locale: 'ne' });
+      await fillForm({ next: 'Staff-Staff-7731' });
+      await submit();
+
+      expect(await screen.findByText('पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन')).toBeInTheDocument();
+      expect(screen.queryByText('New password must not contain the username')).not.toBeInTheDocument();
+    });
+
+    it('refuses a new password longer than 72 bytes without calling the server', async () => {
+      await openChangeForm();
+      await fillForm({ next: `${'Qx7!'.repeat(18)}z` });
+      await submit();
+
+      expect(await screen.findByText('Password is too long. Use at most 72 characters (a Nepali letter counts as 3)'))
+        .toBeInTheDocument();
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
     it('accepts a new password of exactly 8 characters', async () => {
       serverAccepts();
       await openChangeForm();
