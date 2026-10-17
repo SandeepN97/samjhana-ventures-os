@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RestaurantMenuPage from './RestaurantMenuPage';
 import { renderWithProviders } from '../../test/test-utils';
@@ -42,8 +42,10 @@ describe('RestaurantMenuPage', () => {
     as('STAFF');
     renderWithProviders(<RestaurantMenuPage />);
     await screen.findByText('Dal Bhat Set');
-    await userEvent.click(screen.getByRole('button', { name: 'Filter dishes by type: All' }));
-    await userEvent.click(screen.getByRole('menuitemradio', { name: /Snacks/ }));
+    const slider = screen.getByRole('group', { name: 'Filter dishes by type' });
+    expect(within(slider).getByRole('button', { name: /Snacks/ }).querySelector('svg')).not.toBeNull();
+    await userEvent.click(within(slider).getByRole('button', { name: /Snacks/ }));
+    expect(within(slider).getByRole('button', { name: /Snacks/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('Dal Bhat Set')).not.toBeInTheDocument();
     expect(screen.getByText('Buff Momo')).toBeInTheDocument();
   });

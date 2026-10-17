@@ -60,6 +60,6 @@ describe('Website page tab inside a business', () => {
     await screen.findByLabelText('Phone number');
     expect(screen.queryByRole('button', { name: 'Furniture pages' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Beekeeping page' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Shop & order page' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Shop & order page' })[0]).toBeInTheDocument();
   });
 });
