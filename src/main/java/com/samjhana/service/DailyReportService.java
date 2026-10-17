@@ -9,6 +9,7 @@ import com.samjhana.entity.User;
 import com.samjhana.exception.DayAlreadyClosedException;
 import com.samjhana.repository.DailyReportRepository;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -223,12 +224,10 @@ public class DailyReportService {
         }
     }
 
+    /** A stored figure as a number; nothing, an unreadable one, or one with an extreme exponent counts as zero (G-01). */
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;
-        try {
-            return new BigDecimal(value.toString());
-        } catch (NumberFormatException e) {
-            return BigDecimal.ZERO;
-        }
+        BigDecimal number = SafeDecimal.parse(value.toString());
+        return number == null ? BigDecimal.ZERO : number;
     }
 }

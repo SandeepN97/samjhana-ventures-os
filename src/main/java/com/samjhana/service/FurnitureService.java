@@ -14,6 +14,7 @@ import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.FurnitureCustomerRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.TransactionRepository;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -416,12 +417,8 @@ public class FurnitureService {
 
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return null;
-        if (value instanceof Number) return BigDecimal.valueOf(((Number) value).doubleValue());
-        try {
-            return new BigDecimal(value.toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        if (value instanceof Number) return SafeDecimal.limited(BigDecimal.valueOf(((Number) value).doubleValue()));
+        return SafeDecimal.parse(value.toString());
     }
 
     private int toInt(Object value, int defaultValue) {
