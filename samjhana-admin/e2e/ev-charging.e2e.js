@@ -359,7 +359,7 @@ test('picks a vehicle from the searchable sheet, and it shows on the session', a
 
 test('switches every label to Nepali with Devanagari numerals and back', async ({ page }) => {
   await openEvPage(page);
-  await page.getByRole('button', { name: 'नेपालीमा बदल्नुहोस्' }).click();
+  await page.getByRole('button', { name: 'नेपाली', exact: true }).click();
 
   await expect(page.getByRole('tab', { name: /सेसन सुरु/ })).toBeVisible();
   await expect(page.getByRole('tab', { name: /सक्रिय/ })).toBeVisible();
@@ -368,7 +368,7 @@ test('switches every label to Nepali with Devanagari numerals and back', async (
   await expect(page.getByRole('radio', { name: /चार्जर १.*८० kW.*अनलाइन/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'चार्जिङ सुरु गर्नुहोस् →' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Switch to English' }).click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.getByRole('tab', { name: /Start Session/ })).toBeVisible();
 });
 

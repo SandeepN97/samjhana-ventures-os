@@ -151,7 +151,7 @@ describe('EVEntryPage', () => {
 
     it('has a language toggle in the header', async () => {
       await renderPage();
-      expect(within(screen.getByRole('banner')).getByRole('button', { name: /नेपालीमा/ })).toBeInTheDocument();
+      expect(within(screen.getByRole('banner')).getByRole('button', { name: 'नेपाली' })).toBeInTheDocument();
     });
 
     it('shows Start Session, Active and Payment tabs with Start selected first', async () => {
@@ -1063,11 +1063,11 @@ describe('EVEntryPage', () => {
       await userEvent.click(tab('Payment'));
       expect(await screen.findByText('Rs 600')).toBeInTheDocument();
 
-      await userEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: /नेपालीमा/ }));
+      await userEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'नेपाली' }));
       expect(await screen.findByText('रु ६००')).toBeInTheDocument();
       expect(screen.queryByText('Rs 600')).toBeNull();
 
-      await userEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Switch to English' }));
+      await userEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'English' }));
       expect(await screen.findByText('Rs 600')).toBeInTheDocument();
       expect(screen.queryByText('रु ६००')).toBeNull();
     });
