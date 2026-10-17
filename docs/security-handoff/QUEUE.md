@@ -5,8 +5,8 @@ Do these top to bottom (highest value first). One finding, or a tight group of r
 Notes that apply to every entry:
 
 - File and line references come from the audit (2026-10-05) and have drifted; search for the names.
-- Several files below are also changed by PRs that are still open (see README section 2). If you touch the same code, branch from that PR's branch (a "stacked" PR) or wait until it is merged, and say so in your PR. Check with `git fetch origin && git log origin/staging..origin/<pr-branch>`.
-- "On prod at audit time" is the label from 2026-10-05. Releases since then (#118, #123, #144, #147, #148, #159, #163) may have moved staging-only items to production, so treat every item as live.
+- Every PR of the series is merged into `staging` (README section 2), so branch from the latest `origin/staging`. Before you start, run `git fetch origin && git log origin/staging..origin/<branch>` on any open PR that touches the same files, and say "stacked on #NNN" in your PR if you must build on one.
+- "On prod at audit time" is the label from 2026-10-05. Releases since then (#118, #123, #144, #147, #148, #159, #163) may have moved staging-only items to production, and a release PR from `staging` is open (#173), so treat every item as live.
 - Anything that needs SQL on Supabase, a new `AuditLog.EntityType` value, a new role rule or a business-rule choice is NOT in this queue: stop and ask the owner.
 
 ## 1. P0-05 (Low) — Uploaded pictures: strip metadata, verify WebP
