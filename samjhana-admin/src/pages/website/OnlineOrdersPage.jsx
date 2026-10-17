@@ -17,6 +17,7 @@ import {
   Truck,
   X,
 } from 'lucide-react';
+import ChipSlider from '../../components/ChipSlider';
 import api from '../../utils/api';
 import { PageHeader } from '../../components/brand';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
@@ -55,7 +56,6 @@ export default function OnlineOrdersPage() {
   const canCancel = user.role === 'ADMIN' || user.role === 'MANAGER';
 
   const [tab, setTab] = useState('NEW');
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [orders, setOrders] = useState([]);
   const [counts, setCounts] = useState({});
@@ -183,48 +183,18 @@ export default function OnlineOrdersPage() {
             </div>
 
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-center">
-              <div className="lg:hidden">
-                <button type="button" aria-haspopup="menu" aria-expanded={mobileFilterOpen} aria-controls="order-status-filter-menu"
-                  aria-label={`${t('shopOrders.filterLabel')}: ${tab === 'ALL' ? t('shopOrders.all') : statusLabel(tab)}`}
-                  onClick={() => setMobileFilterOpen((open) => !open)}
-                  className="flex min-h-[64px] w-full items-center gap-3 rounded-xl bg-slate-50 px-3 text-left outline-none ring-1 ring-inset ring-slate-300 transition hover:bg-white hover:ring-slate-400 focus-visible:ring-2 focus-visible:ring-core-600">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-core-100 text-core-800">
-                    <Package className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-bold text-slate-500">{t('shopOrders.filterLabel')}</span>
-                    <span className="mt-0.5 flex items-center gap-2 text-base font-bold text-slate-900">
-                      {tab !== 'ALL' && <span className={`h-2.5 w-2.5 rounded-full ${STATUS_DOT[tab] || 'bg-slate-400'}`} aria-hidden="true" />}
-                      <span className="truncate">{tab === 'ALL' ? t('shopOrders.all') : statusLabel(tab)}</span>
-                      {tab !== 'ALL' && <span className="text-sm tabular-nums text-slate-500">{num(counts[tab] || 0)}</span>}
-                    </span>
-                  </span>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-slate-600 ring-1 ring-inset ring-slate-200">
-                    <ChevronDown className={`h-5 w-5 transition-transform ${mobileFilterOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  </span>
-                </button>
-
-                {mobileFilterOpen && (
-                  <div id="order-status-filter-menu" role="menu" aria-label={t('shopOrders.filterLabel')}
-                    className="mt-2 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
-                    {TABS.map((status) => {
-                      const selectedTab = tab === status;
-                      return (
-                        <button type="button" role="menuitemradio" aria-checked={selectedTab} key={status}
-                          onClick={() => { setTab(status); setMobileFilterOpen(false); }}
-                          className={`flex min-h-[56px] w-full items-center gap-3 px-3 text-left transition focus:outline-none focus-visible:bg-core-50 ${selectedTab ? 'bg-core-50' : 'hover:bg-slate-50'}`}>
-                          <span className={`h-3 w-3 shrink-0 rounded-full ${status === 'ALL' ? 'bg-core-500' : STATUS_DOT[status] || 'bg-slate-400'}`} aria-hidden="true" />
-                          <span className={`min-w-0 flex-1 truncate text-sm font-bold ${selectedTab ? 'text-core-900' : 'text-slate-700'}`}>
-                            {status === 'ALL' ? t('shopOrders.all') : statusLabel(status)}
-                          </span>
-                          {status !== 'ALL' && <span className="min-w-8 rounded-lg bg-slate-100 px-2 py-1 text-center text-xs font-bold tabular-nums text-slate-600">{num(counts[status] || 0)}</span>}
-                          {selectedTab && <CheckCircle2 className="h-5 w-5 shrink-0 text-core-700" aria-hidden="true" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <ChipSlider
+                className="lg:hidden"
+                label={t('shopOrders.filterLabel')}
+                value={tab}
+                onChange={setTab}
+                items={TABS.map((status) => ({
+                  value: status,
+                  label: status === 'ALL' ? t('shopOrders.all') : statusLabel(status),
+                  dot: status === 'ALL' ? undefined : STATUS_DOT[status] || 'bg-slate-400',
+                  count: status === 'ALL' ? undefined : num(counts[status] || 0),
+                }))}
+              />
 
               <div className="hidden lg:block" role="tablist" aria-label={t('shopOrders.filterLabel')}>
                 <div className="flex min-w-max gap-2">
