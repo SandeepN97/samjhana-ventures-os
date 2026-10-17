@@ -338,15 +338,18 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
             )}
 
             <div className="min-w-0">
-              <div className="mb-4 flex items-center justify-between gap-3 px-1">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-900"><ActiveTabIcon className="h-5 w-5" aria-hidden="true" /></span>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-xl font-bold text-slate-900">{t(tab.labelKey)}</h2>
-                    <p className="text-sm text-slate-500">{t('siteEditor.sectionCount', { count: tab.sections.length, formattedCount: num(tab.sections.length) })}</p>
+              {/* The chooser above already names the selected area, so repeat it only when there is no chooser. */}
+              {visibleTabs.length <= 1 && (
+                <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-900"><ActiveTabIcon className="h-5 w-5" aria-hidden="true" /></span>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-xl font-bold text-slate-900">{t(tab.labelKey)}</h2>
+                      <p className="text-sm text-slate-500">{t('siteEditor.sectionCount', { count: tab.sections.length, formattedCount: num(tab.sections.length) })}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {loadError ? (
                 <div role="alert" className="rounded-2xl bg-red-50 px-5 py-8 text-center text-red-800 ring-1 ring-red-200">
