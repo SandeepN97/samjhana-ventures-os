@@ -167,4 +167,18 @@ class EVStrategyTest {
 
         assertThat(result.isApplicable()).isFalse();
     }
+
+    // ---- findings G-01 / D-01: a meter reading written with an extreme exponent is not a usable number ----
+
+    @Test
+    void shouldReturnZero_whenAMeterReadingIsWrittenWithAnExtremeExponent() {
+        Map<String, Object> fields = Map.of("openingMeter", "0", "closingMeter", "1e100000", "unitRate", "13.5");
+        assertThat(strategy.calculateAmount(fields)).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void shouldStillReadOrdinaryMeterReadingsWrittenAsText() {
+        Map<String, Object> fields = Map.of("openingMeter", "15000", "closingMeter", "15200", "unitRate", "13.50");
+        assertThat(strategy.calculateAmount(fields)).isEqualByComparingTo(new BigDecimal("2700.00"));
+    }
 }
