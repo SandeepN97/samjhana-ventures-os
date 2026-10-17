@@ -5,9 +5,9 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 ## 0. The 60-second version
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
-- **Done:** 45 findings fixed with tests, all merged into `staging` (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md). Nothing from this series is waiting for a merge; the `staging` → `main` release PR (#173) is the owner's.
+- **Done:** 46 findings fixed with tests, all merged into `staging` (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md). Nothing from this series is waiting for a merge; the `staging` → `main` release PR (#173) is the owner's.
 - **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet). [`DECISIONS-MADE.md`](DECISIONS-MADE.md) holds what the owner decided on 23 of the 32 questions (2026-10-17) and what to build for each, in groups G1 to G6.
-- **Not yours to start:** the 9 questions still undecided ([`DECISIONS-MADE.md`](DECISIONS-MADE.md) section 4) and the 28 ops/CI/database items in [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md).
+- **Not yours to start:** the 9 questions still undecided ([`DECISIONS-MADE.md`](DECISIONS-MADE.md) section 4) and the 27 ops/CI/database items in [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md). Every question that still needs the owner, with options and a recommendation, is in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md).
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
 
@@ -85,6 +85,7 @@ If the private copy is not available you can still do everything in `QUEUE.md`: 
 | `STATUS.md` | all 118 findings with their status and PR |
 | `QUEUE.md` | what to fix next (no decision needed), with fix and test ideas |
 | `DECISIONS-MADE.md` | what the owner decided (23 of 32), what to build for each, what is still undecided, the real-charger test |
+| `OWNER-QUESTIONS.md` | everything still waiting for the owner: undecided rules (A), hosting, database and CI items (B), other open items (C), assumptions to confirm (D) |
 | `DECISIONS-AND-OPS.md` | the original questions for the owner, and ops/CI/database items |
 | `METHOD.md` | the routine, commands, mutation checks, PR body, gotchas |
 | `tools/` | `mutate.py`, `example-mutations.json` |

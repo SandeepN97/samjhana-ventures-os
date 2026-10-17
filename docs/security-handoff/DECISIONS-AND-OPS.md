@@ -53,7 +53,9 @@ This repository is public, so the questions are worded neutrally. The full text 
 - **P1a-10** and **P1B1-01**: whether the app should refuse to start for charger secrets shorter than 24 characters, and whether the environment variable should always overwrite the stored charger secret (it would undo `rotate-secret`). **✅ Decided: see DECISIONS-MADE.md**
 - **A-02**: the minimum password length (the audit suggests 12; today 8). **✅ Decided: see DECISIONS-MADE.md**
 
-## 2. Ops, CI, database, docs and architecture (28)
+## 2. Ops, CI, database, docs and architecture (27, plus K-04 fixed by #170)
+
+The ones that need the owner's input are listed with options and a recommendation in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md) section B.
 
 | ID | Sev | What is needed |
 |---|---|---|
@@ -69,7 +71,7 @@ This repository is public, so the questions are worded neutrally. The full text 
 | J-04 | Low | The admin app inside the production JAR is built with `npm install` and install scripts on (use `npm ci`, scripts off) — changes the production build. |
 | J-06 | Low | Nothing refreshes the SHA-pinned GitHub Actions or the pinned tool dependencies (Dependabot config). |
 | J-09 | Low | AI-tooling supply chain: skill pins and records. |
-| K-04 | Low | The uptime/keep-alive workflow points at an endpoint this app does not serve. |
+| K-04 | Low | The uptime/keep-alive workflow points at an endpoint this app does not serve. **✅ Fixed by #170** (live after a release to `main`; needs the repository variables). |
 | N-01 | Low | The database enforces none of the money and stock rules the code relies on (CHECK constraints: SQL on Supabase first). |
 | N-02 | Low | Bank reference uniqueness at database level (SQL on Supabase). |
 | N-05 | Low | No baseline schema, rollback script or documented backup and restore (also in CONTRIBUTING.md's backlog). |

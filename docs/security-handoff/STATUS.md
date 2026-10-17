@@ -1,6 +1,6 @@
 # Status of all 118 audit findings
 
-Written 2026-10-16, refreshed 2026-10-17 after every PR of the series had been merged into `staging` and the owner had answered 23 of the 32 questions. Counts: **45 findings fixed** (all merged into `staging`), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **23 decided by the owner and ready to build** (`DECISIONS-MADE.md`), **9 still waiting for the owner's decision**, **28 ops/CI/docs/architecture**, **8 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
+Written 2026-10-16, refreshed 2026-10-17 after every PR of the series had been merged into `staging` and the owner had answered 23 of the 32 questions. Counts: **46 findings fixed** (all merged into `staging`), **3 partly fixed**, **2 already fine before this series**, **0 in progress**, **23 decided by the owner and ready to build** (`DECISIONS-MADE.md`), **9 still waiting for the owner's decision**, **27 ops/CI/docs/architecture**, **8 more to do** (no decision needed; see `QUEUE.md`). 118 in total: 5 High, 30 Medium, 66 Low, 17 Info.
 
 The authoritative record of each fix is its pull request (body = what was wrong, what changed, tests, mutation checks). To find the PR for a finding: GitHub search `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`.
 
@@ -69,7 +69,7 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 | J-04 | Low | The admin app that ships inside the production JAR is built with npm install (install scripts on) on a… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-06 | Low | Nothing refreshes the SHA-pinned GitHub Actions or the pinned Python tool dependencies, the… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
 | J-09 | Low | The AI-tooling supply chain rests on pins and records the repository does not contain: agent skills are… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
-| K-04 | Low | The uptime signals are weaker than they look: the keep-alive example points at an endpoint this app does… | Ops / CI / docs / architecture | see DECISIONS-AND-OPS.md |
+| K-04 | Low | The uptime signals are weaker than they look: the keep-alive example points at an endpoint this app does… | Fixed, merged into staging | #170 (the keep-alive job now pings a page the app serves; live after a release to main and once the repository variables are set) |
 | L-02 | Low | Customer data retention and erasure | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
 | L-03 | Low | Who may read online customers' contact details | Waiting for the owner's decision | see DECISIONS-MADE.md section 4 |
 | M-01 | Low | Price scraper must not overwrite a manager's manual price | Fixed, merged into staging | #167 (no longer applies: the owner had the NOC price scraper removed; stacked on #143) |
@@ -131,5 +131,5 @@ Topics for items that still need a decision are worded neutrally on purpose: thi
 
 - **High** (5): 1 decision made, ready to build; 3 fixed, merged into staging; 1 Ops / CI / docs / architecture
 - **Medium** (30): 6 decision made, ready to build; 18 fixed, merged into staging; 3 Ops / CI / docs / architecture; 3 partly fixed
-- **Low** (66): 2 already fixed before this series; 16 decision made, ready to build; 20 fixed, merged into staging; 13 Ops / CI / docs / architecture; 6 to do (no decision needed); 9 waiting for the owner's decision
+- **Low** (66): 2 already fixed before this series; 16 decision made, ready to build; 21 fixed, merged into staging; 12 Ops / CI / docs / architecture; 6 to do (no decision needed); 9 waiting for the owner's decision
 - **Info** (17): 4 fixed, merged into staging; 11 Ops / CI / docs / architecture; 2 to do (no decision needed)

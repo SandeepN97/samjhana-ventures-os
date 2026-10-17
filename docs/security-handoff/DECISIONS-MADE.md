@@ -95,7 +95,7 @@ Several parts wait for the real-charger test (section 5). Build the parts that d
 
 ## 4. Not decided yet (do not build)
 
-The owner was asked these, with the options below. For Topic 7 the owner answered with a free-text message that Claude did not receive; ask again. Topics 8 and 9 were not asked yet. The "proposed default" is only Claude's suggestion.
+The owner was asked these, with the options below. For Topic 7 the owner answered with a free-text message that Claude did not receive; ask again. Topics 8 and 9 were not asked yet. The "proposed default" is only Claude's suggestion. The full options for each, and every other question that still needs the owner, are in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md).
 
 | Finding | Question | Proposed default |
 |---|---|---|
