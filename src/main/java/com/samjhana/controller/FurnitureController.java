@@ -115,8 +115,9 @@ public class FurnitureController {
     }
 
     @PatchMapping("/orders/{id}/delivery-status")
-    public ResponseEntity<?> updateDeliveryStatus(@PathVariable String id, @RequestBody Map<String, String> request) {
-        Map<String, Object> order = furnitureService.updateDeliveryStatus(UUID.fromString(id), request.get("deliveryStatus"));
+    public ResponseEntity<?> updateDeliveryStatus(@PathVariable String id, @RequestBody Map<String, String> request,
+                                                  @AuthenticationPrincipal User user) {
+        Map<String, Object> order = furnitureService.updateDeliveryStatus(UUID.fromString(id), request.get("deliveryStatus"), user);
         return ResponseEntity.ok(Map.of("message", "Delivery status updated", "order", order));
     }
 }

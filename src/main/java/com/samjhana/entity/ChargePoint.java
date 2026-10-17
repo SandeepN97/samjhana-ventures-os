@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * the API.
  */
 @Entity
+@DynamicUpdate   // a status or heartbeat write sends only the columns it changed, so it cannot put back an old secret or lock mode
 @Table(name = "charge_points")
 @Getter
 @Setter
