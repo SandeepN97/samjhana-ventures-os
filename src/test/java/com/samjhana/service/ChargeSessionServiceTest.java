@@ -265,6 +265,84 @@ class ChargeSessionServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.start(startRequest("BA 1 PA 4521", 80), staff));
     }
 
+    // ---- finding F-02: a start that is refused must not leave its plate photo on the disk ----
+
+    private StartChargeSessionRequest startRequestWithPhoto(String vehicleTypeId) {
+        StartChargeSessionRequest request = startRequest("BA 1 PA 4521", 80);
+        request.setPlatePhotoDataUrl("data:image/jpeg;base64,AAAA");
+        request.setVehicleCatalogId(vehicleTypeId);
+        return request;
+    }
+
+    @Test
+    void shouldNotStoreThePhoto_whenTheVehicleTypeIsUnknown() {
+        UUID unknown = UUID.randomUUID();
+        when(evVehicleRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.start(startRequestWithPhoto(unknown.toString()), staff));
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+    }
+
+    @Test
+    void shouldNotStoreThePhoto_whenTheVehicleTypeIsNotActive() {
+        EvVehicle inactive = vehicleType("Old bus", "10");
+        inactive.setIsActive(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.start(startRequestWithPhoto(inactive.getId().toString()), staff));
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+    }
+
+    @Test
+    void shouldStoreThePhotoAndKeepIt_whenTheStartSucceedsAndCommits() {
+        when(photoStorageService.store(anyString(), eq("BA1PA4521"))).thenReturn("ev/plates/2026/10/BA1PA4521-x.jpg");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            ChargeSessionResponse response = service.start(startRequestWithPhoto(null), staff);
+            assertEquals("STARTING", response.getStatus());
+
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService).store(anyString(), eq("BA1PA4521"));
+        verify(photoStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void shouldDeleteTheStoredPhoto_whenTheStartIsRolledBack() {
+        when(photoStorageService.store(anyString(), eq("BA1PA4521"))).thenReturn("ev/plates/2026/10/BA1PA4521-x.jpg");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.start(startRequestWithPhoto(null), staff);
+
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService).delete("ev/plates/2026/10/BA1PA4521-x.jpg");
+    }
+
+    @Test
+    void shouldNotTouchPhotoStorage_whenThereIsNoPhoto() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.start(startRequest("BA 1 PA 4521", 80), staff);
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+        verify(photoStorageService, never()).delete(anyString());
+    }
+
     @Test
     void shouldRejectPlate_whenItHasFewerThanTwoLettersOrDigits() {
         assertThrows(IllegalArgumentException.class, () -> service.start(startRequest("!", 80), staff));
