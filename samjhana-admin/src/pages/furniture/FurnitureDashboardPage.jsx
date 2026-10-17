@@ -51,6 +51,7 @@ export default function FurnitureDashboardPage() {
         icon={Sofa}
         title={t('furnitureDash.title')}
         subtitle={t('furnitureDash.dashboardLabel')}
+        hideWhenSidebarShows
       >
         <BusinessTabs business="furniture" />
       </PageHeader>

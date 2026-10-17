@@ -45,6 +45,11 @@ graphify-out/
 assets/
 # ...except the design system's logo and icon notes, which are part of the repository
 !design-system/assets/
+# ...and the bundled Nepali body font required by the admin UI
+!samjhana-admin/src/assets/
+!samjhana-admin/src/assets/fonts/
+!samjhana-admin/src/assets/fonts/Kalimati.ttf
+!samjhana-admin/src/assets/fonts/README.md
 .github/hooks/
 
 # Python (tools/ocpp-simulator)

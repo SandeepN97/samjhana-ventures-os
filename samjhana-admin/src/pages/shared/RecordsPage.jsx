@@ -181,7 +181,7 @@ export default function RecordsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-24 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-8">
-      <LedgerPageHeader title={t('records.title')} />
+      <LedgerPageHeader title={t('records.title')} hideWhenSidebarShows />
 
       <main className="mx-auto max-w-7xl px-4 py-5 md:px-5 lg:px-8 lg:py-8">
         <section className="overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_-24px_rgba(15,23,42,0.45)] ring-1 ring-core-200/80">

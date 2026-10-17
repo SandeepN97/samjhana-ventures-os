@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../LanguageToggle';
 import { unitTheme } from '../../brand/theme';
+import useDesktop from '../../hooks/useDesktop';
 
 /**
  * The coloured bar at the top of every admin screen: back button, optional icon, title,
@@ -19,34 +20,51 @@ export default function PageHeader({
   onBack,
   actions,
   showLanguageToggle = true,
+  hideWhenSidebarShows = false,
   children,
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const theme = unitTheme(unit);
+  // On desktop the language switch lives in the side menu, so the bar does not repeat it.
+  const desktop = useDesktop();
+  const languageToggle = showLanguageToggle && !desktop;
+  const sidebarAlreadyNamesPage = desktop && hideWhenSidebarShows;
+  const hasDesktopHeaderContent = Boolean(subtitle || actions || children);
+
+  if (sidebarAlreadyNamesPage && !hasDesktopHeaderContent) {
+    return <h1 className="sr-only">{title}</h1>;
+  }
 
   return (
     <header className={`${theme.header} px-4 py-4 text-white shadow-lg`} data-unit={unit}>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center">
-          <button
-            type="button"
-            onClick={onBack ?? (() => navigate(backTo))}
-            aria-label={t('common.goBack')}
-            className={`-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${theme.headerHover}`}
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </button>
-          {Icon && <Icon className="ml-2 h-8 w-8 shrink-0" aria-hidden="true" />}
-          <div className="ml-3 min-w-0">
-            <h1 className="text-xl font-bold leading-tight">{title}</h1>
-            {subtitle && <p className={`mt-0.5 text-sm ${theme.headerSubtle}`}>{subtitle}</p>}
+        {sidebarAlreadyNamesPage ? (
+          <div className="min-w-0">
+            <h1 className="sr-only">{title}</h1>
+            {subtitle && <p className={`text-sm ${theme.headerSubtle}`}>{subtitle}</p>}
           </div>
-        </div>
-        {(actions || showLanguageToggle) && (
+        ) : (
+          <div className="flex min-w-0 items-center">
+            <button
+              type="button"
+              onClick={onBack ?? (() => navigate(backTo))}
+              aria-label={t('common.goBack')}
+              className={`-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${theme.headerHover}`}
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            {Icon && <Icon className="ml-2 h-8 w-8 shrink-0" aria-hidden="true" />}
+            <div className="ml-3 min-w-0">
+              <h1 className="text-xl font-bold leading-tight">{title}</h1>
+              {subtitle && <p className={`mt-0.5 text-sm ${theme.headerSubtle}`}>{subtitle}</p>}
+            </div>
+          </div>
+        )}
+        {(actions || languageToggle) && (
           <div className="flex shrink-0 items-center gap-2">
             {actions}
-            {showLanguageToggle && <LanguageToggle />}
+            {languageToggle && <LanguageToggle />}
           </div>
         )}
       </div>

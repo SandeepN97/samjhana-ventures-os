@@ -2,16 +2,22 @@ import React from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import useDesktop from '../hooks/useDesktop';
 
-export default function LedgerPageHeader({ title }) {
+export default function LedgerPageHeader({ title, hideWhenSidebarShows = false }) {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isNepali = i18n.language === 'ne';
+  const desktop = useDesktop();
 
   const setLanguage = (language) => {
     i18n.changeLanguage(language);
     localStorage.setItem('preferredLanguage', language);
   };
+
+  if (desktop && hideWhenSidebarShows) {
+    return <h1 className="sr-only">{title}</h1>;
+  }
 
   return (
     <header className="bg-core-800 text-white">
