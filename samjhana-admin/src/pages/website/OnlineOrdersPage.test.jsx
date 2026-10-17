@@ -35,6 +35,8 @@ describe('OnlineOrdersPage', () => {
     expect(screen.getByText(/Hari Thapa · 9812345678/)).toBeInTheDocument();
     expect(screen.getByText('2 × Wild Honey')).toBeInTheDocument();
     expect(screen.getByText('Rs 1,850')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Order desk' })).toBeInTheDocument();
+    expect(screen.getByText('View order')).toBeInTheDocument();
     expect(within(screen.getByRole('tab', { name: /New/ })).getByText('1')).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/api/shop-orders?status=NEW');
   });
@@ -46,7 +48,8 @@ describe('OnlineOrdersPage', () => {
     await userEvent.type(screen.getByLabelText('Search order, name or phone...'), 'sita');
     expect(screen.queryByText('SV-261003-AB2C')).not.toBeInTheDocument();
     expect(screen.getByText('SV-261003-ZZZZ')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: /Completed/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filter orders by status: New' }));
+    await userEvent.click(screen.getByRole('menuitemradio', { name: /Completed/ }));
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/shop-orders?status=COMPLETED'));
   });
 
@@ -74,6 +77,19 @@ describe('OnlineOrdersPage', () => {
     expect(within(dialog).getByText(/Call first/)).toBeInTheDocument();
     expect(within(dialog).getByText('Pay cash on delivery')).toBeInTheDocument();
     expect(within(dialog).getByText('Rs 150')).toBeInTheDocument();
+  });
+
+  it('focuses the order sheet, closes it with Escape, and returns focus to the order', async () => {
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    const orderRow = await screen.findByTestId('order-row');
+    await userEvent.click(orderRow);
+    const dialog = screen.getByRole('dialog');
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    await waitFor(() => expect(close).toHaveFocus());
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(orderRow).toHaveFocus());
   });
 
   it('moves a new order to confirmed, and offers only the next steps', async () => {
@@ -145,6 +161,28 @@ describe('OnlineOrdersPage', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(30_500); });
     expect(await screen.findByText('SV-261003-NEW2')).toBeInTheDocument();
     expect(api.get.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it('does not start another refresh while the last one is still waiting for the server', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    await screen.findByText('SV-261003-AB2C');
+    const before = api.get.mock.calls.length;
+    api.get.mockImplementation(() => new Promise(() => {}));   // the server stops answering
+    await act(async () => { await vi.advanceTimersByTimeAsync(150_000); });   // five refresh times go by
+    expect(api.get.mock.calls.length - before).toBe(2);   // one refresh (orders and counts) was started, and no more
+  });
+
+  it('starts the next refresh as soon as the last one has finished', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockApi([order()]);
+    renderWithProviders(<OnlineOrdersPage />);
+    await screen.findByText('SV-261003-AB2C');
+    const before = api.get.mock.calls.length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_500); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(api.get.mock.calls.length - before).toBe(4);   // two refreshes, each asking for orders and counts
   });
 
   it('shows Nepali labels and Devanagari numerals', async () => {

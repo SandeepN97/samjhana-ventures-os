@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RestaurantMenuPage from './RestaurantMenuPage';
 import { renderWithProviders } from '../../test/test-utils';
@@ -26,10 +26,15 @@ describe('RestaurantMenuPage', () => {
     as('STAFF');
     renderWithProviders(<RestaurantMenuPage />);
     expect(await screen.findByText('Dal Bhat Set')).toBeInTheDocument();
-    expect(screen.getByText(/Lunch · Dinner · Rs 350/)).toBeInTheDocument();
+    expect(screen.getByText('2 dishes')).toBeInTheDocument();
+    expect(screen.getByText('1 available today')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Filter dishes by type' })).toBeInTheDocument();
+    expect(screen.getByText('Lunch · Dinner')).toBeInTheDocument();
+    expect(screen.getByText('Rs 350')).toBeInTheDocument();
+    expect(screen.getByText('Price not set')).toBeInTheDocument();
     expect(screen.getByText('Hidden')).toBeInTheDocument();
     expect(screen.getByText('Sold out today')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Non-vegetarian' })).toBeInTheDocument();
+    expect(screen.getByText('Non-vegetarian')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add Dish' })).not.toBeInTheDocument();
   });
 
@@ -37,18 +42,40 @@ describe('RestaurantMenuPage', () => {
     as('STAFF');
     renderWithProviders(<RestaurantMenuPage />);
     await screen.findByText('Dal Bhat Set');
-    await userEvent.click(screen.getByRole('button', { name: 'Snacks' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filter dishes by type: All' }));
+    await userEvent.click(screen.getByRole('menuitemradio', { name: /Snacks/ }));
     expect(screen.queryByText('Dal Bhat Set')).not.toBeInTheDocument();
     expect(screen.getByText('Buff Momo')).toBeInTheDocument();
   });
 
   it('lets a manager switch a dish off for today but not edit it', async () => {
     as('MANAGER');
-    api.patch.mockResolvedValue({ data: {} });
+    let finishPatch;
+    api.patch.mockImplementation(() => new Promise((resolve) => { finishPatch = resolve; }));
     renderWithProviders(<RestaurantMenuPage />);
-    await userEvent.click(await screen.findByLabelText('Dal Bhat Set available today'));
+    const toggle = await screen.findByLabelText('Dal Bhat Set available today');
+    await userEvent.click(toggle);
     expect(api.patch).toHaveBeenCalledWith('/api/restaurant/dishes/d1/available', { available: false });
+    expect(toggle).toBeDisabled();
+    await userEvent.click(toggle);
+    expect(api.patch).toHaveBeenCalledTimes(1);
+    await act(async () => { finishPatch({ data: {} }); });
+    await waitFor(() => expect(toggle).not.toBeDisabled());
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(screen.queryByRole('status', { name: 'Loading' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Dish' })).not.toBeInTheDocument();
+  });
+
+  it('focuses the dish sheet, closes it with Escape, and restores focus', async () => {
+    as('ADMIN');
+    renderWithProviders(<RestaurantMenuPage />);
+    const trigger = await screen.findByRole('button', { name: 'Add Dish' });
+    await userEvent.click(trigger);
+    const nameInput = screen.getByLabelText(/Dish name/);
+    await waitFor(() => expect(nameInput).toHaveFocus());
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('shows the server message when switching availability fails', async () => {
@@ -129,5 +156,6 @@ describe('RestaurantMenuPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'फेरि प्रयास गर्नुहोस्' }));
     expect(await screen.findByText('यहाँ अहिलेसम्म कुनै परिकार छैन')).toBeInTheDocument();
     expect(screen.getByText('रेस्टुरेन्ट मेनु')).toBeInTheDocument();
+    expect(screen.getByText('० परिकार')).toBeInTheDocument();
   });
 });
