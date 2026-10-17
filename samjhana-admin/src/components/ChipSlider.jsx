@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 /**
  * A row of choice chips the operator swipes sideways, for phones and tablets. Same look
  * and feel as the business filter on the Records page. One chip is selected at a time.
- * items: [{ value, label, icon?: Component, dot?: 'bg-…' class, count?: string }]
+ * items: [{ value, label, icon?: Component, count?: string }]
  */
 export default function ChipSlider({ label, items, value, onChange, className = '' }) {
   const selectedRef = useRef(null);
@@ -31,7 +31,6 @@ export default function ChipSlider({ label, items, value, onChange, className = 
               }`}
             >
               {Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : null}
-              {item.dot ? <span className={`h-2.5 w-2.5 rounded-full ${item.dot}`} aria-hidden="true" /> : null}
               {item.label}
               {item.count !== undefined ? (
                 <span aria-hidden="true" className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/15 text-white' : 'bg-white text-core-500 ring-1 ring-core-200'}`}>{item.count}</span>

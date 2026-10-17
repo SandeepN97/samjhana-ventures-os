@@ -3,19 +3,24 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  Bell,
+  CheckCheck,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock3,
+  List,
   Loader2,
   MapPin,
   Package,
+  PackageCheck,
   Phone,
   Search,
   ShoppingBag,
   Store,
   Truck,
   X,
+  XCircle,
 } from 'lucide-react';
 import ChipSlider from '../../components/ChipSlider';
 import api from '../../utils/api';
@@ -37,6 +42,16 @@ const STATUS_DOT = {
   READY: 'bg-violet-500',
   COMPLETED: 'bg-emerald-500',
   CANCELLED: 'bg-rose-500',
+};
+
+/** The small icon on each status chip in the phone slider. */
+const STATUS_ICON = {
+  NEW: Bell,
+  CONFIRMED: CheckCircle2,
+  READY: PackageCheck,
+  COMPLETED: CheckCheck,
+  CANCELLED: XCircle,
+  ALL: List,
 };
 
 /** Which buttons an order shows next: the same steps the server allows. */
@@ -191,7 +206,7 @@ export default function OnlineOrdersPage() {
                 items={TABS.map((status) => ({
                   value: status,
                   label: status === 'ALL' ? t('shopOrders.all') : statusLabel(status),
-                  dot: status === 'ALL' ? undefined : STATUS_DOT[status] || 'bg-slate-400',
+                  icon: STATUS_ICON[status],
                   count: status === 'ALL' ? undefined : num(counts[status] || 0),
                 }))}
               />

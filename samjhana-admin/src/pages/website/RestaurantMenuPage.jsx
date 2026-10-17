@@ -3,8 +3,12 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  CakeSlice,
   Check,
   ChevronDown,
+  Coffee,
+  Cookie,
+  CupSoda,
   Edit2,
   Eye,
   EyeOff,
@@ -12,6 +16,7 @@ import {
   Plus,
   Trash2,
   Utensils,
+  UtensilsCrossed,
   X,
 } from 'lucide-react';
 import ChipSlider from '../../components/ChipSlider';
@@ -22,12 +27,12 @@ import useLocaleFormat from '../../hooks/useLocaleFormat';
 import { resolveMediaUrl } from '../../utils/image';
 
 const COURSES = [
-  { value: 'ALL', tKey: 'restAdmin.courseAll' },
-  { value: 'BREAKFAST', tKey: 'restAdmin.courseBreakfast' },
-  { value: 'MAIN', tKey: 'restAdmin.courseMain' },
-  { value: 'SNACK', tKey: 'restAdmin.courseSnack' },
-  { value: 'DRINK', tKey: 'restAdmin.courseDrink' },
-  { value: 'DESSERT', tKey: 'restAdmin.courseDessert' },
+  { value: 'ALL', tKey: 'restAdmin.courseAll', icon: Utensils },
+  { value: 'BREAKFAST', tKey: 'restAdmin.courseBreakfast', icon: Coffee },
+  { value: 'MAIN', tKey: 'restAdmin.courseMain', icon: UtensilsCrossed },
+  { value: 'SNACK', tKey: 'restAdmin.courseSnack', icon: Cookie },
+  { value: 'DRINK', tKey: 'restAdmin.courseDrink', icon: CupSoda },
+  { value: 'DESSERT', tKey: 'restAdmin.courseDessert', icon: CakeSlice },
 ];
 const MEALS = [
   { value: 'BREAKFAST', tKey: 'restAdmin.mealBreakfast' },
@@ -255,6 +260,7 @@ export default function RestaurantMenuPage() {
             items={COURSES.map((c) => ({
               value: c.value,
               label: t(c.tKey),
+              icon: c.icon,
               count: num(c.value === 'ALL' ? dishes.length : dishes.filter((dish) => dish.course === c.value).length),
             }))}
           />

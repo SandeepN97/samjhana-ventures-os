@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Bell } from 'lucide-react';
 import ChipSlider from './ChipSlider';
 
 const items = [
   { value: 'ALL', label: 'All' },
-  { value: 'NEW', label: 'New', dot: 'bg-ev-500', count: '3' },
+  { value: 'NEW', label: 'New', icon: Bell, count: '3' },
   { value: 'DONE', label: 'Done', count: '0' },
 ];
 
@@ -29,6 +30,12 @@ describe('ChipSlider', () => {
     render(<ChipSlider label="Filter" items={items} value="ALL" onChange={() => {}} />);
     expect(screen.getByText('3')).toBeInTheDocument();
     screen.getAllByRole('button').forEach((chip) => expect(chip.className).toContain('min-h-[44px]'));
+  });
+
+  it('draws the chip icon, hidden from screen readers, only on chips that have one', () => {
+    render(<ChipSlider label="Filter" items={items} value="ALL" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /New/ }).querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'All' }).querySelector('svg')).toBeNull();
   });
 
   it('renders nothing selectable when there are no items', () => {

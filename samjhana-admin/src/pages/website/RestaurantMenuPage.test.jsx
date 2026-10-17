@@ -43,6 +43,7 @@ describe('RestaurantMenuPage', () => {
     renderWithProviders(<RestaurantMenuPage />);
     await screen.findByText('Dal Bhat Set');
     const slider = screen.getByRole('group', { name: 'Filter dishes by type' });
+    expect(within(slider).getByRole('button', { name: /Snacks/ }).querySelector('svg')).not.toBeNull();
     await userEvent.click(within(slider).getByRole('button', { name: /Snacks/ }));
     expect(within(slider).getByRole('button', { name: /Snacks/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('Dal Bhat Set')).not.toBeInTheDocument();
