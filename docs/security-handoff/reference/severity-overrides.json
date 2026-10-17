@@ -1,0 +1,32 @@
+{
+  "P1b-01": {
+    "sev": "Medium",
+    "was": "High",
+    "why": "Re-verification (reverification.md \u00a73): code path confirmed, but the race window is per request (~2-3 DB round trips), one-shot per admin action, and the attacker does not control the admin's timing; CVSS-style about 5.4-5.9."
+  },
+  "P0-01": {
+    "sev": "Medium",
+    "was": "High",
+    "why": "Re-verification (reverification.md \u00a74): overflow confirmed, but completion refuses non-positive totals and honey lines, the negative line is visible in the admin list/detail, and PostgreSQL rejects extreme values; still a STAGING ONLY release blocker because the fix is tiny."
+  },
+  "K-01": {
+    "sev": "High",
+    "note": "re-verified: High only through the open F-06 chain; Medium standalone (reverification.md \u00a77)"
+  },
+  "P1a-01": {
+    "sev": "High",
+    "note": "re-verified: confirmed with corrections - High at the low end; Medium if nea_rate is set live and reviewed (reverification.md \u00a72)"
+  },
+  "P0-16": {
+    "sev": "High",
+    "note": "re-verified: confirmed with corrections (reverification.md \u00a75)"
+  },
+  "P0-02": {
+    "sev": "High",
+    "note": "re-verified: CONFIRMED (reverification.md \u00a71)"
+  },
+  "P1BX-01": {
+    "sev": "High",
+    "note": "re-verified: High as SUSPECTED; Critical if an active published-password ADMIN row exists in prod/staging; Info if none (reverification.md \u00a76)"
+  }
+}
