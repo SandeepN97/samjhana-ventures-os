@@ -5,8 +5,10 @@ import com.samjhana.dto.UserDto;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.security.LoginAttemptService;
+import com.samjhana.security.PasswordPolicy;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
+import com.samjhana.service.AccountRoleService;
 import com.samjhana.service.DemoDataSeederService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +20,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -34,6 +38,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogRepository auditLogRepository;
     private final LoginAttemptService loginAttempts;
+    private final AccountRoleService accountRoleService;
     /** Empty in staging and prod: the demo reset bean only exists in dev. */
     private final ObjectProvider<DemoDataSeederService> demoDataSeederService;
 
@@ -85,10 +90,12 @@ public class AdminController {
                     .body(Map.of("message", "Username already exists"));
         }
 
-        // Validate password
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Password must be at least 8 characters"));
+        // The same rule wherever a password is chosen (finding A-02), checked against the name the account will have.
+        Optional<PasswordPolicy.Problem> problem = PasswordPolicy.check(request.getPassword(), request.getUsername().trim());
+        if (problem.isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", PasswordPolicy.message(problem.get(), "Password"),
+                    "code", problem.get().code()));
         }
 
         // Validate role
@@ -160,9 +167,7 @@ public class AdminController {
         for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
             temporary.append(TEMP_PASSWORD_ALPHABET.charAt(RANDOM.nextInt(TEMP_PASSWORD_ALPHABET.length())));
         }
-        target.setPasswordHash(passwordEncoder.encode(temporary.toString()));
-        target.setMustChangePassword(true);
-        userRepository.save(target);
+        userRepository.resetPassword(target.getId(), passwordEncoder.encode(temporary.toString()), LocalDateTime.now());
         loginAttempts.recordSuccess(target.getUsername());   // they may have been blocked for too many wrong tries
 
         AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
@@ -203,8 +208,16 @@ public class AdminController {
         if (oldRole == newRole) {
             return ResponseEntity.badRequest().body(Map.of("message", "That user already has this role"));
         }
-        target.setRole(newRole);
-        userRepository.save(target);
+        switch (accountRoleService.changeRole(currentUser.getId(), target.getId(), newRole)) {
+            case ACTOR_IS_NOT_AN_ADMIN -> {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Admin access required"));
+            }
+            case WOULD_LEAVE_NO_ADMIN -> {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "There must always be at least one active admin"));
+            }
+            case CHANGED -> { /* recorded below */ }
+        }
 
         AuditLog entry = AuditLog.updateEvent(currentUser, AuditLog.EntityType.USER, target.getId(),
                 "{\"role\":\"" + oldRole + "\"}", "{\"role\":\"" + newRole + "\"}");
@@ -212,7 +225,8 @@ public class AdminController {
                 + " by " + currentUser.getUsername());
         auditLogRepository.save(entry);
 
-        return ResponseEntity.ok(Map.of("message", "Role updated", "user", UserDto.from(target)));
+        return ResponseEntity.ok(Map.of("message", "Role updated",
+                "user", UserDto.from(userRepository.findById(target.getId()).orElse(target))));
     }
 
     @DeleteMapping("/users/{username}")
@@ -239,8 +253,7 @@ public class AdminController {
                     .body(Map.of("message", "Cannot delete admin user"));
         }
 
-        user.setIsActive(false);
-        userRepository.save(user);
+        userRepository.deactivate(user.getId(), LocalDateTime.now());
 
         return ResponseEntity.ok(Map.of("message", "User deactivated successfully"));
     }

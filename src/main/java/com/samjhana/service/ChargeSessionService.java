@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -78,17 +80,19 @@ public class ChargeSessionService {
                 .orElseGet(() -> EvCustomerVehicle.builder().plateNumber(plate).build());
         if (request.getCustomerName() != null) vehicle.setCustomerName(clean(request.getCustomerName()));
         if (request.getPhoneNumber() != null) vehicle.setPhoneNumber(clean(request.getPhoneNumber()));
-        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
-            vehicle.setPlatePhotoPath(photoStorageService.store(request.getPlatePhotoDataUrl(), plate));
-        }
-        vehicle = customerVehicleRepository.save(vehicle);
-
+        // Everything that can refuse the start comes before the photo is written to the disk (finding F-02).
         EvVehicle catalog = null;
         if (request.getVehicleCatalogId() != null && !request.getVehicleCatalogId().isBlank()) {
             catalog = evVehicleRepository.findById(parseUuid(request.getVehicleCatalogId(), "vehicle type"))
                     .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                     .orElseThrow(() -> new ResourceNotFoundException("EV vehicle type not found"));
         }
+        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {
+            String photoPath = photoStorageService.store(request.getPlatePhotoDataUrl(), plate);
+            removeIfTheStartIsRolledBack(photoPath);
+            vehicle.setPlatePhotoPath(photoPath);
+        }
+        vehicle = customerVehicleRepository.save(vehicle);
 
         ChargeSession session = ChargeSession.builder()
                 .chargePoint(chargePoint)
@@ -135,13 +139,24 @@ public class ChargeSessionService {
                 .stream().map(ChargeSessionResponse::from).toList();
     }
 
+    /** The photo is a file, which a database rollback does not undo: if the start fails after it was written, remove it. */
+    private void removeIfTheStartIsRolledBack(String photoPath) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) photoStorageService.delete(photoPath);
+            }
+        });
+    }
+
     @Transactional(readOnly = true)
     public ChargeSessionResponse get(UUID id) {
         return ChargeSessionResponse.from(find(id));
     }
 
     @Transactional
-    public ChargeSessionResponse stop(UUID id) {
+    public ChargeSessionResponse stop(UUID id, User user) {
         ChargeSession session = find(id);
         requireStatus(session, ChargeSession.Status.ACTIVE);
         boolean autoUnlock = session.getChargePoint().getLockBehavior() == ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP;
@@ -149,6 +164,7 @@ public class ChargeSessionService {
             requireOcppTransaction(session);
             requireConnected(session);
         }
+        ChargeSession.Status before = session.getStatus();
         session.setStopRequestedAt(LocalDateTime.now());
 
         Dispatch stopCommand = null;
@@ -160,7 +176,17 @@ public class ChargeSessionService {
             session.setStatusMessage("Stop command sent; connector remains locked");
             stopCommand = requestStopDispatch(session, ChargeSession.Status.ACTIVE, "stop");
         }
-        return publish(chargeSessionRepository.save(session), stopCommand);
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Stop requested");
+        return publish(saved, stopCommand);
+    }
+
+    /** Who sent a command to a charger, and what it did to the session (finding P1b-08). */
+    private void recordCommand(User user, ChargeSession session, ChargeSession.Status before, String what) {
+        AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.CHARGE_SESSION, session.getId(),
+                "{\"status\":\"" + before + "\"}", "{\"status\":\"" + session.getStatus() + "\"}");
+        entry.setDescription(what + " by " + user.getUsername() + " for charger " + session.getChargePoint().getCode());
+        auditLogRepository.save(entry);
     }
 
     @Transactional
@@ -193,7 +219,7 @@ public class ChargeSessionService {
     }
 
     @Transactional
-    public ChargeSessionResponse retryUnlock(UUID id) {
+    public ChargeSessionResponse retryUnlock(UUID id, User user) {
         ChargeSession session = find(id);
         if (session.getPaidAt() == null || session.getChargePoint().getLockBehavior() != ChargePoint.LockBehavior.EXPLICIT_UNLOCK) {
             throw new EvSessionStateException("Only a paid session with explicit connector locking can be unlocked");
@@ -203,9 +229,12 @@ public class ChargeSessionService {
             throw new EvSessionStateException("Session is not waiting for connector unlock");
         }
         requireConnected(session);
+        ChargeSession.Status before = session.getStatus();
         session.setStatus(ChargeSession.Status.UNLOCK_REQUESTED);
         session.setStatusMessage("Unlock command resent");
-        return publish(chargeSessionRepository.save(session), unlockDispatch(session));
+        ChargeSession saved = chargeSessionRepository.save(session);
+        recordCommand(user, saved, before, "Unlock requested");
+        return publish(saved, unlockDispatch(session));
     }
 
     @Transactional
@@ -257,10 +286,11 @@ public class ChargeSessionService {
 
         updateMeterValues(session, payload.path("meterValue"));
         LocalDateTime eventTime = parseTimestamp(payload.path("timestamp").asText(null));
-        if ("Started".equals(eventType)
-                || ("Updated".equals(eventType) && session.getStatus() == ChargeSession.Status.STARTING)) {
-            // An Updated event for a session still STARTING means its Started event was lost or
-            // missed: the car is charging, so show it as such.
+        if (session.getStatus() == ChargeSession.Status.STARTING
+                && ("Started".equals(eventType) || "Updated".equals(eventType))) {
+            // Started only ever moves a session that is waiting to start (a late or replayed one must not undo a
+            // stop, a payment or an unlock: finding P1a-16). An Updated event for a session still STARTING means its
+            // Started event was lost or missed: the car is charging, so show it as such.
             if (session.getStartedAt() == null || "Started".equals(eventType)) session.setStartedAt(eventTime);
             session.setStatus(ChargeSession.Status.ACTIVE);
             session.setStatusMessage("Charging in progress");
@@ -444,7 +474,11 @@ public class ChargeSessionService {
         if (transactionId != null && !transactionId.isBlank()) {
             Optional<ChargeSession> existing = chargeSessionRepository
                     .findFirstByOcppTransactionIdAndChargePointCodeOrderByRequestedAtDesc(transactionId, chargePointCode);
-            if (existing.isPresent()) return existing.get();
+            // Only a session that is still open takes the charger's events. A finished one (closed, failed, cancelled)
+            // keeps the figures it was billed with, and a charger whose transaction counter restarted must have its
+            // new transaction matched by the start id below, not captured by the old session that had the same id
+            // (finding P1a-16).
+            if (existing.isPresent() && OPEN_STATUSES.contains(existing.get().getStatus())) return existing.get();
         }
         if (remoteStartId != null) {
             // Only a session still waiting for its charger can claim a new transaction; an unknown

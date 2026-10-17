@@ -66,6 +66,11 @@ public class MediaService {
         return mediaRepository.findByIdAndDeletedAtIsNull(id);
     }
 
+    /** Whether the picture is there and not removed, without reading its bytes (finding P0-13). */
+    public boolean exists(UUID id) {
+        return mediaRepository.findLiveIds(List.of(id)).contains(id);
+    }
+
     @Transactional
     public void delete(UUID id) {
         MediaAsset asset = mediaRepository.findByIdAndDeletedAtIsNull(id)

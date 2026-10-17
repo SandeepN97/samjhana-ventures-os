@@ -2,6 +2,7 @@ package com.samjhana.seed;
 
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
+import com.samjhana.security.PasswordPolicy;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,9 @@ import java.util.Base64;
  * via DataSeeder; tests create their own fixtures and must not get a random admin.
  *
  * If no users exist in the database, creates the initial admin account.
- * Set ADMIN_INITIAL_PASSWORD env var to specify the password, or a secure
- * random password is generated and printed ONCE to the application log (WARN level).
+ * Set ADMIN_INITIAL_PASSWORD env var to specify the password (it must follow {@link PasswordPolicy}, or the
+ * application does not start on a new database), or a secure random password is generated and printed ONCE to
+ * the application log (WARN level).
  *
  * The admin MUST change this password immediately after first login.
  */
@@ -29,6 +31,8 @@ import java.util.Base64;
 @RequiredArgsConstructor
 @Slf4j
 public class FirstRunInitializer implements CommandLineRunner {
+
+    private static final String ADMIN_USERNAME = "admin";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -49,10 +53,16 @@ public class FirstRunInitializer implements CommandLineRunner {
             byte[] bytes = new byte[16];
             new SecureRandom().nextBytes(bytes);
             password = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        } else {
+            // A password the operator chose follows the same rule as any other (finding A-02). A new database stops
+            // here rather than getting a weak admin; the message names the rule and never repeats the password.
+            PasswordPolicy.check(password, ADMIN_USERNAME).ifPresent(problem -> {
+                throw new IllegalStateException(PasswordPolicy.message(problem, "ADMIN_INITIAL_PASSWORD"));
+            });
         }
 
         userRepository.save(User.builder()
-                .username("admin")
+                .username(ADMIN_USERNAME)
                 .passwordHash(passwordEncoder.encode(password))
                 .fullName("System Admin")
                 .fullNameNepali("प्रणाली प्रशासक")

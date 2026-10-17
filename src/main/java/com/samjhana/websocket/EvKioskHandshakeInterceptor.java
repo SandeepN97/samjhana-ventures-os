@@ -29,16 +29,18 @@ public class EvKioskHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
         String ticket = UriComponentsBuilder.fromUri(request.getURI()).build().getQueryParams().getFirst("ticket");
-        String username = liveTicketService.redeem(ticket)
+        User user = liveTicketService.redeem(ticket)
                 .flatMap(userRepository::findByUsername)
                 .filter(User::isEnabled)
-                .map(User::getUsername)
                 .orElse(null);
-        if (username == null) {
+        if (user == null) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }
-        attributes.put("username", username);
+        attributes.put("username", user.getUsername());
+        // What the person's account looked like when they connected, so the socket can be closed once it no longer
+        // does (the password was changed or reset, the role changed, the account was switched off): finding P1b-06.
+        attributes.put(AccountStamp.ATTRIBUTE, AccountStamp.of(user));
         return true;
     }
 
