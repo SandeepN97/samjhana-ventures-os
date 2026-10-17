@@ -172,6 +172,15 @@ The owner's words: *"if there are proven Nepali license plate classifiers [that 
 
 Training photos are plate-only crops with the confirmed text, no vehicle or person context, with the owner's approval and a retention rule (G10, G7).
 
+**Where it lives: a self-contained module, not a separate service or repository.** The repo is a single Maven module with layer-based packages, plus `samjhana-admin`, `samjhana-web` and a `tools/` folder (it already holds `ocpp-simulator`). Follow that:
+
+- `tools/plate-reader/` (not shipped in the JAR or the web bundle): the Python training and evaluation tooling (dataset preparation, synthetic plate generator, fine-tuning, evaluation script that prints exact-match and a confusion matrix, ONNX export), its pinned requirements, a `THIRD_PARTY.md` (each dependency, version, licence, date of review) and the **shared plate-rule test fixtures** (`fixtures/plate-rules.json`) that both the Java and the JavaScript tests read, so the two implementations cannot drift. It produces a versioned model, `alphabet.json`, `SHA256SUMS` and a `MODEL_CARD.md` (data and licences, metrics, date).
+- `samjhana-admin/src/plateReader/`: the browser logic (clean-up, ONNX Runtime Web inference in a Web Worker so the screen does not freeze, plate rules, `readPlate(blob)` returning candidates with confidences), code-split so it loads only on the EV start screen. The camera and confirm UI stays with the other EV components (`components/ev/PlateCapture.jsx`). The final model (under 10 MB) goes in `samjhana-admin/public/models/plate-reader/` and is checked against its hash at load; commit only released models, because every retrain adds to the git history.
+- Backend, in the existing layers (no new Maven module): `util/PlateNormalizer` (the Java twin of the rules), `service/VehicleMatchService` (fuzzy match), `entity/PlateReadLog` (suggested versus confirmed text, no photo), and the G10 image classes. Add a server-side ONNX fallback only if some phones cannot run the model.
+- CI: a separate workflow `plate-reader.yml` with a path filter (`tools/plate-reader/**`, `samjhana-admin/src/plateReader/**`, the model folder) for Python lint and tests and an evaluation on a small committed sample. The full evaluation on the private test photos is run on demand and never in CI. Workflow files need a token with the `workflow` permission, so the owner or such a token pushes it.
+- Never in git: training photos, the private test set, large weights or datasets. Keep them in the owner's private storage and record where in the model card.
+- Extract into its own service or repository only if: a second app needs it, the model passes about 20 MB, a server GPU is needed, or the lab or dataset licences require separation.
+
 ## 5. Real-charger test (needed for G5)
 
 The owner will test with one real charger and a real car. To make the test useful:
