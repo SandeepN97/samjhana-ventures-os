@@ -64,7 +64,7 @@ The ones that need the owner's input are listed with options and a recommendatio
 | P1BX-02 | Medium | `.claude/settings.json` is tracked and pre-approves some commands for every maintainer's agent: decide which should stay. |
 | P3-01 | Medium | Architecture: the charger command plane and the live feed run in the same single service as the rest of the app. |
 | A-04 | Low | Forwarded-address handling behind the hosting proxy (host configuration). |
-| F-04 | Low | Plate photos are stored on the container's own disk: needs a persistent disk or object storage. |
+| F-04 | Low | Plate photos are stored on the container's own disk: needs a persistent disk or object storage. **✅ Decided: database now, private Storage later (DECISIONS-MADE.md G10)** |
 | I-03 | Low | Row-level security on the Supabase tables is claimed in docs but not provided by the repository (SQL on Supabase). |
 | J-02 | Low | The weekly security job can fail without anyone being told. |
 | J-03 | Low | The monthly dependency report is published publicly. |

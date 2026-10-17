@@ -9,7 +9,7 @@ Written 2026-10-17 by Claude Code from a question-by-question session with the o
 3. **No schema changes without the owner.** Where a build looks like it needs a new column, table or enum value (marked `SQL?` below), first use the route that needs none (the `customFields` JSON on `Transaction`, existing columns, a computed value). If there is none, stop: put the proposed SQL under `docs/sql/` in the PR and ask the owner to run it on Supabase before deploy (staging uses `ddl-auto: validate`). Ask early, so the owner can run it while you build.
 4. This repository is public. Write PR text and comments in the same neutral style as this folder: state the rule that must hold, not how the old behaviour could be abused. The full finding text (location, quoted code, exact fix, test idea) is in the private report (`README.md` section 6); the one-line summaries below are enough to start.
 5. User-visible text needs English and Nepali. Touch targets at least 44 px. No hard deletes. Update `docs/ROLES.md` whenever a role rule changes, and the role-matrix test with it.
-6. Order of work: the 8 items in `QUEUE.md` need no decision and can run in parallel with these groups. Suggested order for the groups: G1, G2, G3, G4, G6, G7, G9, then G8 and G5 (G5 and part of G8 wait for a real-charger test, section 5).
+6. Order of work: the 8 items in `QUEUE.md` need no decision and can run in parallel with these groups. Suggested order for the groups: G1, G2, G3, G4, G6, G7, G9, G10, then G8 and G5 (G5 and part of G8 wait for a real-charger test, section 5).
 
 ## 1. The decisions at a glance
 
@@ -47,6 +47,7 @@ Written 2026-10-17 by Claude Code from a question-by-question session with the o
 | G-05 | Meter readings: keep the highest value, flag the session, baseline from the start event | G8 | maybe (flag); after the test |
 | P1b-07 | Plate photo, name and phone kept per charging session; never overwrite; re-encode; audit | G8 | yes (session columns) |
 | P1B1-03 | Analytics and lists: 366-day maximum, 31-day default, 100 rows per page, sums in the database | G9 | no |
+| P0-05, P1b-07, F-04, F-03 (images) | Compress and clean every photo on the server, crop the plate on the phone, keep plate photos 90 days, store in the database now and in private Storage later | G10 | yes (images table) |
 
 ## 2. Group G1: who may post what
 
@@ -119,6 +120,19 @@ Several parts wait for the real-charger test (section 5). Build the parts that d
 ### G9. Limits on big reads
 
 - **P1B1-03.** Cap analytics date ranges at **366 days** (400 beyond); `GET /api/transactions` defaults to the last **31 days** with paging (**100** rows per page); replace the two "all time" loads with SQL that filters by business code and aggregates (or cache for a minute); filter by business and status in the query, not in Java. In `docker/entrypoint.sh` set `-XX:MaxRAMPercentage` and a heap-dump-on-out-of-memory flag (needs no decision). Tests: a range over 366 days is refused; the default window and paging; totals unchanged for valid ranges.
+
+## 4b. Group G10: images (decided 2026-10-17; refines P0-05, P1b-07, F-04, F-03)
+
+The aim: far less database space, and nothing about a vehicle or a person kept longer or in more detail than needed. Today pictures and receipts (3 MB limit) and plate photos (5 MB limit) are stored as the phone sent them, nothing is resized, receipts and pictures sit in the database and plate photos sit on the server's disk (lost on redeploy).
+
+- **One shared pipeline** (`ImagePipeline`) used by `MediaService` (website pictures), `LoanReceiptService` and `PlatePhotoStorageService`. Check the pixel count before decoding (keep the existing guards). Apply the EXIF orientation first (verify whether portrait phone photos currently come out sideways after re-saving, and fix it), then re-encode so all metadata (EXIF, GPS, camera, XMP) is gone. Refuse animated or multi-frame images. Output progressive JPEG for now. WebP: either decode it (needs a reader library) or have the phone convert to JPEG before upload and refuse WebP; if WebP stays, remove its EXIF and XMP chunks from the container. Profiles (sizes are estimates, check with real photos): **PLATE** longest side 960 px, quality about 70, target 40 to 70 KB; **RECEIPT** 1600 px, quality about 80, 150 to 250 KB (text must stay readable: test with real receipts); **PICTURE** 1400 px, quality about 78, plus a 400 px thumbnail (quality about 70) for list pages. Keep the existing 3 MB and 5 MB limits as the *input* limits. Store a SHA-256 of the processed bytes and refuse a duplicate.
+- **On the phone.** The EV start screen shows a plate frame; the phone crops to the frame, scales to at most 960 px and sends JPEG (quality about 0.8). The server still re-processes everything (never trust the phone). Apply the same resize to website pictures and receipts so uploads are small on mobile data. English and Nepali text for the frame hint; touch targets at least 44 px.
+- **Storage now.** A separate images table (for example `stored_images`: id as UUID, kind, session or record id, sha256, size, created_at, deleted_at, bytes), not columns on the busy sales tables. One plate photo per charging session (G8, P1b-07); never overwrite. `SQL?` **yes**: write the SQL under `docs/sql/` and ask the owner to run it before deploy. Every view goes through an authenticated controller with a role check and an audit row; `Cache-Control: private, no-store`; UUID ids; never in URLs, logs or audit values.
+- **Retention.** A scheduled job deletes plate photos older than **90 days**, unless the session is flagged (no price check, walk-in, left unpaid, meter reset) or disputed. It removes the bytes and keeps the metadata row (hash, size, deleted_at). Receipts stay with their loan record. Supabase backups keep deleted images until they rotate.
+- **Quota.** Extend `UploadQuota` with a plate-photo budget (suggest 100 MB). Show usage on Settings, warn at 80 %. At 100 % an EV start must still work without a photo (flag the session) instead of failing. Rough size: about 55 KB × photos per month × 3 months (300 sessions a month is about 50 MB, 1,000 a month is about 165 MB), so check the real volume first.
+- **Storage later.** Put the bytes behind an `ImageStore` interface (`DbImageStore` now, `SupabaseImageStore` later: a private bucket, short-lived signed links, the key as a Render secret) so callers and screens do not change. Switch when the images table passes about 30 % of the database plan or 100 MB.
+- **Existing files.** A one-off admin job re-processes stored receipts and pictures larger than 300 KB and moves legacy plate photos from the container disk into the images table. Run it after a backup; report the bytes saved.
+- **Tests.** A 3 MB sample shrinks under its profile target; GPS and camera tags are absent; a portrait photo stays portrait; animated, oversized or odd files are refused; a duplicate is refused; a view is audited and refused for roles without access; the job deletes at day 91 but keeps a flagged session; the quota warns at 80 %.
 
 ## 5. Real-charger test (needed for G5)
 

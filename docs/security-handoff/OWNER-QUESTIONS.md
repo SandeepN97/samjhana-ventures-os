@@ -15,6 +15,9 @@ This repository is public, so the wording is neutral. The full finding text is i
 | A5 | G-02 | What do the number plates of the cars you charge look like: Latin letters, Devanagari, or both? | a) Latin only: normalise (upper-case, drop spaces, hyphens, dots), reject anything else. b) Both: accept Devanagari letters and digits, store a Latin key, show what was typed. **Rec. if any plate is Devanagari.** c) Leave as is (other characters silently disappear) |
 | A6 | G-05 | A meter reading lower than the previous one (reboot, reset)? | a) Keep the highest value, flag the session, take the baseline from the start event. **Rec.** b) Accept a drop to near zero as a reset and add the energy before it. c) Leave as is. Depends on what your real chargers send (the charger test) |
 | A7 | P1b-07 | Plate-photo evidence: kept per vehicle (today) or per charging session? | a) Per session; never overwrite a vehicle's existing photo; re-encode photos; record changes. **Rec.** b) Per vehicle, but keep the old photos as history. c) Leave as is. May need new columns (SQL on Supabase) |
+| A9 | images | How long are plate photos kept? | **Answered: 90 days** (flagged or disputed sessions longer); G10 |
+| A10 | images, F-04 | Where do compressed photos live? | **Answered: database now, private Storage later**; G10 |
+| A11 | images | Plate frame and crop on the phone? | **Answered: yes**; G10 |
 | A8 | P1B1-03 | Limits on analytics and list screens? | a) Maximum range 366 days; default window 31 days; 100 rows per page; sums done in the database. **Rec.** b) Maximum 93 days. c) Leave as is |
 
 ## B. Hosting, database and CI items that need you (access or a choice)
@@ -26,7 +29,7 @@ This repository is public, so the wording is neutral. The full finding text is i
 | B3 | P1BX-02 | `.claude/settings.json` pre-approves commands for every maintainer's agent | 1) Trim to read-only and test commands. **Rec.** 2) Keep |
 | B4 | P3-01 | Charger connections and live screens run inside the one service | 1) Keep for now, revisit with more chargers or an outage. **Rec.** 2) Plan a second service |
 | B5 | A-04 | How many proxy hops sit in front of the app on Render (usually 1)? Then the per-address login limit can use the real visitor address | Test on staging first with `SAMJHANA_TRUSTED_PROXY_HOPS` and `SAMJHANA_LOGIN_IP_LIMITS=true`. Safe now because the per-account limit stays 10 |
-| B6 | F-04 | Plate photos sit on the service's own disk and vanish on redeploy | 1) Store them in the database like receipts (counts against the upload quota). **Rec.** 2) Supabase Storage (needs a bucket and a key). 3) A paid persistent disk on Render |
+| B6 | F-04 | **Answered (A10): database now, private Storage later (G10).** Plate photos sit on the service's own disk and vanish on redeploy | 1) Store them in the database like receipts (counts against the upload quota). **Rec.** 2) Supabase Storage (needs a bucket and a key). 3) A paid persistent disk on Render |
 | B7 | I-03 | Row-level security is described in the docs but not provided | Enable RLS on every table with no public policy (the app uses its own login). SQL on Supabase; Claude writes it, you run it. **Rec: yes** |
 | B8 | N-01, N-02, N-03, N-04 | Database rules: CHECK constraints for money and stock (N-01), unique bank reference (N-02), append-only audit log (N-03), a limited login for the app instead of the project owner (N-04) | N-01, N-02, N-03: yes after a data check. **Rec.** N-04: later, with a plan, because prod changes the schema at boot today. All SQL on Supabase |
 | B9 | N-05 | Which Supabase plan is it, are daily backups on, and can you run one restore test? | **Rec:** a restore test before the release, if possible |
