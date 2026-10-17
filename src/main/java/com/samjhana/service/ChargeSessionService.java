@@ -13,6 +13,7 @@ import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.ocpp.diag.CommandReason;
 import com.samjhana.repository.*;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -356,7 +357,9 @@ public class ChargeSessionService {
                 } else if (measurand.startsWith("Energy.Active.Import")) {
                     String unit = sampled.path("unitOfMeasure").path("unit").asText("Wh");
                     int multiplier = sampled.path("unitOfMeasure").path("multiplier").asInt(0);
-                    value = value.scaleByPowerOfTen(multiplier);
+                    if (multiplier < -SafeDecimal.MAX_POWER || multiplier > SafeDecimal.MAX_POWER) continue;   // not a real unit multiplier (D-01)
+                    value = SafeDecimal.limited(value.scaleByPowerOfTen(multiplier));
+                    if (value == null) continue;
                     energyWh = "kWh".equalsIgnoreCase(unit) ? value.multiply(BigDecimal.valueOf(1000)) : value;
                 }
             }
@@ -591,11 +594,8 @@ public class ChargeSessionService {
         }
     }
 
+    /** A charger-supplied number; null when it is missing, unreadable, or has an extreme exponent (finding D-01). */
     private BigDecimal decimal(String value) {
-        try {
-            return value == null ? null : new BigDecimal(value);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return SafeDecimal.parse(value);
     }
 }
