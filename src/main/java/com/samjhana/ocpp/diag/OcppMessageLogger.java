@@ -3,6 +3,7 @@ package com.samjhana.ocpp.diag;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.samjhana.entity.ChargePoint;
 import com.samjhana.repository.ChargePointRepository;
+import com.samjhana.util.SafeDecimal;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Component;
 
@@ -237,16 +238,22 @@ public class OcppMessageLogger {
 
     private void energy(String code, String transactionId, JsonNode sample, String measurand) {
         String text = sample.path("value").asText(null);
-        BigDecimal value;
-        try {
-            value = text == null ? null : new BigDecimal(text);
-        } catch (NumberFormatException ex) {
-            LIFECYCLE.warn("ENERGY value '{}' is not a number", text);
+        if (text == null) return;
+        // Charger-supplied numbers are read through SafeDecimal: an extreme one is reported, never calculated with or
+        // printed out in full (finding D-01).
+        BigDecimal value = SafeDecimal.parse(text);
+        if (value == null) {
+            LIFECYCLE.warn("ENERGY value '{}' is not a usable number", text.length() > 40 ? text.substring(0, 40) + "..." : text);
             return;
         }
-        if (value == null) return;
         String unit = sample.path("unitOfMeasure").path("unit").asText("Wh");
-        BigDecimal wh = value.scaleByPowerOfTen(sample.path("unitOfMeasure").path("multiplier").asInt(0));
+        int multiplier = sample.path("unitOfMeasure").path("multiplier").asInt(0);
+        boolean plausibleMultiplier = multiplier >= -SafeDecimal.MAX_POWER && multiplier <= SafeDecimal.MAX_POWER;
+        BigDecimal wh = plausibleMultiplier ? SafeDecimal.limited(value.scaleByPowerOfTen(multiplier)) : null;
+        if (wh == null) {
+            LIFECYCLE.warn("ENERGY multiplier {} with value '{}' is out of range", multiplier, text);
+            return;
+        }
         if ("kWh".equalsIgnoreCase(unit)) wh = wh.multiply(BigDecimal.valueOf(1000));
         String key = code + "|" + transactionId;
         BigDecimal previous = lastEnergyWh.put(key, wh);

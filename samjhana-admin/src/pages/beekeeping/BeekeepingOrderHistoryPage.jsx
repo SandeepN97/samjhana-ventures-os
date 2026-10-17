@@ -7,6 +7,10 @@ import { PageHeader } from '../../components/brand';
 import BusinessTabs from '../../components/BusinessTabs';
 import useLocaleFormat from '../../hooks/useLocaleFormat';
 
+// The server sends this many sales at a time; "Show older sales" asks for the next batch.
+const PAGE_SIZE = 50;
+const pageUrl = (page) => `/api/beekeeping/orders?page=${page}&size=${PAGE_SIZE}`;
+
 export default function BeekeepingOrderHistoryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -16,13 +20,20 @@ export default function BeekeepingOrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);              // the last batch asked for
+  const [hasMore, setHasMore] = useState(false);    // the last batch was full, so there may be older sales
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError(false);
     try {
-      const res = await api.get('/api/beekeeping/orders');
+      const res = await api.get(pageUrl(0));
       setOrders(res.data);
+      setPage(0);
+      setHasMore(res.data.length >= PAGE_SIZE);
+      setMoreError(false);
     } catch {
       setError(true);
     } finally {
@@ -30,9 +41,38 @@ export default function BeekeepingOrderHistoryPage() {
     }
   };
 
+  const loadOlder = async () => {
+    setLoadingMore(true);
+    setMoreError(false);
+    try {
+      const res = await api.get(pageUrl(page + 1));
+      // A sale recorded meanwhile pushes one onto the next page: show it once.
+      setOrders((shown) => {
+        const seen = new Set(shown.map((o) => o.id));
+        return [...shown, ...res.data.filter((o) => !seen.has(o.id))];
+      });
+      setPage(page + 1);
+      setHasMore(res.data.length >= PAGE_SIZE);
+    } catch {
+      setMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   const visible = orders.filter((o) => !search || (o.customerName || '').toLowerCase().includes(search.toLowerCase()));
+
+  const olderButton = hasMore && (
+    <div className="px-4 pb-4 text-center">
+      {moreError && <p role="alert" className="mb-2 text-sm text-red-600">{t('beeOrd.failedToLoadOlder')}</p>}
+      <button type="button" onClick={loadOlder} disabled={loadingMore}
+        className="min-h-[44px] rounded-xl border-2 border-beekeeping-600 px-6 font-bold text-beekeeping-700 disabled:opacity-60">
+        {loadingMore ? t('common.loading') : t('beeOrd.showOlder')}
+      </button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -66,6 +106,7 @@ export default function BeekeepingOrderHistoryPage() {
             className="mt-4 min-h-[44px] bg-beekeeping-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-beekeeping-700">
             {t('beeOrd.createFirstOrder')}
           </button>
+          {olderButton}
         </div>
       ) : (
         <div className="px-4 py-4 space-y-3">
@@ -90,6 +131,7 @@ export default function BeekeepingOrderHistoryPage() {
               </div>
             );
           })}
+          {olderButton}
         </div>
       )}
     </div>

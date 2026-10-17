@@ -35,4 +35,20 @@ class SpaFallbackIntegrationTest {
         // Not a permitted path outside dev, so an anonymous caller is stopped before reaching it.
         mockMvc.perform(get("/api-docs")).andExpect(status().isUnauthorized());
     }
+
+    // ---- finding P0-14: the forced "choose your own password" page ----
+
+    @Test
+    void shouldServeTheAdminApp_forTheChangePasswordPage_whenTheBrowserIsReloaded() throws Exception {
+        mockMvc.perform(get("/change-password"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("spa-shell")));
+    }
+
+    @Test
+    void shouldStillRequireSignIn_forTheChangePasswordApiCall() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/change-password")
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
 }

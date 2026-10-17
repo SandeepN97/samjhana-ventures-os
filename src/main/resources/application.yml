@@ -93,6 +93,12 @@ samjhana:
     login:
       ip-limits-enabled: ${SAMJHANA_LOGIN_IP_LIMITS:false}
     trusted-proxy-hops: ${SAMJHANA_TRUSTED_PROXY_HOPS:0}
+    # The biggest request body the server will read (see RequestBodyLimitFilter), in bytes. A bigger one is answered
+    # with 413 without being read. Ordinary requests: 512 KB. The EV start, which can carry a camera photo as text
+    # (a 5 MB photo is about 7 MB of Base64): 7.5 MB. File uploads: 12 MB (the upload code has tighter limits of its own).
+    max-body-bytes: ${SAMJHANA_MAX_BODY_BYTES:524288}
+    max-photo-body-bytes: ${SAMJHANA_MAX_PHOTO_BODY_BYTES:7864320}
+    max-upload-body-bytes: ${SAMJHANA_MAX_UPLOAD_BODY_BYTES:12582912}
 
   storage:
     images:

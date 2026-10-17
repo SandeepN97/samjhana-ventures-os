@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 /**
  * Public read-only API consumed by samjhana-web.
@@ -32,9 +31,9 @@ public class PublicController {
         return ResponseEntity.ok(publicApiService.getFurnitureCatalogue(category));
     }
 
-    @GetMapping("/furniture/catalogue/{id}")
-    public ResponseEntity<?> getFurnitureItem(@PathVariable String id) {
-        return publicApiService.getFurnitureItem(UUID.fromString(id))
+    @GetMapping("/furniture/catalogue/{slug}")
+    public ResponseEntity<?> getFurnitureItem(@PathVariable String slug) {
+        return publicApiService.getFurnitureItem(slug)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
