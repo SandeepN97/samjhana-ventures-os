@@ -11,6 +11,7 @@ import com.samjhana.repository.UserRepository;
 import com.samjhana.security.ClientAddressResolver;
 import com.samjhana.security.JwtUtil;
 import com.samjhana.security.LoginAttemptService;
+import com.samjhana.security.PasswordPolicy;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -156,7 +158,7 @@ public class AuthController {
      * Admins may change any user's password by providing the target username;
      * non-admins may only change their own.
      *
-     * Minimum password length: 8 characters.
+     * The new password follows {@link PasswordPolicy}.
      */
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
@@ -210,10 +212,12 @@ public class AuthController {
                     "This user has a temporary password and must choose their own the next time they sign in"));
         }
 
-        // Validate new password strength
-        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "New password must be at least 8 characters"));
+        // The same rule wherever a password is chosen (finding A-02), checked against the account it is for.
+        Optional<PasswordPolicy.Problem> problem = PasswordPolicy.check(request.getNewPassword(), targetUser.getUsername());
+        if (problem.isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", PasswordPolicy.message(problem.get(), "New password"),
+                    "code", problem.get().code()));
         }
 
         if (request.getNewPassword().equals(request.getCurrentPassword())) {

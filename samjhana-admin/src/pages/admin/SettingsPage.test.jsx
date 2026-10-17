@@ -111,4 +111,45 @@ describe('SettingsPage change password', () => {
     });
     expect(api.post).not.toHaveBeenCalled();
   });
+
+  it('shows the server\'s reason for refusing a common password', async () => {
+    api.post.mockRejectedValue({ response: { status: 400, data: {
+      code: 'PASSWORD_TOO_COMMON', message: 'New password is too common or too easy to guess. Choose something less obvious' } } });
+    await openChangePassword();
+    await fill({ next: 'Password123' });
+    await submit();
+
+    expect(await screen.findByText('Password is too common or too easy to guess. Choose something less obvious'))
+      .toBeInTheDocument();
+  });
+
+  it('shows the server\'s reason in Nepali, not in the English the server wrote', async () => {
+    api.post.mockRejectedValue({ response: { status: 400, data: {
+      code: 'PASSWORD_HAS_USERNAME', message: 'New password must not contain the username' } } });
+    await openChangePassword({ locale: 'ne' });
+    await fill({ next: 'Staff#Staff-7731' });
+    await submit();
+
+    expect(await screen.findByText('पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन')).toBeInTheDocument();
+    expect(screen.queryByText('New password must not contain the username')).not.toBeInTheDocument();
+  });
+
+  it('keeps showing the server message when it is not about the new password', async () => {
+    api.post.mockRejectedValue({ response: { status: 400, data: { code: 'BAD_REQUEST', message: 'Current password is incorrect' } } });
+    await openChangePassword();
+    await fill({ next: 'k7Qm2xPv' });
+    await submit();
+
+    expect(await screen.findByText('Current password is incorrect')).toBeInTheDocument();
+  });
+
+  it('refuses a new password longer than 72 bytes and does not call the server', async () => {
+    await openChangePassword();
+    await fill({ next: `${'Qx7!'.repeat(18)}z` });
+    await submit();
+
+    expect(await screen.findByText('Password is too long. Use at most 72 characters (a Nepali letter counts as 3)'))
+      .toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
 });

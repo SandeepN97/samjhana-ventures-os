@@ -1351,6 +1351,13 @@ export const resources = {
         evShort: 'EV',
       },
 
+      // Why the server refuses a new password (its PasswordPolicy); every screen that sets a password shows these
+      passwordPolicy: {
+        tooLong: 'Password is too long. Use at most 72 characters (a Nepali letter counts as 3)',
+        tooCommon: 'Password is too common or too easy to guess. Choose something less obvious',
+        hasUsername: 'Password must not contain the username',
+      },
+
       // Settings
       forcedPassword: {
         title: 'Choose a new password',
@@ -3004,6 +3011,13 @@ export const resources = {
         petrolShort: 'पेट्रोल',
         dieselShort: 'डिजेल',
         evShort: 'EV',
+      },
+
+      // Why the server refuses a new password (its PasswordPolicy); every screen that sets a password shows these
+      passwordPolicy: {
+        tooLong: 'पासवर्ड धेरै लामो छ। बढीमा ७२ अक्षर प्रयोग गर्नुहोस् (नेपाली अक्षरले ३ गनिन्छ)',
+        tooCommon: 'पासवर्ड धेरै चलनचल्तीको वा सजिलै अनुमान गर्न सकिने छ। अलि फरक पासवर्ड रोज्नुहोस्',
+        hasUsername: 'पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन',
       },
 
       // Settings

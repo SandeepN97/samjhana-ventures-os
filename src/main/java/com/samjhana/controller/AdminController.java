@@ -5,6 +5,7 @@ import com.samjhana.dto.UserDto;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.security.LoginAttemptService;
+import com.samjhana.security.PasswordPolicy;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.service.AccountRoleService;
@@ -24,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -88,10 +90,12 @@ public class AdminController {
                     .body(Map.of("message", "Username already exists"));
         }
 
-        // Validate password
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Password must be at least 8 characters"));
+        // The same rule wherever a password is chosen (finding A-02), checked against the name the account will have.
+        Optional<PasswordPolicy.Problem> problem = PasswordPolicy.check(request.getPassword(), request.getUsername().trim());
+        if (problem.isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", PasswordPolicy.message(problem.get(), "Password"),
+                    "code", problem.get().code()));
         }
 
         // Validate role
