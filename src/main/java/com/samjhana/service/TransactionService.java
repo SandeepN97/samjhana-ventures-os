@@ -7,7 +7,6 @@ import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.FuelPrice;
-import com.samjhana.entity.FurnitureItem;
 import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
@@ -615,21 +614,28 @@ public class TransactionService {
             String itemId = lineItem.get("itemId") != null ? lineItem.get("itemId").toString() : null;
             if (itemId == null) continue;
 
-            int qty = 1;
-            if (lineItem.get("quantity") instanceof Number) {
-                qty = ((Number) lineItem.get("quantity")).intValue();
+            // No quantity means one. Anything else must be a whole number from 1 up: the sale was checked on the way in
+            // (FurnitureStrategy), this is the same rule again, so a negative line can never add to the stock (P0-11).
+            Object requested = lineItem.get("quantity");
+            Integer qty = requested == null ? Integer.valueOf(1) : com.samjhana.strategy.impl.FurnitureStrategy.lineQuantity(requested);
+            if (qty == null) {
+                throw new IllegalArgumentException("Quantity must be a whole number from 1 to "
+                        + com.samjhana.strategy.impl.FurnitureStrategy.MAX_LINE_QUANTITY);
             }
 
+            UUID id;
             try {
-                FurnitureItem furnitureItem = furnitureItemRepository.findById(UUID.fromString(itemId)).orElse(null);
-                if (furnitureItem != null) {
-                    int newStock = isSale
-                            ? Math.max(0, furnitureItem.getStockQty() - qty)
-                            : furnitureItem.getStockQty() + qty;
-                    furnitureItem.setStockQty(newStock);
-                    furnitureItemRepository.save(furnitureItem);
-                }
-            } catch (IllegalArgumentException ignored) {}
+                id = UUID.fromString(itemId);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            // One statement on the stock column alone, not read, change and write the whole row back: sales at the same
+            // moment, a sale and an online order, or an admin's edit of the item cannot overwrite each other (P1a-13).
+            if (isSale) {
+                furnitureItemRepository.removeStockUpTo(id, qty);
+            } else {
+                furnitureItemRepository.addStock(id, qty);
+            }
         }
     }
 }
