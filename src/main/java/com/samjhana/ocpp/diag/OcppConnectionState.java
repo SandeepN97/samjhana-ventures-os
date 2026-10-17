@@ -5,6 +5,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,6 +34,9 @@ public class OcppConnectionState {
     private volatile Instant lastHeartbeatAt;
     private volatile Instant idleWarnedAt;
     private volatile long heartbeatIntervalSeconds;
+    private volatile FrameRateLimiter frameLimiter;
+    private volatile boolean closing;
+    private final AtomicBoolean closeClaimed = new AtomicBoolean();
 
     private final Map<String, String> actionByMessage = boundedMap();
     private final Map<String, Boolean> heartbeatLogged = boundedMap();
@@ -105,6 +109,17 @@ public class OcppConnectionState {
     public void lastHeartbeatAt(Instant value) { this.lastHeartbeatAt = value; }
     public Instant idleWarnedAt() { return idleWarnedAt; }
     public void idleWarnedAt(Instant value) { this.idleWarnedAt = value; }
+    /** How many frames this connection may send; null = no limit. */
+    public FrameRateLimiter frameLimiter() { return frameLimiter; }
+    public void frameLimiter(FrameRateLimiter value) { this.frameLimiter = value; }
+    /** True once the app has decided to drop this connection: whatever is still arriving on it is ignored. */
+    public boolean closing() { return closing; }
+    public void closing(boolean value) { this.closing = value; }
+    /**
+     * True for the first caller only. The work that follows the end of a connection (unregister, mark OFFLINE, fail its commands)
+     * is claimed here so it runs once, whether the app dropped the connection itself or the container reports the close.
+     */
+    public boolean claimCloseHandling() { return closeClaimed.compareAndSet(false, true); }
     public long heartbeatIntervalSeconds() { return heartbeatIntervalSeconds; }
     public void heartbeatIntervalSeconds(long value) { this.heartbeatIntervalSeconds = value; }
 }

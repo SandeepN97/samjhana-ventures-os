@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.samjhana.entity.OcppConnectionLog;
 import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.ocpp.OcppFieldChecks;
+import com.samjhana.ocpp.diag.FrameRateLimiter;
 import com.samjhana.ocpp.diag.JsonMasker;
 import com.samjhana.ocpp.diag.LogSafe;
 import com.samjhana.ocpp.diag.OcppAuditWriter;
@@ -49,6 +50,10 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
     private static final ZoneId NEPAL = ZoneId.of("Asia/Kathmandu");
     /** Close code used when a newer connection from the same charger replaces this one (private-use range). */
     static final int REPLACED_CLOSE_CODE = 4001;
+    /** Close code used when a connection is closed because the charger sent nothing for too long (private-use range). */
+    static final int SILENT_CLOSE_CODE = 4002;
+    /** Why a connection that sent too many messages is closed (1008, "policy violation"). */
+    static final CloseStatus TOO_MANY_MESSAGES = CloseStatus.POLICY_VIOLATION.withReason("too many messages");
 
     private final ObjectMapper objectMapper;
     private final OcppConnectionRegistry connectionRegistry;
@@ -74,6 +79,9 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
         String code = chargePointCode(session);
         OcppConnectionState state = new OcppConnectionState(session.getId(), code, remote(session),
                 session.getAcceptedProtocol(), Instant.now(), properties.getHeartbeatInterval().toSeconds());
+        if (properties.getMaxFramesPerSecond() > 0) {
+            state.frameLimiter(new FrameRateLimiter(properties.getMaxFramesPerSecond(), properties.getFrameBurst()));
+        }
         session.getAttributes().put(OcppConnectionState.ATTRIBUTE, state);
         try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
             OcppConnectionRegistry.Connection previous = connectionRegistry.register(code, session, state);
@@ -109,8 +117,38 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        connectionEnded(session, status);
+    }
+
+    /**
+     * Gives up on a connection (finding D-04): asks the container to close it and, without waiting for the charger to answer the
+     * close, does the usual work for an ended connection at once. A charger that has gone dead never answers, and the container
+     * may take a long time to report a close it is still waiting on; until then the charger would be shown ONLINE.
+     */
+    public void dropConnection(WebSocketSession session, CloseStatus status) {
         String code = chargePointCode(session);
         OcppConnectionState state = OcppConnectionState.of(session, code);
+        state.closing(true); // whatever is still arriving on this connection is no longer worth handling
+        try {
+            if (session.isOpen()) session.close(status);
+        } catch (IOException | RuntimeException ex) {
+            try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
+                LIFECYCLE.warn("Could not close session {} of {}: {}", session.getId(), code, ex.toString());
+            }
+        }
+        connectionEnded(session, status);
+    }
+
+    /** The work for a connection that has ended. It runs once, however many parties report the end (the app and the container). */
+    private void connectionEnded(WebSocketSession session, CloseStatus status) {
+        String code = chargePointCode(session);
+        OcppConnectionState state = OcppConnectionState.of(session, code);
+        if (!state.claimCloseHandling()) {
+            try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
+                LIFECYCLE.debug("End of session {} of {} (closeCode={}) was already handled", session.getId(), code, status.getCode());
+            }
+            return;
+        }
         try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
             OcppConnectionRegistry.Unregistered result = connectionRegistry.unregister(code, session.getId());
             Instant now = Instant.now();
@@ -184,6 +222,18 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
         String code = chargePointCode(session);
         OcppConnectionState state = OcppConnectionState.of(session, code);
+        if (state.closing()) return; // being dropped: the frames still in the pipe are ignored, not even logged
+        FrameRateLimiter allowance = state.frameLimiter();
+        if (allowance != null && !allowance.tryAcquire()) { // before anything is logged or stored, so a flood costs almost nothing
+            try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
+                LIFECYCLE.warn("FLOOD chargePointId={} sessionId={}: more than {} frames/s (burst {}) after {} frames in {}s; closing "
+                                + "the connection with 1008 so the app is not swamped (the charger reconnects by itself)",
+                        code, session.getId(), allowance.perSecond(), allowance.burst(), state.framesIn().get(),
+                        Duration.between(state.connectedAt(), Instant.now()).toSeconds());
+                dropConnection(session, TOO_MANY_MESSAGES);
+            }
+            return;
+        }
         String payload = message.getPayload();
         try (OcppMdc mdc = OcppMdc.open().chargePoint(code).session(session.getId())) {
             frameLogger.inbound(state, payload); // first, before any parsing, so malformed frames are captured
@@ -401,6 +451,7 @@ public class OcppWebSocketHandler extends TextWebSocketHandler implements SubPro
             case 1009 -> "message too big";
             case 1011 -> "server error";
             case REPLACED_CLOSE_CODE -> "replaced by a newer connection from the same charger";
+            case SILENT_CLOSE_CODE -> "no messages from the charger for too long";
             default -> "other";
         };
     }

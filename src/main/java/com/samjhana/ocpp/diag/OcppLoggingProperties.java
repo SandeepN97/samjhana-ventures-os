@@ -43,6 +43,15 @@ public class OcppLoggingProperties {
     private double idleFactor = 2.0;
     /** Heartbeat interval we hand out in BootNotification responses. */
     private Duration heartbeatInterval = Duration.ofSeconds(30);
+    /**
+     * A connection is closed, and the charger shown OFFLINE, when no frame has arrived for this many heartbeat intervals
+     * (finding D-04). The charger reconnects by itself. Zero = never close a silent connection.
+     */
+    private double closeFactor = 3.0;
+    /** The most frames per second one connection may keep sending; above it the connection is closed (1008). Zero = no limit. */
+    private double maxFramesPerSecond = 20;
+    /** How many frames one connection may send in one go before the rate above applies (a charger's start-up burst). */
+    private int frameBurst = 60;
     private long clockSkewWarnSeconds = 60;
 
     /** A lock-evidence summary is emitted after this long without a new event for the session. */
