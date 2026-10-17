@@ -173,7 +173,11 @@ describe('QuickActionButtons', () => {
 
   it('shows the Website shortcut to admins and managers, but not to staff', async () => {
     const { unmount } = renderWithProviders(<QuickActionButtons />);
-    await userEvent.click(screen.getByRole('button', { name: 'Website' }));
+    const website = screen.getByRole('button', { name: 'Website' });
+    const onlineOrders = screen.getByRole('button', { name: /Online Orders/ });
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.indexOf(website)).toBe(buttons.indexOf(onlineOrders) + 1);
+    await userEvent.click(website);
     expect(mockNavigate).toHaveBeenCalledWith('/website');
     unmount();
 
