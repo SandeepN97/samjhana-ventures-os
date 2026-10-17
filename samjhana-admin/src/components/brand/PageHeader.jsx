@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../LanguageToggle';
 import { unitTheme } from '../../brand/theme';
+import useDesktop from '../../hooks/useDesktop';
 
 /**
  * The coloured bar at the top of every admin screen: back button, optional icon, title,
@@ -24,6 +25,9 @@ export default function PageHeader({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const theme = unitTheme(unit);
+  // On desktop the language switch lives in the side menu, so the bar does not repeat it.
+  const desktop = useDesktop();
+  const languageToggle = showLanguageToggle && !desktop;
 
   return (
     <header className={`${theme.header} px-4 py-4 text-white shadow-lg`} data-unit={unit}>
@@ -43,10 +47,10 @@ export default function PageHeader({
             {subtitle && <p className={`mt-0.5 text-sm ${theme.headerSubtle}`}>{subtitle}</p>}
           </div>
         </div>
-        {(actions || showLanguageToggle) && (
+        {(actions || languageToggle) && (
           <div className="flex shrink-0 items-center gap-2">
             {actions}
-            {showLanguageToggle && <LanguageToggle />}
+            {languageToggle && <LanguageToggle />}
           </div>
         )}
       </div>
