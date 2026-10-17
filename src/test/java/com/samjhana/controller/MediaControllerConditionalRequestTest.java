@@ -78,6 +78,51 @@ class MediaControllerConditionalRequestTest {
         assertThat(response.getStatusCode().value()).isEqualTo(200);
     }
 
+    // ---- finding P0-05: what the browser is told about a picture ----
+
+    @Test
+    void shouldKeepAPictureInBrowsersForADayAtMost_notForAYear() {
+        when(mediaService.find(id)).thenReturn(Optional.of(asset));
+
+        ResponseEntity<byte[]> response = controller.view(id.toString(), null);
+
+        assertThat(response.getHeaders().getCacheControl())
+                .contains("max-age=86400").contains("public").doesNotContain("immutable");
+    }
+
+    @Test
+    void shouldRefreshTheCacheRulesToo_whenAnswering304() {
+        when(mediaService.exists(id)).thenReturn(true);
+
+        ResponseEntity<byte[]> response = controller.view(id.toString(), etag);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(304);
+        assertThat(response.getHeaders().getCacheControl())
+                .contains("max-age=86400").contains("public").doesNotContain("immutable");
+    }
+
+    @Test
+    void shouldKeepThePictureOnlyPolicyToo_whenAnswering304() {
+        // a browser updates its stored copy with the headers of a 304, so a 304 without the policy would put the site-wide one back
+        when(mediaService.exists(id)).thenReturn(true);
+
+        ResponseEntity<byte[]> response = controller.view(id.toString(), etag);
+
+        assertThat(response.getHeaders().get("Content-Security-Policy"))
+                .containsExactly("default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    }
+
+    @Test
+    void shouldTellTheBrowserThatAPictureIsOnlyAPicture_soNothingInItCanRunAsAPage() {
+        when(mediaService.find(id)).thenReturn(Optional.of(asset));
+
+        ResponseEntity<byte[]> response = controller.view(id.toString(), null);
+
+        assertThat(response.getHeaders().get("Content-Security-Policy"))
+                .containsExactly("default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        assertThat(response.getHeaders().getFirst("X-Content-Type-Options")).isEqualTo("nosniff");
+    }
+
     @Test
     void shouldAnswer404_forAnIdThatIsNotAUuid_withoutAskingTheService() {
         ResponseEntity<byte[]> response = controller.view("not-a-uuid", etag);

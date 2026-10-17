@@ -3,6 +3,7 @@ package com.samjhana.controller;
 import com.samjhana.entity.User;
 import com.samjhana.repository.UserRepository;
 import com.samjhana.security.JwtUtil;
+import com.samjhana.testsupport.PictureFixtures;
 import com.samjhana.testsupport.TestImages;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,7 +75,7 @@ class MediaAndSiteContentIntegrationTest {
     }
 
     @Test
-    void shouldServeAnUploadedPictureToAnyone_withTheRightTypeAndLongCaching() throws Exception {
+    void shouldServeAnUploadedPictureToAnyone_withTheRightTypeAndOneDayCaching() throws Exception {
         byte[] png = TestImages.png();
         String id = upload(admin, png, "x.png");
 
@@ -82,12 +83,62 @@ class MediaAndSiteContentIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"))
                 .andExpect(header().string("X-Content-Type-Options", "nosniff"))
-                .andExpect(header().string("Cache-Control", containsString("immutable")))
+                .andExpect(header().string("Cache-Control", containsString("max-age=86400")))
                 .andExpect(header().string("Cache-Control", containsString("public")))
+                .andExpect(header().string("Cache-Control", not(containsString("immutable"))))
                 .andReturn();
-        assertThat(result.getResponse().getContentAsByteArray()).isEqualTo(png);
-        mockMvc.perform(get("/api/public/media/" + id).header("If-None-Match", "\"" + id + "\""))
-                .andExpect(status().isNotModified());
+        assertThat(result.getResponse().getContentAsByteArray()).isEqualTo(png);   // nothing hidden in it, so nothing removed
+        assertThat(result.getResponse().getHeaders("Content-Security-Policy"))
+                .as("the picture's own policy replaces the site-wide one, it is not added to it")
+                .containsExactly("default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        MvcResult notModified = mockMvc.perform(get("/api/public/media/" + id).header("If-None-Match", "\"" + id + "\""))
+                .andExpect(status().isNotModified())
+                .andExpect(header().string("Cache-Control", containsString("max-age=86400")))
+                .andReturn();
+        assertThat(notModified.getResponse().getHeaders("Content-Security-Policy"))
+                .containsExactly("default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    }
+
+    @Test
+    void shouldServeAnUploadedJpegWithoutItsHiddenDetails() throws Exception {
+        byte[] withDetails = PictureFixtures.jpegPlanting(TestImages.jpeg(), PictureFixtures.ascii("TRAILER-" + PictureFixtures.SECRET),
+                PictureFixtures.exifSegment(1, false), PictureFixtures.xmpSegment(), PictureFixtures.commentSegment());
+        MvcResult uploaded = mockMvc.perform(multipart("/api/media")
+                        .file(new MockMultipartFile("file", "holiday.jpg", "image/jpeg", withDetails)).header("Authorization", manager))
+                .andExpect(status().isOk()).andReturn();
+        String id = com.jayway.jsonpath.JsonPath.read(uploaded.getResponse().getContentAsString(), "$.id");
+        Integer reportedSize = com.jayway.jsonpath.JsonPath.read(uploaded.getResponse().getContentAsString(), "$.sizeBytes");
+
+        byte[] served = mockMvc.perform(get("/api/public/media/" + id)).andExpect(status().isOk())
+                .andExpect(content().contentType("image/jpeg")).andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(PictureFixtures.contains(served, PictureFixtures.SECRET)).as("nothing hidden is handed to the public").isFalse();
+        assertThat(served.length).isLessThan(withDetails.length).isEqualTo(reportedSize);
+        assertThat(PictureFixtures.samePixels(TestImages.jpeg(), served)).isTrue();
+    }
+
+    @Test
+    void shouldAcceptTheOnePixelPictureTheBrowserTestUploads() throws Exception {
+        // its picture-data checksum is wrong, but browsers show it, so the upload has to keep working (it failed with 400 once)
+        String id = upload(admin, PictureFixtures.PNG_WITH_WRONG_PICTURE_CHECKSUM, "chair.png");
+
+        byte[] served = mockMvc.perform(get("/api/public/media/" + id)).andExpect(status().isOk())
+                .andExpect(content().contentType("image/png")).andReturn().getResponse().getContentAsByteArray();
+        assertThat(served).isEqualTo(PictureFixtures.PNG_WITH_WRONG_PICTURE_CHECKSUM);
+    }
+
+    @Test
+    void shouldRefuseAFileThatOnlyStartsLikeAWebp() throws Exception {
+        byte[] junkBehindAWebpHeader = PictureFixtures.riff(new byte[100]);
+        mockMvc.perform(multipart("/api/media")
+                        .file(new MockMultipartFile("file", "x.webp", "image/webp", junkBehindAWebpHeader))
+                        .header("Authorization", admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("not a valid picture")));
+        mockMvc.perform(multipart("/api/media")
+                        .file(new MockMultipartFile("file", "x.webp", "image/webp", PictureFixtures.WEBP_LOSSY))
+                        .header("Authorization", admin))
+                .andExpect(status().isOk());
     }
 
     @Test
