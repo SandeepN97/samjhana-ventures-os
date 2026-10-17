@@ -14,7 +14,7 @@ export default function LedgerPageHeader({ title }) {
   };
 
   return (
-    <header className="bg-[#17263d] text-white">
+    <header className="bg-core-800 text-white">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-3 px-4 md:min-h-[128px] md:px-7 lg:px-8 xl:min-h-[76px]">
         <div className="flex min-w-0 items-center gap-3">
           <button

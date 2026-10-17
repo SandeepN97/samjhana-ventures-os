@@ -75,7 +75,7 @@ function TrendCopy({ change, previousLabel, isNepali }) {
   const amount = isNepali ? toNepaliDigits(Math.abs(change)) : Math.abs(change);
 
   return (
-    <p className={`mt-2 flex items-start gap-1 text-[10px] font-bold leading-4 sm:mt-3 sm:items-center sm:gap-1.5 sm:text-sm md:text-xl md:leading-7 xl:text-sm xl:leading-normal ${positive ? 'text-emerald-700' : 'text-rose-700'}`}>
+    <p className={`mt-2 flex items-start gap-1 text-[10px] font-bold leading-4 sm:mt-3 sm:items-center sm:gap-1.5 sm:text-sm md:text-xl md:leading-7 xl:text-sm xl:leading-normal ${positive ? 'text-ev-700' : 'text-loans-700'}`}>
       <Icon className="mt-0.5 h-3 w-3 shrink-0 sm:mt-0 sm:h-4 sm:w-4 md:h-6 md:w-6 xl:h-4 xl:w-4" aria-hidden="true" />
       {isNepali
         ? `${previousLabel} भन्दा ${amount}% ${positive ? 'बढी' : 'कम'} आम्दानी`
@@ -120,7 +120,7 @@ function MoneySummary({
         {canViewProfit ? (
           <div className="p-3 sm:p-6 md:p-8 xl:p-6">
             <p className="text-xs font-bold text-core-500 sm:text-sm md:text-xl xl:text-sm">{isNepali ? 'कुल नाफा' : 'Gross profit'}</p>
-            <p className={`mt-1 whitespace-nowrap text-xl font-bold tracking-[-0.035em] sm:mt-2 sm:text-[40px] md:text-5xl xl:text-[40px] ${totalProfit < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+            <p className={`mt-1 whitespace-nowrap text-xl font-bold tracking-[-0.035em] sm:mt-2 sm:text-[40px] md:text-5xl xl:text-[40px] ${totalProfit < 0 ? 'text-loans-700' : 'text-ev-700'}`}>
               {money(totalProfit, isNepali)}
             </p>
             <p className="mt-2 text-[10px] leading-4 text-core-500 sm:text-xs md:text-base md:leading-6 xl:text-xs xl:leading-4">{isNepali ? 'बिक्रीबाट प्रत्यक्ष लागत घटाएपछि' : 'Sales minus known direct costs'}</p>
@@ -134,13 +134,13 @@ function MoneySummary({
 function ReviewAction({ count, onOpen, isNepali }) {
   if (count <= 0) {
     return (
-      <div className="flex min-h-[88px] items-center gap-4 rounded-2xl bg-emerald-50 px-5 py-4 text-emerald-950 ring-1 ring-inset ring-emerald-200">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+      <div className="flex min-h-[88px] items-center gap-4 rounded-2xl bg-ev-50 px-5 py-4 text-ev-950 ring-1 ring-inset ring-ev-200">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ev-600 text-white">
           <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
         </span>
         <div>
           <p className="font-bold">{isNepali ? 'सबै समीक्षा सकियो' : 'Everything is reviewed'}</p>
-          <p className="mt-0.5 text-sm text-emerald-800">{isNepali ? 'अहिले तपाईंको स्वीकृति चाहिने केही छैन।' : 'Nothing is waiting for your approval.'}</p>
+          <p className="mt-0.5 text-sm text-ev-800">{isNepali ? 'अहिले तपाईंको स्वीकृति चाहिने केही छैन।' : 'Nothing is waiting for your approval.'}</p>
         </div>
       </div>
     );
@@ -187,7 +187,7 @@ function RevenueChart({ rows, period, change, previousLabel, loading, isNepali }
           </p>
         </div>
         {change != null ? (
-          <div className={`flex items-center gap-1.5 text-sm font-bold md:text-xl xl:text-sm ${change >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+          <div className={`flex items-center gap-1.5 text-sm font-bold md:text-xl xl:text-sm ${change >= 0 ? 'text-ev-700' : 'text-loans-700'}`}>
             {change >= 0 ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownRight className="h-5 w-5" />}
             <span>{isNepali ? toNepaliDigits(Math.abs(change)) : Math.abs(change)}%</span>
             <span className="font-medium text-core-500">{isNepali ? previousLabel : `vs ${previousLabel.toLowerCase()}`}</span>

@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-[#f4f3ef] pb-20 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-0">
+    <div className="min-h-screen bg-gray-100 pb-20 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-0">
       <LedgerPageHeader title={isNepali ? 'व्यापार सारांश' : 'Business Summary'} />
 
       {/* Period Selector */}

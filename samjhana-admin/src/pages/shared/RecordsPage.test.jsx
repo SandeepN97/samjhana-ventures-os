@@ -66,8 +66,8 @@ describe('RecordsPage ledger', () => {
     renderWithProviders(<RecordsPage />);
 
     expect(await screen.findByText('Rental Home')).toBeInTheDocument();
-    expect(screen.getByText('+रु 15,000')).toHaveClass('text-emerald-700');
-    expect(screen.getByText('−रु 9,000')).toHaveClass('text-rose-700');
+    expect(screen.getByText('+रु 15,000')).toHaveClass('text-ev-700');
+    expect(screen.getByText('−रु 9,000')).toHaveClass('text-loans-700');
     expect(screen.getByText('Payment')).toBeInTheDocument();
     expect(screen.getByText('Purchase')).toBeInTheDocument();
     expect(screen.getByText('Showing 4 of 4 records')).toBeInTheDocument();

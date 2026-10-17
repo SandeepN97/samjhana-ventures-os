@@ -42,7 +42,7 @@ const startOfMonth = () => {
 
 const BUSINESS_ICONS = {
   petrol: { icon: Fuel, color: 'bg-petrol-500', dot: 'bg-petrol-500', label: 'Petrol', labelNe: 'पेट्रोल' },
-  diesel: { icon: Droplet, color: 'bg-yellow-600', dot: 'bg-yellow-600', label: 'Diesel', labelNe: 'डिजेल' },
+  diesel: { icon: Droplet, color: 'bg-beekeeping-600', dot: 'bg-beekeeping-600', label: 'Diesel', labelNe: 'डिजेल' },
   ev: { icon: Zap, color: 'bg-ev-500', dot: 'bg-ev-500', label: 'EV', labelNe: 'EV' },
   furniture: { icon: Sofa, color: 'bg-furniture-500', dot: 'bg-furniture-500', label: 'Furniture', labelNe: 'फर्निचर' },
   beekeeping: { icon: Hexagon, color: 'bg-beekeeping-500', dot: 'bg-beekeeping-500', label: 'Beekeeping', labelNe: 'मौरीपालन' },
@@ -161,8 +161,8 @@ export default function RecordsPage() {
   }, [filteredTransactions]);
 
   const getStatusStyle = (status) => {
-    if (status === 'APPROVED') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-    if (status === 'REJECTED') return 'bg-rose-50 text-rose-700 ring-rose-200';
+    if (status === 'APPROVED') return 'bg-ev-50 text-ev-700 ring-ev-200';
+    if (status === 'REJECTED') return 'bg-loans-50 text-loans-700 ring-loans-200';
     return 'bg-amber-50 text-amber-800 ring-amber-200';
   };
 
@@ -180,7 +180,7 @@ export default function RecordsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f4f3ef] pb-24 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-8">
+    <div className="min-h-screen bg-gray-100 pb-24 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-8">
       <LedgerPageHeader title={t('records.title')} />
 
       <main className="mx-auto max-w-7xl px-4 py-5 md:px-5 lg:px-8 lg:py-8">
@@ -345,7 +345,7 @@ export default function RecordsPage() {
                     const paymentMethod = transaction.customFields?.paymentMethod?.toUpperCase();
                     const moneyIn = MONEY_IN_TYPES.has(transaction.transactionType);
                     const moneyOut = MONEY_OUT_TYPES.has(transaction.transactionType);
-                    const amountTone = moneyIn ? 'text-emerald-700' : moneyOut ? 'text-rose-700' : 'text-core-900';
+                    const amountTone = moneyIn ? 'text-ev-700' : moneyOut ? 'text-loans-700' : 'text-core-900';
                     const amountPrefix = moneyIn ? '+' : moneyOut ? '−' : '';
                     const businessName = transaction.businessCode === 'petrol' && fuelType
                       ? (fuelType === 'petrol' ? t('petrol.petrol') : t('petrol.diesel'))
@@ -378,9 +378,9 @@ export default function RecordsPage() {
                           {transaction.notes ? <p className="mt-2 text-sm italic text-core-500">{transaction.notes}</p> : null}
 
                           {transaction.status === 'REJECTED' && transaction.reviewNotes ? (
-                            <div className="mt-3 rounded-lg bg-rose-50 p-3 ring-1 ring-inset ring-rose-200">
-                              <p className="text-xs font-bold text-rose-700">{t('records.rejectionReason')}</p>
-                              <p className="mt-1 text-sm text-rose-800">{transaction.reviewNotes}</p>
+                            <div className="mt-3 rounded-lg bg-loans-50 p-3 ring-1 ring-inset ring-loans-200">
+                              <p className="text-xs font-bold text-loans-700">{t('records.rejectionReason')}</p>
+                              <p className="mt-1 text-sm text-loans-800">{transaction.reviewNotes}</p>
                             </div>
                           ) : null}
 
@@ -419,7 +419,7 @@ export default function RecordsPage() {
 function PaymentMethod({ method, t }) {
   const isCash = method === 'CASH';
   return (
-    <span className={`ml-2 inline-flex rounded-md px-2 py-0.5 text-xs font-bold ${isCash ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+    <span className={`ml-2 inline-flex rounded-md px-2 py-0.5 text-xs font-bold ${isCash ? 'bg-ev-50 text-ev-700' : 'bg-blue-50 text-blue-700'}`}>
       {isCash ? t('common.cash') : t('common.bank')}
     </span>
   );
