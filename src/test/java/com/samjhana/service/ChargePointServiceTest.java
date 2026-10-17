@@ -7,8 +7,10 @@ import com.samjhana.entity.User;
 import com.samjhana.exception.ResourceNotFoundException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.ChargePointRepository;
+import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -43,6 +45,7 @@ class ChargePointServiceTest {
     @Mock EvLiveWebSocketHandler liveEvents;
     @Mock PasswordEncoder passwordEncoder;
     @Mock AuditLogRepository auditLogRepository;
+    @Mock OcppConnectionRegistry connectionRegistry;
     @InjectMocks ChargePointService chargePointService;
 
     private ChargePoint chargePoint(String code, String model, String kw, int order) {
@@ -217,6 +220,47 @@ class ChargePointServiceTest {
         assertFalse(secret.contains("="));
         assertEquals("hash(" + secret + ")", point.getOcppAuthSecretHash());
         verify(auditLogRepository).save(any(AuditLog.class));
+    }
+
+    @Test
+    void shouldCloseTheChargersConnection_onlyAfterTheNewSecretIsCommitted() {
+        ChargePoint point = plainCharger();
+        when(chargePointRepository.findById(point.getId())).thenReturn(Optional.of(point));
+        when(passwordEncoder.encode(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            chargePointService.rotateSecret(point.getId(), admin());
+
+            verify(connectionRegistry, never()).disconnect(anyString(), any());   // not before the new secret is saved for good
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            ArgumentCaptor<CloseStatus> status = ArgumentCaptor.forClass(CloseStatus.class);
+            verify(connectionRegistry).disconnect(eq("HD-D180-CC-01"), status.capture());
+            assertEquals(1008, status.getValue().getCode());
+            assertEquals("credentials changed", status.getValue().getReason());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void shouldCloseTheChargersConnectionAtOnce_whenThereIsNoSurroundingTransaction() {
+        ChargePoint point = plainCharger();
+        when(chargePointRepository.findById(point.getId())).thenReturn(Optional.of(point));
+        when(passwordEncoder.encode(anyString())).thenAnswer(inv -> inv.getArgument(0));
+
+        chargePointService.rotateSecret(point.getId(), admin());
+
+        verify(connectionRegistry).disconnect(eq("HD-D180-CC-01"), any(CloseStatus.class));
+    }
+
+    @Test
+    void shouldNotCloseAnyConnection_whenTheChargerToRotateIsUnknown() {
+        UUID unknown = UUID.randomUUID();
+        when(chargePointRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> chargePointService.rotateSecret(unknown, admin()));
+
+        verify(connectionRegistry, never()).disconnect(anyString(), any());
     }
 
     @Test
