@@ -64,7 +64,11 @@ describe('WebsiteContentPage', () => {
     expect(await screen.findByLabelText('Phone number')).toHaveValue('+977 1');
     expect(screen.getByLabelText('Fuel & EV hours (e.g. 6am – 9pm)')).toHaveValue('6am – 9pm');
     expect(screen.getByRole('navigation', { name: 'Choose an area to edit' })).toBeInTheDocument();
-    expect(screen.getByText('2 sections')).toBeInTheDocument();
+    // The chooser already says which area is open, so the area name and count are not repeated under it.
+    expect(screen.queryByText('2 sections')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Contact & hours' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contact details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Opening hours' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Online orders/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Restaurant menu/ })).toHaveAttribute('href', '/restaurant-menu');
     expect(api.get).not.toHaveBeenCalledWith('/api/shop-orders/summary');
@@ -89,7 +93,7 @@ describe('WebsiteContentPage', () => {
     api.put.mockImplementation((url, body) => Promise.resolve({ data: { value: body } }));
     renderWithProviders(<WebsiteContentPage />);
     await userEvent.click((await screen.findAllByRole('button', { name: 'Shop & delivery' }))[0]);
-    expect(screen.getByText('1 section')).toBeInTheDocument();
+    expect(screen.queryByText('1 section')).not.toBeInTheDocument();
     const fee = await screen.findByLabelText('Delivery fee (Rs)');
     await userEvent.clear(fee);
     await userEvent.type(fee, '200');
@@ -171,7 +175,20 @@ describe('WebsiteContentPage', () => {
     expect(await screen.findByLabelText('फोन नम्बर')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'सम्पादन गर्ने भाग छान्नुहोस्' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'संपर्क र समय' })[0]).toBeInTheDocument();
-    expect(screen.getByText('२ खण्ड')).toBeInTheDocument();
+    expect(screen.queryByText('२ खण्ड')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /रेस्टुरेन्ट मेनु/ })).toBeInTheDocument();
+  });
+
+  it('still names the area and counts its sections on a page that has only one area', async () => {
+    renderWithProviders(<WebsiteContentPage only={['contact']} embedded />);
+    expect(await screen.findByLabelText('Phone number')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Contact & hours' })).toBeInTheDocument();
+    expect(screen.getByText('2 sections')).toBeInTheDocument();
+  });
+
+  it('counts the sections in Nepali on a page that has only one area', async () => {
+    renderWithProviders(<WebsiteContentPage only={['contact']} embedded />, { locale: 'ne' });
+    expect(await screen.findByLabelText('फोन नम्बर')).toBeInTheDocument();
+    expect(screen.getByText('२ खण्ड')).toBeInTheDocument();
   });
 });
