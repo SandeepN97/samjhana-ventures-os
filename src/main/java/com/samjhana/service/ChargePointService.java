@@ -70,11 +70,16 @@ public class ChargePointService {
     @Transactional
     public void recordBoot(String code, String serialNumber) {
         ChargePoint point = find(code);
-        if (serialNumber != null && !serialNumber.isBlank()) {
-            if (!serialNumber.equals(point.getSerialNumber())) {
+        if (serialNumber != null && !serialNumber.isBlank() && !serialNumber.equals(point.getSerialNumber())) {
+            if (chargePointRepository.existsBySerialNumberAndIdNot(serialNumber, point.getId())) {
+                // The serial column is unique: writing it would make the database refuse the whole boot (finding D-05). It is
+                // only a label, so the boot goes on and the first charger keeps it.
+                LIFECYCLE.warn("CHARGE POINT {} reported serial number {}, which another charge point already holds: "
+                        + "not stored, keeping {}", code, serialNumber, point.getSerialNumber());
+            } else {
                 LIFECYCLE.info("CHARGE POINT {} serial_number: {} -> {}", code, point.getSerialNumber(), serialNumber);
+                point.setSerialNumber(serialNumber);
             }
-            point.setSerialNumber(serialNumber);
         }
         logConnection(point, ChargePoint.ConnectionStatus.ONLINE, "boot");
         point.setConnectionStatus(ChargePoint.ConnectionStatus.ONLINE);

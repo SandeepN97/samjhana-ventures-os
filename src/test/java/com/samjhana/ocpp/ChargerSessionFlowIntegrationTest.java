@@ -650,6 +650,86 @@ class ChargerSessionFlowIntegrationTest {
         assertThat(unsupported.get(2).asText()).isEqualTo("NotSupported");
     }
 
+    // ------------------------------------------------------------------ finding D-05: what a charger may make the app store
+
+    @Test
+    void shouldAnswerWithAnErrorAndKeepTheStoredStatus_whenAChargerSendsAnInvalidConnectorStatus() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);          // stores "Available"
+        assertThat(connectorStatusOf(CHARGER_1)).isEqualTo("Available");
+
+        JsonNode reply = charger.call("StatusNotification", statusPayload("X".repeat(200)));
+
+        assertThat(reply.get(0).asInt()).isEqualTo(4);
+        assertThat(reply.get(2).asText()).isEqualTo("PropertyConstraintViolation");
+        assertThat(connectorStatusOf(CHARGER_1)).isEqualTo("Available");
+        // the connection is still open and the charger carries on as normal
+        assertThat(charger.session.isOpen()).isTrue();
+        assertThat(charger.call("Heartbeat", mapper.createObjectNode()).get(0).asInt()).isEqualTo(3);
+        assertThat(charger.call("StatusNotification", statusPayload("Occupied")).get(0).asInt()).isEqualTo(3);
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(connectorStatusOf(CHARGER_1)).isEqualTo("Occupied"));
+    }
+
+    @Test
+    void shouldAcceptTheBootAndKeepTheOtherChargersSerial_whenTwoChargersReportTheSameSerial() throws Exception {
+        connectAndBoot(CHARGER_1);                                     // CHARGER_1 now holds "SN-" + CHARGER_1
+        SimulatedCharger second = connect(CHARGER_2, ocppProperties.secretFor(CHARGER_2));
+        ObjectNode boot = mapper.createObjectNode();
+        boot.put("reason", "PowerUp");
+        boot.putObject("chargingStation").put("model", "TEST").put("vendorName", "Sim").put("serialNumber", "SN-" + CHARGER_1);
+
+        JsonNode reply = second.call("BootNotification", boot);
+
+        assertThat(reply.get(0).asInt()).isEqualTo(3);
+        assertThat(reply.get(2).get("status").asText()).isEqualTo("Accepted");
+        assertThat(serialOf(CHARGER_1)).isEqualTo("SN-" + CHARGER_1);
+        assertThat(serialOf(CHARGER_2)).isNotEqualTo("SN-" + CHARGER_1);
+        assertThat(second.session.isOpen()).isTrue();
+        assertThat(second.call("Heartbeat", mapper.createObjectNode()).get(0).asInt()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldAcceptTheBootAndStoreNoSerial_whenTheSerialIsTooLongOrHasOddCharacters() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String before = serialOf(CHARGER_1);
+
+        for (String serial : new String[]{"S".repeat(26), "has a space", "semi;colon"}) {
+            ObjectNode boot = mapper.createObjectNode();
+            boot.put("reason", "PowerUp");
+            boot.putObject("chargingStation").put("model", "TEST").put("vendorName", "Sim").put("serialNumber", serial);
+            JsonNode reply = charger.call("BootNotification", boot);
+
+            assertThat(reply.get(0).asInt()).as(serial).isEqualTo(3);
+            assertThat(reply.get(2).get("status").asText()).as(serial).isEqualTo("Accepted");
+            assertThat(serialOf(CHARGER_1)).as(serial).isEqualTo(before);
+        }
+        assertThat(charger.session.isOpen()).isTrue();
+    }
+
+    @Test
+    void shouldAnswerWithAnErrorAndCreateNoSession_whenATransactionIdIsLongerThan36() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        long before = chargeSessionRepository.count();
+
+        JsonNode reply = charger.call("TransactionEvent", txEvent("Started", 0, "T".repeat(37), 10, 0));
+
+        assertThat(reply.get(0).asInt()).isEqualTo(4);
+        assertThat(reply.get(2).asText()).isEqualTo("PropertyConstraintViolation");
+        assertThat(chargeSessionRepository.count()).isEqualTo(before);
+        assertThat(charger.session.isOpen()).isTrue();
+    }
+
+    @Test
+    void shouldStillRecordTheFailedStart_whenTheChargersErrorTextIsVeryLong() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 4 PA 3334", 80).get("id").asText();
+
+        charger.replyError(charger.awaitCall("RequestStartTransaction"), "GenericError", "E".repeat(5000));
+
+        awaitStatus(id, "FAILED");
+        assertThat(session(id).get("statusMessage").asText()).startsWith("E".repeat(200)).hasSizeLessThanOrEqualTo(230);
+        assertThat(get("/api/ev/sessions/active").getBody().size()).isZero();
+    }
+
     @Test
     void shouldPushLiveEventsToKiosk_whenSessionAndChargerChange() throws Exception {
         KioskListener kiosk = connectKiosk(token);
@@ -1102,6 +1182,14 @@ class ChargerSessionFlowIntegrationTest {
                 () -> assertThat(session(id).get("status").asText()).isEqualTo(status));
     }
 
+    private String connectorStatusOf(String code) {
+        return chargePointRepository.findByCodeAndDeletedAtIsNull(code).orElseThrow().getConnectorStatus();
+    }
+
+    private String serialOf(String code) {
+        return chargePointRepository.findByCodeAndDeletedAtIsNull(code).orElseThrow().getSerialNumber();
+    }
+
     private String chargerStatus(String code) {
         for (JsonNode point : get("/api/charge-points").getBody()) {
             if (code.equals(point.get("code").asText())) return point.get("connectionStatus").asText();
@@ -1256,6 +1344,12 @@ class ChargerSessionFlowIntegrationTest {
         JsonNode awaitCall(String action) throws Exception {
             return awaitFrame(frame -> frame.get(0).asInt() == 2 && action.equals(frame.get(2).asText()),
                     "CSMS call " + action);
+        }
+
+        void replyError(JsonNode csmsCall, String errorCode, String description) throws Exception {
+            session.sendMessage(new TextMessage(mapper.createArrayNode()
+                    .add(4).add(csmsCall.get(1).asText()).add(errorCode).add(description)
+                    .add(mapper.createObjectNode()).toString()));
         }
 
         void reply(JsonNode csmsCall, String status) throws Exception {

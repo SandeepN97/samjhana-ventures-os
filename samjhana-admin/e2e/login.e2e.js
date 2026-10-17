@@ -11,7 +11,7 @@ test.describe('admin authentication', () => {
 
   test('shows a generic error for invalid credentials without creating a session', async ({ page }) => {
     await page.goto('/login');
-    await page.getByRole('button', { name: 'EN' }).click();
+    await page.getByRole('button', { name: 'English', exact: true }).click();
     await page.locator('input[autocomplete="username"]').fill('not-a-real-user');
     await page.locator('input[autocomplete="current-password"]').fill('invalid-password');
     await page.getByRole('button', { name: 'Login' }).click();
@@ -24,7 +24,7 @@ test.describe('admin authentication', () => {
 
   test('logs in against the disposable seeded admin, then logs out and clears credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByRole('button', { name: 'EN' }).click();
+    await page.getByRole('button', { name: 'English', exact: true }).click();
     await page.locator('input[autocomplete="username"]').fill('admin');
     await page.locator('input[autocomplete="current-password"]').fill('admin');
     await page.getByRole('button', { name: 'Login' }).click();
