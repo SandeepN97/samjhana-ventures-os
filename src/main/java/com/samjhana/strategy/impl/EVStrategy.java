@@ -3,6 +3,7 @@ package com.samjhana.strategy.impl;
 import com.samjhana.entity.BusinessUnit;
 import com.samjhana.entity.Transaction;
 import com.samjhana.strategy.BusinessCalculationStrategy;
+import com.samjhana.util.SafeDecimal;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -181,9 +182,10 @@ public class EVStrategy implements BusinessCalculationStrategy {
     private BigDecimal getBigDecimal(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) return null;
-        if (value instanceof BigDecimal bd) return bd;
-        if (value instanceof Number num) return BigDecimal.valueOf(num.doubleValue());
-        if (value instanceof String str) { try { return new BigDecimal(str); } catch (NumberFormatException e) { return null; } }
+        // Numbers from outside are read through SafeDecimal: one with an extreme exponent counts as missing (G-01, D-01).
+        if (value instanceof BigDecimal bd) return SafeDecimal.limited(bd);
+        if (value instanceof Number num) return SafeDecimal.limited(BigDecimal.valueOf(num.doubleValue()));
+        if (value instanceof String str) return SafeDecimal.parse(str);
         return null;
     }
 }

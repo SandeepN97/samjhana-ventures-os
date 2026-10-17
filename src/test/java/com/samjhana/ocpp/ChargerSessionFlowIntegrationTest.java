@@ -98,6 +98,8 @@ class ChargerSessionFlowIntegrationTest {
     @Autowired TransactionRepository transactionRepository;
     @Autowired OcppProperties ocppProperties;
     @Autowired OcppAuditWriter auditWriter;
+    @Autowired com.samjhana.repository.AuditLogRepository auditLogRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     @Autowired LockEvidenceTracker lockEvidence;
     @Autowired OcppAuditRetention retention;
     @Autowired OcppMessageLogRepository messageLogs;
@@ -225,6 +227,36 @@ class ChargerSessionFlowIntegrationTest {
 
         // The charger is free again for the next customer.
         assertThat(get("/api/ev/sessions/active").getBody().size()).isZero();
+    }
+
+    // ---- finding P1b-08: who stopped a charge and who sent the unlock is on record ----
+
+    @Test
+    void shouldRecordWhoStoppedTheChargeAndWhoSentTheUnlock() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        String id = startSession(CHARGER_1, "BA 7 PA 0077", 80, dfacId).get("id").asText();
+        charger.reply(charger.awaitCall("RequestStartTransaction"), "Accepted");
+        charger.call("TransactionEvent", txEvent("Started", 0, "TX-AUD", 32, 0));
+        awaitStatus(id, "ACTIVE");
+
+        assertThat(post("/api/ev/sessions/" + id + "/stop", null).getStatusCode()).isEqualTo(HttpStatus.OK);
+        charger.reply(charger.awaitCall("RequestStopTransaction"), "Accepted");
+        charger.call("TransactionEvent", txEvent("Ended", 1, "TX-AUD", 40, 1_000));
+        awaitStatus(id, "AWAITING_PAYMENT");
+        assertThat(post("/api/ev/sessions/" + id + "/mark-paid", Map.of("method", "CASH", "amount", 112)).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        charger.awaitCall("UnlockConnector");   // not answered yet: the session waits for the unlock
+        assertThat(post("/api/ev/sessions/" + id + "/unlock", null).getStatusCode()).isEqualTo(HttpStatus.OK);
+        charger.awaitCall("UnlockConnector");
+
+        List<com.samjhana.entity.AuditLog> rows = auditLogRepository.findAll().stream()
+                .filter(a -> id.equals(String.valueOf(a.getEntityId())) && a.getAction() == com.samjhana.entity.AuditLog.AuditAction.UPDATE)
+                .toList();
+        assertThat(rows).extracting(com.samjhana.entity.AuditLog::getDescription).containsExactlyInAnyOrder(
+                "Stop requested by ev-flow-admin for charger " + CHARGER_1,
+                "Unlock requested by ev-flow-admin for charger " + CHARGER_1);
+        UUID adminId = userRepository.findByUsername("ev-flow-admin").orElseThrow().getId();
+        assertThat(rows).allSatisfy(r -> assertThat(r.getUser().getId()).isEqualTo(adminId));
     }
 
     @Test
@@ -943,6 +975,81 @@ class ChargerSessionFlowIntegrationTest {
                     .contains("ocpp_message_log=").contains("% of the 500 MB database budget");
             assertThat(capture.matching("OCPP retention: deleted")).hasSize(1);
         }
+    }
+
+    // ------------------------------------------------------------------ finding P1a-03: a new secret cuts off the old connection
+
+    @Test
+    void shouldCloseTheChargersOpenConnectionAndRefuseItsOldSecret_whenAnAdminRotatesTheSecret() throws Exception {
+        String originalHash = chargePointRepository.findByCodeAndDeletedAtIsNull(CHARGER_1).orElseThrow().getOcppAuthSecretHash();
+        String oldSecret = ocppProperties.secretFor(CHARGER_1);
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        try {
+            ResponseEntity<JsonNode> rotated = post("/api/charge-points/" + chargePointId(CHARGER_1) + "/rotate-secret", Map.of());
+            assertThat(rotated.getStatusCode().value()).isEqualTo(200);
+            String newSecret = rotated.getBody().get("secret").asText();
+
+            // the connection that was opened with the old secret is closed by the server
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(charger.session.isOpen()).isFalse());
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE"));
+            // the old secret no longer gets in, the new one does
+            assertThatThrownBy(() -> connect(CHARGER_1, oldSecret)).isInstanceOf(ExecutionException.class);
+            SimulatedCharger again = connect(CHARGER_1, newSecret);
+            assertThat(again.session.isOpen()).isTrue();
+        } finally {
+            restoreSecretHash(CHARGER_1, originalHash);
+        }
+    }
+
+    @Test
+    void shouldCloseOnlyTheRotatedChargersConnection_andLeaveTheOtherChargerOnline() throws Exception {
+        String originalHash = chargePointRepository.findByCodeAndDeletedAtIsNull(CHARGER_1).orElseThrow().getOcppAuthSecretHash();
+        SimulatedCharger first = connectAndBoot(CHARGER_1);
+        SimulatedCharger second = connectAndBoot(CHARGER_2);
+        try {
+            post("/api/charge-points/" + chargePointId(CHARGER_1) + "/rotate-secret", Map.of());
+
+            await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(first.session.isOpen()).isFalse());
+            assertThat(second.session.isOpen()).isTrue();
+            assertThat(chargerStatus(CHARGER_2)).isEqualTo("ONLINE");
+        } finally {
+            restoreSecretHash(CHARGER_1, originalHash);
+        }
+    }
+
+    @Test
+    void shouldLeaveTheConnectionOpen_whenSomeoneWithoutAdminRightsTriesToRotateTheSecret() throws Exception {
+        SimulatedCharger charger = connectAndBoot(CHARGER_1);
+        User staff = userRepository.findByUsername("ev-flow-staff").orElseGet(() -> userRepository.save(User.builder()
+                .username("ev-flow-staff").passwordHash(passwordEncoder.encode("not-used")).fullName("EV Flow Staff")
+                .fullNameNepali("कर्मचारी").role(User.UserRole.STAFF).build()));
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwtUtil.generateToken(staff));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<JsonNode> refused = rest.exchange("/api/charge-points/" + chargePointId(CHARGER_1) + "/rotate-secret",
+                HttpMethod.POST, new HttpEntity<>(Map.of(), headers), JsonNode.class);
+
+        assertThat(refused.getStatusCode().value()).isEqualTo(403);
+        assertThat(charger.session.isOpen()).isTrue();
+        assertThat(chargerStatus(CHARGER_1)).isEqualTo("ONLINE");
+    }
+
+    /**
+     * Puts the charger's stored secret back, so the other tests (which connect with the configured secret) still get in.
+     * It waits until every socket is closed and both chargers are OFFLINE first, and then writes just that one column:
+     * a server thread that is still finishing a connect or disconnect would otherwise save its older copy of the whole
+     * row over the restored secret.
+     */
+    private void restoreSecretHash(String code, String hash) throws Exception {
+        for (WebSocketSession socket : sockets) {
+            if (socket.isOpen()) socket.close();
+        }
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(chargerStatus(CHARGER_1)).isEqualTo("OFFLINE");
+            assertThat(chargerStatus(CHARGER_2)).isEqualTo("OFFLINE");
+        });
+        jdbcTemplate.update("update charge_points set ocpp_auth_secret_hash = ? where code = ?", hash, code);
     }
 
     private void drainAuditQueue() {
