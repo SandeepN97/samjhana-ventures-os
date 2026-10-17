@@ -58,10 +58,48 @@ describe('DesktopShell', () => {
     renderShell();
     const menu = screen.getByRole('navigation', { name: 'Main menu' });
     expect(screen.getByText('page body')).toBeInTheDocument();
+    expect(screen.getByText('page body').parentElement).toHaveClass('desktop-main-content');
+    expect(screen.getByText('page body').parentElement.contains(menu.closest('aside'))).toBe(false);
     ['Home', 'Records', 'End of Day', 'Online Orders', 'Analytics', 'Website', 'Settings'].forEach((name) => {
       expect(within(menu).getByRole('link', { name: new RegExp(name) })).toBeInTheDocument();
     });
     expect(within(menu).getAllByRole('link').length).toBeGreaterThan(10);
+  });
+
+  it('collapses to a minimum-width icon rail and keeps language and logout available', async () => {
+    setDesktop(true);
+    asUser('ADMIN');
+    renderShell();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+
+    const sidebar = screen.getByTestId('desktop-sidebar');
+    const menu = screen.getByRole('navigation', { name: 'Main menu' });
+    const homeLink = within(menu).getByRole('link', { name: 'Home' });
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
+    expect(sidebar).toHaveClass('w-[76px]');
+    expect(screen.getByText('page body').parentElement.parentElement).toHaveClass('pl-[76px]');
+    expect(homeLink).toHaveAttribute('title', 'Home');
+    expect(within(homeLink).getByText('Home')).toHaveClass('sr-only');
+    expect(homeLink.querySelector('svg')).toHaveClass('h-5', 'w-5');
+    expect(screen.getByRole('button', { name: 'Switch language to Nepali' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument();
+    expect(localStorage.getItem('desktopSidebarCollapsed')).toBe('true');
+  });
+
+  it('restores the expanded sidebar from the saved preference and allows expanding it again', async () => {
+    setDesktop(true);
+    asUser('ADMIN');
+    localStorage.setItem('desktopSidebarCollapsed', 'true');
+    renderShell();
+
+    const sidebar = screen.getByTestId('desktop-sidebar');
+    expect(sidebar).toHaveClass('w-[76px]');
+    await userEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
+    expect(sidebar).toHaveClass('w-64');
+    expect(screen.getByText('page body').parentElement.parentElement).toHaveClass('pl-64');
+    expect(localStorage.getItem('desktopSidebarCollapsed')).toBe('false');
   });
 
   it('marks the page you are on, and keeps a business lit inside its own pages', () => {

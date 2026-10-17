@@ -299,12 +299,16 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20 font-['Red_Hat_Text',sans-serif] text-core-900 selection:bg-core-200 xl:pb-0">
-      <LedgerPageHeader title={isNepali ? 'व्यापार सारांश' : 'Business Summary'} />
+      <LedgerPageHeader title={isNepali ? 'व्यापार सारांश' : 'Business Summary'} hideWhenSidebarShows />
 
       {/* Period Selector */}
-      <div className="border-b border-core-200 bg-white">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-4 md:px-5 lg:px-8">
+        <section
+          className="relative rounded-2xl bg-white shadow-sm ring-1 ring-core-200/80"
+          aria-label={isNepali ? 'समय अवधि' : 'Time period'}
+        >
         {isStaff ? (
-          <p className="mx-auto max-w-7xl px-4 py-3 text-center text-sm text-core-500">{isNepali ? 'आजको सारांश' : "Today's Summary"}</p>
+          <p className="px-4 py-3 text-center text-sm text-core-500">{isNepali ? 'आजको सारांश' : "Today's Summary"}</p>
         ) : (
           <>
             <div className="mx-auto flex max-w-3xl gap-2 px-4 pb-2 pt-3 md:max-w-[795px] md:px-0 xl:max-w-3xl xl:px-4">
@@ -590,6 +594,7 @@ export default function AnalyticsPage() {
             </div>
           </>
         )}
+        </section>
       </div>
 
       {loading ? (

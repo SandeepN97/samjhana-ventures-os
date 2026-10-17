@@ -48,6 +48,13 @@ describe('End of Day, open day layout', () => {
   afterEach(() => { delete window.matchMedia; });
 
   describe('on a phone', () => {
+    it('uses a compact day switch instead of a full-width page header', async () => {
+      renderWithProviders(<DailyClosePage />);
+      const switcher = await screen.findByRole('group', { name: 'Reports' });
+      expect(within(switcher).getByRole('button', { name: 'End of Day' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    });
+
     it('leads with the dark total, then the businesses with their share', async () => {
       renderWithProviders(<DailyClosePage />);
       expect(await screen.findByText('Total Sales')).toBeInTheDocument();
@@ -78,6 +85,16 @@ describe('End of Day, open day layout', () => {
 
   describe('on a desktop', () => {
     beforeEach(() => setDesktop(true));
+
+    it('places the date and day switch directly above the closing panel', async () => {
+      renderWithProviders(<DailyClosePage />);
+      const panel = (await screen.findByRole('heading', { name: 'Close the day' })).closest('section');
+      const rail = panel.parentElement;
+      expect(within(rail).getByRole('group', { name: 'Date' })).toHaveTextContent('Today');
+      expect(within(rail).getByRole('group', { name: 'Date' })).toHaveTextContent('1 Kartik 2083');
+      expect(within(rail).getByRole('group', { name: 'Reports' })).toBeInTheDocument();
+      expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    });
 
     it('draws the sales as one panel with a share bar and a ruled table', async () => {
       renderWithProviders(<DailyClosePage />);
@@ -126,9 +143,12 @@ describe('End of Day, open day layout', () => {
     });
   });
 
-  it('shows the Nepali date beside the English one in the header', async () => {
+  it('groups the Nepali and English dates into a readable day card', async () => {
     renderWithProviders(<DailyClosePage />);
-    expect(await screen.findByText(/2026-10-18 · 1 Kartik 2083/)).toBeInTheDocument();
+    const date = await screen.findByRole('group', { name: 'Date' });
+    expect(within(date).getByText('Today')).toBeInTheDocument();
+    expect(within(date).getByText('1 Kartik 2083')).toBeInTheDocument();
+    expect(within(date).getByText('2026-10-18')).toHaveAttribute('datetime', '2026-10-18');
   });
 
   it('shows each review row on one line: time, what it was, who entered it, payment tag, amount', async () => {

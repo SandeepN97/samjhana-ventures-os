@@ -18,7 +18,7 @@ describe('Nepali typography', () => {
     });
   });
 
-  it('gives headings Yatra One and the rest Kalimati', () => {
+  it('keeps Yatra One and Kalimati as the established Nepali chrome fonts', () => {
     expect(css).toMatch(/--font-ne-heading:\s*'Yatra One'/);
     expect(css).toMatch(/--font-ne-body:\s*'Kalimati'/);
     const headings = rules.find(([selector]) => selector.includes('html[lang="ne"] h1'));
@@ -27,8 +27,32 @@ describe('Nepali typography', () => {
     ['button', 'input', 'select', 'textarea', 'Red_Hat_Text'].forEach((part) => expect(body[0]).toContain(part));
   });
 
+  it('uses Mukta only for desktop main content and restores the chrome fonts in top headers', () => {
+    expect(css).toMatch(/--font-ne-content:\s*'Mukta'/);
+    expect(css).toMatch(/@media\s*\(min-width:\s*1024px\)/);
+    const content = rules.find(([selector]) => selector.includes('html[lang="ne"] .desktop-main-content h1'));
+    expect(content[1]).toContain('var(--font-ne-content)');
+    const headerBody = rules.find(([selector]) => selector.includes('html[lang="ne"] .desktop-main-content header *'));
+    expect(headerBody[1]).toContain('var(--font-ne-body)');
+    const headerHeading = rules.find(([selector]) => selector.includes('html[lang="ne"] .desktop-main-content header h1'));
+    expect(headerHeading[1]).toContain('var(--font-ne-heading)');
+  });
+
+  it('increases the desktop Mukta scale while leaving top headers at their original size', () => {
+    const content = rules.find(([selector]) => selector === 'html[lang="ne"] .desktop-main-content');
+    expect(content[1]).toContain('--font-ne-content-scale: 1.08');
+    expect(content[1]).toContain('font-size: calc(1rem * var(--font-ne-content-scale))');
+    ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl', 'text-5xl'].forEach((size) => {
+      const rule = rules.find(([selector]) => selector === `html[lang="ne"] .desktop-main-content .${size}`);
+      expect(rule[1]).toContain('var(--font-ne-content-scale)');
+    });
+    const header = rules.find(([selector]) => selector === 'html[lang="ne"] .desktop-main-content header');
+    expect(header[1]).toContain('--font-ne-content-scale: 1');
+    expect(header[1]).toContain('font-size: 1rem');
+  });
+
   it('falls back to another Devanagari font and the system font if either fails to load', () => {
-    const vars = css.match(/--font-ne-(?:heading|body):[^;]+;/g).join(' ');
+    const vars = css.match(/--font-ne-(?:heading|body|content):[^;]+;/g).join(' ');
     expect(vars).toContain('Noto Sans Devanagari');
     expect(vars).toContain('system-ui');
   });

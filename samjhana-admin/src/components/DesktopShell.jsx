@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Globe,
   Home,
@@ -41,19 +43,29 @@ function currentUser() {
  */
 export default function DesktopShell({ children }) {
   const desktop = useDesktop();
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(
+    () => localStorage.getItem('desktopSidebarCollapsed') === 'true',
+  );
   if (!desktop) return children;
+
+  const toggleSidebar = () => {
+    const nextCollapsed = !sidebarCollapsed;
+    localStorage.setItem('desktopSidebarCollapsed', String(nextCollapsed));
+    setSidebarCollapsed(nextCollapsed);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
-      <Sidebar />
-      <div className="pl-64">
-        <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      <div className={`transition-[padding] duration-200 ease-out ${sidebarCollapsed ? 'pl-[76px]' : 'pl-64'}`}>
+        <div className="desktop-main-content mx-auto w-full max-w-[1400px]">{children}</div>
       </div>
     </div>
   );
 }
 
-function Sidebar() {
-  const { t } = useTranslation();
+function Sidebar({ collapsed, onToggle }) {
+  const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const user = currentUser();
   const canManage = user.role === 'ADMIN' || user.role === 'MANAGER';
@@ -71,21 +83,40 @@ function Sidebar() {
   ];
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-core-800 text-white">
-      <Link
-        to="/"
-        className="flex min-h-[64px] items-center px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
-      >
-        <Wordmark size="sm" />
-      </Link>
+    <aside
+      data-testid="desktop-sidebar"
+      data-collapsed={collapsed}
+      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-core-800 text-white transition-[width] duration-200 ease-out ${collapsed ? 'w-[76px]' : 'w-64'}`}
+    >
+      <div className={`flex min-h-[64px] items-center ${collapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
+        {!collapsed && (
+          <Link to="/" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white">
+            <Wordmark size="sm" />
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
+          title={collapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          {collapsed
+            ? <ChevronRight className="h-5 w-5" aria-hidden="true" />
+            : <ChevronLeft className="h-5 w-5" aria-hidden="true" />}
+        </button>
+      </div>
 
-      <nav aria-label={t('home.menuLabel')} className="flex-1 space-y-4 overflow-y-auto px-3 pb-3">
+      <nav
+        aria-label={t('home.menuLabel')}
+        className={`flex-1 space-y-4 overflow-y-auto pb-3 ${collapsed ? 'px-2' : 'px-3'}`}
+      >
         <ul>
-          <Item to="/" icon={Home} label={t('nav.home')} active={pathname === '/'} />
+          <Item to="/" icon={Home} label={t('nav.home')} active={pathname === '/'} collapsed={collapsed} />
         </ul>
 
         <section aria-labelledby="shell-businesses">
-          <h2 id="shell-businesses" className="px-3 pb-1 text-xs font-bold text-core-300">{t('home.businessesHeading')}</h2>
+          <h2 id="shell-businesses" className={`${collapsed ? 'sr-only' : 'px-3 pb-1 text-xs font-bold text-core-300'}`}>{t('home.businessesHeading')}</h2>
           <ul className="space-y-0.5">
             {businesses.map((b) => (
               <Item
@@ -95,34 +126,57 @@ function Sidebar() {
                 label={t(b.tKey)}
                 tile={unitTheme(b.unit).tile.split(' ')[0]}
                 active={startsWithAny(pathname, BUSINESS_PATHS[b.code] || [b.path])}
+                collapsed={collapsed}
               />
             ))}
           </ul>
         </section>
 
         <section aria-labelledby="shell-work">
-          <h2 id="shell-work" className="px-3 pb-1 text-xs font-bold text-core-300">{t('home.workHeading')}</h2>
+          <h2 id="shell-work" className={`${collapsed ? 'sr-only' : 'px-3 pb-1 text-xs font-bold text-core-300'}`}>{t('home.workHeading')}</h2>
           <ul className="space-y-0.5">
             {work.map((w) => (
-              <Item key={w.key} to={w.path} icon={w.icon} label={w.label} active={startsWithAny(pathname, w.match)} />
+              <Item key={w.key} to={w.path} icon={w.icon} label={w.label} active={startsWithAny(pathname, w.match)} collapsed={collapsed} />
             ))}
           </ul>
         </section>
       </nav>
 
-      <div className="space-y-2 border-t border-white/10 p-3">
-        <LanguageToggle className="w-full [&>button]:flex-1" />
-        <p className="flex items-center gap-2 px-1 text-sm font-semibold text-white/85">
-          <User className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">{user.fullName || user.username}</span>
-        </p>
-        <UserBar showName={false} className="w-full [&>button]:flex-1 [&>button]:justify-center" />
+      <div className={`border-t border-white/10 ${collapsed ? 'flex flex-col items-center gap-2 p-2' : 'space-y-2 p-3'}`}>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => {
+              const nextLanguage = i18n.language === 'ne' ? 'en' : 'ne';
+              i18n.changeLanguage(nextLanguage);
+              localStorage.setItem('preferredLanguage', nextLanguage);
+            }}
+            aria-label={i18n.language === 'ne' ? t('nav.switchToEnglish') : t('nav.switchToNepali')}
+            title={i18n.language === 'ne' ? t('nav.switchToEnglish') : t('nav.switchToNepali')}
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <Globe className="h-5 w-5" aria-hidden="true" />
+          </button>
+        ) : (
+          <LanguageToggle className="w-full [&>button]:flex-1" />
+        )}
+        {!collapsed && (
+          <p className="flex items-center gap-2 px-1 text-sm font-semibold text-white/85">
+            <User className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{user.fullName || user.username}</span>
+          </p>
+        )}
+        <UserBar
+          showName={false}
+          compact={collapsed}
+          className={collapsed ? 'w-full justify-center' : 'w-full [&>button]:flex-1 [&>button]:justify-center'}
+        />
       </div>
     </aside>
   );
 }
 
-function Item({ to, icon: Icon, label, active, tile }) {
+function Item({ to, icon: Icon, label, active, tile, collapsed }) {
   const ref = useRef(null);
   useEffect(() => {
     // A short window can hide the page you are on at the bottom of the menu; bring it into view.
@@ -135,14 +189,15 @@ function Item({ to, icon: Icon, label, active, tile }) {
         ref={ref}
         to={to}
         aria-current={active ? 'page' : undefined}
-        className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+        title={collapsed ? label : undefined}
+        className={`flex min-h-[44px] items-center rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${collapsed ? 'min-h-[48px] justify-center px-0' : 'gap-3 px-3'} ${
           active ? 'bg-white text-core-800' : 'text-white/85 hover:bg-white/10 hover:text-white'
         }`}
       >
-        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tile && !active ? `${tile} text-white` : active ? 'bg-core-100 text-core-800' : 'bg-white/10'}`}>
-          <Icon className="h-4 w-4" aria-hidden="true" />
+        <span className={`grid shrink-0 place-items-center rounded-lg ${collapsed ? 'h-10 w-10' : 'h-8 w-8'} ${tile && !active ? `${tile} text-white` : active ? 'bg-core-100 text-core-800' : 'bg-white/10'}`}>
+          <Icon className={collapsed ? 'h-5 w-5' : 'h-4 w-4'} aria-hidden="true" />
         </span>
-        <span className="truncate">{label}</span>
+        <span className={collapsed ? 'sr-only' : 'truncate'}>{label}</span>
       </Link>
     </li>
   );
