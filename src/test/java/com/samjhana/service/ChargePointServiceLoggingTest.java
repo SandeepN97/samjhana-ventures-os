@@ -1,6 +1,7 @@
 package com.samjhana.service;
 
 import com.samjhana.entity.ChargePoint;
+import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.ocpp.diag.LogCapture;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.ChargePointRepository;
@@ -29,7 +30,7 @@ class ChargePointServiceLoggingTest {
         when(repository.findByCodeAndDeletedAtIsNull("CP-1")).thenReturn(Optional.of(point));
         when(repository.save(any(ChargePoint.class))).thenAnswer(invocation -> invocation.getArgument(0));
         service = new ChargePointService(repository, mock(EvLiveWebSocketHandler.class), mock(PasswordEncoder.class),
-                mock(AuditLogRepository.class));
+                mock(AuditLogRepository.class), mock(OcppConnectionRegistry.class));
     }
 
     @Test
