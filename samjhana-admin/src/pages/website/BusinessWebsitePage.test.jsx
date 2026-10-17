@@ -30,7 +30,7 @@ describe('Website page tab inside a business', () => {
     expect(await screen.findByLabelText('Title, first line')).toHaveValue('Furniture for');
     expect(screen.getByRole('link', { name: 'Products' })).toHaveAttribute('href', '/furniture/inventory');
     expect(screen.queryByLabelText('Phone number')).toBeNull();           // the shared contact section is not here
-    expect(screen.queryByRole('tab')).toBeNull();                         // a single section needs no sub-tabs
+    expect(screen.queryByRole('navigation', { name: 'Choose an area to edit' })).toBeNull(); // one section needs no selector
   });
 
   it('saves the section it shows', async () => {
@@ -58,8 +58,8 @@ describe('Website page tab inside a business', () => {
   it('keeps these business pages out of the shared Website screen', async () => {
     renderWithProviders(<WebsiteContentPage />);
     await screen.findByLabelText('Phone number');
-    expect(screen.queryByRole('tab', { name: 'Furniture pages' })).toBeNull();
-    expect(screen.queryByRole('tab', { name: 'Beekeeping page' })).toBeNull();
-    expect(screen.getByRole('tab', { name: 'Shop & order page' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Furniture pages' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Beekeeping page' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Shop & order page' })).toBeInTheDocument();
   });
 });
