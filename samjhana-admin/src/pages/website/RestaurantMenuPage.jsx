@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   Edit2,
   Eye,
   EyeOff,
@@ -52,6 +53,7 @@ export default function RestaurantMenuPage() {
   const [actionError, setActionError] = useState(null);
   const [updatingAvailability, setUpdatingAvailability] = useState({});
   const [course, setCourse] = useState('ALL');
+  const [mobileCourseOpen, setMobileCourseOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
@@ -205,6 +207,7 @@ export default function RestaurantMenuPage() {
   const websiteCount = dishes.filter((d) => d.showOnWebsite !== false).length;
   const mealLabel = (m) => t(MEALS.find((x) => x.value === m)?.tKey || m);
   const courseLabel = (value) => t(COURSES.find((x) => x.value === value)?.tKey || value);
+  const selectedCourseCount = course === 'ALL' ? dishes.length : dishes.filter((dish) => dish.course === course).length;
 
   return (
     <div ref={pageRef} className="min-h-screen bg-slate-100 pb-24">
@@ -244,7 +247,48 @@ export default function RestaurantMenuPage() {
             <h2 id="current-menu-title" className="text-lg font-bold text-slate-900">{t('restAdmin.currentMenu')}</h2>
             {!loading && !loadError && <p className="text-sm text-slate-500">{t('restAdmin.showingCount', { shown: num(visible.length), total: num(dishes.length) })}</p>}
           </div>
-          <nav className="overflow-x-auto" aria-label={t('restAdmin.filterLabel')}>
+          <div className="md:hidden">
+            <button type="button" aria-haspopup="menu" aria-expanded={mobileCourseOpen} aria-controls="restaurant-course-filter-menu"
+              aria-label={`${t('restAdmin.filterLabel')}: ${courseLabel(course)}`} onClick={() => setMobileCourseOpen((open) => !open)}
+              className="flex min-h-[64px] w-full items-center gap-3 rounded-xl bg-slate-50 px-3 text-left outline-none ring-1 ring-inset ring-slate-300 transition hover:bg-white hover:ring-slate-400 focus-visible:ring-2 focus-visible:ring-core-600">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#e9efdf] text-[#6f591e]">
+                <Utensils className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-bold text-slate-500">{t('restAdmin.filterLabel')}</span>
+                <span className="mt-0.5 flex items-center gap-2 text-base font-bold text-slate-900">
+                  <span className="truncate">{courseLabel(course)}</span>
+                  <span className="text-sm tabular-nums text-slate-500">{num(selectedCourseCount)}</span>
+                </span>
+              </span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-slate-600 ring-1 ring-inset ring-slate-200">
+                <ChevronDown className={`h-5 w-5 transition-transform ${mobileCourseOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </span>
+            </button>
+
+            {mobileCourseOpen && (
+              <div id="restaurant-course-filter-menu" role="menu" aria-label={t('restAdmin.filterLabel')}
+                className="mt-2 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+                {COURSES.map((c) => {
+                  const count = c.value === 'ALL' ? dishes.length : dishes.filter((dish) => dish.course === c.value).length;
+                  const selected = course === c.value;
+                  return (
+                    <button type="button" role="menuitemradio" aria-checked={selected} key={c.value}
+                      onClick={() => { setCourse(c.value); setMobileCourseOpen(false); }}
+                      className={`flex min-h-[56px] w-full items-center gap-3 px-3 text-left transition focus:outline-none focus-visible:bg-core-50 ${selected ? 'bg-core-50' : 'hover:bg-slate-50'}`}>
+                      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selected ? 'bg-core-900 text-amber-300' : 'bg-[#f2f5ec] text-[#6f591e]'}`}>
+                        <Utensils className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </span>
+                      <span className={`min-w-0 flex-1 truncate text-sm font-bold ${selected ? 'text-core-900' : 'text-slate-700'}`}>{t(c.tKey)}</span>
+                      <span className="min-w-8 rounded-lg bg-slate-100 px-2 py-1 text-center text-xs font-bold tabular-nums text-slate-600">{num(count)}</span>
+                      {selected && <Check className="h-5 w-5 shrink-0 text-core-700" aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <nav className="hidden md:block" aria-label={t('restAdmin.filterLabel')}>
             <div className="flex min-w-max gap-2">
               {COURSES.map((c) => {
                 const count = c.value === 'ALL' ? dishes.length : dishes.filter((dish) => dish.course === c.value).length;

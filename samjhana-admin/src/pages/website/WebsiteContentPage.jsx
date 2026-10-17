@@ -240,6 +240,7 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
   const [content, setContent] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [tabId, setTabId] = useState(visibleTabs[0].id);
+  const [mobileTabsOpen, setMobileTabsOpen] = useState(false);
   const [status, setStatus] = useState({});      // key -> { state: 'dirty'|'saving'|'saved'|'error', message }
 
   const load = async () => {
@@ -307,22 +308,67 @@ export default function WebsiteContentPage({ only = null, embedded = false }) {
           </div>
 
           <div className={`${embedded ? 'px-4 sm:px-6' : ''} mt-5 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-6`}>
-            {visibleTabs.length > 1 && <aside className="mb-4 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200 lg:sticky lg:top-4 lg:mb-0 lg:p-3">
-              <p className="hidden px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400 lg:block">{t('siteEditor.editArea')}</p>
-              <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0" aria-label={t('siteEditor.editArea')}>
-                {visibleTabs.map((x) => {
-                  const TabIcon = TAB_ICONS[x.id] || Globe;
-                  const selected = tabId === x.id;
-                  return (
-                    <button type="button" key={x.id} aria-pressed={selected} onClick={() => setTabId(x.id)}
-                      className={`flex min-h-[48px] min-w-max items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 lg:w-full ${selected ? 'bg-core-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
-                      <TabIcon className={`h-5 w-5 shrink-0 ${selected ? 'text-amber-300' : 'text-slate-400'}`} aria-hidden="true" />
-                      <span>{t(x.labelKey)}</span>
+            {visibleTabs.length > 1 && (
+              <>
+                <div className="mb-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 lg:hidden">
+                  <div className="relative">
+                    <button type="button" aria-haspopup="menu" aria-expanded={mobileTabsOpen} aria-controls="website-edit-area-menu"
+                      aria-label={`${t('siteEditor.editArea')}: ${t(tab.labelKey)}`} onClick={() => setMobileTabsOpen((open) => !open)}
+                      className="flex min-h-[64px] w-full items-center gap-3 rounded-xl bg-slate-50 px-3 text-left outline-none ring-1 ring-inset ring-slate-300 transition hover:bg-white hover:ring-slate-400 focus-visible:ring-2 focus-visible:ring-core-600">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-900">
+                        <ActiveTabIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] font-bold text-slate-500">{t('siteEditor.editArea')}</span>
+                        <span className="mt-0.5 block truncate text-base font-bold text-slate-900">{t(tab.labelKey)}</span>
+                      </span>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-slate-600 ring-1 ring-inset ring-slate-200">
+                        <ChevronDown className={`h-5 w-5 transition-transform ${mobileTabsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                      </span>
                     </button>
-                  );
-                })}
-              </nav>
-            </aside>}
+                  </div>
+
+                  {mobileTabsOpen && (
+                    <div id="website-edit-area-menu" role="menu" aria-label={t('siteEditor.editArea')}
+                      className="mt-2 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+                      {visibleTabs.map((x) => {
+                        const TabIcon = TAB_ICONS[x.id] || Globe;
+                        const selected = tabId === x.id;
+                        return (
+                          <button type="button" role="menuitemradio" aria-checked={selected} key={x.id}
+                            onClick={() => { setTabId(x.id); setMobileTabsOpen(false); }}
+                            className={`flex min-h-[56px] w-full items-center gap-3 px-3 text-left transition focus:outline-none focus-visible:bg-core-50 ${selected ? 'bg-core-50' : 'hover:bg-slate-50'}`}>
+                            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${selected ? 'bg-core-900 text-amber-300' : 'bg-slate-100 text-slate-500'}`}>
+                              <TabIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+                            </span>
+                            <span className={`min-w-0 flex-1 truncate text-sm font-bold ${selected ? 'text-core-900' : 'text-slate-700'}`}>{t(x.labelKey)}</span>
+                            <span className="text-xs font-semibold tabular-nums text-slate-500">{num(x.sections.length)}</span>
+                            {selected && <Check className="h-5 w-5 shrink-0 text-core-700" aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <aside className="hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 lg:sticky lg:top-4 lg:block">
+                  <p className="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{t('siteEditor.editArea')}</p>
+                  <nav className="flex flex-col gap-2" aria-label={t('siteEditor.editArea')}>
+                    {visibleTabs.map((x) => {
+                      const TabIcon = TAB_ICONS[x.id] || Globe;
+                      const selected = tabId === x.id;
+                      return (
+                        <button type="button" key={x.id} aria-pressed={selected} onClick={() => setTabId(x.id)}
+                          className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-core-500 ${selected ? 'bg-core-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
+                          <TabIcon className={`h-5 w-5 shrink-0 ${selected ? 'text-amber-300' : 'text-slate-400'}`} aria-hidden="true" />
+                          <span>{t(x.labelKey)}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </aside>
+              </>
+            )}
 
             <div className="min-w-0">
               <div className="mb-4 flex items-center justify-between gap-3 px-1">
