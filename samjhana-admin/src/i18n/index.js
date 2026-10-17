@@ -3436,4 +3436,12 @@ i18n
     },
   });
 
+// Keep the page's language attribute in step with the language switch, so Nepali-only styling
+// (the Nepali fonts in index.css) switches off when the screen is in English.
+const syncPageLanguage = (language) => {
+  if (typeof document !== 'undefined') document.documentElement.lang = language === 'ne' ? 'ne' : 'en';
+};
+syncPageLanguage(i18n.language);
+i18n.on('languageChanged', syncPageLanguage);
+
 export default i18n;
