@@ -4,6 +4,7 @@ import com.samjhana.dto.ChargePointResponse;
 import com.samjhana.repository.ChargePointRepository;
 import com.samjhana.entity.ChargePoint;
 import com.samjhana.exception.ResourceNotFoundException;
+import com.samjhana.ocpp.OcppConnectionRegistry;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.entity.AuditLog;
@@ -12,9 +13,11 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.CloseStatus;
 
 import java.util.List;
 import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.SecureRandom;
@@ -26,11 +29,14 @@ import java.util.UUID;
 public class ChargePointService {
 
     private static final Logger LIFECYCLE = LoggerFactory.getLogger("com.samjhana.ocpp.lifecycle");
+    /** Why a charger's connection is closed when its secret is changed (1008, "policy violation"). */
+    static final CloseStatus SECRET_ROTATED = CloseStatus.POLICY_VIOLATION.withReason("credentials changed");
 
     private final ChargePointRepository chargePointRepository;
     private final EvLiveWebSocketHandler liveEvents;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogRepository auditLogRepository;
+    private final OcppConnectionRegistry connectionRegistry;
 
     /** Active, non-deleted chargers in display order (Charger 1, 2, 3). */
     public List<ChargePointResponse> getActiveChargePoints() {
@@ -48,7 +54,12 @@ public class ChargePointService {
         publish(chargePointRepository.save(point));
     }
 
-    @Transactional
+    /**
+     * Runs in a transaction of its own. Closing a charger's socket can happen from the after-commit step of another
+     * transaction (changing its secret closes its connection), and the close is reported back on the same thread;
+     * joining that already finished transaction would lose this write and leave the charger shown as ONLINE.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markDisconnected(String code) {
         ChargePoint point = find(code);
         logConnection(point, ChargePoint.ConnectionStatus.OFFLINE, "disconnected");
@@ -122,6 +133,15 @@ public class ChargePointService {
         chargePointRepository.save(point);
         auditLogRepository.save(AuditLog.updateEvent(user, AuditLog.EntityType.CHARGE_POINT,
                 point.getId(), null, "{\"ocppSecretRotated\":true}"));
+        // The secret is only checked when a charger connects, so a connection that is already open (possibly one
+        // made by whoever the old secret leaked to) would carry on. Close it once the new secret is saved for good;
+        // the charger then has to connect again, and only the new secret gets in (finding P1a-03).
+        String code = point.getCode();
+        AfterCommit.run(() -> {
+            if (connectionRegistry.disconnect(code, SECRET_ROTATED)) {
+                LIFECYCLE.warn("CHARGE POINT {} secret rotated: its open connection was closed", code);
+            }
+        });
         return secret;
     }
 

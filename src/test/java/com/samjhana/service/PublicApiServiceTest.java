@@ -24,6 +24,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** This service is the one thing samjhana-web is allowed to call. Every test here also
@@ -73,7 +75,7 @@ class PublicApiServiceTest {
 
     @Test
     void shouldFilterFurnitureByValidCategory() {
-        FurnitureItem sofa = FurnitureItem.builder().id(UUID.randomUUID()).name("Sofa")
+        FurnitureItem sofa = FurnitureItem.builder().id(UUID.randomUUID()).name("Sofa").slug("sofa")
                 .category(FurnitureItem.FurnitureCategory.SOFA).isActive(true).build();
         when(furnitureItemRepository.findByCategoryAndIsActiveTrue(FurnitureItem.FurnitureCategory.SOFA))
                 .thenReturn(List.of(sofa));
@@ -87,7 +89,7 @@ class PublicApiServiceTest {
     @Test
     void shouldReturnAllFurniture_whenCategoryIsAllOrInvalid() {
         when(furnitureItemRepository.findByIsActiveTrueOrderByNameAsc())
-                .thenReturn(List.of(FurnitureItem.builder().id(UUID.randomUUID()).name("X")
+                .thenReturn(List.of(FurnitureItem.builder().id(UUID.randomUUID()).name("X").slug("x")
                         .category(FurnitureItem.FurnitureCategory.OTHER).isActive(true).build()));
 
         assertThat(service.getFurnitureCatalogue("ALL")).hasSize(1);
@@ -96,24 +98,72 @@ class PublicApiServiceTest {
     }
 
     @Test
-    void shouldReturnFurnitureItem_whenActive() {
-        FurnitureItem item = FurnitureItem.builder().id(UUID.randomUUID()).name("Chair")
+    void shouldReturnFurnitureItemBySlug_whenActiveAndShown() {
+        FurnitureItem item = FurnitureItem.builder().id(UUID.randomUUID()).name("Chair").slug("oak-chair")
                 .category(FurnitureItem.FurnitureCategory.CHAIR).isActive(true).build();
-        when(furnitureItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
+        when(furnitureItemRepository.findBySlug("oak-chair")).thenReturn(Optional.of(item));
 
-        assertThat(service.getFurnitureItem(item.getId())).isPresent();
+        Optional<Map<String, Object>> found = service.getFurnitureItem("oak-chair");
+
+        assertThat(found).isPresent();
+        assertThat(found.get()).containsEntry("id", "oak-chair");
     }
 
     @Test
-    void shouldOmitFurnitureItem_whenInactiveOrMissing() {
-        FurnitureItem inactive = FurnitureItem.builder().id(UUID.randomUUID()).name("Old")
+    void shouldOmitFurnitureItem_whenInactiveHiddenOrUnknown() {
+        FurnitureItem hidden = FurnitureItem.builder().id(UUID.randomUUID()).name("Hidden").slug("hidden-one")
+                .category(FurnitureItem.FurnitureCategory.OTHER).isActive(true).showOnWebsite(false).build();
+        FurnitureItem inactive = FurnitureItem.builder().id(UUID.randomUUID()).name("Old").slug("old-one")
                 .category(FurnitureItem.FurnitureCategory.OTHER).isActive(false).build();
-        when(furnitureItemRepository.findById(inactive.getId())).thenReturn(Optional.of(inactive));
-        assertThat(service.getFurnitureItem(inactive.getId())).isEmpty();
+        when(furnitureItemRepository.findBySlug("hidden-one")).thenReturn(Optional.of(hidden));
+        when(furnitureItemRepository.findBySlug("old-one")).thenReturn(Optional.of(inactive));
 
-        UUID missingId = UUID.randomUUID();
-        when(furnitureItemRepository.findById(missingId)).thenReturn(Optional.empty());
-        assertThat(service.getFurnitureItem(missingId)).isEmpty();
+        assertThat(service.getFurnitureItem("hidden-one")).isEmpty();
+        assertThat(service.getFurnitureItem("old-one")).isEmpty();
+        assertThat(service.getFurnitureItem("no-such-item")).isEmpty();
+        assertThat(service.getFurnitureItem(null)).isEmpty();
+    }
+
+    // ---- finding P0-07: the legacy pages show only what the website shows, and never a database id ----
+
+    @Test
+    void shouldHideFurnitureMarkedHiddenOnTheWebsite_andFurnitureWithoutAPublicName() {
+        FurnitureItem shown = FurnitureItem.builder().id(UUID.randomUUID()).name("Shown").slug("shown")
+                .category(FurnitureItem.FurnitureCategory.SOFA).isActive(true).showOnWebsite(true).build();
+        FurnitureItem unset = FurnitureItem.builder().id(UUID.randomUUID()).name("Flag not set").slug("flag-not-set")
+                .category(FurnitureItem.FurnitureCategory.SOFA).isActive(true).build();
+        FurnitureItem hidden = FurnitureItem.builder().id(UUID.randomUUID()).name("Hidden").slug("hidden")
+                .category(FurnitureItem.FurnitureCategory.SOFA).isActive(true).showOnWebsite(false).build();
+        FurnitureItem noSlug = FurnitureItem.builder().id(UUID.randomUUID()).name("No slug yet")
+                .category(FurnitureItem.FurnitureCategory.SOFA).isActive(true).showOnWebsite(true).build();
+        when(furnitureItemRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(shown, unset, hidden, noSlug));
+        when(furnitureItemRepository.findByCategoryAndIsActiveTrue(FurnitureItem.FurnitureCategory.SOFA))
+                .thenReturn(List.of(shown, unset, hidden, noSlug));
+
+        assertThat(service.getFurnitureCatalogue(null)).extracting(m -> m.get("name")).containsExactly("Shown", "Flag not set");
+        assertThat(service.getFurnitureCatalogue("SOFA")).extracting(m -> m.get("name")).containsExactly("Shown", "Flag not set");
+    }
+
+    @Test
+    void shouldUseTheSlugAsThePublicId_notTheDatabaseId() {
+        UUID databaseId = UUID.randomUUID();
+        FurnitureItem item = FurnitureItem.builder().id(databaseId).name("Table").slug("dining-table")
+                .category(FurnitureItem.FurnitureCategory.TABLE).isActive(true).build();
+        when(furnitureItemRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(item));
+
+        Map<String, Object> listed = service.getFurnitureCatalogue(null).get(0);
+
+        assertThat(listed).containsEntry("id", "dining-table");
+        assertThat(listed.values().toString()).doesNotContain(databaseId.toString());
+    }
+
+    @Test
+    void shouldNotFindAFurnitureItemByItsDatabaseId() {
+        UUID databaseId = UUID.randomUUID();
+
+        assertThat(service.getFurnitureItem(databaseId.toString())).isEmpty();
+
+        verify(furnitureItemRepository, never()).findById(any());   // the database id is not a way in
     }
 
     @Test
@@ -126,6 +176,7 @@ class PublicApiServiceTest {
         List<Map<String, Object>> result = service.getEvRates();
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0)).containsOnlyKeys("id", "vehicleName", "batteryCapacityKw", "seatingCapacity", "ratePerPercent");
+        assertThat(result.get(0)).containsOnlyKeys("vehicleName", "batteryCapacityKw", "seatingCapacity", "ratePerPercent");
+        assertThat(result.get(0).values().toString()).doesNotContain(vehicle.getId().toString());
     }
 }

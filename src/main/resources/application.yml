@@ -93,6 +93,12 @@ samjhana:
     login:
       ip-limits-enabled: ${SAMJHANA_LOGIN_IP_LIMITS:false}
     trusted-proxy-hops: ${SAMJHANA_TRUSTED_PROXY_HOPS:0}
+    # The biggest request body the server will read (see RequestBodyLimitFilter), in bytes. A bigger one is answered
+    # with 413 without being read. Ordinary requests: 512 KB. The EV start, which can carry a camera photo as text
+    # (a 5 MB photo is about 7 MB of Base64): 7.5 MB. File uploads: 12 MB (the upload code has tighter limits of its own).
+    max-body-bytes: ${SAMJHANA_MAX_BODY_BYTES:524288}
+    max-photo-body-bytes: ${SAMJHANA_MAX_PHOTO_BODY_BYTES:7864320}
+    max-upload-body-bytes: ${SAMJHANA_MAX_UPLOAD_BODY_BYTES:12582912}
 
   storage:
     images:
@@ -161,12 +167,13 @@ logging:
     com.samjhana.ocpp.handshake: INFO
   file:
     name: ./logs/samjhana-os.log
-  # ISO-8601 with milliseconds and UTC offset; the MDC block carries the OCPP context
+  # A line break inside a message becomes " | ", so text a person typed cannot add a made-up line to the log
+  # (finding E-01). ISO-8601 with milliseconds and UTC offset; the MDC block carries the OCPP context
   # (cp = charge point id, ws = WebSocket session, msg = OCPP messageId, act = action,
   # cs = charge session id) and is empty on non-OCPP lines.
   pattern:
-    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %msg%n"
-    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %msg%n"
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %replace(%msg){'[\\r\\n]+', ' | '}%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} [cp=%X{chargePointId:-} ws=%X{sessionId:-} msg=%X{messageId:-} act=%X{action:-} cs=%X{chargeSessionId:-}] - %replace(%msg){'[\\r\\n]+', ' | '}%n"
 
 # =============================================================================
 # Springdoc OpenAPI Configuration
@@ -237,7 +244,9 @@ spring:
     # "Could not open SSL root certificate file" without one: upload Supabase's CA certificate
     # (Project Settings -> Database -> SSL Configuration) as a Render Secret File named
     # supabase-ca.crt, or point SUPABASE_SSL_ROOT_CERT at wherever it lives.
-    url: jdbc:postgresql://${SUPABASE_PROD_HOST}/${SUPABASE_PROD_DB}?sslmode=verify-full&sslrootcert=${SUPABASE_SSL_ROOT_CERT:/etc/secrets/supabase-ca.crt}
+    # logServerErrorDetail=false keeps the values of a clashing row (a number plate, a username) out of the database's
+    # error text, and so out of every log line that prints it (finding L-01).
+    url: jdbc:postgresql://${SUPABASE_PROD_HOST}/${SUPABASE_PROD_DB}?sslmode=verify-full&sslrootcert=${SUPABASE_SSL_ROOT_CERT:/etc/secrets/supabase-ca.crt}&logServerErrorDetail=false
     username: ${SUPABASE_PROD_USER}
     password: ${SUPABASE_PROD_PASSWORD}
 
@@ -285,7 +294,8 @@ spring:
     # "Could not open SSL root certificate file" without one: upload Supabase's CA certificate
     # (Project Settings -> Database -> SSL Configuration) as a Render Secret File named
     # supabase-ca.crt, or point SUPABASE_SSL_ROOT_CERT at wherever it lives.
-    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=verify-full&sslrootcert=${SUPABASE_SSL_ROOT_CERT:/etc/secrets/supabase-ca.crt}
+    # logServerErrorDetail=false: as in the prod profile (finding L-01).
+    url: jdbc:postgresql://${SUPABASE_STAGING_HOST}/${SUPABASE_STAGING_DB}?sslmode=verify-full&sslrootcert=${SUPABASE_SSL_ROOT_CERT:/etc/secrets/supabase-ca.crt}&logServerErrorDetail=false
     username: ${SUPABASE_STAGING_USER}
     password: ${SUPABASE_STAGING_PASSWORD}
 
