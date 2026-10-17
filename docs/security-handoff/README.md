@@ -5,9 +5,9 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 ## 0. The 60-second version
 
 - A read-only security audit of this repository found **118 issues** (5 High, 30 Medium, 66 Low, 17 Info). Since then they are being fixed one at a time, each as its own small pull request **into `staging`**, with tests.
-- **Done:** 45 findings fixed with tests, all merged into `staging` (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md). Nothing from this series is waiting for a merge; the `staging` → `main` release PR (#173) is the owner's.
-- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet).
-- **Not yours to start:** [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md) — 32 rules/trade-offs only the owner can decide, and 28 ops/CI/database items.
+- **Done:** 46 findings fixed with tests, all merged into `staging` (four of them, M-01 to M-04, because the owner had the NOC price scraper removed instead of repaired). 3 more are partly fixed and 2 were already fine. Table: [`STATUS.md`](STATUS.md). Nothing from this series is waiting for a merge; the `staging` → `main` release PR (#173) is the owner's.
+- **Next:** [`QUEUE.md`](QUEUE.md) is the ordered list of the 8 findings that still need no decision from the owner (start at the first one nobody has done yet). [`DECISIONS-MADE.md`](DECISIONS-MADE.md) holds what the owner decided on all 32 questions (2026-10-17) and what to build for each, in groups G1 to G11.
+- **Not yours to start:** the 27 ops/CI/database items in [`DECISIONS-AND-OPS.md`](DECISIONS-AND-OPS.md). Everything that still needs the owner (hosting, database and CI choices, release timing, assumptions to confirm), with options and a recommendation, is in [`OWNER-QUESTIONS.md`](OWNER-QUESTIONS.md) sections B to D.
 - **How to do a fix, run the checks, write the PR, and what went wrong before:** [`METHOD.md`](METHOD.md).
 - **The detailed audit report is private** and is not in this public repository: section 6.
 
@@ -26,7 +26,7 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 
 #124 to #132 were merged by the owner on 2026-10-16. The others were merged on 2026-10-17, one at a time, each after the branch was brought up to date with `staging` (GitHub's "Update branch", or a local merge where that failed), a green CI run and a merge commit (never squash). #134, #135, #139, #154 and #161 show as merged because the branch of another PR contained all their commits (#137 for #134, #167 for #135, #168 for #139 and #154, #165 for #161), so GitHub saw them inside `staging` once that PR was merged.
 
-**Not part of the series:** #150 is this handoff folder (docs only). #155 (database and security production-readiness checklists, into `main`) is the owner's. **#173 ("Staging", `staging` → `main`) is the owner's release PR**: it carries everything above to production when the owner decides. Do not open, approve or merge a release PR yourself. Earlier release PRs were #118, #123, #144, #147, #148, #159 and #163. #171 ("Redesign admin website management UI") also landed in `staging` in between and is unrelated. When a release PR shows "out-of-date with the base branch", the usual cure is a PR into `staging` that merges `main` in (precedent: #121); that needs the owner's go-ahead.
+**Not part of the series:** #150 is this handoff folder (docs only). #155 (database and security production-readiness checklists) was merged into `main` by the owner on 2026-10-17. **#173 ("Staging", `staging` → `main`) is the owner's release PR**: it carries everything above to production when the owner decides. #174 merged `main` into `staging` so that #173 is not blocked as out of date. Do not open, approve or merge a release PR yourself. Earlier release PRs were #118, #123, #144, #147, #148, #159 and #163. #171 ("Redesign admin website management UI") also landed in `staging` in between and is unrelated. When a release PR shows "out-of-date with the base branch", the usual cure is a PR into `staging` that merges `main` in (precedent: #121); that needs the owner's go-ahead.
 
 **What went wrong while merging, and the cure** (also in `METHOD.md` section 6):
 
@@ -34,13 +34,13 @@ Written 2026-10-16 by Claude Code at the owner's request (refreshed 2026-10-17, 
 - #160 once failed in CI before any test ran, because Maven Central could not be reached for a plugin. That is an infrastructure failure, not a code failure. The Claude Code integration cannot re-run a job (403), so the PR was updated again after another merge, which started a fresh run.
 - GitHub's "Update branch" answered "merge conflict between base and head" for #168, although `git merge` of `origin/staging` into the branch was clean (the branch and `staging` had two merge bases after the stack was merged). Merging `origin/staging` into the branch locally, running the checks and pushing fixed it.
 
-**In progress when this was written:** nothing is half-done and nothing is unpushed: every branch has been merged. The owner decided the NOC fuel-price scraper should not exist at all, so it was removed (#167) and its four findings (M-01 to M-04) were closed that way instead of being hardened; prices are entered by hand on the Fuel Price page. The owner paused the series on 2026-10-17 to merge everything first and to keep the test site awake (#170); ask before starting `QUEUE.md` item 1.
+**In progress when this was written:** nothing is half-done and nothing is unpushed: every branch has been merged. The owner decided the NOC fuel-price scraper should not exist at all, so it was removed (#167) and its four findings (M-01 to M-04) were closed that way instead of being hardened; prices are entered by hand on the Fuel Price page. The owner paused the series on 2026-10-17 to merge everything first and to keep the test site awake (#170); ask before starting `QUEUE.md` item 1. Later the same day the owner answered all 32 decision questions in a one-topic-at-a-time session; the answers and the build plan are in `DECISIONS-MADE.md`.
 
 **Quick start**
 
 1. `git clone` the repo, `git fetch origin`, read `CLAUDE.md`, then this folder.
 2. List the open PRs (`repo:SandeepN97/samjhana-ventures-os is:pr is:open`). If one touches the files you plan to change, say "stacked on #NNN" in your PR; if one has a red check that belongs to this series, open the failing job log and fix it on that branch with a new commit.
-3. Take the first item in `QUEUE.md` that has no PR yet (search PR bodies for the ID: `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`) and follow `METHOD.md`.
+3. Take the first item in `QUEUE.md` that has no PR yet, or a decided group in `DECISIONS-MADE.md` (post the plan block first; the owner asked to see it), (search PR bodies for the ID: `repo:SandeepN97/samjhana-ventures-os is:pr "<ID>" in:body`) and follow `METHOD.md`.
 4. From time to time refresh `STATUS.md` and the list in section 2 in a small docs PR.
 
 ## 3. What the finding IDs mean
@@ -84,7 +84,9 @@ If the private copy is not available you can still do everything in `QUEUE.md`: 
 | `README.md` | this guide |
 | `STATUS.md` | all 118 findings with their status and PR |
 | `QUEUE.md` | what to fix next (no decision needed), with fix and test ideas |
-| `DECISIONS-AND-OPS.md` | what waits for the owner, and ops/CI/database items |
+| `DECISIONS-MADE.md` | what the owner decided (all 32), what to build for each (groups G1 to G11), the real-charger test |
+| `OWNER-QUESTIONS.md` | everything still waiting for the owner: hosting, database and CI items (B), other open items (C), assumptions to confirm (D); the rules in A are answered |
+| `DECISIONS-AND-OPS.md` | the original questions for the owner, and ops/CI/database items |
 | `METHOD.md` | the routine, commands, mutation checks, PR body, gotchas |
 | `tools/` | `mutate.py`, `example-mutations.json` |
 | `reference/` | audit rules, agent definitions, severity overrides |
