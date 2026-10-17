@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FuelPricePage from './FuelPricePage';
 import { renderWithProviders } from '../../test/test-utils';
+import { resources } from '../../i18n/index.js';
 
 vi.mock('../../utils/api', () => ({
   default: {
@@ -62,9 +63,43 @@ describe('FuelPricePage', () => {
     });
   });
 
-  it('admin sees Fetch NOC Prices button', () => {
+  it('admin has no button to fetch prices from NOC: prices are entered by hand', async () => {
     renderWithProviders(<FuelPricePage />);
-    expect(screen.getByText('Fetch NOC Prices')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Save Prices')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /noc/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/noc/i)).not.toBeInTheDocument();
+  });
+
+  it('in Nepali too, the admin sees the form to enter prices and nothing about fetching from NOC', async () => {
+    renderWithProviders(<FuelPricePage />, { locale: 'ne' });
+    await waitFor(() => {
+      expect(screen.getByText('मूल्य सेभ गर्नुहोस्')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/noc/i)).not.toBeInTheDocument();
+  });
+
+  it('saving the prices by hand still sends them to the server', async () => {
+    const user = userEvent.setup();
+    const api = (await import('../../utils/api')).default;
+    renderWithProviders(<FuelPricePage />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('154.5')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Save Prices'));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/api/fuel-prices/bulk', expect.objectContaining({ petrolPrice: 154.5, dieselPrice: 148 }));
+    });
+    expect(api.post).not.toHaveBeenCalledWith('/api/fuel-prices/fetch-noc');
+  });
+
+  it.each(['en', 'ne'])('the %s fuel price strings have nothing about fetching from NOC', (language) => {
+    const keys = Object.keys(resources[language].translation.fuelPrice);
+    expect(keys.filter((key) => /noc/i.test(key))).toEqual([]);
+    expect(keys.length).toBeGreaterThan(10);
   });
 
   it('staff sees view-only notice instead of update form', async () => {

@@ -6,7 +6,7 @@ import com.samjhana.dto.TransactionRequest;
 import com.samjhana.dto.TransactionResponse;
 import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.BusinessUnit;
-import com.samjhana.entity.FurnitureItem;
+import com.samjhana.entity.FuelPrice;
 import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.Transaction;
 import com.samjhana.entity.User;
@@ -16,10 +16,12 @@ import com.samjhana.exception.TransactionNotFoundException;
 import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.BusinessUnitRepository;
 import com.samjhana.repository.DailyReportRepository;
+import com.samjhana.repository.FuelPriceRepository;
 import com.samjhana.repository.FurnitureItemRepository;
 import com.samjhana.repository.SystemSettingRepository;
 import com.samjhana.repository.TransactionRepository;
 import com.samjhana.strategy.BusinessCalculationStrategy.ValidationResult;
+import com.samjhana.util.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,11 +32,15 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -51,8 +57,43 @@ public class TransactionService {
     private final SystemSettingRepository systemSettingRepository;
     private final BeekeepingService beekeepingService;
     private final LoanReceiptService loanReceiptService;
+    private final FuelPriceRepository fuelPriceRepository;
 
     private static final ZoneId KATHMANDU = ZoneId.of("Asia/Kathmandu");
+
+    /** Businesses whose sales the server can work out itself (quantity x rate). Every other business is unchanged. */
+    private static final java.util.Set<String> COMPUTED_AMOUNT_BUSINESSES =
+            java.util.Set.of(BusinessUnit.CODE_PETROL, BusinessUnit.CODE_EV);
+    /** How many rupees the client's amount may differ from the server's figure by (rounding). */
+    private static final BigDecimal AMOUNT_TOLERANCE = new BigDecimal("1.00");
+    private static final BigDecimal RATE_TOLERANCE = new BigDecimal("0.01");
+
+    /**
+     * The most characters of extra details ({@code customFields}, as JSON) one entry may carry. Real entries are a few
+     * hundred characters; a 100-line order about 20,000.
+     */
+    static final int MAX_CUSTOM_FIELDS_CHARS = 65_536;
+
+    /** Refuses extra details that are too large to keep: nothing is saved and no stock moves (finding F-06). */
+    private static void requireExtraDetailsSmallEnough(String customFieldsJson) {
+        if (customFieldsJson != null && customFieldsJson.length() > MAX_CUSTOM_FIELDS_CHARS) {
+            throw new IllegalArgumentException("The extra details on this entry are too large (more than "
+                    + MAX_CUSTOM_FIELDS_CHARS + " characters)");
+        }
+    }
+
+    /** The checks every new entry gets, which an edit gets too (finding P0-03). */
+    private static void requireAmountAboveZero(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+    }
+
+    private static void requireDateNotInTheFuture(LocalDate date) {
+        if (date.isAfter(LocalDate.now(KATHMANDU).plusDays(1))) {
+            throw new IllegalArgumentException("Transaction date cannot be in the future");
+        }
+    }
 
     /**
      * Today in Nepal, or tomorrow once today has been closed: entries made after the day is closed
@@ -109,13 +150,9 @@ public class TransactionService {
         BusinessUnit business = businessUnitRepository.findByCode(request.getBusinessCode())
                 .orElseThrow(() -> new BusinessUnitNotFoundException(request.getBusinessCode()));
 
-        if (request.getAmount() == null || request.getAmount().signum() <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
+        requireAmountAboveZero(request.getAmount());
         LocalDate date = request.getTransactionDate() != null ? request.getTransactionDate() : currentBusinessDate();
-        if (date.isAfter(LocalDate.now(KATHMANDU).plusDays(1))) {
-            throw new IllegalArgumentException("Transaction date cannot be in the future");
-        }
+        requireDateNotInTheFuture(date);
         // Once a day is closed its totals are final. Staff can't add to it afterwards; a manager
         // correcting a closed day still can (and the audit log records who).
         if (!user.canManage() && dailyReportRepository.findByReportDate(date).isPresent()) {
@@ -137,12 +174,28 @@ public class TransactionService {
             addServerSideCost(business.getCode(), request.getTransactionType(), request.getAmount(), customFields);
         }
 
+        // For fuel and EV sales the server works the amount out itself; the client's figure is only a claim.
+        SaleAmountCheck amountCheck = checkSaleAmount(business.getCode(), request.getTransactionType(),
+                request.getAmount(), request.getCustomFields(), date);
+        String amountOverrideNote = null;
+        if (amountCheck.disagrees()) {
+            if (!user.canManage()) {
+                throw new IllegalArgumentException("This sale does not add up: " + amountCheck.describe());
+            }
+            // A manager or admin may discount or correct a sale: it is kept as entered, marked, and audited below.
+            if (customFields == null) customFields = new LinkedHashMap<>();
+            if (amountCheck.expected() != null) customFields.put("expectedAmount", amountCheck.expected());
+            customFields.put("amountOverride", true);
+            amountOverrideNote = "AMOUNT OVERRIDE by " + user.getUsername() + ": " + amountCheck.describe();
+        }
+
         String customFieldsJson;
         try {
             customFieldsJson = objectMapper.writeValueAsString(customFields);
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Invalid custom fields");
         }
+        requireExtraDetailsSmallEnough(customFieldsJson);
 
         // Beekeeping stock moves in this same transaction, before the sale is saved: a line the shop
         // can't cover fails the whole sale and nothing is changed.
@@ -198,12 +251,80 @@ public class TransactionService {
 
         auditLogRepository.save(AuditLog.createEvent(user, AuditLog.EntityType.TRANSACTION,
                 saved.getId(), customFieldsJson));
+        if (amountOverrideNote != null) {
+            AuditLog override = AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION, saved.getId(), null, customFieldsJson);
+            override.setDescription(amountOverrideNote.length() > 500 ? amountOverrideNote.substring(0, 500) : amountOverrideNote);
+            auditLogRepository.save(override);
+        }
 
         if (!stockAlreadyHeld && "furniture".equalsIgnoreCase(request.getBusinessCode()) && request.getCustomFields() != null) {
             adjustFurnitureStock(request.getCustomFields(), request.getTransactionType());
         }
 
         return TransactionVisibility.toResponse(saved, user, objectMapper);
+    }
+
+    /** What the server found when it compared a sale with its own figures. */
+    private record SaleAmountCheck(List<String> problems, BigDecimal expected) {
+        boolean disagrees() {
+            return !problems.isEmpty();
+        }
+
+        String describe() {
+            return String.join("; ", problems);
+        }
+    }
+
+    /**
+     * SECURITY (P0-02). For a petrol or EV sale, works out quantity x rate with the business's own strategy and, for fuel,
+     * looks up the pump price in force on the sale date (or the day before, for entries made around midnight or a price
+     * change). Anything the server cannot check (no strategy figure, no price set yet) is left alone.
+     */
+    private SaleAmountCheck checkSaleAmount(String businessCode, String transactionType, BigDecimal amount,
+                                            Map<String, Object> fields, LocalDate date) {
+        List<String> problems = new ArrayList<>();
+        String code = businessCode == null ? "" : businessCode.toLowerCase(Locale.ROOT);
+        if (!Transaction.TransactionType.SALE.name().equals(transactionType) || !COMPUTED_AMOUNT_BUSINESSES.contains(code)) {
+            return new SaleAmountCheck(problems, null);
+        }
+        BigDecimal expected = null;
+        if (fields == null) {
+            problems.add("no quantity or rate was given");
+        } else {
+            BigDecimal worked = calculationEngine.calculateAmount(code, fields);
+            if (worked != null && worked.signum() > 0) {
+                expected = worked;
+                if (amount.subtract(worked).abs().compareTo(AMOUNT_TOLERANCE) > 0) {
+                    problems.add("amount " + amount.toPlainString() + " is not quantity x rate " + worked.toPlainString());
+                }
+            }
+            if (BusinessUnit.CODE_PETROL.equals(code)) {
+                BigDecimal rate = toNumber(fields.get("ratePerLiter"));
+                List<BigDecimal> prices = fuelPricesInForce(fields.get("fuelType"), date);
+                if (rate != null && !prices.isEmpty()
+                        && prices.stream().noneMatch(price -> price.subtract(rate).abs().compareTo(RATE_TOLERANCE) <= 0)) {
+                    problems.add("rate " + rate.toPlainString() + " is not the fuel price in force " + prices);
+                }
+            }
+        }
+        return new SaleAmountCheck(problems, expected);
+    }
+
+    /** The selling price of this fuel on {@code date} and on the day before (empty when none has been set). */
+    private List<BigDecimal> fuelPricesInForce(Object fuelType, LocalDate date) {
+        if (fuelType == null) return List.of();
+        FuelPrice.FuelType type;
+        try {
+            type = FuelPrice.FuelType.valueOf(fuelType.toString().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+        return Stream.of(date, date.minusDays(1))
+                .map(day -> fuelPriceRepository.findFirstByFuelTypeAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(type, day))
+                .flatMap(Optional::stream)
+                .map(FuelPrice::getPricePerLiter)
+                .distinct()
+                .toList();
     }
 
     /**
@@ -253,15 +374,31 @@ public class TransactionService {
         }
     }
 
+    /** The lookup below reads the pump's newest purchases one small page at a time, and at most this many pages. */
+    private static final int PURCHASE_RATE_PAGE_SIZE = 25;
+    private static final int PURCHASE_RATE_MAX_PAGES = 8;
+
+    /**
+     * What the pump last paid per litre for this fuel: the newest purchase (not rejected) of that fuel that has a rate.
+     * The database hands over the purchases newest first, a page at a time, so a sale never loads the pump's whole
+     * history (finding K-01). Purchases are rare (one per delivery), so the newest
+     * {@value #PURCHASE_RATE_PAGE_SIZE} x {@value #PURCHASE_RATE_MAX_PAGES} are far more than needed; if none of them
+     * is of this fuel the sale is saved without a purchase rate.
+     */
     private java.util.Optional<BigDecimal> latestPurchaseRate(String fuelType) {
-        return transactionRepository.findByBusinessCodeOrderByTransactionDateDesc("petrol").stream()
-                .filter(t -> t.getTransactionType() == Transaction.TransactionType.PURCHASE)
-                .filter(t -> t.getStatus() != Transaction.TransactionStatus.REJECTED)
-                .map(t -> readFields(t.getCustomFields()))
-                .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
-                .map(cf -> toNumber(cf.get("ratePerLiter")))
-                .filter(rate -> rate != null && rate.signum() > 0)
-                .findFirst();
+        for (int page = 0; page < PURCHASE_RATE_MAX_PAGES; page++) {
+            List<Transaction> purchases = transactionRepository.findRecentByBusinessCodeAndTypeExcludingStatus(
+                    "petrol", Transaction.TransactionType.PURCHASE, Transaction.TransactionStatus.REJECTED,
+                    org.springframework.data.domain.PageRequest.of(page, PURCHASE_RATE_PAGE_SIZE));
+            java.util.Optional<BigDecimal> found = purchases.stream()
+                    .map(t -> readFields(t.getCustomFields()))
+                    .filter(cf -> fuelType.equalsIgnoreCase(String.valueOf(cf.get("fuelType"))))
+                    .map(cf -> toNumber(cf.get("ratePerLiter")))
+                    .filter(rate -> rate != null && rate.signum() > 0)
+                    .findFirst();
+            if (found.isPresent() || purchases.size() < PURCHASE_RATE_PAGE_SIZE) return found;
+        }
+        return java.util.Optional.empty();
     }
 
     private Map<String, Object> readFields(String json) {
@@ -283,12 +420,7 @@ public class TransactionService {
     }
 
     private static BigDecimal toNumber(Object value) {
-        if (value == null) return null;
-        try {
-            return new BigDecimal(value.toString().trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return value == null ? null : SafeDecimal.parse(value.toString());
     }
 
     /** Every transaction the viewer may see, loans hidden from staff and cost stripped for them. */
@@ -324,15 +456,26 @@ public class TransactionService {
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id.toString()));
 
-        String oldValues = t.getCustomFields();
+        // An edit gets the same checks as a new entry (finding P0-03).
+        if (request.getAmount() != null) requireAmountAboveZero(request.getAmount());
+        if (request.getTransactionDate() != null) requireDateNotInTheFuture(request.getTransactionDate());
+
+        Map<String, Object> before = editSnapshot(t);
 
         // Server-side validation on updated custom fields
+        String editedFields = null;
         if (request.getCustomFields() != null) {
             ValidationResult validation = calculationEngine.validate(
                     t.getBusiness().getCode(), request.getCustomFields());
             if (!validation.isValid()) {
                 throw new IllegalArgumentException("Validation failed: " + validation.errors());
             }
+            try {
+                editedFields = objectMapper.writeValueAsString(request.getCustomFields());
+            } catch (JsonProcessingException ignored) {
+                // left as it was
+            }
+            requireExtraDetailsSmallEnough(editedFields);
         }
 
         if (request.getAmount() != null) t.setAmount(request.getAmount());
@@ -342,32 +485,94 @@ public class TransactionService {
         if (request.getNotes() != null) t.setNotes(request.getNotes());
         if (request.getReferenceNumber() != null) t.setReferenceNumber(request.getReferenceNumber());
         if (request.getTransactionDate() != null) t.setTransactionDate(request.getTransactionDate());
-        if (request.getCustomFields() != null) {
-            try {
-                t.setCustomFields(objectMapper.writeValueAsString(request.getCustomFields()));
-            } catch (JsonProcessingException ignored) {}
-        }
+        if (editedFields != null) t.setCustomFields(editedFields);
         t.setReviewedBy(user);
         t.setReviewedAt(LocalDateTime.now());
 
         Transaction saved = transactionRepository.save(t);
 
-        auditLogRepository.save(AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION,
-                saved.getId(), oldValues, saved.getCustomFields()));
+        Map<String, Object> after = editSnapshot(saved);
+        AuditLog entry = AuditLog.updateEvent(user, AuditLog.EntityType.TRANSACTION,
+                saved.getId(), toJson(before), toJson(after));
+        entry.setDescription("Updated transaction (changed: " + changedFields(before, after) + ")");
+        auditLogRepository.save(entry);
 
         return TransactionResponse.from(saved);
+    }
+
+    // ---- what the audit rows keep (findings P0-03, P1b-03) ----
+
+    /** Every field an edit can change, as it is now: the audit row of an edit holds one of these before and one after. */
+    private Map<String, Object> editSnapshot(Transaction t) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("amount", t.getAmount() == null ? null : t.getAmount().toPlainString());
+        snapshot.put("transactionType", t.getTransactionType() == null ? null : t.getTransactionType().name());
+        snapshot.put("transactionDate", t.getTransactionDate() == null ? null : t.getTransactionDate().toString());
+        snapshot.put("notes", t.getNotes());
+        snapshot.put("referenceNumber", t.getReferenceNumber());
+        snapshot.put("status", t.getStatus() == null ? null : t.getStatus().name());
+        snapshot.put("customFields", customFieldsTree(t.getCustomFields()));
+        return snapshot;
+    }
+
+    /** What a review changes (status, reason, reviewer), with enough of the entry to tell which one it was. */
+    private Map<String, Object> reviewSnapshot(Transaction t) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("status", t.getStatus() == null ? null : t.getStatus().name());
+        snapshot.put("reviewNotes", t.getReviewNotes());
+        snapshot.put("reviewedBy", t.getReviewedBy() == null ? null : t.getReviewedBy().getUsername());
+        snapshot.put("amount", t.getAmount() == null ? null : t.getAmount().toPlainString());
+        snapshot.put("transactionType", t.getTransactionType() == null ? null : t.getTransactionType().name());
+        snapshot.put("transactionDate", t.getTransactionDate() == null ? null : t.getTransactionDate().toString());
+        return snapshot;
+    }
+
+    /** The extra details as JSON inside the audit row (or as the raw text, if it somehow is not JSON). */
+    private Object customFieldsTree(String customFields) {
+        if (customFields == null) return null;
+        try {
+            return objectMapper.readTree(customFields);
+        } catch (JsonProcessingException e) {
+            return customFields;
+        }
+    }
+
+    private String toJson(Map<String, Object> snapshot) {
+        try {
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not write the audit record", e);
+        }
+    }
+
+    /** Names of the fields that differ, in the order they are kept; the amount 1000 and 1000.00 are the same amount. */
+    private static String changedFields(Map<String, Object> before, Map<String, Object> after) {
+        List<String> changed = new ArrayList<>();
+        for (Map.Entry<String, Object> field : after.entrySet()) {
+            Object was = before.get(field.getKey());
+            Object now = field.getValue();
+            boolean same = "amount".equals(field.getKey()) && was != null && now != null
+                    ? new BigDecimal(was.toString()).compareTo(new BigDecimal(now.toString())) == 0
+                    : java.util.Objects.equals(was, now);
+            if (!same) changed.add(field.getKey());
+        }
+        return changed.isEmpty() ? "nothing" : String.join(", ", changed);
     }
 
     @Transactional
     public TransactionResponse approve(UUID id, User user) {
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id.toString()));
+        Map<String, Object> before = reviewSnapshot(t);
         t.setStatus(Transaction.TransactionStatus.APPROVED);
         t.setReviewedBy(user);
         t.setReviewedAt(LocalDateTime.now());
         Transaction saved = transactionRepository.save(t);
 
-        auditLogRepository.save(AuditLog.approvalEvent(user, saved.getId(), "APPROVED"));
+        AuditLog entry = AuditLog.approvalEvent(user, saved.getId(), "APPROVED");
+        entry.setOldValues(toJson(before));
+        entry.setNewValues(toJson(reviewSnapshot(saved)));
+        auditLogRepository.save(entry);
 
         return TransactionResponse.from(saved);
     }
@@ -380,6 +585,7 @@ public class TransactionService {
                 && (reason == null || reason.isBlank())) {
             throw new IllegalArgumentException("Say why this loan entry is rejected");
         }
+        Map<String, Object> before = reviewSnapshot(t);
         t.setStatus(Transaction.TransactionStatus.REJECTED);
         if (reason != null) t.setReviewNotes(reason);
         if (user != null) {
@@ -388,7 +594,10 @@ public class TransactionService {
         }
         Transaction saved = transactionRepository.save(t);
 
-        auditLogRepository.save(AuditLog.approvalEvent(user, saved.getId(), "REJECTED"));
+        AuditLog entry = AuditLog.approvalEvent(user, saved.getId(), "REJECTED");
+        entry.setOldValues(toJson(before));
+        entry.setNewValues(toJson(reviewSnapshot(saved)));
+        auditLogRepository.save(entry);
 
         return TransactionResponse.from(saved);
     }
@@ -405,21 +614,28 @@ public class TransactionService {
             String itemId = lineItem.get("itemId") != null ? lineItem.get("itemId").toString() : null;
             if (itemId == null) continue;
 
-            int qty = 1;
-            if (lineItem.get("quantity") instanceof Number) {
-                qty = ((Number) lineItem.get("quantity")).intValue();
+            // No quantity means one. Anything else must be a whole number from 1 up: the sale was checked on the way in
+            // (FurnitureStrategy), this is the same rule again, so a negative line can never add to the stock (P0-11).
+            Object requested = lineItem.get("quantity");
+            Integer qty = requested == null ? Integer.valueOf(1) : com.samjhana.strategy.impl.FurnitureStrategy.lineQuantity(requested);
+            if (qty == null) {
+                throw new IllegalArgumentException("Quantity must be a whole number from 1 to "
+                        + com.samjhana.strategy.impl.FurnitureStrategy.MAX_LINE_QUANTITY);
             }
 
+            UUID id;
             try {
-                FurnitureItem furnitureItem = furnitureItemRepository.findById(UUID.fromString(itemId)).orElse(null);
-                if (furnitureItem != null) {
-                    int newStock = isSale
-                            ? Math.max(0, furnitureItem.getStockQty() - qty)
-                            : furnitureItem.getStockQty() + qty;
-                    furnitureItem.setStockQty(newStock);
-                    furnitureItemRepository.save(furnitureItem);
-                }
-            } catch (IllegalArgumentException ignored) {}
+                id = UUID.fromString(itemId);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+            // One statement on the stock column alone, not read, change and write the whole row back: sales at the same
+            // moment, a sale and an online order, or an admin's edit of the item cannot overwrite each other (P1a-13).
+            if (isSale) {
+                furnitureItemRepository.removeStockUpTo(id, qty);
+            } else {
+                furnitureItemRepository.addStock(id, qty);
+            }
         }
     }
 }

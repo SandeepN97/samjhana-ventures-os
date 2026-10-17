@@ -23,8 +23,6 @@ samjhana:
       expiration-hours: 1
     login:
       global-per-minute: 0   # no endpoint-wide ceiling: the shared test context makes many logins in a minute
-  fuel-price-scraper:
-    enabled: false
 
 logging:
   level:

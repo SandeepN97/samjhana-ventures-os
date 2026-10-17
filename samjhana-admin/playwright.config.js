@@ -56,7 +56,6 @@ export default defineConfig({
         VITE_API_URL: '',
         SPRING_DATASOURCE_URL: 'jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1',
         SPRING_DATASOURCE_PASSWORD: '',
-        SAMJHANA_FUEL_PRICE_SCRAPER_ENABLED: 'false',
         // The browser's Origin is the Vite port; the backend's CORS list (REST and WebSocket)
         // must include it or every login is answered 403.
         SAMJHANA_CORS_ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT},http://localhost:5185`,

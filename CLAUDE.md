@@ -114,8 +114,8 @@ The admin app keeps no global store: the auth token and signed-in user live in `
 - Pictures are uploaded in the admin and stored in `media_assets` (JPEG/PNG/WebP, ≤3 MB); the public site shows them via `/api/public/media/{id}`.
 - Online orders: guest checkout → `shop_orders`; stock is held when the order is placed and returned if cancelled; completing an order records the sale. New tables/columns need `docs/sql/2026-10-online-shop.sql` run on Supabase before deploy.
 
-### Fuel price scraper
-`NocPriceScraperService` scrapes NOC (Nepal Oil Corporation) using Jsoup. Configured via `samjhana.fuel-price-scraper.*` in `application.yml`. The depot is set to `Bhalbari` by default.
+### Fuel prices
+Petrol and diesel prices are entered by hand by a manager or admin on the Fuel Price page (`/api/fuel-prices`). There is no automatic fetch from NOC: the scraper was removed on 2026-10-16 at the owner's request. Older rows it saved stay in the price history and show "NOC Auto-Update" as the source.
 
 ---
 
@@ -230,7 +230,7 @@ it('shows validation error when sales amount is empty', () => {})
 This project has a graphify knowledge graph at `graphify-out/`.
 
 **When to use:**
-- Cross-module questions (e.g. "how does the fuel scraper connect to the petrol pump module") → `graphify query`, `graphify path`, `graphify explain`
+- Cross-module questions (e.g. "how does the fuel price page connect to the petrol pump module") → `graphify query`, `graphify path`, `graphify explain`
 - Architecture or coupling questions → read `graphify-out/GRAPH_REPORT.md` first
 
 **After modifying files:** Run `graphify update .` to keep the graph current (AST-only, no API cost). This is also run automatically via the PostToolUse hook in `.claude/settings.json`.
