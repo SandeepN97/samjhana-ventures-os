@@ -48,8 +48,9 @@ describe('OnlineOrdersPage', () => {
     await userEvent.type(screen.getByLabelText('Search order, name or phone...'), 'sita');
     expect(screen.queryByText('SV-261003-AB2C')).not.toBeInTheDocument();
     expect(screen.getByText('SV-261003-ZZZZ')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Filter orders by status: New' }));
-    await userEvent.click(screen.getByRole('menuitemradio', { name: /Completed/ }));
+    const slider = within(screen.getByRole('group', { name: 'Filter orders by status' }));
+    expect(slider.getByRole('button', { name: /Completed/ }).querySelector('svg')).not.toBeNull();
+    await userEvent.click(slider.getByRole('button', { name: /Completed/ }));
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/api/shop-orders?status=COMPLETED'));
   });
 
