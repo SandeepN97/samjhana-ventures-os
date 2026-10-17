@@ -7,6 +7,7 @@ import com.samjhana.dto.MarkChargeSessionPaidRequest;
 import com.samjhana.dto.StartChargeSessionRequest;
 import com.samjhana.dto.TransactionRequest;
 import com.samjhana.dto.TransactionResponse;
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.ChargePoint;
 import com.samjhana.entity.ChargeSession;
 import com.samjhana.entity.EvCustomerVehicle;
@@ -26,6 +27,8 @@ import com.samjhana.repository.TransactionRepository;
 import com.samjhana.websocket.EvLiveWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -49,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -261,6 +265,84 @@ class ChargeSessionServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.start(startRequest("BA 1 PA 4521", 80), staff));
     }
 
+    // ---- finding F-02: a start that is refused must not leave its plate photo on the disk ----
+
+    private StartChargeSessionRequest startRequestWithPhoto(String vehicleTypeId) {
+        StartChargeSessionRequest request = startRequest("BA 1 PA 4521", 80);
+        request.setPlatePhotoDataUrl("data:image/jpeg;base64,AAAA");
+        request.setVehicleCatalogId(vehicleTypeId);
+        return request;
+    }
+
+    @Test
+    void shouldNotStoreThePhoto_whenTheVehicleTypeIsUnknown() {
+        UUID unknown = UUID.randomUUID();
+        when(evVehicleRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.start(startRequestWithPhoto(unknown.toString()), staff));
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+    }
+
+    @Test
+    void shouldNotStoreThePhoto_whenTheVehicleTypeIsNotActive() {
+        EvVehicle inactive = vehicleType("Old bus", "10");
+        inactive.setIsActive(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> service.start(startRequestWithPhoto(inactive.getId().toString()), staff));
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+    }
+
+    @Test
+    void shouldStoreThePhotoAndKeepIt_whenTheStartSucceedsAndCommits() {
+        when(photoStorageService.store(anyString(), eq("BA1PA4521"))).thenReturn("ev/plates/2026/10/BA1PA4521-x.jpg");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            ChargeSessionResponse response = service.start(startRequestWithPhoto(null), staff);
+            assertEquals("STARTING", response.getStatus());
+
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService).store(anyString(), eq("BA1PA4521"));
+        verify(photoStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void shouldDeleteTheStoredPhoto_whenTheStartIsRolledBack() {
+        when(photoStorageService.store(anyString(), eq("BA1PA4521"))).thenReturn("ev/plates/2026/10/BA1PA4521-x.jpg");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.start(startRequestWithPhoto(null), staff);
+
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService).delete("ev/plates/2026/10/BA1PA4521-x.jpg");
+    }
+
+    @Test
+    void shouldNotTouchPhotoStorage_whenThereIsNoPhoto() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.start(startRequest("BA 1 PA 4521", 80), staff);
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync -> sync.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verify(photoStorageService, never()).store(anyString(), anyString());
+        verify(photoStorageService, never()).delete(anyString());
+    }
+
     @Test
     void shouldRejectPlate_whenItHasFewerThanTwoLettersOrDigits() {
         assertThrows(IllegalArgumentException.class, () -> service.start(startRequest("!", 80), staff));
@@ -281,7 +363,7 @@ class ChargeSessionServiceTest {
     void shouldRequestStopButKeepConnectorLocked_whenExplicitUnlock() {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
 
-        ChargeSessionResponse response = service.stop(session.getId());
+        ChargeSessionResponse response = service.stop(session.getId(), staff);
 
         assertEquals("STOP_REQUESTED", response.getStatus());
         verify(ocppCommands).requestStop(CODE, session.getId(), "TX-1");
@@ -293,7 +375,7 @@ class ChargeSessionServiceTest {
         chargePoint.setLockBehavior(ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP);
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
 
-        ChargeSessionResponse response = service.stop(session.getId());
+        ChargeSessionResponse response = service.stop(session.getId(), staff);
 
         assertEquals("AWAITING_PAYMENT", response.getStatus());
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
@@ -303,7 +385,7 @@ class ChargeSessionServiceTest {
     void shouldRefuseStop_whenSessionIsNotActive() {
         ChargeSession session = session(ChargeSession.Status.STARTING);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
     }
 
@@ -312,7 +394,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
         session.setOcppTransactionId(null);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
     }
 
     @Test
@@ -320,7 +402,76 @@ class ChargeSessionServiceTest {
         UUID unknown = UUID.randomUUID();
         when(chargeSessionRepository.findById(unknown)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> service.stop(unknown));
+        assertThrows(ResourceNotFoundException.class, () -> service.stop(unknown, staff));
+    }
+
+    // ---- finding P1b-08: a stop or unlock command is recorded with the person who sent it ----
+
+    private AuditLog theAuditRow() {
+        org.mockito.ArgumentCaptor<AuditLog> row = org.mockito.ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(row.capture());
+        return row.getValue();
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheStop_withTheStatusBeforeAndAfter() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+
+        service.stop(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertEquals(AuditLog.AuditAction.UPDATE, row.getAction());
+        assertEquals(AuditLog.EntityType.CHARGE_SESSION, row.getEntityType());
+        assertEquals(session.getId(), row.getEntityId());
+        assertSame(staff, row.getUser());
+        assertEquals("ACTIVE", mapper.readTree(row.getOldValues()).get("status").asText());
+        assertEquals("STOP_REQUESTED", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Stop requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheStop_whenTheChargerUnlocksAutomatically() throws Exception {
+        chargePoint.setLockBehavior(ChargePoint.LockBehavior.AUTO_UNLOCK_ON_STOP);
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+
+        service.stop(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertEquals("AWAITING_PAYMENT", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Stop requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldWriteNoAuditRow_whenTheStopIsRefused() {
+        ChargeSession session = session(ChargeSession.Status.STARTING);
+
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
+
+        verify(auditLogRepository, never()).save(any(AuditLog.class));
+    }
+
+    @Test
+    void shouldRecordWhoRequestedTheUnlock_withTheStatusBeforeAndAfter() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.UNLOCK_REQUESTED);
+        session.setPaidAt(LocalDateTime.now());
+
+        service.retryUnlock(session.getId(), staff);
+
+        AuditLog row = theAuditRow();
+        assertSame(staff, row.getUser());
+        assertEquals(session.getId(), row.getEntityId());
+        assertEquals("UNLOCK_REQUESTED", mapper.readTree(row.getOldValues()).get("status").asText());
+        assertEquals("UNLOCK_REQUESTED", mapper.readTree(row.getNewValues()).get("status").asText());
+        assertEquals("Unlock requested by staff for charger " + CODE, row.getDescription());
+    }
+
+    @Test
+    void shouldWriteNoAuditRow_whenTheUnlockIsRefused() {
+        ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
+
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
+
+        verify(auditLogRepository, never()).save(any(AuditLog.class));
     }
 
     // ------------------------------------------------------------------ mark paid
@@ -438,7 +589,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.PAID);
         session.setPaidAt(LocalDateTime.now());
 
-        ChargeSessionResponse response = service.retryUnlock(session.getId());
+        ChargeSessionResponse response = service.retryUnlock(session.getId(), staff);
 
         assertEquals("UNLOCK_REQUESTED", response.getStatus());
         verify(ocppCommands).unlockConnector(CODE, session.getId(), 1, 1);
@@ -448,7 +599,7 @@ class ChargeSessionServiceTest {
     void shouldRefuseUnlock_whenSessionIsNotPaid() {
         ChargeSession session = session(ChargeSession.Status.AWAITING_PAYMENT);
 
-        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
         verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }
 
@@ -593,6 +744,72 @@ class ChargeSessionServiceTest {
 
         assertEquals(45, session.getCurrentSoc());
         assertEquals(0, new BigDecimal("3.000").compareTo(session.getEnergyDeliveredKwh()));
+    }
+
+    // ---- finding D-01: a charger-supplied number with an extreme exponent or multiplier is ignored ----
+
+    private JsonNode energyEvent(int seq, String value, String multiplier) throws Exception {
+        String unit = multiplier == null ? "" : ",\"unitOfMeasure\":{\"unit\":\"Wh\",\"multiplier\":" + multiplier + "}";
+        return mapper.readTree("{\"eventType\":\"Updated\",\"seqNo\":" + seq + ",\"transactionInfo\":{\"transactionId\":\"TX-1\"},"
+                + "\"meterValue\":[{\"sampledValue\":[{\"measurand\":\"Energy.Active.Import.Register\",\"value\":" + value + unit + "}]}]}");
+    }
+
+    @Test
+    void shouldIgnoreAnEnergyReadingWithAnExtremeExponent() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "\"1e100\"", null));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(session.getEnergyDeliveredKwh()));
+    }
+
+    @Test
+    void shouldIgnoreAnEnergyReadingWithAnExtremeMultiplier() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", "100000"));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+    }
+
+    @Test
+    void shouldIgnoreABatteryReadingWithAnExtremeExponent() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        assertEquals(40, session.getCurrentSoc());
+
+        service.handleTransactionEvent(CODE, mapper.readTree("{\"eventType\":\"Updated\",\"seqNo\":2,"
+                + "\"transactionInfo\":{\"transactionId\":\"TX-1\"},\"meterValue\":[{\"sampledValue\":["
+                + "{\"measurand\":\"SoC\",\"value\":\"1e100000\"}]}]}"));
+
+        assertEquals(40, session.getCurrentSoc());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2147483647", "-2147483648", "10", "-10"})
+    void shouldIgnoreAnEnergyReadingWhoseMultiplierIsNotAPlausibleUnit(String multiplier) throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+        BigDecimal before = session.getLastMeterWh();
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", multiplier));
+
+        assertEquals(0, before.compareTo(session.getLastMeterWh()));
+    }
+
+    @Test
+    void shouldStillUseAnOrdinaryEnergyReadingWithAMultiplier() throws Exception {
+        ChargeSession session = session(ChargeSession.Status.ACTIVE);
+        service.handleTransactionEvent(CODE, event("Updated", 1, 40, 1_000L));
+
+        service.handleTransactionEvent(CODE, energyEvent(2, "5", "3"));   // 5 x 10^3 = 5000 Wh
+
+        assertEquals(0, new BigDecimal("5000").compareTo(session.getLastMeterWh()));
     }
 
     @Test
@@ -793,7 +1010,7 @@ class ChargeSessionServiceTest {
         doThrow(new EvSessionStateException("Charger " + CODE + " is offline"))
                 .when(ocppCommands).requestStop(anyString(), any(), anyString());
 
-        service.stop(session.getId());
+        service.stop(session.getId(), staff);
 
         assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
         assertTrue(session.getStatusMessage().startsWith("Could not send the stop command"));
@@ -806,7 +1023,7 @@ class ChargeSessionServiceTest {
         ChargeSession session = session(ChargeSession.Status.ACTIVE);
         when(ocppCommands.isConnected(CODE)).thenReturn(false);
 
-        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.stop(session.getId(), staff));
 
         assertEquals(ChargeSession.Status.ACTIVE, session.getStatus());
         verify(ocppCommands, never()).requestStop(anyString(), any(), anyString());
@@ -831,7 +1048,7 @@ class ChargeSessionServiceTest {
         session.setPaidAt(LocalDateTime.now());
         when(ocppCommands.isConnected(CODE)).thenReturn(false);
 
-        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId()));
+        assertThrows(EvSessionStateException.class, () -> service.retryUnlock(session.getId(), staff));
 
         verify(ocppCommands, never()).unlockConnector(anyString(), any(), anyInt(), anyInt());
     }

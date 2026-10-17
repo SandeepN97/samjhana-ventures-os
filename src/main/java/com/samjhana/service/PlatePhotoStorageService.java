@@ -1,5 +1,6 @@
 package com.samjhana.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -14,6 +15,7 @@ import java.util.Base64;
 import java.util.Locale;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class PlatePhotoStorageService {
 
@@ -32,6 +34,12 @@ public class PlatePhotoStorageService {
         }
         String header = dataUrl.substring(0, comma).toLowerCase(Locale.ROOT);
         String extension = extensionFor(header);
+        // Judge the size from the length of the text, before anything is copied or decoded: a text this long cannot
+        // be a photo under the limit (Base64 packs 3 bytes into 4 characters; the last group can be 2 bytes short).
+        long encodedLength = dataUrl.length() - (comma + 1L);
+        if (encodedLength / 4 * 3 - 2 > MAX_BYTES) {
+            throw new IllegalArgumentException("Plate photo must be between 1 byte and 5 MB");
+        }
         byte[] bytes;
         try {
             bytes = Base64.getDecoder().decode(dataUrl.substring(comma + 1));
@@ -57,6 +65,22 @@ public class PlatePhotoStorageService {
             return relative.toString().replace('\\', '/');
         } catch (IOException ex) {
             throw new IllegalStateException("Could not store plate photo", ex);
+        }
+    }
+
+    /**
+     * Removes a photo this service wrote (finding F-02: a start that is refused or rolled back must not leave its photo
+     * behind). Only a file inside the photo folder can be removed: a path that points anywhere else, or at a folder,
+     * is ignored, as is a photo that is already gone.
+     */
+    public void delete(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) return;
+        try {
+            Path target = storageRoot.resolve(relativePath).normalize();
+            if (!target.startsWith(storageRoot) || !Files.isRegularFile(target)) return;
+            Files.deleteIfExists(target);
+        } catch (IOException | RuntimeException ex) {
+            log.warn("Could not remove plate photo {}: {}", relativePath, ex.toString());
         }
     }
 

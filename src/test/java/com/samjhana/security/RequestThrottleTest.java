@@ -120,4 +120,40 @@ class RequestThrottleTest {
         assertThat(throttle.trackedKeys()).isEqualTo(1);
         assertThat(throttle.tryAcquire("long", 1, Duration.ofHours(2))).isFalse();     // still limited
     }
+
+    // ---- finding P1a-10: refuse before expensive work, record only the failures ----
+
+    @Test
+    void shouldReportRoomWithoutRecordingAnything() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        for (int i = 0; i < 5; i++) assertThat(throttle.hasRoom("k", 2, Duration.ofMinutes(10))).isTrue();
+        assertThat(throttle.trackedKeys()).isZero();
+    }
+
+    @Test
+    void shouldReportNoRoom_onceTheLimitIsReached() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        throttle.tryAcquire("k", 2, Duration.ofMinutes(10));
+        assertThat(throttle.hasRoom("k", 2, Duration.ofMinutes(10))).isTrue();
+        throttle.tryAcquire("k", 2, Duration.ofMinutes(10));
+        assertThat(throttle.hasRoom("k", 2, Duration.ofMinutes(10))).isFalse();
+        assertThat(throttle.hasRoom("another", 2, Duration.ofMinutes(10))).isTrue();
+    }
+
+    @Test
+    void shouldReportRoomAgain_onceTheHitsAreOutsideTheWindow() {
+        MovableClock clock = new MovableClock();
+        RequestThrottle throttle = new RequestThrottle(clock);
+        throttle.tryAcquire("k", 1, Duration.ofMinutes(10));
+        assertThat(throttle.hasRoom("k", 1, Duration.ofMinutes(10))).isFalse();
+        clock.advance(Duration.ofMinutes(11));
+        assertThat(throttle.hasRoom("k", 1, Duration.ofMinutes(10))).isTrue();
+    }
+
+    @Test
+    void shouldReportNoRoom_forAMissingOrOverlongKey() {
+        RequestThrottle throttle = new RequestThrottle(new MovableClock());
+        assertThat(throttle.hasRoom(null, 5, Duration.ofMinutes(10))).isFalse();
+        assertThat(throttle.hasRoom("x".repeat(RequestThrottle.MAX_KEY_LENGTH + 1), 5, Duration.ofMinutes(10))).isFalse();
+    }
 }

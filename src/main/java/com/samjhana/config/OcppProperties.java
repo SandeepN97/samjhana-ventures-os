@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 @ConfigurationProperties(prefix = "samjhana.ocpp")
@@ -52,10 +53,21 @@ public class OcppProperties {
     }
 
     public String secretFor(String chargePointCode) {
+        return configuredSecretFor(chargePointCode).orElseThrow(() ->
+                new IllegalStateException("No OCPP secret configured for charge point " + chargePointCode));
+    }
+
+    /** The secret configured for a charger, or empty when none is. */
+    public Optional<String> configuredSecretFor(String chargePointCode) {
         String secret = stationSecrets.get(chargePointCode);
-        if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("No OCPP secret configured for charge point " + chargePointCode);
-        }
-        return secret;
+        return secret == null || secret.isBlank() ? Optional.empty() : Optional.of(secret);
+    }
+
+    /**
+     * The development secret published in application.yml for a charger. Anyone can read it in the repository, so a
+     * charger whose stored secret still matches it must not be trusted (finding P1B1-01).
+     */
+    public static String publishedDevSecretFor(String chargePointCode) {
+        return "dev-" + chargePointCode + "-change-me";
     }
 }
