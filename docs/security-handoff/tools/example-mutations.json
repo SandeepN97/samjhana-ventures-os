@@ -1,0 +1,51 @@
+[
+ {
+  "name": "X01-no-cleanup-registered",
+  "file": "src/main/java/com/samjhana/service/ChargeSessionService.java",
+  "old": "            removeIfTheStartIsRolledBack(photoPath);\n",
+  "new": "",
+  "tests": "ChargeSessionServiceTest"
+ },
+ {
+  "name": "X02-deleted-when-committed",
+  "file": "src/main/java/com/samjhana/service/ChargeSessionService.java",
+  "old": "if (status != STATUS_COMMITTED) photoStorageService.delete(photoPath);",
+  "new": "if (status == STATUS_COMMITTED) photoStorageService.delete(photoPath);",
+  "tests": "ChargeSessionServiceTest"
+ },
+ {
+  "name": "X03-photo-stored-before-the-vehicle-type-is-checked",
+  "file": "src/main/java/com/samjhana/service/ChargeSessionService.java",
+  "old": "        EvVehicle catalog = null;\n        if (request.getVehicleCatalogId() != null && !request.getVehicleCatalogId().isBlank()) {\n            catalog = evVehicleRepository.findById(parseUuid(request.getVehicleCatalogId(), \"vehicle type\"))\n                    .filter(item -> Boolean.TRUE.equals(item.getIsActive()))\n                    .orElseThrow(() -> new ResourceNotFoundException(\"EV vehicle type not found\"));\n        }\n        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {\n            String photoPath = photoStorageService.store(request.getPlatePhotoDataUrl(), plate);\n            removeIfTheStartIsRolledBack(photoPath);\n            vehicle.setPlatePhotoPath(photoPath);\n        }\n",
+  "new": "        if (request.getPlatePhotoDataUrl() != null && !request.getPlatePhotoDataUrl().isBlank()) {\n            String photoPath = photoStorageService.store(request.getPlatePhotoDataUrl(), plate);\n            removeIfTheStartIsRolledBack(photoPath);\n            vehicle.setPlatePhotoPath(photoPath);\n        }\n        EvVehicle catalog = null;\n        if (request.getVehicleCatalogId() != null && !request.getVehicleCatalogId().isBlank()) {\n            catalog = evVehicleRepository.findById(parseUuid(request.getVehicleCatalogId(), \"vehicle type\"))\n                    .filter(item -> Boolean.TRUE.equals(item.getIsActive()))\n                    .orElseThrow(() -> new ResourceNotFoundException(\"EV vehicle type not found\"));\n        }\n",
+  "tests": "ChargeSessionServiceTest"
+ },
+ {
+  "name": "X04-delete-leaves-the-folder-check",
+  "file": "src/main/java/com/samjhana/service/PlatePhotoStorageService.java",
+  "old": "if (!target.startsWith(storageRoot) || !Files.isRegularFile(target)) return;\n            Files.deleteIfExists(target);",
+  "new": "if (!Files.isRegularFile(target)) return;\n            Files.deleteIfExists(target);",
+  "tests": "PlatePhotoStorageDeleteTest"
+ },
+ {
+  "name": "X05-delete-removes-folders",
+  "file": "src/main/java/com/samjhana/service/PlatePhotoStorageService.java",
+  "old": "if (!target.startsWith(storageRoot) || !Files.isRegularFile(target)) return;\n            Files.deleteIfExists(target);",
+  "new": "if (!target.startsWith(storageRoot)) return;\n            Files.deleteIfExists(target);",
+  "tests": "PlatePhotoStorageDeleteTest"
+ },
+ {
+  "name": "X06-delete-never-deletes",
+  "file": "src/main/java/com/samjhana/service/PlatePhotoStorageService.java",
+  "old": "            Files.deleteIfExists(target);\n        } catch (IOException | RuntimeException ex) {\n            log.warn",
+  "new": "            if (target == null) Files.deleteIfExists(target);\n        } catch (IOException | RuntimeException ex) {\n            log.warn",
+  "tests": "PlatePhotoStorageDeleteTest"
+ },
+ {
+  "name": "X07-delete-lets-odd-paths-fail",
+  "file": "src/main/java/com/samjhana/service/PlatePhotoStorageService.java",
+  "old": "} catch (IOException | RuntimeException ex) {\n            log.warn(\"Could not remove plate photo",
+  "new": "} catch (IOException ex) {\n            log.warn(\"Could not remove plate photo",
+  "tests": "PlatePhotoStorageDeleteTest"
+ }
+]

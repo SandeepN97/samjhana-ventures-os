@@ -1381,6 +1381,13 @@ export const resources = {
         evShort: 'EV',
       },
 
+      // Why the server refuses a new password (its PasswordPolicy); every screen that sets a password shows these
+      passwordPolicy: {
+        tooLong: 'Password is too long. Use at most 72 characters (a Nepali letter counts as 3)',
+        tooCommon: 'Password is too common or too easy to guess. Choose something less obvious',
+        hasUsername: 'Password must not contain the username',
+      },
+
       // Settings
       forcedPassword: {
         title: 'Choose a new password',
@@ -1557,8 +1564,6 @@ export const resources = {
         diesel: 'Diesel',
         notSet: 'Not set',
         perLiter: 'per liter',
-        fetchingNoc: 'Fetching from NOC...',
-        fetchNocPrices: 'Fetch NOC Prices',
         viewOnlyNotice: 'You can only view prices. Contact admin to update prices.',
         updatePrices: 'Update Prices',
         effectiveDate: 'Effective Date',
@@ -1569,11 +1574,8 @@ export const resources = {
         priceHistory: 'Price History',
         noHistory: 'No history',
         pricesUpdated: 'Prices updated!',
-        nocPricesUpdated: 'Prices fetched from NOC!',
-        nocFetchFailed: 'Failed to fetch NOC prices',
         atLeastOneRequired: 'At least one price is required',
         failedToSave: 'Failed to save',
-        nocFetching: 'NOC बाट ल्याउँदै...',
       },
 
       // Fuel Order
@@ -3075,6 +3077,13 @@ export const resources = {
         evShort: 'EV',
       },
 
+      // Why the server refuses a new password (its PasswordPolicy); every screen that sets a password shows these
+      passwordPolicy: {
+        tooLong: 'पासवर्ड धेरै लामो छ। बढीमा ७२ अक्षर प्रयोग गर्नुहोस् (नेपाली अक्षरले ३ गनिन्छ)',
+        tooCommon: 'पासवर्ड धेरै चलनचल्तीको वा सजिलै अनुमान गर्न सकिने छ। अलि फरक पासवर्ड रोज्नुहोस्',
+        hasUsername: 'पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन',
+      },
+
       // Settings
       forcedPassword: {
         title: 'नयाँ पासवर्ड रोज्नुहोस्',
@@ -3251,8 +3260,6 @@ export const resources = {
         diesel: 'डिजेल',
         notSet: 'सेट नभएको',
         perLiter: 'प्रति लिटर',
-        fetchingNoc: 'NOC बाट ल्याउँदै...',
-        fetchNocPrices: 'NOC बाट मूल्य ल्याउनुहोस्',
         viewOnlyNotice: 'तपाईं मूल्य हेर्न मात्र सक्नुहुन्छ। मूल्य परिवर्तन गर्न एडमिनलाई सम्पर्क गर्नुहोस्।',
         updatePrices: 'मूल्य अपडेट गर्नुहोस्',
         effectiveDate: 'लागू मिति',
@@ -3263,11 +3270,8 @@ export const resources = {
         priceHistory: 'मूल्य इतिहास',
         noHistory: 'कुनै इतिहास छैन',
         pricesUpdated: 'मूल्य अपडेट भयो!',
-        nocPricesUpdated: 'NOC बाट मूल्य अपडेट भयो!',
-        nocFetchFailed: 'NOC बाट मूल्य ल्याउन असफल',
         atLeastOneRequired: 'कम्तिमा एउटा मूल्य आवश्यक छ',
         failedToSave: 'सेभ गर्न असफल',
-        nocFetching: 'NOC बाट ल्याउँदै...',
       },
 
       // Fuel Order

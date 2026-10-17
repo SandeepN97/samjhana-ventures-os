@@ -9,6 +9,10 @@ Keep changes small, preserve the public/private API boundary, and test the path 
 - [Features](docs/FEATURES.md) — implemented capabilities and API overview
 - [EV charging architecture](docs/EV-CHARGING-ARCHITECTURE.md) — OCPP behavior and known limits
 - [Claude project guidance](CLAUDE.md) — repository conventions used by coding agents
+- [Roles and permissions](docs/ROLES.md) — who may do what, checked by a test
+- [Security work](docs/security-handoff/README.md) — fixed findings, owner decisions, what to build next and open questions
+- [Documentation index](docs/README.md) — every document in one list
+- [Design system](design-system/README.md) — colours, fonts and components; read before changing any screen
 
 ## Non-negotiable boundaries
 
@@ -23,7 +27,7 @@ Keep changes small, preserve the public/private API boundary, and test the path 
 Only these repository-wide infrastructure items remain open:
 
 1. Add versioned production database migrations and move the existing SQL in
-   `docs/migrations/` under that tool before changing production Hibernate from
+   `docs/sql/` under that tool before changing production Hibernate from
    `update` to `validate`.
 2. Add a PostgreSQL backup-and-restore runbook with a recurring restore drill.
 

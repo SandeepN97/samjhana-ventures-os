@@ -1,0 +1,13 @@
+{
+  "_about": "What the two apps contain today (staging 1b8fe1a, 2026-10-17). New code may not make any number bigger, so new screens use the named colours and tokens. Lower a number when you remove some. See CONSISTENCY.md.",
+  "admin": {
+    "offPaletteClassUses": 28,
+    "hexLiterals": 55,
+    "distinctHexLiterals": 19
+  },
+  "web": {
+    "hexLiterals": 736,
+    "distinctHexLiterals": 86,
+    "hexLiteralsEqualToToken": 388
+  }
+}

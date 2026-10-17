@@ -14,13 +14,13 @@ web
 
 ## Product Purpose
 
-Samjhana Ventures OS gives one family a single bilingual system for operating five businesses: a petrol pump, EV charging station, furniture shop, house rentals, and bank loans. It replaces fragmented day-to-day record keeping with business-specific entry, review, reporting, and management workflows while keeping a separate public website for customer-facing information and the furniture catalogue.
+Samjhana Ventures OS gives one family a single bilingual system for operating six businesses: a petrol pump, EV charging station, furniture shop, beekeeping shop, house rentals, and bank loans. It replaces fragmented day-to-day record keeping with business-specific entry, review, reporting, and management workflows while keeping a separate public website for customer-facing information and the furniture catalogue.
 
 Success means Nepal-based staff can complete routine work simply and accurately, while managers can trust the shared records and oversee the businesses remotely.
 
 ## Positioning
 
-This is one operating system shaped around the real workflows of one family's five distinct businesses. Each business keeps its own calculations and operational flow, while authentication, records, approvals, reporting, and administration remain unified.
+This is one operating system shaped around the real workflows of one family's six distinct businesses. Each business keeps its own calculations and operational flow, while authentication, records, approvals, reporting, and administration remain unified.
 
 ## Operating Context
 
@@ -32,7 +32,7 @@ This is one operating system shaped around the real workflows of one family's fi
 
 ## Capabilities and Constraints
 
-- The five internal modules cover petrol sales and fuel orders, EV charging and electricity reconciliation, furniture inventory and orders, rental properties and payments, and loan tracking.
+- The six internal modules cover petrol sales and fuel orders, EV charging and electricity reconciliation, furniture inventory and orders, beekeeping products and orders, rental properties and payments, and loan tracking.
 - Shared capabilities include authentication, role-based access, transaction records, pending review, daily close, analytics, staff management, and English/Nepali localization.
 - The public website may use only intentionally public data. It must not expose costs, profit, stock levels, staff data, internal identifiers, or private operational records.
 - Public customer-facing offerings include the furniture catalogue and information about fuel and EV services, bike repair, restaurant service, and beekeeping products.

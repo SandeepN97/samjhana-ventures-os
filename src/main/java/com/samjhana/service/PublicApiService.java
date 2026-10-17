@@ -59,13 +59,21 @@ public class PublicApiService {
         } else {
             items = furnitureItemRepository.findByIsActiveTrueOrderByNameAsc();
         }
-        return items.stream().map(this::toPublicItem).toList();
+        return items.stream().filter(PublicApiService::isOnTheWebsite).map(this::toPublicItem).toList();
     }
 
-    public Optional<Map<String, Object>> getFurnitureItem(UUID id) {
-        return furnitureItemRepository.findById(id)
-                .filter(FurnitureItem::getIsActive)
+    /** One item by its public name (slug), if the website shows it. The database id is not a way in. */
+    public Optional<Map<String, Object>> getFurnitureItem(String slug) {
+        if (slug == null) return Optional.empty();
+        return furnitureItemRepository.findBySlug(slug)
+                .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+                .filter(PublicApiService::isOnTheWebsite)
                 .map(this::toPublicItem);
+    }
+
+    /** What the website shows: not switched off ("Hidden on website"), and with a public name to be known by (finding P0-07). */
+    private static boolean isOnTheWebsite(FurnitureItem item) {
+        return !Boolean.FALSE.equals(item.getShowOnWebsite()) && item.getSlug() != null;
     }
 
     public List<Map<String, Object>> getEvRates() {
@@ -99,7 +107,7 @@ public class PublicApiService {
 
     private Map<String, Object> toPublicItem(FurnitureItem item) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", item.getId().toString());
+        map.put("id", item.getSlug());   // the public id: never the database id
         map.put("name", item.getName());
         map.put("nameNepali", item.getNameNepali());
         map.put("category", item.getCategory().name());
@@ -133,7 +141,6 @@ public class PublicApiService {
 
     private Map<String, Object> toPublicEvRate(EvVehicle v) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", v.getId().toString());
         map.put("vehicleName", v.getVehicleName());
         map.put("batteryCapacityKw", v.getBatteryCapacityKw());
         map.put("seatingCapacity", v.getSeatingCapacity());

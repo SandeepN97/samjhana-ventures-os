@@ -1,7 +1,9 @@
 package com.samjhana.service;
 
+import com.samjhana.entity.AuditLog;
 import com.samjhana.entity.LoanReceipt;
 import com.samjhana.entity.User;
+import com.samjhana.repository.AuditLogRepository;
 import com.samjhana.repository.LoanReceiptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +45,7 @@ public class LoanReceiptService {
     private static final float JPEG_QUALITY = 0.85f;
 
     private final LoanReceiptRepository receiptRepository;
+    private final AuditLogRepository auditLogRepository;
 
     @Transactional
     public LoanReceipt store(MultipartFile file, User uploader) {
@@ -65,9 +69,28 @@ public class LoanReceiptService {
             throw new IllegalArgumentException("The receipt photo must be a JPEG or PNG picture");
         }
         byte[] clean = resave(bytes);
-        return receiptRepository.save(LoanReceipt.builder()
+        rejectAPhotoAlreadyAttachedToAPayment(clean);
+        LoanReceipt saved = receiptRepository.save(LoanReceipt.builder()
                 .contentType("image/jpeg").sizeBytes((long) clean.length)
                 .uploadedBy(uploader.getUsername()).data(clean).build());
+        AuditLog entry = AuditLog.createEvent(uploader, AuditLog.EntityType.RESOURCE, saved.getId(),
+                "{\"loanReceipt\":\"uploaded\",\"bytes\":" + clean.length + "}");
+        entry.setDescription("Loan receipt photo uploaded by " + uploader.getUsername());
+        auditLogRepository.save(entry);
+        return saved;
+    }
+
+    /**
+     * The same photo cannot stand as the proof of a second payment (finding F-05). The photo is saved again as a plain
+     * JPEG, so the same picture uploaded twice comes out byte for byte the same; only receipts of exactly this size are
+     * compared, so this reads a handful of rows at most.
+     */
+    private void rejectAPhotoAlreadyAttachedToAPayment(byte[] clean) {
+        for (LoanReceipt attached : receiptRepository.findAttachedWithSize(clean.length)) {
+            if (Arrays.equals(attached.getData(), clean)) {
+                throw new IllegalArgumentException("That receipt photo is already attached to a payment. Take a new photo of this payment's receipt.");
+            }
+        }
     }
 
     public Optional<LoanReceipt> find(UUID id) {
@@ -92,10 +115,16 @@ public class LoanReceiptService {
         return receipt;
     }
 
+    /**
+     * Gives the receipt to the payment, only if no other payment has it (finding F-05). Two payments can hold the same free
+     * receipt at the same moment and both pass {@link #requireAttachable}; one statement decides, and the one that loses is
+     * refused, which rolls its payment back. The whole row is never written back, so the photo is not rewritten either.
+     */
     @Transactional
     public void attach(LoanReceipt receipt, UUID transactionId) {
-        receipt.setTransactionId(transactionId);
-        receiptRepository.save(receipt);
+        if (receiptRepository.attachIfFree(receipt.getId(), transactionId) != 1) {
+            throw new IllegalArgumentException("That receipt photo is already used by another payment");
+        }
     }
 
     /**

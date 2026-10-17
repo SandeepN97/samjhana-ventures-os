@@ -22,6 +22,8 @@ public interface FurnitureItemRepository extends JpaRepository<FurnitureItem, UU
 
     boolean existsBySlug(String slug);
 
+    java.util.Optional<FurnitureItem> findBySlug(String slug);
+
     /** Takes {@code qty} off the stock in one guarded statement; returns 0 and changes nothing when there is not enough. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update FurnitureItem i set i.stockQty = i.stockQty - :qty "
@@ -31,4 +33,14 @@ public interface FurnitureItemRepository extends JpaRepository<FurnitureItem, UU
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update FurnitureItem i set i.stockQty = i.stockQty + :qty where i.id = :id and :qty > 0")
     int addStock(@Param("id") UUID id, @Param("qty") int qty);
+
+    /**
+     * Takes {@code qty} off the stock in one statement, but never below zero: a counter sale for more than the recorded
+     * stock takes it to zero, as it always did. One statement rather than read, subtract and write back, so two sales
+     * (or a sale and an online order) at the same moment cannot overwrite each other (finding P1a-13).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update FurnitureItem i set i.stockQty = case when i.stockQty > :qty then i.stockQty - :qty else 0 end "
+            + "where i.id = :id and :qty > 0")
+    int removeStockUpTo(@Param("id") UUID id, @Param("qty") int qty);
 }

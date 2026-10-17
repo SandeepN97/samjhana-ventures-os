@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Fuel, Check, History, Plus, Eye, RefreshCw } from 'lucide-react';
+import { Fuel, Check, History, Plus, Eye } from 'lucide-react';
 import api from '../../utils/api';
 import DatePicker from '../../components/DatePicker';
 import { formatBsDate } from '../../utils/nepaliDate';
@@ -23,7 +23,6 @@ export default function FuelPricePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [fetchingNoc, setFetchingNoc] = useState(false);
 
   const [formValues, setFormValues] = useState({
     effectiveDate: nepalToday(),
@@ -99,21 +98,6 @@ export default function FuelPricePage() {
     }
   };
 
-  const handleFetchNoc = async () => {
-    setFetchingNoc(true);
-    try {
-      await api.post('/api/fuel-prices/fetch-noc');
-      showToast(t('fuelPrice.nocPricesUpdated'), 'success');
-      fetchCurrentPrices();
-      fetchPriceHistory();
-    } catch (err) {
-      showToast(err.response?.data?.message || t('fuelPrice.nocFetchFailed'), 'error');
-    } finally {
-      setFetchingNoc(false);
-    }
-  };
-
-
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -142,26 +126,6 @@ export default function FuelPricePage() {
           </div>
         </div>
       </div>
-
-      {/* Fetch NOC Prices Button - Admin Only */}
-      {isAdmin && (
-        <div className="px-4 mt-2">
-          <button
-            onClick={handleFetchNoc}
-            disabled={fetchingNoc}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
-              fetchingNoc
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 active:scale-95 text-white'
-            }`}
-          >
-            <RefreshCw className={`w-5 h-5 ${fetchingNoc ? 'animate-spin' : ''}`} />
-            {fetchingNoc
-              ? t('fuelPrice.fetchingNoc')
-              : t('fuelPrice.fetchNocPrices')}
-          </button>
-        </div>
-      )}
 
       {/* Staff View-Only Notice */}
       {!isAdmin && (

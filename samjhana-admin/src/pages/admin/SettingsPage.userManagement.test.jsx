@@ -84,4 +84,68 @@ describe('SettingsPage user management (admin)', () => {
     await screen.findByText('Sita');
     expect(screen.getByRole('button', { name: 'पासवर्ड रिसेट' })).toBeInTheDocument();
   });
+
+  describe('creating a user', () => {
+    const staffMember = { id: 7, fullName: 'Ram Kumar', fullNameNepali: 'राम कुमार', staffRole: 'STAFF' };
+
+    beforeEach(() => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/api/admin/users' ? people : url === '/api/staff' ? [staffMember] : [],
+      }));
+    });
+
+    // The login fields appear once a staff member is chosen.
+    async function openForm(options) {
+      renderWithProviders(<SettingsPage />, options);
+      await screen.findByText('Sita');
+      await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.add') }));
+      await userEvent.click(screen.getByRole('button', { name: 'Select option' }));
+      await userEvent.click(await screen.findByRole('button', { name: /Ram Kumar/ }));
+    }
+
+    async function create(password) {
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('settings.username')), 'ram-kumar');
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('settings.password')), password);
+      await userEvent.type(screen.getByPlaceholderText(testI18n.t('settings.repeatPassword')), password);
+      await userEvent.click(screen.getByRole('button', { name: testI18n.t('settings.createUser') }));
+    }
+
+    const refusal = (code, message) => ({ response: { status: 400, data: { code, message } } });
+
+    it('shows why the server refused a common password', async () => {
+      api.post.mockRejectedValue(refusal('PASSWORD_TOO_COMMON', 'Password is too common or too easy to guess. Choose something less obvious'));
+      await openForm();
+      await create('Welcome123');
+
+      expect(await screen.findByText('Password is too common or too easy to guess. Choose something less obvious'))
+        .toBeInTheDocument();
+      expect(api.post).toHaveBeenCalledWith('/api/admin/users', expect.objectContaining({ username: 'ram-kumar', password: 'Welcome123' }));
+    });
+
+    it('shows the reason in Nepali, not in the English the server wrote', async () => {
+      api.post.mockRejectedValue(refusal('PASSWORD_HAS_USERNAME', 'Password must not contain the username'));
+      await openForm({ locale: 'ne' });
+      await create('Ram-Kumar-7731');
+
+      expect(await screen.findByText('पासवर्डमा प्रयोगकर्ता नाम हुनु हुँदैन')).toBeInTheDocument();
+      expect(screen.queryByText('Password must not contain the username')).not.toBeInTheDocument();
+    });
+
+    it('refuses a password longer than 72 bytes without calling the server', async () => {
+      await openForm();
+      await create(`${'Qx7!'.repeat(18)}z`);
+
+      expect(await screen.findByText('Password is too long. Use at most 72 characters (a Nepali letter counts as 3)'))
+        .toBeInTheDocument();
+      expect(api.post).not.toHaveBeenCalled();
+    });
+
+    it('keeps showing the server message when it has no password code', async () => {
+      api.post.mockRejectedValue({ response: { status: 400, data: { code: 'BAD_REQUEST', message: 'Username already exists' } } });
+      await openForm();
+      await create('k7Qm2xPv-ok');
+
+      expect(await screen.findByText('Username already exists')).toBeInTheDocument();
+    });
+  });
 });

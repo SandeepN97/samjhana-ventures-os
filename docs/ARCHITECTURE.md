@@ -33,6 +33,7 @@ The development profile seeds demo users, business units, and EV vehicle types w
 | `petrol` | `PetrolStrategy` |
 | `ev` | `EVStrategy` |
 | `furniture` | `FurnitureStrategy` |
+| `beekeeping` | `BeekeepingStrategy` |
 | `rental` | `RentalStrategy` |
 | `loan` | `LoanStrategy` |
 
@@ -47,7 +48,7 @@ The backend includes an OCPP 2.0.1 WebSocket handler and EV session APIs. Charge
 - `POST /api/auth/login` is public.
 - `/api/public/**` is unauthenticated and read-only for the public website. Responses must not expose internal financial or staff data.
 - The current fuel-price endpoint `/api/fuel-prices/current` is also permitted without a JWT.
-- Public ecommerce product and customer-auth routes under `/api/ecommerce/**` are also permitted without a JWT.
+- The online shop, restaurant menu, site content and pictures are served under `/api/public/**` (for example `/api/public/shop/products`, `/api/public/restaurant`, `/api/public/site`, `/api/public/media/{id}`). The older `/api/ecommerce/**` and `/shop/**` routes no longer exist.
 - Other business API requests require JWT authentication; role-specific checks are applied where needed.
 - The public React website and private admin app are separate frontends. Do not expose the admin app or real operational data publicly.
 
@@ -59,7 +60,9 @@ src/test/java/       Backend unit and integration tests
 samjhana-admin/      Internal React/Vite app, Vitest tests, and Playwright E2E suite
 samjhana-web/        Public React/Vite website and frontend tests
 tools/ocpp-simulator/ Standalone OCPP simulator for manual testing
-docs/                Architecture, feature, setup, and tooling documentation
+docs/                Architecture, feature, setup, security and tooling documentation (index: docs/README.md)
+docs/sql/            SQL to run on Supabase before a deploy (see docs/sql/README.md)
+design-system/       How both apps look: tokens, component guides and previews (see design-system/README.md)
 ```
 
 For local startup commands, see the [README](../README.md).

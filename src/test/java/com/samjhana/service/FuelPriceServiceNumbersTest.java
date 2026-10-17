@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 class FuelPriceServiceNumbersTest {
 
     @Mock FuelPriceRepository fuelPriceRepository;
-    @Mock NocPriceScraperService nocPriceScraperService;
     @Mock com.samjhana.repository.AuditLogRepository auditLogRepository;
     @InjectMocks FuelPriceService service;
 
