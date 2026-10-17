@@ -135,4 +135,90 @@ class ChargePointSeederTest {
 
         assertThrows(IllegalStateException.class, () -> seeder.run());
     }
+
+    // ---- finding P1B1-01: a charger secret stored from the published development default is replaced ----
+
+    private ChargePoint registered(String code, String hash) {
+        return ChargePoint.builder()
+                .id(java.util.UUID.randomUUID())
+                .code(code).model("m").maxPowerKw(new BigDecimal("80")).displayOrder(1)
+                .ocppAuthSecretHash(hash)
+                .build();
+    }
+
+    private void onlyTheseChargersExist(ChargePoint... existing) {
+        when(chargePointRepository.findByCodeAndDeletedAtIsNull(anyString())).thenReturn(Optional.empty());
+        for (ChargePoint point : existing) {
+            when(chargePointRepository.findByCodeAndDeletedAtIsNull(point.getCode())).thenReturn(Optional.of(point));
+        }
+    }
+
+    @Test
+    void shouldReplaceTheStoredHash_whenItMatchesThePublishedDefaultAndARealSecretIsConfigured() {
+        ChargePoint seededFromTheDefault = registered("HD-D180-CC-01", "hash-of-the-published-default");
+        onlyTheseChargersExist(seededFromTheDefault);
+        when(passwordEncoder.matches(OcppProperties.publishedDevSecretFor("HD-D180-CC-01"), "hash-of-the-published-default"))
+                .thenReturn(true);
+        when(ocppProperties.configuredSecretFor("HD-D180-CC-01")).thenReturn(Optional.of("a-real-secret"));
+
+        seeder.run();
+
+        assertEquals("hash(a-real-secret)", seededFromTheDefault.getOcppAuthSecretHash());
+    }
+
+    @Test
+    void shouldKeepTheStoredHash_whenItIsNotThePublishedDefault() {
+        ChargePoint rotated = registered("HD-D180-CC-01", "hash-from-rotate-secret");
+        onlyTheseChargersExist(rotated);
+        lenient().when(ocppProperties.configuredSecretFor("HD-D180-CC-01")).thenReturn(Optional.of("a-real-secret"));
+
+        seeder.run();
+
+        assertEquals("hash-from-rotate-secret", rotated.getOcppAuthSecretHash());
+        verify(passwordEncoder, times(2)).encode(anyString()); // only the two new chargers
+    }
+
+    @Test
+    void shouldKeepTheStoredHash_whenTheConfiguredSecretIsTheSameAsThePublishedDefault() {
+        ChargePoint onADevMachine = registered("HD-D180-CC-01", "hash-of-the-published-default");
+        onlyTheseChargersExist(onADevMachine);
+        String published = OcppProperties.publishedDevSecretFor("HD-D180-CC-01");
+        when(passwordEncoder.matches(published, "hash-of-the-published-default")).thenReturn(true);
+        when(ocppProperties.configuredSecretFor("HD-D180-CC-01")).thenReturn(Optional.of(published));
+
+        seeder.run();
+
+        assertEquals("hash-of-the-published-default", onADevMachine.getOcppAuthSecretHash());
+    }
+
+    @Test
+    void shouldKeepTheStoredHash_whenNoSecretIsConfiguredForTheCharger() {
+        ChargePoint noConfiguredSecret = registered("HD-D180-CC-01", "hash-of-the-published-default");
+        onlyTheseChargersExist(noConfiguredSecret);
+        when(passwordEncoder.matches(OcppProperties.publishedDevSecretFor("HD-D180-CC-01"), "hash-of-the-published-default"))
+                .thenReturn(true);
+        when(ocppProperties.configuredSecretFor("HD-D180-CC-01")).thenReturn(Optional.empty());
+
+        seeder.run();
+
+        assertEquals("hash-of-the-published-default", noConfiguredSecret.getOcppAuthSecretHash());
+    }
+
+    @Test
+    void shouldReplaceOnlyTheChargerWhoseHashMatchesItsOwnPublishedDefault() {
+        ChargePoint first = registered("HD-D180-CC-01", "hash-one");
+        ChargePoint second = registered("HQC23-80-01", "hash-two");
+        onlyTheseChargersExist(first, second);
+        // both stored hashes are the first charger's published default; only the first charger is compared against it
+        when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(inv ->
+                inv.getArgument(0).equals(OcppProperties.publishedDevSecretFor("HD-D180-CC-01"))
+                        && (inv.getArgument(1).equals("hash-one") || inv.getArgument(1).equals("hash-two")));
+        when(ocppProperties.configuredSecretFor("HD-D180-CC-01")).thenReturn(Optional.of("real-one"));
+        lenient().when(ocppProperties.configuredSecretFor("HQC23-80-01")).thenReturn(Optional.of("real-two"));
+
+        seeder.run();
+
+        assertEquals("hash(real-one)", first.getOcppAuthSecretHash());
+        assertEquals("hash-two", second.getOcppAuthSecretHash());
+    }
 }

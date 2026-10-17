@@ -241,6 +241,12 @@ public class NocPriceScraperService {
     }
 
     private boolean saveIfChanged(FuelPrice.FuelType fuelType, BigDecimal newPrice, LocalDate today) {
+        // A scraped number that cannot be a price (the page changed layout, another number was matched) is not saved.
+        if (!FuelPriceService.isSensiblePrice(newPrice)) {
+            log.warn("NOC {} price {} is outside {} to {} per litre; not saved", fuelType, newPrice,
+                    FuelPriceService.MIN_PRICE_PER_LITRE.toPlainString(), FuelPriceService.MAX_PRICE_PER_LITRE.toPlainString());
+            return false;
+        }
         Optional<FuelPrice> current = fuelPriceRepository
                 .findFirstByFuelTypeAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(fuelType, today);
 
