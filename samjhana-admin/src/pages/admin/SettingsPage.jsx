@@ -27,6 +27,7 @@ import TemporaryPasswordDialog from '../../components/admin/TemporaryPasswordDia
 import { ToastContainer } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/brand';
+import LanguageToggle from '../../components/LanguageToggle';
 import { clearSignIn } from '../../utils/session';
 
 export default function SettingsPage() {
@@ -286,12 +287,6 @@ export default function SettingsPage() {
     }
   };
 
-  const toggleLanguage = () => {
-    const newLang = isNepali ? 'en' : 'ne';
-    i18n.changeLanguage(newLang);
-    localStorage.setItem('preferredLanguage', newLang);
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -514,19 +509,13 @@ export default function SettingsPage() {
               </div>
 
               {/* Language */}
-              <button
-                onClick={toggleLanguage}
-                className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors"
-              >
+              <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Globe className="w-5 h-5 text-gray-500" />
                   <span className="text-gray-800">{t('settings.language')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">{t('settings.languageName')}</span>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </div>
-              </button>
+                <LanguageToggle tone="onLight" />
+              </div>
 
 
             </div>
