@@ -22,11 +22,22 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Pictures. Staff upload from the admin app; the public website only ever reads.
- * A picture's id never changes what it shows, so the public copy can be cached for a long time.
+ * A picture's id never changes what it shows, so the public copy can be cached, but only for a day: a removed
+ * picture has to disappear from browsers and shared caches soon, and the check that it is still there is cheap.
  */
 @RestController
 @RequiredArgsConstructor
 public class MediaController {
+
+    /** Browsers and shared caches ask again after a day (finding P0-05); an unchanged picture is then answered with a 304. */
+    private static final CacheControl PICTURE_CACHE = CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic();
+
+    /**
+     * Nothing in this response may run as a page, load anything, or reach the app's own storage, even if a browser were
+     * tricked into treating the file as a document. The inline-style allowance is only for the page browsers build around
+     * a picture opened on its own.
+     */
+    private static final String PICTURE_ONLY_POLICY = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
     private final MediaService mediaService;
     private final UploadQuota uploadQuota;
@@ -44,16 +55,21 @@ public class MediaController {
         if (etag.equals(ifNoneMatch)) {
             // The browser only asks whether its copy is still good: confirm the picture is there without reading it
             // (finding P0-13). A removed picture is still a 404, whatever copy the browser holds.
-            return mediaService.exists(uuid) ? ResponseEntity.status(304).eTag(etag).build() : ResponseEntity.notFound().build();
+            // A browser updates its stored copy with the headers of a 304, so the 304 repeats the picture's own rules.
+            return mediaService.exists(uuid)
+                    ? ResponseEntity.status(304).cacheControl(PICTURE_CACHE).eTag(etag)
+                            .header("Content-Security-Policy", PICTURE_ONLY_POLICY).build()
+                    : ResponseEntity.notFound().build();
         }
         Optional<MediaAsset> found = mediaService.find(uuid);
         if (found.isEmpty()) return ResponseEntity.notFound().build();
         MediaAsset asset = found.get();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(asset.getContentType()))
-                .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
+                .cacheControl(PICTURE_CACHE)
                 .eTag(etag)
                 .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", PICTURE_ONLY_POLICY)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 .body(asset.getData());
     }

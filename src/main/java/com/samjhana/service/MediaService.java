@@ -20,7 +20,8 @@ import java.util.*;
 /**
  * Stores and serves pictures. A file is accepted only when its own first bytes say it is a JPEG, PNG or
  * WebP: the browser's claimed type, the file name and the extension are never trusted, and SVG is refused
- * because it can carry script.
+ * because it can carry script. What is stored is the picture without the hidden details its camera or editor
+ * wrote into the file (GPS position, phone model, time, notes): see {@link ImageMetadataStripper}.
  */
 @Service
 @RequiredArgsConstructor
@@ -53,12 +54,13 @@ public class MediaService {
         if (bytes.length > MAX_BYTES) throw new IllegalArgumentException("The picture is larger than 3 MB");
         String type = detectType(bytes);
         if (type == null) throw new IllegalArgumentException("Only JPEG, PNG or WebP pictures can be uploaded");
-        verifyDecodable(bytes, type);
+        byte[] clean = ImageMetadataStripper.strip(bytes, type);   // finding P0-05: the public link hands out what is stored
+        verifyDecodable(clean, type);
         String name = originalName == null ? null : originalName.replaceAll("[\\r\\n]", " ");
         if (name != null && name.length() > 200) name = name.substring(0, 200);
         return mediaRepository.save(MediaAsset.builder()
-                .contentType(type).sizeBytes((long) bytes.length).originalName(name)
-                .uploadedBy(uploadedBy).data(bytes).build());
+                .contentType(type).sizeBytes((long) clean.length).originalName(name)
+                .uploadedBy(uploadedBy).data(clean).build());
     }
 
     /** The picture to show, or empty when it is missing or removed. */
@@ -151,7 +153,10 @@ public class MediaService {
         return null;
     }
 
-    /** JPEG and PNG are opened (not decoded) to confirm they are real pictures of a sane size. */
+    /**
+     * JPEG and PNG are opened (not decoded) to confirm they are real pictures of a sane size. The JDK cannot open WebP, which
+     * {@link ImageMetadataStripper} has already read piece by piece (header, size, still picture) by the time this runs.
+     */
     private static void verifyDecodable(byte[] bytes, String type) {
         if ("image/webp".equals(type)) return;
         try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
